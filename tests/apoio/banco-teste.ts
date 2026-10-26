@@ -3,14 +3,10 @@
  * do ambiente Supabase e todas as migrações aplicadas na ordem.
  * Cada chamada cria um banco novo e isolado.
  */
-import { readdirSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
 import type { Banco } from '@/nucleo/db/contexto';
-
-const RAIZ = path.resolve(__dirname, '..', '..');
-const MIGRACOES = path.join(RAIZ, 'supabase', 'migrations');
+import { prepararBancoLocal } from '@/nucleo/db/migracoes-locais';
 
 export interface BancoTeste {
   pg: PGlite;
@@ -22,17 +18,7 @@ export interface BancoTeste {
   fechar: () => Promise<void>;
 }
 
-export async function criarBancoTeste(): Promise<BancoTeste> {
-  const pg = new PGlite();
-  await pg.exec(readFileSync(path.join(RAIZ, 'supabase', 'test-bootstrap.sql'), 'utf8'));
-  for (const arquivo of readdirSync(MIGRACOES).filter((f) => f.endsWith('.sql')).sort()) {
-    try {
-      await pg.exec(readFileSync(path.join(MIGRACOES, arquivo), 'utf8'));
-    } catch (erro) {
-      throw new Error(`Falha ao aplicar a migração ${arquivo}: ${(erro as Error).message}`);
-    }
-  }
-
+export function envolverBanco(pg: PGlite): BancoTeste {
   const db = drizzle(pg) as unknown as Banco;
 
   const admin = async (sql: string, params: unknown[] = []) =>
@@ -48,6 +34,12 @@ export async function criarBancoTeste(): Promise<BancoTeste> {
     });
 
   return { pg, db, admin, como, fechar: () => pg.close() };
+}
+
+export async function criarBancoTeste(): Promise<BancoTeste> {
+  const pg = new PGlite();
+  await prepararBancoLocal(pg);
+  return envolverBanco(pg);
 }
 
 /**

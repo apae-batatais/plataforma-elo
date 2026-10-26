@@ -1,0 +1,22 @@
+# Hospedagem na Netlify (ADR-011).
+# A Netlify detecta o Next.js e instala o adaptador oficial automaticamente.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Enquanto o Supabase não existir, produção e prévias rodam em demonstração
+# (banco em memória com dados fictícios). Quando DATABASE_URL for configurada
+# no painel da Netlify, a demonstração desliga sozinha nesse ambiente.
+[context.production.environment]
+  MODO_DEMONSTRACAO = "1"
+
+[context.deploy-preview.environment]
+  MODO_DEMONSTRACAO = "1"
+
+[context.branch-deploy.environment]
+  MODO_DEMONSTRACAO = "1"

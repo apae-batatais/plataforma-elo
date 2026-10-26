@@ -11,9 +11,11 @@
     "test": "vitest run",
     "fronteiras": "depcruise src --config .dependency-cruiser.cjs",
     "dados:ficticios": "tsx scripts/dados-ficticios/gerar.ts",
-    "verificar": "npm run typecheck && npm run lint && npm run fronteiras && npm run test"
+    "verificar": "npm run typecheck && npm run lint && npm run fronteiras && npm run test",
+    "migracoes:gerar": "tsx scripts/gerar-migracoes.ts"
   },
   "dependencies": {
+    "@faker-js/faker": "^10.6.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "drizzle-orm": "^0.45.4",
@@ -27,7 +29,6 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.11",
     "@eslint/eslintrc": "^3",
-    "@faker-js/faker": "^10.6.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.5",
     "@types/react": "^19",

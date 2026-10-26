@@ -53,7 +53,7 @@ Escopo de atribuição: global, unidade, área ou serviço. Escopo de unidade ou
 ## Roteiro
 | Fase | Entrega | Para avançar |
 | --- | --- | --- |
-| 0 · Fundação | Núcleo, portal, RLS, auditoria, eventos, dados fictícios, CI | Supabase e Vercel configurados; login de produção com 2 etapas |
+| 0 · Fundação | Núcleo, portal, RLS, auditoria, eventos, dados fictícios, CI | Supabase e Netlify configurados; login de produção com 2 etapas |
 | 1 · Orçamento | Importação 2026, previsão, lançamentos, painel | Execução 2026 confere com a planilha; Supabase pago e DPO definidos |
 | 2 · Avaliação | Motor + módulo da Assistência, primeiro ciclo da UR | Ciclo fechado, enquadramentos justificados |
 | 3 · Expansão | Educação, Saúde/CER, novos módulos | — |
@@ -66,5 +66,5 @@ Escopo de atribuição: global, unidade, área ou serviço. Escopo de unidade ou
 - [x] Modo local com banco embutido e dados fictícios
 - [ ] Conta Supabase (região Brasil) e aplicação das migrações
 - [ ] Login de produção (Supabase Auth com verificação em duas etapas)
-- [ ] Conta Vercel e prévias automáticas
+- [x] Hospedagem na Netlify e prévias em modo demonstração (ADR-011)
 - [ ] Capacidade de Indicadores (cálculo e painel)

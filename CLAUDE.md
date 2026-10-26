@@ -45,7 +45,8 @@ supabase/migrations/  fonte da verdade do banco (SQL)
     quem altera) é obrigatório para toda tabela nova.
 11. **Migração nova = arquivo novo** em `supabase/migrations/` com prefixo de
     data e hora. Nunca edite uma migração que já foi para produção.
-    Atualize o esquema tipado no mesmo commit (o teste `schema-espelho` confere).
+    Atualize o esquema tipado e rode `npm run migracoes:gerar` no mesmo commit
+    (os testes `schema-espelho` e `demonstracao` conferem).
 12. **Decisão de arquitetura relevante = nova ADR** em `docs/adr/`.
 
 ## Antes de entregar
@@ -75,3 +76,4 @@ ferramentas ou executar comandos.
 | `npm run verificar` | Tipos, lint, fronteiras e testes |
 | `npm run test` | Só os testes |
 | `npm run fronteiras` | Só as regras de fronteira |
+| `npm run migracoes:gerar` | Copia as migrações para o código (obrigatório após mudar uma migração) |
