@@ -1,5 +1,6 @@
 # Hospedagem na Netlify (ADR-011).
-# A Netlify detecta o Next.js e instala o adaptador oficial automaticamente.
+# A publicação é feita pelo GitHub Actions (.github/workflows/publicar.yml), porque
+# o plano gratuito da Netlify não conecta repositórios privados de organizações.
 
 [build]
   command = "npm run build"
@@ -8,6 +9,10 @@
 [build.environment]
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
+
+# Adaptador oficial do Next.js na Netlify (versão fixada no package.json).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 # Enquanto o Supabase não existir, produção e prévias rodam em demonstração
 # (banco em memória com dados fictícios). Quando DATABASE_URL for configurada

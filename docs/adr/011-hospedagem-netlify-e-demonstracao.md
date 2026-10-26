@@ -15,6 +15,14 @@ como função, sem pasta gravável e sem acesso garantido à pasta `supabase/`.
 
 ## Decisão
 - Hospedagem na Netlify, configurada por `netlify.toml`.
+- **A publicação é feita pelo GitHub Actions** (`.github/workflows/publicar.yml`),
+  com a CLI da Netlify: a `main` vai para produção e cada Pull Request ganha uma
+  prévia em `pr-<número>`, com o link comentado no PR. Motivo: o plano gratuito
+  da Netlify não conecta diretamente repositórios privados de organizações do
+  GitHub (recurso do plano Pro); a publicação pela CLI é o caminho indicado pela
+  própria Netlify e mantém o repositório privado e sem custo.
+- A chave de acesso da Netlify fica só nos Secrets do GitHub, cadastrada pela
+  Diretoria; o agente nunca a recebe (ADR-008).
 - **Modo demonstração**: sem `DATABASE_URL`, na Netlify (ou com
   `MODO_DEMONSTRACAO=1`), cada servidor monta um banco PGlite em memória,
   aplica as migrações e o popula com os dados fictícios.
