@@ -1,0 +1,30 @@
+# Hospedagem no Render (ADR-011), plano gratuito.
+#
+# - A main é publicada quando a verificação automática do GitHub passa.
+# - Cada Pull Request ganha uma prévia, com o link publicado no próprio PR.
+# - Enquanto não houver produção, tudo roda em DEMONSTRAÇÃO, conectado ao
+#   Supabase de demonstração (só dados fictícios).
+#
+# DATABASE_URL é cadastrada pela Diretoria no painel do Render (nunca no repositório).
+
+services:
+  - type: web
+    name: plataforma-apae
+    runtime: node
+    plan: free
+    region: virginia
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/saude
+    autoDeployTrigger: checksPass
+    previews:
+      generation: automatic
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      - key: MODO_DEMONSTRACAO
+        value: "1"
+      - key: DATABASE_URL
+        sync: false

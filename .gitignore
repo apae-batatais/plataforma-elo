@@ -45,5 +45,3 @@ next-env.d.ts
 # banco local de desenvolvimento (somente dados fictícios)
 /.dados-locais/
 
-# saída local da Netlify
-/.netlify/

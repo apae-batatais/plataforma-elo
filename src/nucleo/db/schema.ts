@@ -39,6 +39,13 @@ export type Papel = (typeof PAPEIS)[number];
 export type EscopoTipo = (typeof ESCOPOS)[number];
 export type Sigilo = (typeof SIGILOS)[number];
 
+// Ambiente do banco (demonstração ou produção) ------------------------
+export const ambiente = core.table('ambiente', {
+  unico: boolean('unico').primaryKey().default(true),
+  tipo: text('tipo', { enum: ['demonstracao', 'producao'] }).notNull(),
+  definidoEm: timestamp('definido_em', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Organização ---------------------------------------------------------
 export const unidade = core.table('unidade', {
   id: uuid('id').primaryKey().defaultRandom(),

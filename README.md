@@ -18,7 +18,7 @@ nuvem ligadas a este repositório.
 2. **Especificação:** o Claude escreve ou atualiza a especificação e a Diretoria aprova.
 3. **Construção:** o Claude trabalha em um ramo próprio, roda `npm run verificar` e abre um Pull Request em português.
 4. **Verificação automática:** o GitHub roda tipos, lint, fronteiras, testes e build (aba *Actions*).
-5. **Prévia:** a Netlify publica cada Pull Request em um link de prévia, em modo demonstração (dados fictícios).
+5. **Prévia:** o Render publica cada Pull Request em um link de prévia, em modo demonstração (dados fictícios).
 6. **Aprovação:** a Diretoria confere a prévia e aprova o Pull Request pelo navegador; só então a mudança entra na `main`.
 
 ## Comandos (usados pelo Claude nas sessões)
@@ -35,7 +35,11 @@ para conferir o que cada pessoa da equipe vai ver.
 
 ## Hospedagem
 
-Netlify (`netlify.toml`, ADR-011). Enquanto o Supabase não existir, a
-publicação e as prévias rodam em **modo demonstração**: cada servidor monta um
-banco em memória com os dados fictícios. Depois de alterar uma migração em
-`supabase/migrations/`, rode `npm run migracoes:gerar`.
+Render, plano gratuito (`render.yaml`, ADR-011), conectado a um **Supabase de
+demonstração** que só tem dados fictícios. A automação "Preparar demonstração"
+aplica as migrações nesse banco a cada mudança. Depois de alterar uma migração
+em `supabase/migrations/`, rode `npm run migracoes:gerar`.
+
+Configuração feita pela Diretoria, uma vez:
+- GitHub → Settings → Secrets and variables → Actions: `DATABASE_URL_DEMONSTRACAO`.
+- Render → serviço `plataforma-apae` → Environment: `DATABASE_URL` (a mesma conexão).

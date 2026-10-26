@@ -1,0 +1,57 @@
+# Mantém o banco de DEMONSTRAÇÃO (Supabase) em dia: aplica migrações pendentes
+# e, na primeira vez, grava os dados fictícios. Ver scripts/demonstracao/preparar.ts.
+#
+# Precisa do Secret DATABASE_URL_DEMONSTRACAO (Settings → Secrets and variables → Actions),
+# com a conexão "Session pooler" do projeto Supabase de demonstração.
+# Sem ele, o passo é pulado.
+
+name: Preparar demonstração
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: banco-demonstracao
+  cancel-in-progress: false
+
+jobs:
+  preparar:
+    runs-on: ubuntu-latest
+    # Pull Requests de cópias externas (forks) não recebem os Secrets.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Conferir configuração
+        id: config
+        env:
+          URL: ${{ secrets.DATABASE_URL_DEMONSTRACAO }}
+        run: |
+          if [ -n "$URL" ]; then
+            echo "pronto=sim" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Pulado: configure o Secret DATABASE_URL_DEMONSTRACAO."
+            echo "pronto=nao" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.config.outputs.pronto == 'sim'
+
+      - uses: actions/setup-node@v5
+        if: steps.config.outputs.pronto == 'sim'
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+        if: steps.config.outputs.pronto == 'sim'
+
+      - name: Aplicar migrações e dados fictícios
+        if: steps.config.outputs.pronto == 'sim'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_DEMONSTRACAO }}
+        run: npm run demonstracao:preparar

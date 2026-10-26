@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { modoDemonstracao, modoLocal } from '@/nucleo/db/cliente';
+import { modoDemonstracao } from '@/nucleo/db/cliente';
 import { usuarioLogado } from '@/nucleo/identidade/sessao';
 import { sair } from './acoes-sessao';
 import './globals.css';
@@ -17,11 +17,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="pt-BR">
       <body className="min-h-screen antialiased">
-        {modoLocal() && (
+        {modoDemonstracao() && (
           <div className="bg-aviso-fundo px-4 py-2 text-center text-sm text-aviso" role="status">
-            {modoDemonstracao()
-              ? 'Demonstração: todos os dados são fictícios e alterações podem ser perdidas.'
-              : 'Modo local: todos os dados são fictícios.'}
+            Demonstração: todos os dados são fictícios.
           </div>
         )}
         <header className="border-b border-borda bg-superficie">

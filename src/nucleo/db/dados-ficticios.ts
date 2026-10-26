@@ -6,10 +6,11 @@
  * - Usuários têm identificadores FIXOS, para que a escolha de usuário na tela
  *   de entrada valha em qualquer servidor da demonstração.
  *
- * Nunca use contra um banco real: quem chama garante que é PGlite.
+ * Trava de segurança: só grava em banco vazio (que passa a ser marcado como
+ * "demonstracao") ou já marcado como "demonstracao". Banco de "producao" é recusado.
  */
-import type { PGlite } from '@electric-sql/pglite';
 import { Faker, pt_BR, base } from '@faker-js/faker';
+import { lerAmbiente, type ExecutorSql } from './executor';
 
 export const SERVICOS_FICTICIOS = [
   { codigo: 'ur', nome: 'Unidade Referenciada (exemplo)', eixo: 'assistencia_social', unidade: 'sede', area: 'assistencia_social', vagas: null, atendidos: 12 },
@@ -34,10 +35,43 @@ export interface ResumoDadosFicticios {
   servicos: number;
   atendidos: number;
   usuarios: number;
+  /** false quando o banco de demonstração já tinha os dados (nada foi gravado). */
+  gravado: boolean;
 }
 
-/** Popula um banco PGlite já migrado e vazio. */
-export async function popularDadosFicticios(pg: PGlite): Promise<ResumoDadosFicticios> {
+/**
+ * Popula um banco já migrado com os dados fictícios, em uma transação.
+ * O executor deve usar uma única conexão.
+ */
+export async function popularDadosFicticios(pg: ExecutorSql): Promise<ResumoDadosFicticios> {
+  const resumo = { servicos: SERVICOS_FICTICIOS.length, usuarios: USUARIOS_FICTICIOS.length };
+  const tipo = await lerAmbiente(pg);
+  if (tipo === 'producao') {
+    throw new Error('Recusado: este banco é de PRODUÇÃO. Dados fictícios nunca são gravados nele.');
+  }
+  if (tipo === 'demonstracao') {
+    const { rows } = await pg.query(`select 1 from core.usuario where id = $1`, [USUARIOS_FICTICIOS[0].id]);
+    if (rows.length > 0) return { ...resumo, atendidos: 0, gravado: false };
+  } else {
+    const { rows } = await pg.query(`select count(*)::int as n from core.pessoa`);
+    if ((rows[0] as { n: number }).n > 0) {
+      throw new Error('Recusado: o banco já tem pessoas cadastradas e não está marcado como demonstração.');
+    }
+  }
+
+  await pg.exec('begin');
+  try {
+    const atendidos = await gravar(pg, tipo === null);
+    await pg.exec('commit');
+    return { ...resumo, atendidos, gravado: true };
+  } catch (erro) {
+    await pg.exec('rollback');
+    throw erro;
+  }
+}
+
+async function gravar(pg: ExecutorSql, marcarAmbiente: boolean): Promise<number> {
+  if (marcarAmbiente) await pg.query(`insert into core.ambiente (tipo) values ('demonstracao')`);
   const faker = new Faker({ locale: [pt_BR, base], seed: 2027 });
   const um = async (sql: string, params: unknown[] = []) =>
     ((await pg.query<{ id: string }>(sql, params)).rows[0] as { id: string }).id;
@@ -98,5 +132,5 @@ export async function popularDadosFicticios(pg: PGlite): Promise<ResumoDadosFict
     );
   }
 
-  return { servicos: SERVICOS_FICTICIOS.length, atendidos, usuarios: USUARIOS_FICTICIOS.length };
+  return atendidos;
 }

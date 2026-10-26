@@ -77,3 +77,4 @@ ferramentas ou executar comandos.
 | `npm run test` | Só os testes |
 | `npm run fronteiras` | Só as regras de fronteira |
 | `npm run migracoes:gerar` | Copia as migrações para o código (obrigatório após mudar uma migração) |
+| `npm run demonstracao:preparar` | Aplica migrações e dados fictícios no banco de demonstração (roda no GitHub Actions) |

@@ -12,7 +12,8 @@
     "fronteiras": "depcruise src --config .dependency-cruiser.cjs",
     "dados:ficticios": "tsx scripts/dados-ficticios/gerar.ts",
     "verificar": "npm run typecheck && npm run lint && npm run fronteiras && npm run test",
-    "migracoes:gerar": "tsx scripts/gerar-migracoes.ts"
+    "migracoes:gerar": "tsx scripts/gerar-migracoes.ts",
+    "demonstracao:preparar": "tsx scripts/demonstracao/preparar.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^10.6.0",
@@ -29,7 +30,6 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.11",
     "@eslint/eslintrc": "^3",
-    "@netlify/plugin-nextjs": "^5.16.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.5",
     "@types/react": "^19",

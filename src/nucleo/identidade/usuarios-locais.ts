@@ -1,10 +1,10 @@
 /**
- * Lista os usuários fictícios para a tela de entrada do modo local.
- * Lê como dono do banco (sem RLS), por isso só funciona no modo local.
+ * Lista os usuários fictícios para a tela de entrada da demonstração.
+ * Lê como dono do banco (sem RLS), por isso só funciona em demonstração.
  */
 import 'server-only';
 import { sql } from 'drizzle-orm';
-import { modoLocal, obterBanco } from '@/nucleo/db/cliente';
+import { modoDemonstracao, obterBanco } from '@/nucleo/db/cliente';
 import { linhas } from '@/nucleo/db/linhas';
 
 export interface UsuarioLocal {
@@ -14,7 +14,7 @@ export interface UsuarioLocal {
 }
 
 export async function listarUsuariosLocais(): Promise<UsuarioLocal[]> {
-  if (!modoLocal()) throw new Error('listarUsuariosLocais só pode ser usado no modo local.');
+  if (!modoDemonstracao()) throw new Error('listarUsuariosLocais só pode ser usado no modo demonstração.');
   const db = await obterBanco();
   return linhas<UsuarioLocal>(
     await db.execute(sql`

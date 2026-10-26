@@ -3,9 +3,8 @@
  *
  *   npm run migracoes:gerar
  *
- * Por quê: na hospedagem (Netlify) o servidor roda como função, sem acesso
- * garantido à pasta `supabase/`. Com as migrações dentro do código, o modo
- * demonstração consegue montar o banco em memória em qualquer lugar.
+ * Por quê: o script do banco de demonstração e o banco em memória precisam
+ * das migrações mesmo onde a pasta `supabase/` não acompanha o código.
  * O teste `migracoes-geradas` falha se este arquivo ficar desatualizado.
  */
 import { writeFileSync } from 'node:fs';

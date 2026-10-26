@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { modoLocal } from '@/nucleo/db/cliente';
+import { modoDemonstracao } from '@/nucleo/db/cliente';
 import { usuarioLogado } from '@/nucleo/identidade/sessao';
 import { listarUsuariosLocais } from '@/nucleo/identidade/usuarios-locais';
 import { entrarComoUsuarioLocal } from '../acoes-sessao';
@@ -7,7 +7,7 @@ import { entrarComoUsuarioLocal } from '../acoes-sessao';
 export default async function Entrar() {
   if (await usuarioLogado()) redirect('/');
 
-  if (!modoLocal()) {
+  if (!modoDemonstracao()) {
     return (
       <section className="mx-auto max-w-md">
         <h1 className="text-2xl font-semibold">Entrar</h1>
@@ -19,7 +19,7 @@ export default async function Entrar() {
   const usuarios = await listarUsuariosLocais();
   return (
     <section className="mx-auto max-w-xl">
-      <h1 className="text-2xl font-semibold">Entrar no modo local</h1>
+      <h1 className="text-2xl font-semibold">Entrar na demonstração</h1>
       <p className="mt-2 text-texto-suave">
         Escolha um usuário fictício. Cada um tem um perfil diferente, para você conferir o que cada pessoa da equipe vai ver.
       </p>
