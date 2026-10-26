@@ -54,6 +54,10 @@ Rode `npm run verificar` (tipos, lint, fronteiras e testes). Só entregue com
 tudo verde. Depois explique à Diretoria, em poucas linhas, o que mudou e como
 conferir na prévia.
 
+A Diretoria não roda nada no computador (ADR-010): toda conferência é feita
+pelo navegador, no Pull Request e na prévia. Nunca peça para ela instalar
+ferramentas ou executar comandos.
+
 ## Ciclo de trabalho (SDD)
 
 1. Especificar: escreva ou atualize a especificação da funcionalidade e peça aprovação.
