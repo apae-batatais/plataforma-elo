@@ -6,22 +6,41 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "fronteiras": "depcruise src --config .dependency-cruiser.cjs",
+    "dados:ficticios": "tsx scripts/dados-ficticios/gerar.ts",
+    "verificar": "npm run typecheck && npm run lint && npm run fronteiras && npm run test"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
+    "drizzle-orm": "^0.45.4",
+    "next": "15.5.28",
+    "postgres": "^3.4.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "next": "15.5.28"
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
+    "@electric-sql/pglite": "^0.5.11",
+    "@eslint/eslintrc": "^3",
+    "@faker-js/faker": "^10.6.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
+    "dependency-cruiser": "^18.7.0",
     "eslint": "^9",
     "eslint-config-next": "15.5.28",
-    "@eslint/eslintrc": "^3"
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

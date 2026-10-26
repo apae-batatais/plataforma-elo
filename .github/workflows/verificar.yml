@@ -1,0 +1,30 @@
+name: Verificar
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tipos
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Regras de fronteira entre módulos
+        run: npm run fronteiras
+      - name: Testes (inclui acesso por perfil no banco)
+        run: npm run test
+      - name: Build de produção
+        run: npm run build

@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Plataforma APAE Batatais
 
-## Getting Started
+Plataforma de ferramentas da APAE Batatais: um portal com um app para cada
+departamento (Orçamento, Avaliação Diagnóstica e outros), sobre um Núcleo
+comum de pessoas, acesso e auditoria.
 
-First, run the development server:
+- Especificação: [`docs/especificacao-plataforma.md`](docs/especificacao-plataforma.md)
+- Decisões de arquitetura: [`docs/adr/`](docs/adr/)
+- Regras para o agente desenvolvedor: [`CLAUDE.md`](CLAUDE.md)
+
+## Rodar no computador (modo local, só dados fictícios)
+
+Requisitos: Node.js 20 ou mais novo e Git.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dados:ficticios   # cria o banco local com dados inventados
+npm run dev               # abre em http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Na tela de entrada, escolha um usuário fictício. Cada um tem um perfil
+diferente, para você conferir o que cada pessoa da equipe vai ver.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verificar antes de entregar
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run verificar   # tipos, lint, regras de fronteira e testes
+```
 
-## Learn More
+## Onde guardar o código
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Clone o repositório fora do Google Drive (por exemplo, `C:\dev\plataforma-apae`).
+A sincronização do Drive pode corromper repositórios Git. O GitHub é a cópia oficial.
