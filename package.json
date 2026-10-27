@@ -1,6 +1,6 @@
 {
   "name": "plataforma-apae",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,24 +10,21 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "fronteiras": "depcruise src --config .dependency-cruiser.cjs",
-    "dados:ficticios": "tsx scripts/dados-ficticios/gerar.ts",
     "verificar": "npm run typecheck && npm run lint && npm run fronteiras && npm run test"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.12.7",
-    "@supabase/supabase-js": "^2.118.0",
-    "drizzle-orm": "^0.45.4",
+    "google-auth-library": "^11.2.0",
+    "jose": "^6.2.12",
     "next": "15.5.28",
-    "postgres": "^3.4.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.11",
     "@eslint/eslintrc": "^3",
     "@faker-js/faker": "^10.6.0",
+    "@netlify/plugin-nextjs": "^5.16.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.5",
     "@types/react": "^19",

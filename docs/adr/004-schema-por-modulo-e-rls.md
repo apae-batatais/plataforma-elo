@@ -1,6 +1,6 @@
 # ADR-004 · Schema por módulo e Row Level Security
 
-- Situação: aceita
+- Situação: substituída pela ADR-011
 - Data: 2026-10-25
 
 ## Contexto

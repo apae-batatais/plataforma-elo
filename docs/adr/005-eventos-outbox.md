@@ -1,6 +1,6 @@
 # ADR-005 · Eventos de domínio via outbox no Postgres
 
-- Situação: aceita
+- Situação: substituída pela ADR-011
 - Data: 2026-10-25
 
 ## Contexto

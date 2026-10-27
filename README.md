@@ -1,34 +1,59 @@
 # Plataforma APAE Batatais
 
-Plataforma de ferramentas da APAE Batatais: um portal com um app para cada
-departamento (Orçamento, Avaliação Diagnóstica e outros), sobre um Núcleo
-comum de pessoas, acesso e auditoria.
+Portal com um app para cada departamento (Orçamento, Avaliação Diagnóstica e
+outros), sobre um Núcleo comum de pessoas, acessos e auditoria.
 
-- Especificação: [`docs/especificacao-plataforma.md`](docs/especificacao-plataforma.md)
-- Decisões de arquitetura: [`docs/adr/`](docs/adr/)
-- Regras para o agente desenvolvedor: [`CLAUDE.md`](CLAUDE.md)
-
-## Como trabalhamos (tudo na nuvem)
-
-A Diretoria não instala nada no computador (ADR-010). O GitHub é a cópia
-oficial do código, e todo o desenvolvimento acontece em sessões do Claude na
-nuvem ligadas a este repositório.
-
-1. **Pedido:** a Diretoria descreve a funcionalidade em uma sessão do Claude com este repositório.
-2. **Especificação:** o Claude escreve ou atualiza a especificação e a Diretoria aprova.
-3. **Construção:** o Claude trabalha em um ramo próprio, roda `npm run verificar` e abre um Pull Request em português.
-4. **Verificação automática:** o GitHub roda tipos, lint, fronteiras, testes e build (aba *Actions*).
-5. **Prévia:** com a Vercel configurada, cada Pull Request ganha um link de prévia com dados fictícios.
-6. **Aprovação:** a Diretoria confere a prévia e aprova o Pull Request pelo navegador; só então a mudança entra na `main`.
-
-## Comandos (usados pelo Claude nas sessões)
-
-```bash
-npm install
-npm run dados:ficticios   # cria o banco local com dados inventados
-npm run dev               # abre a plataforma em modo local
-npm run verificar         # tipos, lint, regras de fronteira e testes
+```
+Navegador ──► Camada de aplicação (Netlify) ──► Google Planilhas (só armazenamento)
 ```
 
-No modo local, a tela de entrada lista usuários fictícios, um por perfil,
-para conferir o que cada pessoa da equipe vai ver.
+- Decisão de arquitetura: [`docs/adr/011-camada-de-aplicacao-e-planilhas.md`](docs/adr/011-camada-de-aplicacao-e-planilhas.md)
+- Especificação: [`docs/especificacao-plataforma.md`](docs/especificacao-plataforma.md)
+- Regras para o agente desenvolvedor: [`CLAUDE.md`](CLAUDE.md)
+
+## Como trabalhamos
+
+A Diretoria não instala nada no computador (ADR-010).
+
+1. **Pedido** em uma sessão do Claude com este repositório.
+2. **Especificação** escrita pelo Claude e aprovada pela Diretoria.
+3. **Pull Request** com o código, testes e resumo em português.
+4. **Verificação automática** no GitHub (aba *Actions*).
+5. **Prévia** em demonstração, publicada na Netlify; o link aparece no PR.
+6. **Aprovação** do PR pela Diretoria.
+7. **Publicação oficial manual**: *Actions → Publicar → Run workflow* (ramo `main`).
+
+## Configuração (feita uma vez pela Diretoria)
+
+**Netlify**
+1. *Add new project → Deploy manually*: arraste qualquer pasta (só para criar o site).
+2. Guarde o *Project ID* (*Project configuration → General*).
+3. Crie uma chave em *User settings → Applications → Personal access tokens*.
+
+**GitHub** (*Settings → Secrets and variables → Actions*)
+- `NETLIFY_AUTH_TOKEN` e `NETLIFY_SITE_ID`.
+
+**Google Cloud** (projeto da conta institucional, sem custo)
+1. Ativar a *Google Sheets API*.
+2. Criar uma **conta de serviço** e uma chave JSON.
+3. Criar um **ID do cliente OAuth** (Aplicativo da Web), tela de consentimento
+   **Interna**, com o endereço do site da Netlify em "Origens JavaScript autorizadas".
+
+**Google Drive**
+- Criar as planilhas vazias `Plataforma · Núcleo` e `Plataforma · Auditoria`
+  e compartilhá-las como **Editor** com o e-mail da conta de serviço.
+
+**Netlify → Environment variables** (contexto **Production**)
+
+| Variável | Valor |
+| --- | --- |
+| `GOOGLE_CONTA_SERVICO` | conteúdo do JSON da conta de serviço |
+| `GOOGLE_CLIENT_ID` | ID do cliente OAuth |
+| `PLANILHAS` | `{"nucleo":"<id>","auditoria":"<id>"}` |
+| `SESSAO_SEGREDO` | texto aleatório com 40+ caracteres |
+| `ADMINISTRADORES_INICIAIS` | e-mails que configuram a plataforma |
+
+Depois: entrar como administrador inicial → **Estrutura das planilhas →
+Preparar estrutura** → cadastrar usuários e atribuições.
+
+Sem essas variáveis, a plataforma roda em **demonstração** (dados fictícios).

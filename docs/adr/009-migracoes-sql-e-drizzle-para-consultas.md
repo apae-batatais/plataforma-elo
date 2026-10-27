@@ -1,6 +1,6 @@
 # ADR-009 · Migrações em SQL; Drizzle só para consultas tipadas
 
-- Situação: aceita
+- Situação: substituída pela ADR-011
 - Data: 2026-10-25
 - Ajusta a especificação v1, que previa migrações geradas pelo Drizzle.
 

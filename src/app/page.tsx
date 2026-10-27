@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { usuarioLogado } from '@/nucleo/identidade/sessao';
+import { usuarioLogado } from '@/plataforma/sessao';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
 import { APPS_PLANEJADOS } from '@/plataforma/apps-planejados';
 import { MODULOS } from '@/plataforma/registro-modulos';
@@ -9,7 +9,8 @@ export default async function Portal() {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
 
-  const apps = menuDoUsuario(MODULOS, usuario.permissoes);
+  const apps = menuDoUsuario(MODULOS, usuario.autorizador.permissoes());
+  const podeGerenciar = usuario.autorizador.temPermissao('core.organizacao.gerenciar');
   const ativos = new Set(MODULOS.map((m) => m.nome));
   const planejados = APPS_PLANEJADOS.filter((a) => !ativos.has(a.nome));
 
@@ -30,6 +31,15 @@ export default async function Portal() {
             <span className="block font-semibold">Pessoas</span>
             <span className="mt-1 block text-sm text-texto-suave">Cadastro Único: atendidos, familiares e equipe que você pode ver.</span>
           </Link>
+          {podeGerenciar && (
+            <Link
+              href="/admin/estrutura"
+              className="rounded-lg border border-borda bg-superficie p-5 hover:border-destaque hover:bg-destaque-suave"
+            >
+              <span className="block font-semibold">Estrutura das planilhas</span>
+              <span className="mt-1 block text-sm text-texto-suave">Cria as abas que faltam no Drive e a configuração inicial.</span>
+            </Link>
+          )}
           {apps.map((app) => (
             <Link
               key={app.id}
@@ -66,7 +76,7 @@ export default async function Portal() {
         ) : (
           <ul className="mt-2 space-y-1">
             {usuario.perfis.map((p) => (
-              <li key={`${p.codigo}-${p.escopo}`}>
+              <li key={`${p.nome}-${p.escopo}`}>
                 <span className="font-medium">{p.nome}</span>
                 <span className="text-texto-suave"> em {p.escopo}</span>
               </li>

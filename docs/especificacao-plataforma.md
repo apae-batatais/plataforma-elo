@@ -2,7 +2,8 @@
 
 Documento completo, com diagramas: https://claude.ai/artifact/FuL5TfpJoxSZJA7NBo6t34
 Este arquivo é o resumo que acompanha o código. Em caso de conflito, as ADRs
-em `docs/adr/` valem sobre este resumo.
+em `docs/adr/` valem sobre este resumo. A ADR-011 mudou a arquitetura:
+camada de aplicação na Netlify e armazenamento em Google Planilhas.
 
 ## Objetivo
 Reunir em um só lugar os apps de cada departamento da APAE Batatais, sobre um
@@ -24,12 +25,13 @@ e Avaliação Diagnóstica da Assistência Social (Fase 2).
 | Portal | `src/app` | Login, menu por perfil, layout |
 | Módulos | `src/modulos/<id>` | Um app por departamento |
 | Capacidades | `src/capacidades` | Motor de avaliação, Indicadores |
-| Núcleo | `src/nucleo` + schema `core` | Identidade, pessoas, organização, documentos, auditoria, eventos |
+| Núcleo | `src/nucleo` + planilhas `nucleo` e `auditoria` | Armazenamento, acesso, pessoas, organização, auditoria, sessão |
 
-## Núcleo (schema `core`)
-pessoa, papel_pessoa, vinculo_familiar, unidade, area, servico, vinculo_servico,
-usuario, perfil, perfil_permissao, atribuicao, documento, auditoria,
-evento_dominio, evento_entrega, indicador, valor_indicador.
+## Núcleo (planilha `nucleo`, uma aba por tabela)
+Abas: Unidades, Areas, Servicos, Pessoas, Papeis, VinculosFamiliares,
+VinculosServico, Usuarios, Perfis, PerfilPermissoes, Atribuicoes.
+Planilha `auditoria`, aba Registros (somente inclusão).
+Definições em `src/nucleo/estrutura/tabelas.ts`.
 
 ## Perfis iniciais
 | Perfil | Vê | Altera |
@@ -53,18 +55,17 @@ Escopo de atribuição: global, unidade, área ou serviço. Escopo de unidade ou
 ## Roteiro
 | Fase | Entrega | Para avançar |
 | --- | --- | --- |
-| 0 · Fundação | Núcleo, portal, RLS, auditoria, eventos, dados fictícios, CI | Supabase e Vercel configurados; login de produção com 2 etapas |
-| 1 · Orçamento | Importação 2026, previsão, lançamentos, painel | Execução 2026 confere com a planilha; Supabase pago e DPO definidos |
+| 0 · Fundação | Camada de aplicação, armazenamento em planilhas, acesso, auditoria, demonstração, CI | Google Cloud, Drive e Netlify configurados; login Google institucional |
+| 1 · Orçamento | Importação 2026/2027, previsão, folha e rateio, lançamentos, painel | Execução confere com a planilha; DPO definido |
 | 2 · Avaliação | Motor + módulo da Assistência, primeiro ciclo da UR | Ciclo fechado, enquadramentos justificados |
 | 3 · Expansão | Educação, Saúde/CER, novos módulos | — |
 
 ## Situação da Fase 0
-- [x] Projeto Next.js + TypeScript, testes, lint de fronteiras
-- [x] Schema `core` com RLS, auditoria imutável e eventos (outbox)
-- [x] Contrato de módulo (manifesto) e registro de módulos
-- [x] Portal com menu por perfil e tela de Pessoas filtrada pelo banco
-- [x] Modo local com banco embutido e dados fictícios
-- [ ] Conta Supabase (região Brasil) e aplicação das migrações
-- [ ] Login de produção (Supabase Auth com verificação em duas etapas)
-- [ ] Conta Vercel e prévias automáticas
+- [x] Camada de aplicação (Next.js) com módulos e regras de fronteira
+- [x] Armazenamento em Google Planilhas pela conta de serviço, com controle de versão (ADR-011)
+- [x] Acesso por perfil e escopo e auditoria na camada de aplicação
+- [x] Login Google institucional (conferido no servidor) e demonstração com dados fictícios
+- [x] Publicação na Netlify pelo GitHub (oficial manual, prévia por PR)
+- [ ] Google Cloud: conta de serviço e ID do cliente OAuth
+- [ ] Planilhas Núcleo e Auditoria criadas e compartilhadas com a conta de serviço
 - [ ] Capacidade de Indicadores (cálculo e painel)

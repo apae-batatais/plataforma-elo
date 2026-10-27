@@ -1,17 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { sql } from 'drizzle-orm';
-import { comoUsuario } from '@/nucleo/db/contexto';
-import { obterBanco } from '@/nucleo/db/cliente';
-import { linhas } from '@/nucleo/db/linhas';
-import { usuarioLogado } from '@/nucleo/identidade/sessao';
-
-interface PessoaVisivel {
-  id: string;
-  nome: string;
-  papeis: string | null;
-  servicos: string | null;
-}
+import { listarPessoasVisiveis } from '@/nucleo/pessoas/servico';
+import { obterAplicacao } from '@/plataforma/aplicacao';
+import { usuarioLogado } from '@/plataforma/sessao';
 
 const ROTULO_PAPEL: Record<string, string> = {
   atendido: 'Atendido',
@@ -25,27 +16,16 @@ const ROTULO_PAPEL: Record<string, string> = {
 export default async function Pessoas() {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
+  const app = await obterAplicacao();
 
-  // A lista vem filtrada pelo próprio banco (Row Level Security):
-  // cada perfil recebe apenas as pessoas que pode ver.
-  const pessoas = await comoUsuario(await obterBanco(), usuario.usuarioId, async (tx) =>
-    linhas<PessoaVisivel>(
-      await tx.execute(sql`
-        select p.id, coalesce(p.nome_social, p.nome) as nome,
-               (select string_agg(pp.papel, ',' order by pp.papel)
-                  from core.papel_pessoa pp where pp.pessoa_id = p.id and pp.fim is null) as papeis,
-               (select string_agg(s.nome, ', ' order by s.nome)
-                  from core.vinculo_servico vs join core.servico s on s.id = vs.servico_id
-                 where vs.pessoa_id = p.id and vs.saida is null) as servicos
-          from core.pessoa p
-         where p.ativa
-         order by 2`),
-    ),
-  );
+  // A camada de aplicação filtra pelo perfil: cada um recebe só quem pode ver.
+  const pessoas = await listarPessoasVisiveis(app.planilhas, usuario.autorizador);
 
   return (
     <div>
-      <Link href="/" className="text-sm text-destaque hover:underline">← Portal</Link>
+      <Link href="/" className="text-sm text-destaque hover:underline">
+        ← Portal
+      </Link>
       <h1 className="mt-2 text-2xl font-semibold">Pessoas</h1>
       <p className="mt-1 text-texto-suave">
         {pessoas.length} {pessoas.length === 1 ? 'pessoa visível' : 'pessoas visíveis'} para o seu perfil. Quem não aparece aqui está fora do seu escopo de acesso.
@@ -64,10 +44,8 @@ export default async function Pessoas() {
             {pessoas.map((p) => (
               <tr key={p.id} className="border-b border-borda last:border-0">
                 <td className="px-4 py-3">{p.nome}</td>
-                <td className="px-4 py-3">
-                  {(p.papeis ?? '').split(',').filter(Boolean).map((papel) => ROTULO_PAPEL[papel] ?? papel).join(', ')}
-                </td>
-                <td className="px-4 py-3 text-texto-suave">{p.servicos ?? '—'}</td>
+                <td className="px-4 py-3">{p.papeis.map((x) => ROTULO_PAPEL[x] ?? x).join(', ')}</td>
+                <td className="px-4 py-3 text-texto-suave">{p.servicos.join(', ') || '—'}</td>
               </tr>
             ))}
           </tbody>
