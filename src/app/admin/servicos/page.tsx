@@ -1,17 +1,11 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { lerTabelas } from '@/nucleo/armazenamento/tabela';
-import { Areas, EIXOS, Servicos, Unidades } from '@/nucleo/estrutura/tabelas';
+import { Areas, Servicos, Unidades } from '@/nucleo/estrutura/tabelas';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { acaoCadastrarServico } from '../acoes';
 import { estiloBotao, estiloCampo, Mensagem } from '../mensagem';
-
-const NOME_EIXO: Record<(typeof EIXOS)[number], string> = {
-  assistencia_social: 'Assistência Social',
-  educacao: 'Educação',
-  saude: 'Saúde',
-};
 
 export default async function ServicosAdmin({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string }> }) {
   const usuario = await usuarioLogado();
@@ -22,6 +16,7 @@ export default async function ServicosAdmin({ searchParams }: { searchParams: Pr
   const [servicos, unidades, areas] = await lerTabelas(app.planilhas, [Servicos, Unidades, Areas] as const);
   const { ok, erro } = await searchParams;
   const nomeUnidade = new Map(unidades.todos().map((u) => [u.codigo, u.nome]));
+  const nomeArea = new Map(areas.todos().map((a) => [a.codigo, a.nome]));
 
   return (
     <div className="space-y-8">
@@ -47,16 +42,6 @@ export default async function ServicosAdmin({ searchParams }: { searchParams: Pr
             <input name="codigo" required pattern="[a-z0-9_]+" placeholder="ex.: centro_dia" className={estiloCampo} />
           </label>
           <label className="text-sm">
-            Eixo
-            <select name="eixo" required className={estiloCampo}>
-              {EIXOS.map((e) => (
-                <option key={e} value={e}>
-                  {NOME_EIXO[e]}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-sm">
             Unidade
             <select name="unidade" required className={estiloCampo}>
               {unidades.ativos().map((u) => (
@@ -68,8 +53,8 @@ export default async function ServicosAdmin({ searchParams }: { searchParams: Pr
           </label>
           <label className="text-sm">
             Área
-            <select name="area" className={estiloCampo}>
-              <option value="">—</option>
+            <select name="area" required className={estiloCampo}>
+              <option value="">Escolha…</option>
               {areas.ativos().map((a) => (
                 <option key={a.codigo} value={a.codigo}>
                   {a.nome}
@@ -92,7 +77,7 @@ export default async function ServicosAdmin({ searchParams }: { searchParams: Pr
           <thead className="border-b border-borda text-texto-suave">
             <tr>
               <th scope="col" className="px-4 py-3 font-medium">Serviço</th>
-              <th scope="col" className="px-4 py-3 font-medium">Eixo</th>
+              <th scope="col" className="px-4 py-3 font-medium">Área</th>
               <th scope="col" className="px-4 py-3 font-medium">Unidade</th>
               <th scope="col" className="px-4 py-3 font-medium">Vagas</th>
             </tr>
@@ -103,7 +88,7 @@ export default async function ServicosAdmin({ searchParams }: { searchParams: Pr
                 <td className="px-4 py-3">
                   {s.nome} <span className="text-texto-suave">({s.codigo})</span>
                 </td>
-                <td className="px-4 py-3">{NOME_EIXO[s.eixo]}</td>
+                <td className="px-4 py-3">{s.area ? (nomeArea.get(s.area) ?? s.area) : '—'}</td>
                 <td className="px-4 py-3">{nomeUnidade.get(s.unidade) ?? s.unidade}</td>
                 <td className="px-4 py-3">{s.vagas ?? '—'}</td>
               </tr>

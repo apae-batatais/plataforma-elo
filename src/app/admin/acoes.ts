@@ -73,9 +73,8 @@ export async function acaoCadastrarServico(f: FormData) {
     cadastrarServico(app.planilhas, usuario.autorizador, {
       codigo: texto(f, 'codigo'),
       nome: texto(f, 'nome'),
-      eixo: texto(f, 'eixo'),
       unidade: texto(f, 'unidade'),
-      area: texto(f, 'area') || null,
+      area: texto(f, 'area'),
       vagas: vagas === '' ? null : Number(vagas),
     }),
   );

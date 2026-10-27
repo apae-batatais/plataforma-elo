@@ -34,8 +34,8 @@ async function nomesVisiveis(email: string) {
 
 beforeAll(async () => {
   p = await planilhasDeTeste();
-  await inserir(p, Servicos, { codigo: 'ur', nome: 'Unidade Referenciada', eixo: 'assistencia_social', unidade: 'sede', area: 'assistencia_social' }, sistema);
-  await inserir(p, Servicos, { codigo: 'cer_reab', nome: 'Reabilitação', eixo: 'saude', unidade: 'cer', area: 'saude' }, sistema);
+  await inserir(p, Servicos, { codigo: 'ur', nome: 'Unidade Referenciada', unidade: 'sede', area: 'assistencia_social' }, sistema);
+  await inserir(p, Servicos, { codigo: 'cer_reab', nome: 'Reabilitação', unidade: 'cer', area: 'saude' }, sistema);
   ids.ana = (await inserir(p, Pessoas, { nome: 'Ana Atendida UR' }, sistema)).id;
   ids.bruno = (await inserir(p, Pessoas, { nome: 'Bruno Atendido CER' }, sistema)).id;
   ids.carla = (await inserir(p, Pessoas, { nome: 'Carla Mãe da Ana' }, sistema)).id;

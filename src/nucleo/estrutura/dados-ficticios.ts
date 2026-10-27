@@ -8,11 +8,11 @@ import { inserir, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, Papeis, Pessoas, Servicos, Usuarios, VinculosFamiliares, VinculosServico } from './tabelas';
 
 export const SERVICOS_FICTICIOS = [
-  { codigo: 'ur', nome: 'Unidade Referenciada (exemplo)', eixo: 'assistencia_social', unidade: 'sede', area: 'assistencia_social', vagas: null, atendidos: 12 },
-  { codigo: 'centro_dia_intergeracional', nome: 'Centro Dia Intergeracional (exemplo)', eixo: 'assistencia_social', unidade: 'sede', area: 'assistencia_social', vagas: 80, atendidos: 8 },
-  { codigo: 'servico_domicilio', nome: 'Serviço no Domicílio (exemplo)', eixo: 'assistencia_social', unidade: 'sede', area: 'assistencia_social', vagas: 40, atendidos: 5 },
-  { codigo: 'cer_reabilitacao', nome: 'Reabilitação CER (exemplo)', eixo: 'saude', unidade: 'cer', area: 'saude', vagas: null, atendidos: 6 },
-  { codigo: 'escola', nome: 'Escola (exemplo)', eixo: 'educacao', unidade: 'sede', area: 'educacao', vagas: null, atendidos: 6 },
+  { codigo: 'ur', nome: 'Unidade Referenciada (exemplo)', unidade: 'sede', area: 'assistencia_social', vagas: null, atendidos: 12 },
+  { codigo: 'centro_dia_intergeracional', nome: 'Centro Dia Intergeracional (exemplo)', unidade: 'sede', area: 'assistencia_social', vagas: 80, atendidos: 8 },
+  { codigo: 'servico_domicilio', nome: 'Serviço no Domicílio (exemplo)', unidade: 'sede', area: 'assistencia_social', vagas: 40, atendidos: 5 },
+  { codigo: 'cer_reabilitacao', nome: 'Reabilitação CER (exemplo)', unidade: 'sede', area: 'saude', vagas: null, atendidos: 6 },
+  { codigo: 'escola', nome: 'Escola (exemplo)', unidade: 'sede', area: 'educacao', vagas: null, atendidos: 6 },
 ] as const;
 
 export const USUARIOS_FICTICIOS = [
@@ -32,7 +32,7 @@ export async function popularDadosFicticios(p: Planilhas): Promise<{ atendidos: 
   const data = (d: Date) => d.toISOString().slice(0, 10);
 
   for (const s of SERVICOS_FICTICIOS) {
-    await inserir(p, Servicos, { codigo: s.codigo, nome: s.nome, eixo: s.eixo, unidade: s.unidade, area: s.area, vagas: s.vagas, inicio: '2026-01-01', fim: null }, autor);
+    await inserir(p, Servicos, { codigo: s.codigo, nome: s.nome, unidade: s.unidade, area: s.area, vagas: s.vagas, inicio: '2026-01-01', fim: null }, autor);
   }
 
   let atendidos = 0;

@@ -9,7 +9,7 @@
 import { atualizar, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import {
-  Areas, Atribuicoes, EIXOS, Papeis, Perfis, Pessoas, Servicos, Unidades, Usuarios,
+  Areas, Atribuicoes, Papeis, Perfis, Pessoas, Servicos, Unidades, Usuarios,
   type EscopoTipo,
 } from '@/nucleo/estrutura/tabelas';
 import { ErroPermissao, type Autorizador } from './autorizador';
@@ -172,22 +172,21 @@ export async function encerrarAtribuicao(p: Planilhas, quem: Autorizador, id: st
 export async function cadastrarServico(
   p: Planilhas,
   quem: Autorizador,
-  dados: { codigo: string; nome: string; eixo: string; unidade: string; area: string | null; vagas: number | null },
+  dados: { codigo: string; nome: string; unidade: string; area: string; vagas: number | null },
 ): Promise<void> {
   exigir(quem, 'core.organizacao.gerenciar');
   const codigo = dados.codigo.trim().toLowerCase();
   if (!/^[a-z0-9_]+$/.test(codigo)) throw new ErroValidacao('Código em minúsculas, sem espaços nem acentos (ex.: centro_dia).');
-  if (!(EIXOS as readonly string[]).includes(dados.eixo)) throw new ErroValidacao('Eixo inválido.');
   const [servicos, unidades, areas] = await lerTabelas(p, [Servicos, Unidades, Areas] as const);
   if (servicos.todos().some((s) => s.codigo === codigo)) throw new ErroValidacao('Já existe um serviço com este código.');
   if (!unidades.ativos().some((u) => u.codigo === dados.unidade)) throw new ErroValidacao('Unidade inexistente.');
-  if (dados.area && !areas.ativos().some((a) => a.codigo === dados.area)) throw new ErroValidacao('Área inexistente.');
+  if (!areas.ativos().some((a) => a.codigo === dados.area)) throw new ErroValidacao('Escolha a área do serviço.');
   if (dados.vagas !== null && (!Number.isInteger(dados.vagas) || dados.vagas < 0)) throw new ErroValidacao('Vagas deve ser um número inteiro.');
 
   const s = await inserir(
     p,
     Servicos,
-    { codigo, nome: dados.nome.trim(), eixo: dados.eixo as (typeof EIXOS)[number], unidade: dados.unidade, area: dados.area, vagas: dados.vagas, inicio: hoje() },
+    { codigo, nome: dados.nome.trim(), unidade: dados.unidade, area: dados.area, vagas: dados.vagas, inicio: hoje() },
     { email: quem.email },
   );
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Servicos', registroId: s.id });
