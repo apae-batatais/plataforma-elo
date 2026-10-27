@@ -22,6 +22,8 @@ export const USUARIOS_FICTICIOS = [
   { email: 'coord.ur@exemplo.local', nome: 'Coordenação UR (fictícia)', perfil: 'coordenacao_servico', escopo: 'ur' },
   { email: 'tecnico.cer@exemplo.local', nome: 'Técnico CER (fictício)', perfil: 'tecnico_avaliador', escopo: 'cer_reabilitacao' },
   { email: 'leitura@exemplo.local', nome: 'Conselho, somente leitura (fictício)', perfil: 'leitura', escopo: null },
+  { email: 'dp@exemplo.local', nome: 'Departamento Pessoal (fictício)', perfil: 'departamento_pessoal', escopo: null },
+  { email: 'coord.educacao@exemplo.local', nome: 'Coordenação da Educação (fictícia)', perfil: 'coordenacao_servico', escopo: 'area:educacao' },
 ] as const;
 
 const PARENTESCOS = ['mãe', 'pai', 'avó', 'avô', 'tia', 'irmã'];
@@ -68,7 +70,8 @@ export async function popularDadosFicticios(p: Planilhas): Promise<{ atendidos: 
     const pessoa = await inserir(p, Pessoas, { nome: u.nome, email: u.email }, autor);
     await inserir(p, Papeis, { pessoa_id: pessoa.id, papel: 'colaborador' }, autor);
     await inserir(p, Usuarios, { email: u.email, pessoa_id: pessoa.id }, autor);
-    await inserir(p, Atribuicoes, { usuario_email: u.email, perfil: u.perfil, escopo_tipo: u.escopo ? 'servico' : 'global', escopo: u.escopo }, autor);
+    const [tipo, codigo] = !u.escopo ? ['global', null] : u.escopo.startsWith('area:') ? ['area', u.escopo.slice(5)] : ['servico', u.escopo];
+    await inserir(p, Atribuicoes, { usuario_email: u.email, perfil: u.perfil, escopo_tipo: tipo as 'global' | 'area' | 'servico', escopo: codigo }, autor);
   }
   return { atendidos };
 }

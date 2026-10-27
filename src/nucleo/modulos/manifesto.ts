@@ -40,6 +40,12 @@ export const esquemaManifesto = z
       consome: z.array(z.string().regex(EVENTO)),
     }),
     indicadores: z.array(z.string().regex(INDICADOR)),
+    /** Perfis novos que o módulo traz (criados por "Preparar estrutura"). */
+    perfis: z
+      .array(z.object({ codigo: z.string().regex(SCHEMA), nome: z.string().min(2), descricao: z.string().min(5) }))
+      .default([]),
+    /** Permissões do módulo ligadas a cada perfil, criadas por "Preparar estrutura" se ainda não existirem. */
+    permissoesPorPerfil: z.record(z.string(), z.array(z.string())).default({}),
   })
   .superRefine((m, ctx) => {
     for (const permissao of Object.keys(m.permissoes)) {
@@ -52,6 +58,13 @@ export const esquemaManifesto = z
       }
     }
     const declaradas = new Set(Object.keys(m.permissoes));
+    for (const [perfil, lista] of Object.entries(m.permissoesPorPerfil)) {
+      for (const p of lista) {
+        if (!declaradas.has(p)) {
+          ctx.addIssue({ code: 'custom', message: `Permissão "${p}" ligada ao perfil "${perfil}" mas não declarada`, path: ['permissoesPorPerfil'] });
+        }
+      }
+    }
     const usadas = [m.permissaoAcesso, ...m.menu.map((i) => i.permissao)];
     for (const p of usadas) {
       if (!declaradas.has(p)) {
@@ -63,7 +76,7 @@ export const esquemaManifesto = z
 export type Manifesto = z.infer<typeof esquemaManifesto>;
 
 /** Declara e valida o manifesto de um módulo. Lança erro se estiver inválido. */
-export function defineModulo(manifesto: Manifesto): Manifesto {
+export function defineModulo(manifesto: z.input<typeof esquemaManifesto>): Manifesto {
   const resultado = esquemaManifesto.safeParse(manifesto);
   if (!resultado.success) {
     const detalhes = resultado.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');

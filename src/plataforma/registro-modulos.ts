@@ -11,15 +11,25 @@ import type { DefinicaoTabela } from '@/nucleo/armazenamento/tabela';
 import type { Manifesto } from '@/nucleo/modulos/manifesto';
 import { validarRegistro } from '@/nucleo/modulos/registro';
 
-// Fase 1: import { manifesto as orcamento, tabelas as tabelasOrcamento } from '@/modulos/orcamento';
+import type { EstruturaDosModulos } from '@/nucleo/estrutura/preparar';
+import { manifesto as orcamento, popularFolhaFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
+import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 
-export const MODULOS: readonly Manifesto[] = [
-  // orcamento,
-];
+export const MODULOS: readonly Manifesto[] = [orcamento];
 
 /** Tabelas (abas) de todos os módulos ativos, usadas por "Preparar estrutura". */
-export const TABELAS_DOS_MODULOS: readonly DefinicaoTabela<z.ZodObject>[] = [
-  // ...tabelasOrcamento,
-];
+export const TABELAS_DOS_MODULOS: readonly DefinicaoTabela<z.ZodObject>[] = [...TABELAS_ORCAMENTO] as DefinicaoTabela<z.ZodObject>[];
+
+/** Abas, perfis e permissões que os módulos acrescentam em "Preparar estrutura". */
+export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
+  tabelas: TABELAS_DOS_MODULOS,
+  perfis: MODULOS.flatMap((m) => m.perfis),
+  permissoes: MODULOS.flatMap((m) => Object.entries(m.permissoesPorPerfil).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao })))),
+};
+
+/** Dados fictícios dos módulos, gravados só na demonstração (em memória). */
+export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void> {
+  await popularFolhaFicticia(p);
+}
 
 validarRegistro(MODULOS);

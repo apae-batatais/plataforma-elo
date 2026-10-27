@@ -9,7 +9,7 @@ import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-plan
 import { lerConfig, type Config } from '@/nucleo/config';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
-import { TABELAS_DOS_MODULOS } from '@/plataforma/registro-modulos';
+import { ESTRUTURA_DOS_MODULOS, popularDemonstracaoDosModulos, TABELAS_DOS_MODULOS } from '@/plataforma/registro-modulos';
 
 export interface Aplicacao {
   config: Config;
@@ -32,8 +32,9 @@ async function montar(): Promise<Aplicacao> {
   if (config.modo === 'demonstracao') {
     const chaves = ['nucleo', 'auditoria', ...new Set(TABELAS_DOS_MODULOS.map((t) => t.planilha))];
     const planilhas: Planilhas = { armazenamento: new ArmazenamentoMemoria(chaves), idDe: (c) => c };
-    await prepararEstrutura(planilhas, TABELAS_DOS_MODULOS);
+    await prepararEstrutura(planilhas, ESTRUTURA_DOS_MODULOS);
     await popularDadosFicticios(planilhas);
+    await popularDemonstracaoDosModulos(planilhas);
     return { config, planilhas };
   }
 

@@ -247,19 +247,29 @@ export async function inserirVarios<E extends z.ZodObject>(
   lista: Entrada<E>[],
   autoria: Autoria,
 ): Promise<number> {
-  if (lista.length === 0) return 0;
+  return (await inserirRegistros(p, tabela, lista, autoria)).length;
+}
+
+/** Como `inserirVarios`, mas devolve os registros gravados (com id). */
+export async function inserirRegistros<E extends z.ZodObject>(
+  p: Planilhas,
+  tabela: TabelaLida<E>,
+  lista: Entrada<E>[],
+  autoria: Autoria,
+): Promise<Registro<E>[]> {
+  if (lista.length === 0) return [];
   const def = tabela.def;
   const agora = (autoria.agora?.() ?? new Date()).toISOString();
-  const linhas = lista.map((dados) => {
+  const registros = lista.map((dados) => {
     const campos = def.esquema.parse(dados);
-    const registro =
+    return (
       def.modo === 'somente_inclusao'
         ? campos
-        : { id: crypto.randomUUID(), versao: 1, ativo: true, criado_em: agora, criado_por: autoria.email, atualizado_em: agora, atualizado_por: autoria.email, ...campos };
-    return tabela.paraLinha(registro);
+        : { id: crypto.randomUUID(), versao: 1, ativo: true, criado_em: agora, criado_por: autoria.email, atualizado_em: agora, atualizado_por: autoria.email, ...campos }
+    ) as Registro<E>;
   });
-  await p.armazenamento.acrescentar(p.idDe(def.planilha), def.aba, linhas);
-  return linhas.length;
+  await p.armazenamento.acrescentar(p.idDe(def.planilha), def.aba, registros.map((r) => tabela.paraLinha(r)));
+  return registros;
 }
 
 /**
