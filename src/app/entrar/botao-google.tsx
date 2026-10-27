@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Aviso } from '@/ui/aviso';
 import { entrarComGoogle } from '../acoes-sessao';
 
 interface GoogleId {
@@ -59,9 +60,9 @@ export function BotaoGoogle({ clientId, dominio }: { clientId: string; dominio: 
     <div className="space-y-3">
       <div ref={lugar} />
       {erro && (
-        <p role="alert" className="rounded-md bg-aviso-fundo p-3 text-sm text-aviso">
+        <Aviso tipo="erro" titulo="Não foi possível entrar">
           {erro}
-        </p>
+        </Aviso>
       )}
     </div>
   );

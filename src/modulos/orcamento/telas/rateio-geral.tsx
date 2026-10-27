@@ -1,13 +1,17 @@
 'use client';
 
 import { useActionState, useMemo, useState } from 'react';
+import { Aviso } from '@/ui/aviso';
+import { Botao } from '@/ui/botao';
+import { BotaoEnviar } from '@/ui/botao-enviar';
+import { estiloEntrada } from '@/ui/campo';
 import type { GradeRateio } from '../aplicacao/folha';
 import { somaRateio, validarRateio, type LinhaRateio } from '../dominio/folha';
 import { percentual } from './formato';
 
 type Acao = (estado: { erro?: string }, f: FormData) => Promise<{ erro?: string }>;
 
-const celula = 'w-20 rounded border border-borda bg-superficie px-1.5 py-1 text-right tabular-nums';
+const celula = 'w-20 rounded-md border border-borda-forte bg-superficie px-2 py-1.5 text-right tabular-nums';
 
 /** Grade postos × centros de custo para revisar e corrigir vários rateios de uma vez. */
 export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; acao: Acao; soPendentes: boolean }) {
@@ -50,18 +54,18 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
     <form action={enviar} className="space-y-4">
       <input type="hidden" name="dados" value={dados} />
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-sm">
+        <label className="text-sm font-semibold">
           Mostrar
-          <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className="mt-1 block rounded-md border border-borda bg-superficie px-3 py-2">
+          <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className={estiloEntrada}>
             <option value="">Todos os postos ({grade.postos.length})</option>
             <option value="pendentes">Sem rateio ou fora de 100%</option>
             <option value="alterados">Alterados agora ({alterados.length})</option>
           </select>
         </label>
-        <label className="text-sm">
+        <label className="text-sm font-semibold">
           Acrescentar coluna
-          <span className="mt-1 flex gap-2">
-            <select value={novaColuna} onChange={(e) => setNovaColuna(e.target.value)} className="rounded-md border border-borda bg-superficie px-3 py-2">
+          <span className="mt-1.5 flex gap-2">
+            <select value={novaColuna} onChange={(e) => setNovaColuna(e.target.value)} className={`${estiloEntrada} !mt-0`}>
               <option value="">Centro de custo…</option>
               {grade.centros
                 .filter((c) => !colunas.includes(c.codigo))
@@ -71,26 +75,25 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
                   </option>
                 ))}
             </select>
-            <button
-              type="button"
+            <Botao
+              variante="secundario"
               disabled={!novaColuna}
               onClick={() => {
                 setColunas([...colunas, novaColuna]);
                 setNovaColuna('');
               }}
-              className="rounded-md border border-borda px-3 py-2 text-sm hover:bg-destaque-suave disabled:opacity-50"
             >
               Acrescentar
-            </button>
+            </Botao>
           </span>
         </label>
       </div>
 
-      <div className="max-h-[70vh] overflow-auto rounded-lg border border-borda bg-superficie">
+      <div className="max-h-[65vh] overflow-auto rounded-xl border border-borda bg-superficie">
         <table className="text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-superficie text-texto-suave shadow-[0_1px_0_var(--borda)]">
+          <thead className="sticky top-0 z-10 bg-superficie-2 text-texto-suave shadow-[0_1px_0_var(--borda)]">
             <tr>
-              <th scope="col" className="sticky left-0 z-20 min-w-56 bg-superficie px-3 py-2 font-medium">Posto</th>
+              <th scope="col" className="sticky left-0 z-20 min-w-56 bg-superficie-2 px-3 py-2 font-semibold">Posto</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Soma</th>
               {colunas.map((c) => (
                 <th key={c} scope="col" className="max-w-32 px-2 py-2 align-bottom text-xs font-medium">
@@ -138,36 +141,26 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
         </table>
       </div>
 
-      <div className="flex flex-wrap items-end gap-4">
-        <label className="text-sm">
+      <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-end gap-4 border-t border-borda bg-superficie/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <label className="text-sm font-semibold">
           Os rateios alterados valem a partir de
-          <input
-            type="month"
-            name="vigencia"
-            value={vigencia}
-            onChange={(e) => setVigencia(e.target.value)}
-            required
-            className="mt-1 block rounded-md border border-borda bg-superficie px-3 py-2"
-          />
+          <input type="month" name="vigencia" value={vigencia} onChange={(e) => setVigencia(e.target.value)} required className={estiloEntrada} />
         </label>
-        <button
-          disabled={alterados.length === 0 || comErro.length > 0 || enviando}
-          className="rounded-md bg-destaque px-5 py-2 font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {enviando ? 'Salvando…' : `Salvar ${alterados.length} ${alterados.length === 1 ? 'rateio' : 'rateios'}`}
-        </button>
-        <p role="status" className={`text-sm ${comErro.length ? 'text-aviso' : 'text-texto-suave'}`}>
+        <BotaoEnviar pendente={enviando} disabled={alterados.length === 0 || comErro.length > 0} enviando="Salvando…">
+          {alterados.length === 0 ? 'Salvar' : `Salvar ${alterados.length} ${alterados.length === 1 ? 'rateio' : 'rateios'}`}
+        </BotaoEnviar>
+        <p role="status" className={`pb-2 text-sm ${comErro.length ? 'font-semibold text-aviso' : 'text-texto-suave'}`}>
           {comErro.length
             ? `${comErro.length} ${comErro.length === 1 ? 'posto alterado não soma' : 'postos alterados não somam'} 100%. Ajuste antes de salvar.`
             : alterados.length
               ? 'Tudo certo para salvar.'
-              : 'Altere os percentuais na grade.'}
+              : 'Altere os percentuais na grade; as linhas alteradas ficam destacadas.'}
         </p>
       </div>
       {estado.erro && (
-        <p role="alert" className="rounded-md bg-aviso-fundo p-3 text-sm text-aviso">
+        <Aviso tipo="erro" titulo="Não foi possível salvar">
           {estado.erro}
-        </p>
+        </Aviso>
       )}
     </form>
   );

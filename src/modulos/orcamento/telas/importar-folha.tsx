@@ -1,13 +1,16 @@
 'use client';
 
 import { useActionState, useState } from 'react';
+import { Aviso } from '@/ui/aviso';
+import { BotaoEnviar } from '@/ui/botao-enviar';
+import { estiloEntrada } from '@/ui/campo';
+import { IconeEnviar } from '@/ui/icones';
 import type { Analise } from '../aplicacao/importacao';
 import { percentual, reais } from './formato';
 
 type Estado = { erro?: string; analise?: Analise };
 type Acao = (estado: Estado, f: FormData) => Promise<Estado>;
 
-const botao = 'rounded-md bg-destaque px-5 py-2 font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50';
 const quem = (x: { ficha: string | null; colaborador: string | null }) =>
   `${x.colaborador ?? 'Vaga prevista'}${x.ficha ? ` (ficha ${x.ficha})` : ''}`;
 
@@ -19,8 +22,8 @@ export function ImportarFolha({ analisar, confirmar }: { analisar: Acao; confirm
 
   return (
     <div className="space-y-6">
-      <form action={enviarArquivo} className="space-y-3 rounded-lg border border-borda bg-superficie p-5">
-        <h3 className="text-lg font-semibold">1. Enviar o arquivo</h3>
+      <form action={enviarArquivo} className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+        <h2 className="text-lg font-bold">1. Enviar o arquivo</h2>
         <p className="max-w-2xl text-sm text-texto-suave">
           No Google Drive, abra a planilha da folha e use Arquivo › Fazer download › Microsoft Excel (.xlsx). O app usa as abas Tabela
           Salarial, Estudo e Rateio, ligadas pelo nº da ficha. Nada é gravado antes da sua confirmação.
@@ -30,23 +33,24 @@ export function ImportarFolha({ analisar, confirmar }: { analisar: Acao; confirm
           name="arquivo"
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           required
-          className="block text-sm file:mr-3 file:rounded-md file:border file:border-borda file:bg-superficie file:px-3 file:py-2"
+          className="block w-full rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm file:mr-3 file:rounded-md file:border file:border-borda-forte file:bg-superficie file:px-3 file:py-2 file:font-semibold"
         />
-        <button disabled={analisando} className={botao}>
-          {analisando ? 'Lendo o arquivo…' : 'Analisar arquivo'}
-        </button>
+        <BotaoEnviar pendente={analisando} enviando="Lendo o arquivo…">
+          <IconeEnviar tamanho={18} />
+          Analisar arquivo
+        </BotaoEnviar>
         {analise.erro && (
-          <p role="alert" className="rounded-md bg-aviso-fundo p-3 text-sm text-aviso">
+          <Aviso tipo="erro" titulo="Não deu para ler o arquivo">
             {analise.erro}
-          </p>
+          </Aviso>
         )}
       </form>
 
       {a && <Relatorio analise={a} />}
 
       {a && (
-        <form action={enviarConfirmacao} className="space-y-4 rounded-lg border border-borda bg-superficie p-5">
-          <h3 className="text-lg font-semibold">3. Confirmar</h3>
+        <form action={enviarConfirmacao} className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+          <h2 className="text-lg font-bold">3. Confirmar</h2>
           {a.proposta.centrosNovos.length > 0 && (
             <fieldset className="space-y-2">
               <legend className="text-sm">
@@ -59,7 +63,7 @@ export function ImportarFolha({ analisar, confirmar }: { analisar: Acao; confirm
                     required
                     value={areas[c.codigo] ?? ''}
                     onChange={(e) => setAreas({ ...areas, [c.codigo]: e.target.value })}
-                    className="rounded-md border border-borda bg-superficie px-3 py-2"
+                    className={`${estiloEntrada} !mt-0`}
                   >
                     <option value="">Área…</option>
                     {a.areas.map((x) => (
@@ -77,13 +81,13 @@ export function ImportarFolha({ analisar, confirmar }: { analisar: Acao; confirm
             name="proposta"
             value={JSON.stringify({ ...a.proposta, centrosNovos: a.proposta.centrosNovos.map((c) => ({ ...c, area: areas[c.codigo] || null })) })}
           />
-          <button disabled={gravando || a.proposta.postos.length === 0} className={botao}>
-            {gravando ? 'Importando…' : `Importar ${a.proposta.postos.length} postos`}
-          </button>
+          <BotaoEnviar pendente={gravando} disabled={a.proposta.postos.length === 0} enviando="Importando…">
+            Importar {a.proposta.postos.length} postos
+          </BotaoEnviar>
           {confirmacao.erro && (
-            <p role="alert" className="rounded-md bg-aviso-fundo p-3 text-sm text-aviso">
+            <Aviso tipo="erro" titulo="A importação não foi feita">
               {confirmacao.erro}
-            </p>
+            </Aviso>
           )}
         </form>
       )}
@@ -95,8 +99,8 @@ function Relatorio({ analise }: { analise: Analise }) {
   const r = analise.relatorio;
   const problemas = r.rateiosForaDe100.length + r.postosSemRateio.length;
   return (
-    <section className="space-y-4 rounded-lg border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
-      <h3 id="t-relatorio" className="text-lg font-semibold">2. Conferir o que será importado</h3>
+    <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
+      <h2 id="t-relatorio" className="text-lg font-bold">2. Conferir o que será importado</h2>
 
       <dl className="grid gap-3 text-sm sm:grid-cols-4">
         <div>

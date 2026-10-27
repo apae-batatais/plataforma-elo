@@ -1,9 +1,11 @@
 'use client';
 
+import { Botao } from '@/ui/botao';
+import { IconeDividir, IconeFechar, IconeMais } from '@/ui/icones';
 import { somaRateio, type LinhaRateio } from '../dominio/folha';
 import { percentual, reais } from './formato';
 
-const campo = 'w-full rounded-md border border-borda bg-superficie px-2 py-1.5 disabled:opacity-70';
+const campo = 'block w-full min-h-10 rounded-md border border-borda-forte bg-superficie px-2.5 py-1.5 disabled:bg-superficie-2 disabled:text-texto-suave';
 const OPACIDADES = [1, 0.7, 0.5, 0.85, 0.6, 0.4];
 
 /**
@@ -28,6 +30,8 @@ export function GridRateio({
 }) {
   const soma = somaRateio(linhas);
   const diferenca = Math.round((100 - soma) * 100) / 100;
+  const semCentro = linhas.findIndex((l) => !l.centro);
+  const repetido = linhas.findIndex((l, i) => l.centro && linhas.findIndex((x) => x.centro === l.centro) !== i);
   const nome = new Map(centros.map((c) => [c.codigo, c.nome]));
   const areas = [...new Set(centros.map((c) => c.area))];
   const alterar = (i: number, mudanca: Partial<LinhaRateio>) => onChange(linhas.map((l, j) => (j === i ? { ...l, ...mudanca } : l)));
@@ -99,9 +103,9 @@ export function GridRateio({
                       type="button"
                       onClick={() => onChange(linhas.filter((_, j) => j !== i))}
                       aria-label={`Remover ${nome.get(l.centro) ?? `linha ${i + 1}`}`}
-                      className="rounded px-2 py-1 text-texto-suave hover:bg-aviso-fundo hover:text-aviso"
+                      className="rounded-md p-2 text-texto-suave hover:bg-erro-fundo hover:text-erro"
                     >
-                      ✕
+                      <IconeFechar tamanho={18} />
                     </button>
                   )}
                 </td>
@@ -130,16 +134,20 @@ export function GridRateio({
             <div
               key={i}
               title={`${nome.get(l.centro) ?? 'Sem centro'}: ${percentual(l.percentual || 0)}`}
-              className={soma > 100 ? 'bg-aviso' : 'bg-destaque'}
+              className={soma > 100 ? 'bg-erro' : soma === 100 ? 'bg-sucesso' : 'bg-destaque'}
               style={{ width: `${(Math.min(l.percentual || 0, 100) / Math.max(soma, 100)) * 100}%`, opacity: OPACIDADES[i % OPACIDADES.length] }}
             />
           ))}
         </div>
-        <p role="status" className={`mt-2 text-sm ${diferenca === 0 ? 'text-texto' : 'text-aviso'}`}>
+        <p role="status" className={`mt-2 text-sm font-semibold ${linhas.length === 0 ? 'text-texto-suave' : diferenca === 0 && semCentro < 0 && repetido < 0 ? 'text-sucesso' : 'text-aviso'}`}>
           {linhas.length === 0
             ? 'Adicione os centros de custo deste posto.'
-            : diferenca === 0
-              ? '100% distribuído.'
+            : semCentro >= 0
+              ? `Escolha o centro de custo da linha ${semCentro + 1} (ou remova a linha).`
+              : repetido >= 0
+                ? `O centro da linha ${repetido + 1} já aparece em outra linha.`
+                : diferenca === 0
+              ? '100% distribuído. Pronto para salvar.'
               : diferenca > 0
                 ? `Faltam ${percentual(diferenca)} para fechar 100%.`
                 : `Passou ${percentual(-diferenca)} de 100%. Reduza algum percentual.`}
@@ -148,21 +156,14 @@ export function GridRateio({
 
       {!somenteLeitura && (
         <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => onChange([...linhas, { centro: '', percentual: diferenca > 0 ? diferenca : 0 }])}
-            className="rounded-md border border-borda px-3 py-1.5 text-sm hover:bg-destaque-suave"
-          >
+          <Botao variante="secundario" onClick={() => onChange([...linhas, { centro: '', percentual: diferenca > 0 ? diferenca : 0 }])}>
+            <IconeMais tamanho={18} />
             Adicionar centro de custo
-          </button>
-          <button
-            type="button"
-            onClick={onDividir}
-            disabled={linhas.filter((l) => l.centro).length === 0}
-            className="rounded-md border border-borda px-3 py-1.5 text-sm hover:bg-destaque-suave disabled:opacity-50"
-          >
+          </Botao>
+          <Botao variante="secundario" onClick={onDividir} disabled={linhas.filter((l) => l.centro).length === 0}>
+            <IconeDividir tamanho={18} />
             Dividir igualmente
-          </button>
+          </Botao>
         </div>
       )}
     </div>

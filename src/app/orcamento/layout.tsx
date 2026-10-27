@@ -1,7 +1,5 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { manifesto } from '@/modulos/orcamento';
-import { Navegacao } from '@/modulos/orcamento/telas/navegacao';
 import { CentrosCusto, Parametros } from '@/modulos/orcamento/dados/tabelas';
 import { ErroArmazenamento, ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { lerTabelas } from '@/nucleo/armazenamento/tabela';
@@ -25,23 +23,12 @@ export default async function LayoutOrcamento({ children }: { children: React.Re
       return (
         <ConfiguracaoInvalida
           titulo="Falta preparar as abas do Orçamento"
-          mensagem={`${erro.message} A administração da plataforma faz isso em Portal › Estrutura das planilhas › Preparar estrutura.`}
+          mensagem={`${erro.message} A administração da plataforma faz isso em Administração › Estrutura das planilhas › Preparar estrutura.`}
         />
       );
     }
     if (erro instanceof ErroArmazenamento) return <ConfiguracaoInvalida titulo="O Orçamento ainda não tem as planilhas" mensagem={erro.message} />;
     throw erro;
   }
-  return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/" className="text-sm text-destaque hover:underline">
-          ← Portal
-        </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Orçamento</h1>
-      </div>
-      <Navegacao itens={app.itens} />
-      {children}
-    </div>
-  );
+  return children;
 }
