@@ -40,8 +40,10 @@ A Diretoria não instala nada no computador (ADR-010).
    **Interna**, com o endereço do site da Netlify em "Origens JavaScript autorizadas".
 
 **Google Drive**
-- Criar as planilhas vazias `Plataforma · Núcleo` e `Plataforma · Auditoria`
-  e compartilhá-las como **Editor** com o e-mail da conta de serviço.
+- Criar as planilhas vazias `Plataforma · Núcleo`, `Plataforma · Auditoria`,
+  `Plataforma · Orçamento` e `Plataforma · Folha de Pagamento` na pasta do Drive
+  compartilhado da plataforma (a conta de serviço é membro dessa pasta).
+  A planilha da folha tem salários: não a compartilhe com mais ninguém.
 
 **Netlify → Environment variables** (contexto **Production**)
 
@@ -49,7 +51,7 @@ A Diretoria não instala nada no computador (ADR-010).
 | --- | --- |
 | `GOOGLE_CONTA_SERVICO` | conteúdo do JSON da conta de serviço |
 | `GOOGLE_CLIENT_ID` | ID do cliente OAuth |
-| `PLANILHAS` | `{"nucleo":"<id>","auditoria":"<id>"}` |
+| `PLANILHAS` | `{"nucleo":"<id>","auditoria":"<id>","orcamento":"<id>","orcamento_folha":"<id>"}` |
 | `SESSAO_SEGREDO` | texto aleatório com 40+ caracteres |
 | `ADMINISTRADORES_INICIAIS` | e-mails que configuram a plataforma |
 

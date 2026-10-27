@@ -4,12 +4,13 @@
  */
 import 'server-only';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
+import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
 import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-planilhas';
 import { lerConfig, type Config } from '@/nucleo/config';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
-import { TABELAS_DOS_MODULOS } from '@/plataforma/registro-modulos';
+import { ESTRUTURA_DOS_MODULOS, popularDemonstracaoDosModulos, TABELAS_DOS_MODULOS } from '@/plataforma/registro-modulos';
 
 export interface Aplicacao {
   config: Config;
@@ -32,8 +33,9 @@ async function montar(): Promise<Aplicacao> {
   if (config.modo === 'demonstracao') {
     const chaves = ['nucleo', 'auditoria', ...new Set(TABELAS_DOS_MODULOS.map((t) => t.planilha))];
     const planilhas: Planilhas = { armazenamento: new ArmazenamentoMemoria(chaves), idDe: (c) => c };
-    await prepararEstrutura(planilhas, TABELAS_DOS_MODULOS);
+    await prepararEstrutura(planilhas, ESTRUTURA_DOS_MODULOS);
     await popularDadosFicticios(planilhas);
+    await popularDemonstracaoDosModulos(planilhas);
     return { config, planilhas };
   }
 
@@ -55,7 +57,11 @@ async function montar(): Promise<Aplicacao> {
       armazenamento,
       idDe: (chave) => {
         const id = ids[chave];
-        if (!id) throw new Error(`A planilha "${chave}" não está cadastrada na variável PLANILHAS.`);
+        if (!id) {
+          throw new ErroArmazenamento(
+            `A planilha "${chave}" não está cadastrada na variável PLANILHAS da Netlify. Crie a planilha em branco na pasta da plataforma no Drive, acrescente "${chave}":"<id da planilha>" em PLANILHAS e publique de novo.`,
+          );
+        }
         return id;
       },
     },

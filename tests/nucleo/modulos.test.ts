@@ -21,11 +21,17 @@ function exemplo(parcial: Partial<Manifesto> = {}): Manifesto {
     },
     eventos: { publica: ['LancamentoRegistrado'], consome: [] },
     indicadores: ['execucao_orcamentaria'],
+    perfis: [],
+    permissoesPorPerfil: {},
     ...parcial,
   };
 }
 
 describe('defineModulo', () => {
+  it('recusa permissão ligada a perfil sem estar declarada', () => {
+    expect(() => defineModulo(exemplo({ permissoesPorPerfil: { financeiro: ['orcamento.inexistente.ver'] } }))).toThrow(/não declarada/);
+  });
+
   it('aceita um manifesto válido', () => {
     expect(defineModulo(exemplo()).id).toBe('orcamento');
   });
