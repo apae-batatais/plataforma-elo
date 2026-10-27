@@ -1,6 +1,6 @@
 # ADR-003 · Supabase gerenciado em região no Brasil
 
-- Situação: aceita
+- Situação: substituída pela ADR-011
 - Data: 2026-10-25
 
 ## Contexto

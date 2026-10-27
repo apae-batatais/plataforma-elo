@@ -1,161 +1,121 @@
 /**
- * Testes de acesso do Núcleo (Row Level Security).
- * Garantem, no próprio banco, quem vê e quem altera cada pessoa.
+ * Regras de acesso da camada de aplicação: quem vê e quem altera cada pessoa.
+ * Mesmos cenários que antes eram garantidos pelo banco.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { criarBancoTeste, criarUsuarioTeste, type BancoTeste } from '../apoio/banco-teste';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { Autorizador } from '@/nucleo/acesso/autorizador';
+import { inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import {
+  Atribuicoes, PerfilPermissoes, Pessoas, Servicos, Usuarios, VinculosFamiliares, VinculosServico,
+} from '@/nucleo/estrutura/tabelas';
+import { listarPessoasVisiveis } from '@/nucleo/pessoas/servico';
+import { planilhasDeTeste } from '../apoio/planilhas-teste';
 
-let b: BancoTeste;
+let p: Planilhas;
+const sistema = { email: 'sistema' };
 const ids: Record<string, string> = {};
 
-async function umId(sql: string, params: unknown[] = []): Promise<string> {
-  const [linha] = (await b.admin(sql, params)) as { id: string }[];
-  return linha.id;
+async function usuario(email: string, atribuicoes: { perfil: string; escopo_tipo?: 'global' | 'servico' | 'unidade' | 'area'; escopo?: string; inicio?: string; fim?: string }[]) {
+  const pessoa = await inserir(p, Pessoas, { nome: `Conta ${email}` }, sistema);
+  await inserir(p, Usuarios, { email, pessoa_id: pessoa.id }, sistema);
+  for (const a of atribuicoes) {
+    await inserir(p, Atribuicoes, { usuario_email: email, perfil: a.perfil, escopo_tipo: a.escopo_tipo ?? 'global', escopo: a.escopo ?? null, inicio: a.inicio ?? null, fim: a.fim ?? null }, sistema);
+  }
+}
+
+async function autorizador(email: string, opcoes: { administradorInicial?: boolean } = {}) {
+  const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
+  return new Autorizador(email, { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() }, opcoes);
+}
+
+async function nomesVisiveis(email: string) {
+  return (await listarPessoasVisiveis(p, await autorizador(email))).map((x) => x.nome);
 }
 
 beforeAll(async () => {
-  b = await criarBancoTeste();
+  p = await planilhasDeTeste();
+  await inserir(p, Servicos, { codigo: 'ur', nome: 'Unidade Referenciada', eixo: 'assistencia_social', unidade: 'sede', area: 'assistencia_social' }, sistema);
+  await inserir(p, Servicos, { codigo: 'cer_reab', nome: 'Reabilitação', eixo: 'saude', unidade: 'cer', area: 'saude' }, sistema);
+  ids.ana = (await inserir(p, Pessoas, { nome: 'Ana Atendida UR' }, sistema)).id;
+  ids.bruno = (await inserir(p, Pessoas, { nome: 'Bruno Atendido CER' }, sistema)).id;
+  ids.carla = (await inserir(p, Pessoas, { nome: 'Carla Mãe da Ana' }, sistema)).id;
+  await inserir(p, VinculosServico, { pessoa_id: ids.ana, servico: 'ur' }, sistema);
+  await inserir(p, VinculosServico, { pessoa_id: ids.bruno, servico: 'cer_reab' }, sistema);
+  await inserir(p, VinculosFamiliares, { pessoa_id: ids.ana, relacionado_id: ids.carla, parentesco: 'mãe', responsavel_legal: true, cuidador_principal: true }, sistema);
 
-  const sede = await umId(`select id from core.unidade where codigo = 'sede'`);
-  const cer = await umId(`select id from core.unidade where codigo = 'cer'`);
-  ids.ur = await umId(
-    `insert into core.servico (codigo, nome, eixo, unidade_id) values ('ur', 'Unidade Referenciada', 'assistencia_social', $1) returning id`,
-    [sede],
-  );
-  ids.cerReab = await umId(
-    `insert into core.servico (codigo, nome, eixo, unidade_id) values ('cer_reabilitacao', 'Reabilitação', 'saude', $1) returning id`,
-    [cer],
-  );
-
-  ids.ana = await umId(`insert into core.pessoa (nome) values ('Ana Atendida UR') returning id`);
-  ids.bruno = await umId(`insert into core.pessoa (nome) values ('Bruno Atendido CER') returning id`);
-  ids.carla = await umId(`insert into core.pessoa (nome) values ('Carla Mãe da Ana') returning id`);
-  await b.admin(`insert into core.vinculo_servico (pessoa_id, servico_id) values ($1, $2), ($3, $4)`, [
-    ids.ana, ids.ur, ids.bruno, ids.cerReab,
-  ]);
-  await b.admin(
-    `insert into core.vinculo_familiar (pessoa_id, relacionado_id, parentesco, responsavel_legal) values ($1, $2, 'mãe', true)`,
-    [ids.ana, ids.carla],
-  );
-
-  ids.admin = await criarUsuarioTeste(b, 'Admin Plataforma', [{ perfil: 'administrador_plataforma' }]);
-  ids.diretora = await criarUsuarioTeste(b, 'Diretora', [{ perfil: 'diretoria' }]);
-  ids.coordUR = await criarUsuarioTeste(b, 'Coordenadora UR', [
-    { perfil: 'coordenacao_servico', escopoTipo: 'servico', escopoId: ids.ur },
-  ]);
-  ids.coordSede = await criarUsuarioTeste(b, 'Coordenador Sede', [
-    { perfil: 'coordenacao_servico', escopoTipo: 'unidade', escopoId: sede },
-  ]);
-  ids.tecnicoCER = await criarUsuarioTeste(b, 'Tecnico CER', [
-    { perfil: 'tecnico_avaliador', escopoTipo: 'servico', escopoId: ids.cerReab },
-  ]);
-  ids.semPerfil = await criarUsuarioTeste(b, 'Sem Perfil', []);
+  await usuario('admin@teste.org', [{ perfil: 'administrador_plataforma' }]);
+  await usuario('diretora@teste.org', [{ perfil: 'diretoria' }]);
+  await usuario('coord.ur@teste.org', [{ perfil: 'coordenacao_servico', escopo_tipo: 'servico', escopo: 'ur' }]);
+  await usuario('coord.sede@teste.org', [{ perfil: 'coordenacao_servico', escopo_tipo: 'unidade', escopo: 'sede' }]);
+  await usuario('tecnico.cer@teste.org', [{ perfil: 'tecnico_avaliador', escopo_tipo: 'servico', escopo: 'cer_reab' }]);
+  await usuario('sem.perfil@teste.org', []);
+  await usuario('ex.coord@teste.org', [{ perfil: 'coordenacao_servico', escopo_tipo: 'servico', escopo: 'ur', inicio: '2020-01-01', fim: '2021-01-01' }]);
 });
-
-afterAll(async () => b.fechar());
-
-async function nomesVisiveis(usuario: string): Promise<string[]> {
-  const linhas = (await b.como(usuario, `select nome from core.pessoa order by nome`)) as { nome: string }[];
-  return linhas.map((l) => l.nome);
-}
 
 describe('quem vê cada pessoa', () => {
   it('administrador da plataforma não vê atendidos, só a si mesmo', async () => {
-    expect(await nomesVisiveis(ids.admin)).toEqual(['Admin Plataforma']);
+    expect(await nomesVisiveis('admin@teste.org')).toEqual(['Conta admin@teste.org']);
   });
 
   it('diretoria vê todas as pessoas', async () => {
-    const nomes = await nomesVisiveis(ids.diretora);
-    expect(nomes).toEqual(expect.arrayContaining(['Ana Atendida UR', 'Bruno Atendido CER', 'Carla Mãe da Ana']));
+    expect(await nomesVisiveis('diretora@teste.org')).toEqual(expect.arrayContaining(['Ana Atendida UR', 'Bruno Atendido CER', 'Carla Mãe da Ana']));
   });
 
-  it('coordenação da UR vê atendidos da UR e seus familiares, mas não os do CER', async () => {
-    const nomes = await nomesVisiveis(ids.coordUR);
+  it('coordenação da UR vê atendidos da UR e familiares, mas não os do CER', async () => {
+    const nomes = await nomesVisiveis('coord.ur@teste.org');
     expect(nomes).toEqual(expect.arrayContaining(['Ana Atendida UR', 'Carla Mãe da Ana']));
     expect(nomes).not.toContain('Bruno Atendido CER');
   });
 
   it('escopo de unidade cobre os serviços daquela unidade', async () => {
-    const nomes = await nomesVisiveis(ids.coordSede);
+    const nomes = await nomesVisiveis('coord.sede@teste.org');
     expect(nomes).toContain('Ana Atendida UR');
     expect(nomes).not.toContain('Bruno Atendido CER');
   });
 
   it('técnico do CER vê só atendidos do CER', async () => {
-    const nomes = await nomesVisiveis(ids.tecnicoCER);
+    const nomes = await nomesVisiveis('tecnico.cer@teste.org');
     expect(nomes).toContain('Bruno Atendido CER');
     expect(nomes).not.toContain('Ana Atendida UR');
   });
 
   it('usuário sem perfil vê apenas a si mesmo', async () => {
-    expect(await nomesVisiveis(ids.semPerfil)).toEqual(['Sem Perfil']);
+    expect(await nomesVisiveis('sem.perfil@teste.org')).toEqual(['Conta sem.perfil@teste.org']);
   });
 
-  it('atribuição encerrada deixa de valer', async () => {
-    const temp = await criarUsuarioTeste(b, 'Ex Coordenadora', [
-      { perfil: 'coordenacao_servico', escopoTipo: 'servico', escopoId: ids.ur },
-    ]);
-    expect(await nomesVisiveis(temp)).toContain('Ana Atendida UR');
-    await b.admin(
-      `update core.atribuicao set inicio = current_date - 10, fim = current_date - 1 where usuario_id = $1`,
-      [temp],
-    );
-    expect(await nomesVisiveis(temp)).toEqual(['Ex Coordenadora']);
+  it('atribuição vencida não vale', async () => {
+    expect(await nomesVisiveis('ex.coord@teste.org')).toEqual(['Conta ex.coord@teste.org']);
+  });
+
+  it('quem cadastra vê a pessoa até ela ser vinculada a um serviço fora do seu escopo', async () => {
+    const nova = await inserir(p, Pessoas, { nome: 'Gabi Recém Cadastrada' }, { email: 'coord.ur@teste.org' });
+    expect(await nomesVisiveis('coord.ur@teste.org')).toContain('Gabi Recém Cadastrada');
+    await inserir(p, VinculosServico, { pessoa_id: nova.id, servico: 'cer_reab' }, sistema);
+    expect(await nomesVisiveis('coord.ur@teste.org')).not.toContain('Gabi Recém Cadastrada');
+  });
+
+  it('e-mail sem conta não é autorizado; administrador inicial é', async () => {
+    expect((await autorizador('estranho@teste.org')).autorizado).toBe(false);
+    const inicial = await autorizador('primeira.admin@teste.org', { administradorInicial: true });
+    expect(inicial.autorizado).toBe(true);
+    expect(inicial.temPermissao('core.organizacao.gerenciar')).toBe(true);
   });
 });
 
 describe('quem altera', () => {
-  it('ninguém apaga registros, nem a diretoria', async () => {
-    await expect(b.como(ids.diretora, `delete from core.pessoa where id = $1`, [ids.ana])).rejects.toThrow(
-      /permission denied/,
-    );
+  it('coordenação edita atendido do seu serviço; técnico não edita cadastro', async () => {
+    const dados = await (async () => {
+      const [pessoas, vs, vf] = await lerTabelas(p, [Pessoas, VinculosServico, VinculosFamiliares] as const);
+      return { pessoas: pessoas.ativos(), vinculosServico: vs.ativos(), vinculosFamiliares: vf.ativos() };
+    })();
+    expect((await autorizador('coord.ur@teste.org')).podeEditarPessoa(ids.ana, dados)).toBe(true);
+    expect((await autorizador('coord.ur@teste.org')).podeEditarPessoa(ids.bruno, dados)).toBe(false);
+    expect((await autorizador('tecnico.cer@teste.org')).podeEditarPessoa(ids.bruno, dados)).toBe(false);
   });
 
-  it('coordenação vincula atendidos ao próprio serviço, mas não a outro', async () => {
-    const nova = await umId(`insert into core.pessoa (nome) values ('Davi Novo') returning id`);
-    await b.como(ids.coordUR, `insert into core.vinculo_servico (pessoa_id, servico_id) values ($1, $2)`, [
-      nova, ids.ur,
-    ]);
-    await expect(
-      b.como(ids.coordUR, `insert into core.vinculo_servico (pessoa_id, servico_id) values ($1, $2)`, [
-        nova, ids.cerReab,
-      ]),
-    ).rejects.toThrow(/row-level security/);
-  });
-
-  it('quem cadastra vê a pessoa até ela ser vinculada a um serviço fora do seu escopo', async () => {
-    const [{ id }] = (await b.como(ids.coordUR, `insert into core.pessoa (nome) values ('Gabi Recém Cadastrada') returning id`)) as {
-      id: string;
-    }[];
-    expect(await nomesVisiveis(ids.coordUR)).toContain('Gabi Recém Cadastrada');
-    await b.admin(`insert into core.vinculo_servico (pessoa_id, servico_id) values ($1, $2)`, [id, ids.cerReab]);
-    expect(await nomesVisiveis(ids.coordUR)).not.toContain('Gabi Recém Cadastrada');
-  });
-
-  it('técnico avaliador não altera cadastro de pessoa', async () => {
-    const alteradas = await b.como(ids.tecnicoCER, `update core.pessoa set telefone = '16999990000' where id = $1 returning id`, [
-      ids.bruno,
-    ]);
-    expect(alteradas).toHaveLength(0);
-  });
-
-  it('coordenação altera cadastro de atendido do seu serviço', async () => {
-    const alteradas = await b.como(ids.coordUR, `update core.pessoa set telefone = '16999990000' where id = $1 returning id`, [
-      ids.ana,
-    ]);
-    expect(alteradas).toHaveLength(1);
-  });
-
-  it('só quem gerencia acessos cria atribuições', async () => {
-    const perfil = await umId(`select id from core.perfil where codigo = 'diretoria'`);
-    await expect(
-      b.como(ids.coordUR, `insert into core.atribuicao (usuario_id, perfil_id, escopo_tipo) values ($1, $2, 'global')`, [
-        ids.coordUR, perfil,
-      ]),
-    ).rejects.toThrow(/row-level security/);
-    await b.como(ids.admin, `insert into core.atribuicao (usuario_id, perfil_id, escopo_tipo) values ($1, $2, 'global')`, [
-      ids.semPerfil, perfil,
-    ]);
-    expect(await nomesVisiveis(ids.semPerfil)).toContain('Ana Atendida UR');
+  it('vínculos só no próprio escopo', async () => {
+    const coord = await autorizador('coord.ur@teste.org');
+    expect(coord.temPermissao('core.vinculos.editar', { tipo: 'servico', codigo: 'ur' })).toBe(true);
+    expect(coord.temPermissao('core.vinculos.editar', { tipo: 'servico', codigo: 'cer_reab' })).toBe(false);
   });
 });

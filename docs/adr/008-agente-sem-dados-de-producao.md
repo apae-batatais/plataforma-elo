@@ -8,10 +8,10 @@ A plataforma guarda dados sensíveis de pessoas com deficiência, inclusive
 crianças e adolescentes. O desenvolvimento é feito com um agente de IA.
 
 ## Decisão
-- O agente trabalha só com dados fictícios (`npm run dados:ficticios`).
-- O script de dados fictícios se recusa a rodar se `DATABASE_URL` estiver definida.
-- Chaves e senhas de produção ficam apenas no Supabase e na Vercel, nunca no
-  repositório nem na máquina de desenvolvimento.
+- O agente trabalha só com dados fictícios (modo demonstração e testes).
+- Com `MODO_DEMONSTRACAO=1` ou sem credenciais, as planilhas reais nunca são acessadas.
+- Credenciais do Google e chaves da Netlify ficam apenas no painel da Netlify e nos
+  Secrets do GitHub, nunca no repositório nem na máquina de desenvolvimento.
 
 ## Consequências
 - Problemas de produção são investigados por relatórios agregados e pela

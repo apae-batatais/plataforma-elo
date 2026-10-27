@@ -4,55 +4,54 @@ Você é o agente desenvolvedor da plataforma de ferramentas da APAE Batatais.
 A Diretoria é a dona do produto e revisa tudo o que você entrega.
 Ela não é programadora: explique decisões em português simples.
 
-Leia `docs/especificacao-plataforma.md` antes da primeira tarefa da sessão.
+Leia `docs/especificacao-plataforma.md` e `docs/adr/011-camada-de-aplicacao-e-planilhas.md`
+antes da primeira tarefa da sessão.
 
 ## Arquitetura em uma frase
 
-Monólito modular: um app Next.js, um banco Postgres (Supabase), e módulos
-(apps por departamento) com fronteiras rígidas sobre um Núcleo comum.
+Navegador → camada de aplicação (Next.js na Netlify) → Google Planilhas, que são
+**só armazenamento**. Regras, permissões e auditoria ficam na camada de aplicação.
 
 ```
-src/app/          rotas e telas (portal + rotas dos módulos)
-src/nucleo/       identidade, pessoas, organização, auditoria, eventos, db
-src/capacidades/  motor de avaliação, indicadores (usados por vários módulos)
-src/modulos/<id>/ um app por pasta; copie src/modulos/_modelo para começar
-src/plataforma/   composição: a lista de módulos ativos
-src/ui/           componentes visuais genéricos
-supabase/migrations/  fonte da verdade do banco (SQL)
+src/app/                    telas e ações (portal + rotas dos módulos)
+src/nucleo/armazenamento/   contrato de armazenamento, Google Planilhas, memória, tabelas
+src/nucleo/estrutura/       tabelas (abas) do Núcleo, dados iniciais e fictícios
+src/nucleo/acesso/          Autorizador: perfis, escopos, quem vê quem
+src/nucleo/auditoria/       registro de leituras e alterações
+src/nucleo/pessoas/         casos de uso do Cadastro Único
+src/nucleo/sessao/          sessão assinada e conferência do login Google
+src/capacidades/            motor de avaliação, indicadores
+src/modulos/<id>/           um app por pasta; copie src/modulos/_modelo
+src/plataforma/             composição: módulos ativos, aplicação, sessão
 ```
 
 ## Regras obrigatórias
 
-1. **Leia a especificação do módulo** (`src/modulos/<id>/especificacao.md`) e o
-   `CLAUDE.md` dele antes de alterar qualquer arquivo do módulo.
-2. **Altere só a pasta do módulo da tarefa.** Mudança no Núcleo, em
-   capacidades ou em outro módulo exige pedido explícito da Diretoria.
-3. **Um módulo nunca importa outro módulo.** Use eventos de domínio
-   (`core.publicar_evento`) ou a interface do Núcleo. `npm run fronteiras` verifica.
-4. **Todo módulo tem schema próprio no banco** e não lê tabelas de outro módulo.
-5. **Toda tabela nova** tem Row Level Security ligada, políticas de leitura e
-   escrita usando `core.tem_permissao(...)`, carimbos (`criado_em`, `criado_por`,
-   `atualizado_em`, `atualizado_por`), gatilhos `carimbo` e `auditar`, e cada
-   coluna pessoal ou sensível comentada com `sigilo:pessoal` ou `sigilo:sensivel`.
-6. **Nada é apagado.** Não crie política de DELETE; registros são encerrados
-   (`fim`, `saida`, `ativo = false`) com data e motivo.
-7. **Consultas para usuários rodam em `comoUsuario(...)`**, nunca direto no banco.
-   `comoSistema(...)` é só para rotinas internas.
-8. **Leitura individual de dado sensível** chama `core.registrar_acesso('leitura', ...)`.
-9. **Nunca use dados reais.** Use `npm run dados:ficticios`. Você nunca recebe
-   chaves, senhas ou acesso ao banco de produção, e não deve pedir.
-10. **Toda regra de negócio nova vem com teste.** Teste de acesso (quem vê,
-    quem altera) é obrigatório para toda tabela nova.
-11. **Migração nova = arquivo novo** em `supabase/migrations/` com prefixo de
-    data e hora. Nunca edite uma migração que já foi para produção.
-    Atualize o esquema tipado no mesmo commit (o teste `schema-espelho` confere).
-12. **Decisão de arquitetura relevante = nova ADR** em `docs/adr/`.
+1. **Leia a especificação do módulo** e o `CLAUDE.md` dele antes de alterá-lo.
+2. **Altere só a pasta do módulo da tarefa.** Núcleo, capacidades ou outro
+   módulo só com pedido explícito da Diretoria.
+3. **Um módulo nunca importa outro módulo.** `npm run fronteiras` verifica.
+4. **Planilha é só armazenamento.** Nenhuma fórmula, validação ou regra de
+   negócio na planilha; tudo na camada de aplicação, com teste.
+5. **Toda aba nova é declarada com `definirTabela`** (esquema zod, `sigilo` das
+   colunas pessoais/sensíveis) e registrada para "Preparar estrutura".
+   Dados sensíveis de atendidos ficam em planilha própria do módulo/serviço.
+6. **Nada é apagado.** Registros são encerrados (`ativo = FALSE`, `fim`, `saida`).
+7. **Toda leitura para usuário passa pelo `Autorizador`**; toda gravação usa
+   `inserir`/`atualizar` (com a versão lida) e chama `registrarAuditoria`
+   com as colunas alteradas, nunca os valores.
+8. **Leitura individual de dado sensível** registra auditoria com `acao: 'leitura'`.
+9. **Nunca use dados reais.** Desenvolva e teste com a demonstração e com
+   `tests/apoio/planilhas-teste.ts`. Você nunca recebe credenciais do Google,
+   chaves da Netlify ou acesso às planilhas reais, e não deve pedir.
+10. **Toda regra de negócio nova vem com teste**, incluindo quem vê e quem altera.
+11. **Decisão de arquitetura relevante = nova ADR** em `docs/adr/`.
 
 ## Antes de entregar
 
-Rode `npm run verificar` (tipos, lint, fronteiras e testes). Só entregue com
-tudo verde. Depois explique à Diretoria, em poucas linhas, o que mudou e como
-conferir na prévia.
+Rode `npm run verificar` (tipos, lint, fronteiras e testes) e `npm run build`.
+Só entregue com tudo verde. Depois explique à Diretoria, em poucas linhas, o
+que mudou e como conferir na prévia do Pull Request.
 
 A Diretoria não roda nada no computador (ADR-010): toda conferência é feita
 pelo navegador, no Pull Request e na prévia. Nunca peça para ela instalar
@@ -60,18 +59,18 @@ ferramentas ou executar comandos.
 
 ## Ciclo de trabalho (SDD)
 
-1. Especificar: escreva ou atualize a especificação da funcionalidade e peça aprovação.
-2. Planejar: liste arquivos, tabelas, permissões e testes afetados.
+1. Especificar e pedir aprovação.
+2. Planejar: arquivos, abas, permissões e testes afetados.
 3. Implementar em um ramo próprio (`feat/<modulo>-<assunto>`), com testes.
-4. Verificar: `npm run verificar`.
+4. Verificar: `npm run verificar` e `npm run build`.
 5. Abrir Pull Request com resumo em português e roteiro de conferência na prévia.
 
 ## Comandos
 
 | Comando | Para quê |
 | --- | --- |
-| `npm run dados:ficticios` | Recria o banco local com dados fictícios |
-| `npm run dev` | Abre a plataforma em http://localhost:3000 |
+| `npm run dev` | Abre a plataforma em demonstração em http://localhost:3000 |
 | `npm run verificar` | Tipos, lint, fronteiras e testes |
+| `npm run build` | Build de produção |
 | `npm run test` | Só os testes |
 | `npm run fronteiras` | Só as regras de fronteira |

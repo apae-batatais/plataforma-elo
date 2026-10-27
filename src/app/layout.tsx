@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { modoLocal } from '@/nucleo/db/cliente';
-import { usuarioLogado } from '@/nucleo/identidade/sessao';
+import { obterAplicacao } from '@/plataforma/aplicacao';
+import { usuarioLogado } from '@/plataforma/sessao';
 import { sair } from './acoes-sessao';
 import './globals.css';
 
@@ -13,13 +13,13 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const usuario = await usuarioLogado();
+  const [app, usuario] = await Promise.all([obterAplicacao(), usuarioLogado()]);
   return (
     <html lang="pt-BR">
       <body className="min-h-screen antialiased">
-        {modoLocal() && (
+        {app.config.modo === 'demonstracao' && (
           <div className="bg-aviso-fundo px-4 py-2 text-center text-sm text-aviso" role="status">
-            Modo local: todos os dados são fictícios.
+            Demonstração: todos os dados são fictícios e alterações podem ser perdidas.
           </div>
         )}
         <header className="border-b border-borda bg-superficie">

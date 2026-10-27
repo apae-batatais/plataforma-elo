@@ -1,0 +1,29 @@
+# Hospedagem na Netlify (ADR-011).
+#
+# O site NÃO é ligado ao GitHub na Netlify (o plano gratuito não aceita
+# repositórios privados de organizações). A publicação é feita pelo GitHub
+# Actions com a CLI da Netlify (.github/workflows/publicar.yml):
+# - versão oficial: botão "Run workflow" em Actions → Publicar;
+# - prévias: automáticas a cada Pull Request.
+#
+# Sem as credenciais do Google, a plataforma roda em DEMONSTRAÇÃO (dados
+# fictícios). Cadastre as variáveis do Google no painel da Netlify só para o
+# contexto "Production": assim as prévias continuam em demonstração.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
