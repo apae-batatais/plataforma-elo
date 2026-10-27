@@ -56,6 +56,18 @@ describe('configuração', () => {
     );
   });
 
+  it('ID do cliente: aceita com espaços e aspas coladas por engano; recusa valor errado explicando o formato', () => {
+    const base = {
+      GOOGLE_CONTA_SERVICO: '{"client_email":"sa@proj.iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----x"}',
+      PLANILHAS: '{"nucleo":"1AbCdEfGhIjK","auditoria":"1ZyXwVuTsRqP"}',
+      SESSAO_SEGREDO: 'x'.repeat(40),
+    };
+    const c = lerConfig({ ...base, GOOGLE_CLIENT_ID: ' "123456-abc123.apps.googleusercontent.com"\n' });
+    expect(c.modo === 'producao' && c.googleClientId).toBe('123456-abc123.apps.googleusercontent.com');
+    expect(() => lerConfig({ ...base, GOOGLE_CLIENT_ID: 'GOCSPX-segredo-colado-por-engano' })).toThrow(/ID do cliente.*apps\.googleusercontent\.com/);
+    expect(() => lerConfig({ ...base, GOOGLE_CLIENT_ID: '123456789012' })).toThrow(/ID do cliente/);
+  });
+
   it('produção completa', () => {
     const c = lerConfig({
       GOOGLE_CONTA_SERVICO: '{"client_email":"sa@proj.iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----x"}',

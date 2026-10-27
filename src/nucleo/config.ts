@@ -13,7 +13,12 @@ import { z } from 'zod';
 const esquemaProducao = z.object({
   contaServico: z.object({ client_email: z.email(), private_key: z.string().min(20) }),
   planilhas: z.object({ nucleo: z.string().min(10), auditoria: z.string().min(10) }).catchall(z.string().min(10)),
-  googleClientId: z.string().min(10),
+  googleClientId: z
+    .string()
+    .regex(
+      /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/,
+      'GOOGLE_CLIENT_ID deve ser o "ID do cliente" OAuth (formato 123…-abc….apps.googleusercontent.com), sem aspas nem espaços',
+    ),
   segredoSessao: z.string().min(32, 'SESSAO_SEGREDO precisa de pelo menos 32 caracteres'),
   dominio: z.string().min(3),
   administradoresIniciais: z.array(z.email()),
@@ -21,16 +26,25 @@ const esquemaProducao = z.object({
 
 export type ConfigProducao = z.infer<typeof esquemaProducao>;
 
+/** Problema na configuração da hospedagem. A mensagem cita só nomes de variáveis, nunca valores. */
+export class ErroConfiguracao extends Error {}
+
 export type Config =
   | { modo: 'demonstracao'; dominio: string; segredoSessao: string }
   | ({ modo: 'producao' } & ConfigProducao);
+
+/** Remove espaços, quebras de linha e aspas que costumam vir junto ao colar valores. */
+function limpo(valor: string | undefined): string | undefined {
+  const v = valor?.trim().replace(/^["']|["']$/g, '').trim();
+  return v ? v : undefined;
+}
 
 function json(nome: string, valor: string | undefined): unknown {
   if (!valor) return undefined;
   try {
     return JSON.parse(valor);
   } catch {
-    throw new Error(`A variável ${nome} não é um JSON válido.`);
+    throw new ErroConfiguracao(`A variável ${nome} não é um JSON válido.`);
   }
 }
 
@@ -42,8 +56,8 @@ export function lerConfig(env: Record<string, string | undefined> = process.env)
   const r = esquemaProducao.safeParse({
     contaServico: json('GOOGLE_CONTA_SERVICO', env.GOOGLE_CONTA_SERVICO),
     planilhas: json('PLANILHAS', env.PLANILHAS),
-    googleClientId: env.GOOGLE_CLIENT_ID,
-    segredoSessao: env.SESSAO_SEGREDO,
+    googleClientId: limpo(env.GOOGLE_CLIENT_ID),
+    segredoSessao: limpo(env.SESSAO_SEGREDO),
     dominio,
     administradoresIniciais: (env.ADMINISTRADORES_INICIAIS ?? '')
       .split(',')
@@ -51,8 +65,10 @@ export function lerConfig(env: Record<string, string | undefined> = process.env)
       .filter(Boolean),
   });
   if (!r.success) {
-    const faltas = r.error.issues.map((i) => i.path.join('.') || i.message).join(', ');
-    throw new Error(`Configuração de produção incompleta ou inválida: ${faltas}.`);
+    const faltas = r.error.issues
+      .map((i) => (i.code === 'invalid_format' ? i.message : i.path.join('.') || i.message))
+      .join('; ');
+    throw new ErroConfiguracao(`Configuração de produção incompleta ou inválida: ${faltas}.`);
   }
   return { modo: 'producao', ...r.data };
 }
