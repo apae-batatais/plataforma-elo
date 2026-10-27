@@ -13,6 +13,7 @@
     "verificar": "npm run typecheck && npm run lint && npm run fronteiras && npm run test"
   },
   "dependencies": {
+    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "exceljs": "^4.4.0",
     "google-auth-library": "^11.2.0",
     "jose": "^6.2.12",

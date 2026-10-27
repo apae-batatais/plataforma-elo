@@ -1,20 +1,19 @@
-import Link from 'next/link';
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { ErroValidacaoFolha, fichaDoPosto } from '@/modulos/orcamento/aplicacao/folha';
 import { data } from '@/modulos/orcamento/telas/formato';
 import { FormularioPosto } from '@/modulos/orcamento/telas/formulario-posto';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
-import { estiloCampo, Mensagem } from '../../../admin/mensagem';
+import { LinkBotao } from '@/ui/botao';
+import { Campo, estiloEntrada } from '@/ui/campo';
+import { FormularioConfirmado } from '@/ui/confirmar';
+import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { acaoEncerrarPosto, acaoSalvarPosto } from '../../acoes';
 
-export default async function FichaDoPosto({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ ok?: string; erro?: string }>;
-}) {
+export const metadata: Metadata = { title: 'Posto da folha' };
+
+export default async function FichaDoPosto({ params }: { params: Promise<{ id: string }> }) {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const { id } = await params;
@@ -28,51 +27,74 @@ export default async function FichaDoPosto({
     if (erro instanceof ErroValidacaoFolha) redirect('/orcamento/postos');
     throw erro;
   }
-  const { ok, erro } = await searchParams;
   const p = ficha.posto;
+  const cargo = p ? (ficha.cadastros.cargos.find((c) => c.codigo === p.cargo)?.nome ?? p.cargo) : null;
+  const titulo = novo ? 'Cadastrar posto' : (p?.colaborador ?? 'Vaga prevista');
 
   return (
-    <div className="space-y-6">
-      <div>
-        <Link href="/orcamento/postos" className="text-sm text-destaque hover:underline">
-          ← Postos
-        </Link>
-        <h2 className="mt-2 text-xl font-semibold">{novo ? 'Cadastrar posto' : (p?.colaborador ?? 'Vaga prevista')}</h2>
-        {p?.desligamento && <p className="mt-1 text-texto-suave">Desligado em {data(p.desligamento)}.</p>}
-      </div>
-      <Mensagem ok={ok} erro={erro} />
+    <div>
+      <CabecalhoPagina
+        trilha={[
+          { rotulo: 'Início', href: '/' },
+          { rotulo: 'Orçamento', href: '/orcamento' },
+          { rotulo: 'Postos', href: '/orcamento/postos' },
+          { rotulo: titulo },
+        ]}
+        titulo={titulo}
+        descricao={
+          p ? (
+            <span className="flex flex-wrap items-center gap-2">
+              <span>
+                {cargo}
+                {p.nivel ? `, nível ${p.nivel}` : ''}
+                {p.ficha ? ` · ficha ${p.ficha}` : ''}
+              </span>
+              {p.desligamento ? (
+                <Etiqueta tipo="neutro">Desligado em {data(p.desligamento)}</Etiqueta>
+              ) : !p.colaborador ? (
+                <Etiqueta tipo="info">Vaga prevista a partir de {data(p.inicio)}</Etiqueta>
+              ) : null}
+            </span>
+          ) : (
+            'Um colaborador ou uma vaga prevista. O custo e o rateio entram no resumo assim que você salvar.'
+          )
+        }
+        acoes={
+          p && ficha.podeEditar && !p.desligamento ? (
+            <FormularioConfirmado
+              acao={acaoEncerrarPosto}
+              campos={{ id: p.id, versao: p.versao }}
+              rotulo="Registrar desligamento"
+              variante="secundario"
+              perigoso={false}
+              titulo={`Registrar o desligamento de ${p.colaborador ?? 'esta vaga'}?`}
+              mensagem="O posto deixa de contar no custo depois do mês do desligamento. Os meses anteriores e o histórico são mantidos."
+              confirmar="Registrar desligamento"
+            >
+              <Campo rotulo="Data de desligamento" obrigatorio>
+                <input type="date" name="desligamento" required className={estiloEntrada} />
+              </Campo>
+            </FormularioConfirmado>
+          ) : undefined
+        }
+      />
+
       {ficha.cadastros.cargos.length === 0 || ficha.cadastros.centros.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-borda p-6">
-          Antes de cadastrar postos, é preciso ter cargos e centros de custo.{' '}
-          <Link href="/orcamento/cadastros" className="font-semibold text-destaque underline">
-            Ver cargos e centros de custo
-          </Link>{' '}
-          ou{' '}
-          <Link href="/orcamento/importar" className="font-semibold text-destaque underline">
-            importar a planilha da folha
-          </Link>
-          .
-        </p>
+        <EstadoVazio
+          titulo="Faltam cargos ou centros de custo"
+          acao={
+            <span className="flex flex-wrap justify-center gap-2">
+              <LinkBotao href="/orcamento/importar">Importar a planilha da folha</LinkBotao>
+              <LinkBotao href="/orcamento/cadastros" variante="secundario">
+                Cadastrar cargos e centros
+              </LinkBotao>
+            </span>
+          }
+        >
+          Antes de cadastrar postos, é preciso ter pelo menos um cargo e um centro de custo.
+        </EstadoVazio>
       ) : (
         <FormularioPosto key={`${p?.id}-${p?.versao}`} ficha={ficha} acao={acaoSalvarPosto} />
-      )}
-
-      {p && ficha.podeEditar && !p.desligamento && (
-        <section className="rounded-lg border border-borda bg-superficie p-5">
-          <h3 className="text-lg font-semibold">Desligamento</h3>
-          <p className="mt-1 text-sm text-texto-suave">
-            O posto deixa de contar no custo a partir do mês seguinte ao desligamento. Nada é apagado.
-          </p>
-          <form action={acaoEncerrarPosto} className="mt-3 flex flex-wrap items-end gap-3">
-            <input type="hidden" name="id" value={p.id} />
-            <input type="hidden" name="versao" value={p.versao} />
-            <label className="text-sm">
-              Data de desligamento
-              <input type="date" name="desligamento" required className={estiloCampo} />
-            </label>
-            <button className="rounded-md border border-borda px-4 py-2 text-sm hover:bg-aviso-fundo">Registrar desligamento</button>
-          </form>
-        </section>
       )}
     </div>
   );
