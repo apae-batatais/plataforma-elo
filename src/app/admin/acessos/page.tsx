@@ -9,6 +9,7 @@ import { estiloBotao, estiloBotaoSecundario, estiloCampo, Mensagem } from '../me
 export default async function Acessos({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string }> }) {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
+  if (usuario.estruturaPendente) redirect('/admin/estrutura');
   if (!usuario.autorizador.temPermissao('core.acessos.gerenciar')) redirect('/');
   const app = await obterAplicacao();
   const painel = await painelDeAcessos(app.planilhas, usuario.autorizador);

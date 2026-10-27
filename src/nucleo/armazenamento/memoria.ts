@@ -2,7 +2,7 @@
  * Armazenamento em memória: usado na demonstração (dados fictícios) e nos testes.
  * Comporta-se como as planilhas: abas com linhas, sem regras.
  */
-import { ErroArmazenamento, type Armazenamento, type Linha } from './armazenamento';
+import { ErroArmazenamento, ErroEstruturaAusente, type Armazenamento, type Linha } from './armazenamento';
 
 export class ArmazenamentoMemoria implements Armazenamento {
   private readonly planilhas = new Map<string, Map<string, Linha[]>>();
@@ -19,7 +19,7 @@ export class ArmazenamentoMemoria implements Armazenamento {
 
   private aba(planilha: string, aba: string) {
     const linhas = this.planilha(planilha).get(aba);
-    if (!linhas) throw new ErroArmazenamento(`A planilha "${planilha}" não tem a aba "${aba}".`);
+    if (!linhas) throw new ErroEstruturaAusente(`A planilha "${planilha}" não tem a aba "${aba}".`);
     return linhas;
   }
 
@@ -41,11 +41,20 @@ export class ArmazenamentoMemoria implements Armazenamento {
     linhas[numero - 1] = [...valores];
   }
 
-  async garantirAba(planilha: string, aba: string, cabecalho: readonly string[]) {
+  async garantirAbas(planilha: string, abas: readonly { aba: string; cabecalho: readonly string[] }[]) {
     const p = this.planilha(planilha);
-    const existente = p.get(aba);
-    if (existente && existente.length > 0) return 'ja_existia' as const;
-    p.set(aba, [[...cabecalho]]);
-    return 'criada' as const;
+    const criadas: string[] = [];
+    for (const { aba, cabecalho } of abas) {
+      const existente = p.get(aba);
+      if (existente && existente.length > 0) continue;
+      p.set(aba, [[...cabecalho]]);
+      criadas.push(aba);
+    }
+    return criadas;
+  }
+
+  /** Atalho para uma aba só (usado nos testes). */
+  async garantirAba(planilha: string, aba: string, cabecalho: readonly string[]) {
+    return (await this.garantirAbas(planilha, [{ aba, cabecalho }])).length ? ('criada' as const) : ('ja_existia' as const);
   }
 }

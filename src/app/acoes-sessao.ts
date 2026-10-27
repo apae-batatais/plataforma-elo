@@ -2,8 +2,10 @@
 
 import { redirect } from 'next/navigation';
 import { lerTabela } from '@/nucleo/armazenamento/tabela';
+import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Usuarios } from '@/nucleo/estrutura/tabelas';
+import { podeEntrar } from '@/nucleo/sessao/carregar';
 import { conferirLoginGoogle, ErroLogin } from '@/nucleo/sessao/google';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { encerrarSessao, iniciarSessao } from '@/plataforma/sessao';
@@ -25,12 +27,17 @@ export async function entrarComGoogle(credencial: string): Promise<{ erro?: stri
   if (app.config.modo !== 'producao') return { erro: 'Login Google desativado na demonstração.' };
   try {
     const id = await conferirLoginGoogle(credencial, app.config.googleClientId, app.config.dominio);
-    const temConta = (await lerTabela(app.planilhas, Usuarios)).ativos().some((u) => u.email === id.email);
-    if (!temConta && !app.config.administradoresIniciais.includes(id.email)) {
+    const administradorInicial = app.config.administradoresIniciais.includes(id.email);
+    if (!(await podeEntrar(app.planilhas, id.email, administradorInicial))) {
       return { erro: `O e-mail ${id.email} ainda não tem acesso à plataforma. Peça à administração.` };
     }
     await iniciarSessao(id.email, id.nome);
-    await registrarAuditoria(app.planilhas, { usuario: id.email, acao: 'entrada', entidade: 'sessao' });
+    try {
+      await registrarAuditoria(app.planilhas, { usuario: id.email, acao: 'entrada', entidade: 'sessao' });
+    } catch (erro) {
+      // Primeiro uso: a aba de auditoria ainda não existe; ela é criada em "Preparar estrutura".
+      if (!(erro instanceof ErroEstruturaAusente)) throw erro;
+    }
     return {};
   } catch (erro) {
     if (erro instanceof ErroLogin) return { erro: erro.message };

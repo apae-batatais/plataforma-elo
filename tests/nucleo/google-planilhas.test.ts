@@ -66,19 +66,34 @@ describe('armazenamento no Google Planilhas', () => {
     await expect(a.gravarLinha('PLAN1', 'Pessoas', 1, ['x'])).rejects.toThrow(/cabeçalho/);
   });
 
-  it('cria a aba que falta e grava o cabeçalho; aba existente e preenchida fica como está', async () => {
+  it('cria as abas que faltam e preenche as vazias em poucas chamadas; aba com conteúdo fica como está', async () => {
     const { fn, chamadas } = fetchFalso((c) => {
-      if (c.url.includes('fields=sheets.properties.title')) return { json: { sheets: [{ properties: { title: 'Existente' } }] } };
-      if (c.url.includes('batchGet')) return { json: { valueRanges: [{ values: [['id']] }] } };
+      if (c.url.includes('fields=sheets.properties.title'))
+        return { json: { sheets: [{ properties: { title: 'Cheia' } }, { properties: { title: 'Vazia' } }] } };
+      if (c.url.includes('batchGet')) return { json: { valueRanges: [{ values: [['id']] }, {}] } };
       return { json: {} };
     });
     const a = new ArmazenamentoGooglePlanilhas(token, fn);
-    expect(await a.garantirAba('PLAN1', 'Nova', ['id', 'nome'])).toBe('criada');
+    const criadas = await a.garantirAbas('PLAN1', [
+      { aba: 'Nova1', cabecalho: ['id', 'nome'] },
+      { aba: 'Cheia', cabecalho: ['id'] },
+      { aba: 'Vazia', cabecalho: ['id', 'x'] },
+      { aba: 'Nova2', cabecalho: ['id'] },
+    ]);
+    expect(criadas).toEqual(['Nova1', 'Nova2', 'Vazia']);
+    expect(chamadas).toHaveLength(4);
     expect(chamadas.find((c) => c.url.endsWith(':batchUpdate'))?.body).toEqual({
-      requests: [{ addSheet: { properties: { title: 'Nova' } } }],
+      requests: [{ addSheet: { properties: { title: 'Nova1' } } }, { addSheet: { properties: { title: 'Nova2' } } }],
     });
-    expect(chamadas.at(-1)?.body).toEqual({ values: [['id', 'nome']] });
-    expect(await a.garantirAba('PLAN1', 'Existente', ['id'])).toBe('ja_existia');
+    expect(chamadas.at(-1)?.url).toContain('/values:batchUpdate');
+    expect(chamadas.at(-1)?.body).toEqual({
+      valueInputOption: 'RAW',
+      data: [
+        { range: "'Nova1'!A1", values: [['id', 'nome']] },
+        { range: "'Nova2'!A1", values: [['id']] },
+        { range: "'Vazia'!A1", values: [['id', 'x']] },
+      ],
+    });
   });
 
   it('sem acesso: explica que é preciso compartilhar com a conta de serviço', async () => {

@@ -16,6 +16,7 @@ const NOME_EIXO: Record<(typeof EIXOS)[number], string> = {
 export default async function ServicosAdmin({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string }> }) {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
+  if (usuario.estruturaPendente) redirect('/admin/estrutura');
   if (!usuario.autorizador.temPermissao('core.organizacao.gerenciar')) redirect('/');
   const app = await obterAplicacao();
   const [servicos, unidades, areas] = await lerTabelas(app.planilhas, [Servicos, Unidades, Areas] as const);

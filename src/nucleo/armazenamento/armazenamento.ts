@@ -16,9 +16,16 @@ export interface Armazenamento {
   acrescentar(planilha: string, aba: string, linhas: Linha[]): Promise<void>;
   /** Regrava uma linha inteira. `numero` começa em 1 (1 = cabeçalho). */
   gravarLinha(planilha: string, aba: string, numero: number, valores: Linha): Promise<void>;
-  /** Cria a aba se não existir e grava o cabeçalho se ela estiver vazia. */
-  garantirAba(planilha: string, aba: string, cabecalho: readonly string[]): Promise<'criada' | 'ja_existia'>;
+  /**
+   * Cria as abas que não existem e grava o cabeçalho das que estão vazias,
+   * com o mínimo de chamadas. Devolve os nomes das abas criadas ou preenchidas.
+   * Nunca altera aba que já tem conteúdo.
+   */
+  garantirAbas(planilha: string, abas: readonly { aba: string; cabecalho: readonly string[] }[]): Promise<string[]>;
 }
 
 /** Erro de armazenamento com mensagem em português para a Diretoria. */
 export class ErroArmazenamento extends Error {}
+
+/** A aba procurada ainda não existe (planilha nova): é preciso rodar "Preparar estrutura". */
+export class ErroEstruturaAusente extends ErroArmazenamento {}

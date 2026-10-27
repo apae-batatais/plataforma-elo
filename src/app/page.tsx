@@ -8,6 +8,7 @@ import { MODULOS } from '@/plataforma/registro-modulos';
 export default async function Portal() {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
+  if (usuario.estruturaPendente) redirect('/admin/estrutura');
 
   const apps = menuDoUsuario(MODULOS, usuario.autorizador.permissoes());
   const podeGerenciar = usuario.autorizador.temPermissao('core.organizacao.gerenciar');

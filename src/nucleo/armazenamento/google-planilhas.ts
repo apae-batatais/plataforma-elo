@@ -4,7 +4,7 @@
  * As planilhas ficam compartilhadas (como Editor) só com a conta de serviço e
  * com a Diretoria, que é a dona. A equipe acessa os dados apenas pelo site.
  */
-import { ErroArmazenamento, type Armazenamento, type Linha } from './armazenamento';
+import { ErroArmazenamento, ErroEstruturaAusente, type Armazenamento, type Linha } from './armazenamento';
 
 const API = 'https://sheets.googleapis.com/v4/spreadsheets';
 
@@ -41,6 +41,9 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
       );
     }
     if (resposta.status === 404) throw new ErroArmazenamento(`Planilha ${planilha} não encontrada.`);
+    if (resposta.status === 400 && /Unable to parse range/i.test(detalhe)) {
+      throw new ErroEstruturaAusente('As planilhas ainda não têm as abas da plataforma. Rode "Preparar estrutura".');
+    }
     if (resposta.status === 429) throw new ErroArmazenamento('Limite de uso do Google atingido. Tente de novo em um minuto.');
     throw new ErroArmazenamento(`Erro ${resposta.status} ao acessar a planilha ${planilha}: ${detalhe.slice(0, 200)}`);
   }
@@ -81,25 +84,48 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
     });
   }
 
-  async garantirAba(planilha: string, aba: string, cabecalho: readonly string[]) {
+  /**
+   * Em poucas chamadas: 1) lista as abas existentes; 2) lê a primeira linha das
+   * que já existem; 3) cria de uma vez as que faltam; 4) grava de uma vez os
+   * cabeçalhos das novas e das vazias.
+   */
+  async garantirAbas(planilha: string, abas: readonly { aba: string; cabecalho: readonly string[] }[]) {
+    if (abas.length === 0) return [];
     const meta = (await this.chamar(planilha, '?fields=sheets.properties.title')) as {
       sheets?: { properties?: { title?: string } }[];
     };
-    const existe = (meta.sheets ?? []).some((s) => s.properties?.title === aba);
-    if (!existe) {
+    const existentes = new Set((meta.sheets ?? []).map((s) => s.properties?.title ?? ''));
+    const faltando = abas.filter((a) => !existentes.has(a.aba));
+    const jaExistem = abas.filter((a) => existentes.has(a.aba));
+
+    let vazias: typeof abas = [];
+    if (jaExistem.length > 0) {
+      const params = new URLSearchParams({ majorDimension: 'ROWS' });
+      for (const a of jaExistem) params.append('ranges', intervalo(a.aba, '1:1'));
+      const corpo = (await this.chamar(planilha, `/values:batchGet?${params}`)) as { valueRanges?: { values?: Linha[] }[] };
+      vazias = jaExistem.filter((_, i) => (corpo.valueRanges?.[i]?.values ?? []).length === 0);
+    }
+    if (faltando.length > 0) {
       await this.chamar(planilha, ':batchUpdate', {
         method: 'POST',
-        body: JSON.stringify({ requests: [{ addSheet: { properties: { title: aba } } }] }),
+        body: JSON.stringify({ requests: faltando.map((a) => ({ addSheet: { properties: { title: a.aba } } })) }),
       });
-    } else {
-      const atual = await this.lerAbas(planilha, [aba]);
-      if ((atual[aba] ?? []).length > 0) return 'ja_existia' as const;
     }
-    const params = new URLSearchParams({ valueInputOption: 'RAW' });
-    await this.chamar(planilha, `/values/${encodeURIComponent(intervalo(aba, 'A1'))}?${params}`, {
-      method: 'PUT',
-      body: JSON.stringify({ values: [cabecalho] }),
-    });
-    return 'criada' as const;
+    const preencher = [...faltando, ...vazias];
+    if (preencher.length > 0) {
+      await this.chamar(planilha, '/values:batchUpdate', {
+        method: 'POST',
+        body: JSON.stringify({
+          valueInputOption: 'RAW',
+          data: preencher.map((a) => ({ range: intervalo(a.aba, 'A1'), values: [a.cabecalho] })),
+        }),
+      });
+    }
+    return preencher.map((a) => a.aba);
+  }
+
+  /** Atalho para uma aba só. */
+  async garantirAba(planilha: string, aba: string, cabecalho: readonly string[]) {
+    return (await this.garantirAbas(planilha, [{ aba, cabecalho }])).length ? ('criada' as const) : ('ja_existia' as const);
   }
 }

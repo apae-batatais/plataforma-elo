@@ -9,7 +9,7 @@
  *   que leu; se outra pessoa gravou antes, a gravação é recusada (ErroConflito).
  */
 import { z } from 'zod';
-import { ErroArmazenamento, type Armazenamento, type Celula, type Linha } from './armazenamento';
+import { ErroArmazenamento, ErroEstruturaAusente, type Armazenamento, type Celula, type Linha } from './armazenamento';
 
 export const COLUNAS_CONTROLE = ['id', 'versao', 'ativo', 'criado_em', 'criado_por', 'atualizado_em', 'atualizado_por'] as const;
 
@@ -125,7 +125,7 @@ export class TabelaLida<E extends z.ZodObject> {
   /** Valida o cabeçalho e converte as linhas. Erros citam planilha, aba, linha e coluna. */
   static de<E extends z.ZodObject>(def: DefinicaoTabela<E>, linhas: Linha[]): TabelaLida<E> {
     if (linhas.length === 0) {
-      throw new ErroArmazenamento(`A aba "${def.aba}" (planilha ${def.planilha}) está vazia ou não existe. Rode "Preparar estrutura".`);
+      throw new ErroEstruturaAusente(`A aba "${def.aba}" (planilha ${def.planilha}) está vazia ou não existe. Rode "Preparar estrutura".`);
     }
     const cabecalho = linhas[0].map((c) => String(c ?? '').trim());
     const faltando = cabecalhoDe(def).filter((c) => !cabecalho.includes(c));
@@ -235,6 +235,31 @@ export async function inserir<E extends z.ZodObject>(
   ) as Registro<E>;
   await p.armazenamento.acrescentar(p.idDe(def.planilha), def.aba, [tabela.paraLinha(registro)]);
   return registro;
+}
+
+/**
+ * Inclui vários registros com UMA gravação, usando uma tabela já lida
+ * (para não reler a aba). Usado na configuração inicial.
+ */
+export async function inserirVarios<E extends z.ZodObject>(
+  p: Planilhas,
+  tabela: TabelaLida<E>,
+  lista: Entrada<E>[],
+  autoria: Autoria,
+): Promise<number> {
+  if (lista.length === 0) return 0;
+  const def = tabela.def;
+  const agora = (autoria.agora?.() ?? new Date()).toISOString();
+  const linhas = lista.map((dados) => {
+    const campos = def.esquema.parse(dados);
+    const registro =
+      def.modo === 'somente_inclusao'
+        ? campos
+        : { id: crypto.randomUUID(), versao: 1, ativo: true, criado_em: agora, criado_por: autoria.email, atualizado_em: agora, atualizado_por: autoria.email, ...campos };
+    return tabela.paraLinha(registro);
+  });
+  await p.armazenamento.acrescentar(p.idDe(def.planilha), def.aba, linhas);
+  return linhas.length;
 }
 
 /**
