@@ -1,14 +1,13 @@
-/** Tela mostrada quando as variáveis da hospedagem estão incompletas ou erradas. */
-export function ConfiguracaoInvalida({ mensagem }: { mensagem: string }) {
+/** Tela mostrada quando a configuração ou o acesso às planilhas tem problema. */
+export function ConfiguracaoInvalida({ mensagem, titulo = 'A plataforma precisa de um ajuste na configuração' }: { mensagem: string; titulo?: string }) {
   return (
     <section className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-2xl font-semibold">A plataforma precisa de um ajuste na configuração</h1>
+      <h1 className="text-2xl font-semibold">{titulo}</h1>
       <p role="alert" className="rounded-md bg-aviso-fundo p-4 text-aviso">
         {mensagem}
       </p>
       <p className="text-texto-suave">
-        Corrija a variável no painel da Netlify (Project configuration → Environment variables) e publique de novo em
-        GitHub → Actions → Publicar → Run workflow.
+        Depois de corrigir, recarregue esta página. Se a correção foi numa variável da Netlify, é preciso publicar de novo.
       </p>
     </section>
   );

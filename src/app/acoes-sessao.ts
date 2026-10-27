@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { lerTabela } from '@/nucleo/armazenamento/tabela';
-import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
+import { ErroArmazenamento, ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Usuarios } from '@/nucleo/estrutura/tabelas';
 import { podeEntrar } from '@/nucleo/sessao/carregar';
@@ -40,7 +40,7 @@ export async function entrarComGoogle(credencial: string): Promise<{ erro?: stri
     }
     return {};
   } catch (erro) {
-    if (erro instanceof ErroLogin) return { erro: erro.message };
+    if (erro instanceof ErroLogin || erro instanceof ErroArmazenamento) return { erro: erro.message };
     throw erro;
   }
 }

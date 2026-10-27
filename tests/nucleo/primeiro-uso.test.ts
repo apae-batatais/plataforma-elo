@@ -4,7 +4,7 @@
  * tela de login, porque a plataforma tentava ler abas que ainda não existiam.
  */
 import { describe, expect, it } from 'vitest';
-import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
+import { ErroArmazenamento, ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-planilhas';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
 import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
@@ -32,6 +32,15 @@ describe('primeiro uso com planilhas em branco', () => {
     const p = planilhasEmBranco();
     expect(await podeEntrar(p, 'outra@apaebatatais.org.br', false)).toBe(false);
     expect(await carregarUsuario(p, { email: 'outra@apaebatatais.org.br', nome: 'Outra' }, { administradorInicial: false })).toBeNull();
+  });
+
+  it('planilha sem acesso: o login mostra o motivo, mesmo para a administradora inicial', async () => {
+    const semAcesso: Planilhas = {
+      armazenamento: { ...new ArmazenamentoMemoria([]), lerAbas: async () => { throw new ErroArmazenamento('A conta de serviço da plataforma não tem acesso à planilha nucleo.'); } } as never,
+      idDe: (c) => c,
+    };
+    await expect(podeEntrar(semAcesso, ADMIN.email, true)).rejects.toThrow(/não tem acesso/);
+    await expect(carregarUsuario(semAcesso, ADMIN, { administradorInicial: true })).rejects.toThrow(/não tem acesso/);
   });
 
   it('depois de "Preparar estrutura", a administradora entra normalmente', async () => {

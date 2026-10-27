@@ -99,7 +99,7 @@ describe('armazenamento no Google Planilhas', () => {
   it('sem acesso: explica que é preciso compartilhar com a conta de serviço', async () => {
     const { fn } = fetchFalso(() => ({ status: 403 }));
     await expect(new ArmazenamentoGooglePlanilhas(token, fn).lerAbas('PLAN1', ['A'])).rejects.toThrow(
-      /Compartilhe a planilha com a conta de serviço/,
+      /não tem acesso à planilha.*conta de serviço/,
     );
   });
 

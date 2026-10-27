@@ -62,13 +62,17 @@ export async function carregarUsuario(
   return { ...sessao, autorizador, perfis: lista, estruturaPendente: false };
 }
 
-/** O e-mail pode entrar? Administradores iniciais sempre; os demais precisam de conta ativa. */
+/**
+ * O e-mail pode entrar? Administradores iniciais sempre; os demais precisam de
+ * conta ativa. Sempre tenta ler as planilhas, para que um problema de acesso
+ * (planilha não compartilhada, ID errado) apareça já na tela de login.
+ */
 export async function podeEntrar(p: Planilhas, email: string, administradorInicial: boolean): Promise<boolean> {
-  if (administradorInicial) return true;
   try {
-    return (await lerTabela(p, Usuarios)).ativos().some((u) => u.email === email);
+    const temConta = (await lerTabela(p, Usuarios)).ativos().some((u) => u.email === email);
+    return temConta || administradorInicial;
   } catch (erro) {
-    if (erro instanceof ErroEstruturaAusente) return false;
+    if (erro instanceof ErroEstruturaAusente) return administradorInicial;
     throw erro;
   }
 }
