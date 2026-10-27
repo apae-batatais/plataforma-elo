@@ -48,7 +48,7 @@ export default async function Portal() {
               className="rounded-lg border border-borda bg-superficie p-5 hover:border-destaque hover:bg-destaque-suave"
             >
               <span className="block font-semibold">Serviços</span>
-              <span className="mt-1 block text-sm text-texto-suave">Serviços da instituição, por eixo e unidade.</span>
+              <span className="mt-1 block text-sm text-texto-suave">Serviços da instituição, por área e unidade.</span>
             </Link>
           )}
           {podeGerenciar && (

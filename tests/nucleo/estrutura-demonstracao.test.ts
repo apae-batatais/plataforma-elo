@@ -14,7 +14,7 @@ describe('preparar estrutura', () => {
     const p = await planilhasDeTeste();
     expect((await lerTabela(p, Perfis)).todos().map((x) => x.codigo)).toContain('diretoria');
     expect((await lerTabela(p, PerfilPermissoes)).todos().length).toBeGreaterThan(5);
-    expect(await prepararEstrutura(p)).toEqual({ abasCriadas: [], registrosIniciais: 0 });
+    expect(await prepararEstrutura(p)).toEqual({ abasCriadas: [], registrosIniciais: 0, ajustes: [] });
   });
 });
 

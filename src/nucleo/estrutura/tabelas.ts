@@ -33,7 +33,8 @@ export const Servicos = definirTabela({
   esquema: z.object({
     codigo: codigo(),
     nome: texto(),
-    eixo: z.enum(EIXOS),
+    /** Não é mais preenchido (o serviço se liga à área). Mantido para os registros antigos. */
+    eixo: z.preprocess((v) => (v === '' || v == null ? null : v), z.enum(EIXOS).nullable()),
     unidade: codigo(),
     area: textoOpcional(),
     vagas: numeroOpcional(),

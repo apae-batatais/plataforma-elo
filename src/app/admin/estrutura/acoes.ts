@@ -17,11 +17,11 @@ export async function prepararEstruturaAgora() {
     usuario: usuario.email,
     acao: 'estrutura',
     entidade: 'planilhas',
-    detalhes: { abasCriadas: r.abasCriadas, registrosIniciais: r.registrosIniciais },
+    detalhes: { abasCriadas: r.abasCriadas, registrosIniciais: r.registrosIniciais, ajustes: r.ajustes },
   });
   const texto =
-    r.abasCriadas.length === 0 && r.registrosIniciais === 0
+    r.abasCriadas.length === 0 && r.registrosIniciais === 0 && r.ajustes.length === 0
       ? 'Tudo já estava preparado. Nada foi alterado.'
-      : `Abas criadas: ${r.abasCriadas.length ? r.abasCriadas.join('; ') : 'nenhuma'}. Registros iniciais: ${r.registrosIniciais}.`;
+      : `Abas criadas: ${r.abasCriadas.length ? r.abasCriadas.join('; ') : 'nenhuma'}. Registros iniciais: ${r.registrosIniciais}.${r.ajustes.length ? ` Ajustes: ${r.ajustes.join('; ')}.` : ''}`;
   redirect(`/admin/estrutura?resultado=${encodeURIComponent(texto)}`);
 }

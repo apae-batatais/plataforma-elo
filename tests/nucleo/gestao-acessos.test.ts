@@ -24,7 +24,7 @@ beforeEach(async () => {
 describe('primeiro acesso de produção', () => {
   it('o administrador inicial cadastra uma pessoa, dá um perfil e ela passa a entrar', async () => {
     const adm = await admin();
-    await cadastrarServico(p, adm, { codigo: 'ur', nome: 'Unidade Referenciada', eixo: 'assistencia_social', unidade: 'sede', area: 'assistencia_social', vagas: null });
+    await cadastrarServico(p, adm, { codigo: 'ur', nome: 'Unidade Referenciada', unidade: 'sede', area: 'assistencia_social', vagas: null });
     await cadastrarUsuario(p, adm, { email: `Coord.UR@${DOMINIO}`, nome: 'Maria Coordenadora' }, DOMINIO);
     await atribuirPerfil(p, await admin(), { email: `coord.ur@${DOMINIO}`, perfil: 'coordenacao_servico', escopoTipo: 'servico', escopo: 'ur' });
 
@@ -57,10 +57,11 @@ describe('validações', () => {
 
   it('serviço: código sem espaços, sem repetir, com unidade existente', async () => {
     const adm = await admin();
-    await expect(cadastrarServico(p, adm, { codigo: 'Centro Dia', nome: 'Centro Dia', eixo: 'assistencia_social', unidade: 'sede', area: null, vagas: null })).rejects.toThrow(/minúsculas/);
-    await cadastrarServico(p, adm, { codigo: 'centro_dia', nome: 'Centro Dia', eixo: 'assistencia_social', unidade: 'sede', area: null, vagas: 80 });
-    await expect(cadastrarServico(p, adm, { codigo: 'centro_dia', nome: 'Outro', eixo: 'saude', unidade: 'cer', area: null, vagas: null })).rejects.toThrow(/Já existe/);
-    await expect(cadastrarServico(p, adm, { codigo: 'x', nome: 'X', eixo: 'saude', unidade: 'lua', area: null, vagas: null })).rejects.toThrow(/Unidade/);
+    await expect(cadastrarServico(p, adm, { codigo: 'Centro Dia', nome: 'Centro Dia', unidade: 'sede', area: 'assistencia_social', vagas: null })).rejects.toThrow(/minúsculas/);
+    await cadastrarServico(p, adm, { codigo: 'centro_dia', nome: 'Centro Dia', unidade: 'sede', area: 'assistencia_social', vagas: 80 });
+    await expect(cadastrarServico(p, adm, { codigo: 'centro_dia', nome: 'Outro', unidade: 'rural', area: 'saude', vagas: null })).rejects.toThrow(/Já existe/);
+    await expect(cadastrarServico(p, adm, { codigo: 'y', nome: 'Y', unidade: 'sede', area: 'lua', vagas: null })).rejects.toThrow(/área/);
+    await expect(cadastrarServico(p, adm, { codigo: 'x', nome: 'X', unidade: 'lua', area: 'saude', vagas: null })).rejects.toThrow(/Unidade/);
   });
 });
 
@@ -103,7 +104,7 @@ describe('permissões e auditoria', () => {
     const ana = await como(`ana@${DOMINIO}`);
     await expect(cadastrarUsuario(p, ana, { email: `x@${DOMINIO}`, nome: 'X' }, DOMINIO)).rejects.toBeInstanceOf(ErroPermissao);
     await expect(painelDeAcessos(p, ana)).rejects.toBeInstanceOf(ErroPermissao);
-    await expect(cadastrarServico(p, ana, { codigo: 'x', nome: 'X', eixo: 'saude', unidade: 'cer', area: null, vagas: null })).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(cadastrarServico(p, ana, { codigo: 'x', nome: 'X', unidade: 'rural', area: 'saude', vagas: null })).rejects.toBeInstanceOf(ErroPermissao);
   });
 
   it('cada alteração fica na auditoria, com autor e sem dados pessoais', async () => {

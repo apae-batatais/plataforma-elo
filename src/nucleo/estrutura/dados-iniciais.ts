@@ -3,9 +3,8 @@
  * as permissões do Núcleo. Gravada por "Preparar estrutura" só em abas vazias.
  */
 export const UNIDADES_INICIAIS = [
-  { codigo: 'sede', nome: 'Sede' },
-  { codigo: 'cer', nome: 'CER' },
-  { codigo: 'rural', nome: 'APAE Rural' },
+  { codigo: 'sede', nome: 'Apae Batatais (Sede)' },
+  { codigo: 'rural', nome: 'Apae Rural (Filial)' },
 ];
 
 export const AREAS_INICIAIS = [
