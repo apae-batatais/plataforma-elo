@@ -37,10 +37,14 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
     const detalhe = await resposta.text().catch(() => '');
     if (resposta.status === 403) {
       throw new ErroArmazenamento(
-        `Sem acesso à planilha ${planilha}. Compartilhe a planilha com a conta de serviço da plataforma como Editor.`,
+        `A conta de serviço da plataforma não tem acesso à planilha ${planilha}. No Drive, adicione o e-mail da conta de serviço como membro do Drive compartilhado (Administrador de conteúdo) ou compartilhe a planilha com ela como Editor. Se o Google Sheets API não estiver ativado no projeto do Google Cloud, ative-o.`,
       );
     }
-    if (resposta.status === 404) throw new ErroArmazenamento(`Planilha ${planilha} não encontrada.`);
+    if (resposta.status === 404) {
+      throw new ErroArmazenamento(
+        `Planilha ${planilha} não encontrada. Confira o ID na variável PLANILHAS da Netlify e se a planilha está compartilhada com a conta de serviço.`,
+      );
+    }
     if (resposta.status === 400 && /Unable to parse range/i.test(detalhe)) {
       throw new ErroEstruturaAusente('As planilhas ainda não têm as abas da plataforma. Rode "Preparar estrutura".');
     }

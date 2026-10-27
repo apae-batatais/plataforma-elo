@@ -57,6 +57,11 @@ A Diretoria não roda nada no computador (ADR-010): toda conferência é feita
 pelo navegador, no Pull Request e na prévia. Nunca peça para ela instalar
 ferramentas ou executar comandos.
 
+**Quando a Diretoria aprovar um PR** (dizendo "aprovado" na conversa ou
+aprovando no GitHub), o agente faz o merge na `main` e em seguida dispara a
+publicação oficial (`gh workflow run publicar.yml --ref main`), acompanha até
+o fim e informa o resultado.
+
 ## Ciclo de trabalho (SDD)
 
 1. Especificar e pedir aprovação.

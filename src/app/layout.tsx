@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ErroConfiguracao, lerConfig } from '@/nucleo/config';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -15,21 +16,24 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const problema = (mensagem: string, titulo?: string) => (
+    <html lang="pt-BR">
+      <body className="min-h-screen antialiased">
+        <main className="mx-auto max-w-5xl px-4 py-8">
+          <ConfiguracaoInvalida mensagem={mensagem} titulo={titulo} />
+        </main>
+      </body>
+    </html>
+  );
+  let app, usuario;
   try {
     lerConfig();
+    [app, usuario] = await Promise.all([obterAplicacao(), usuarioLogado()]);
   } catch (erro) {
-    if (!(erro instanceof ErroConfiguracao)) throw erro;
-    return (
-      <html lang="pt-BR">
-        <body className="min-h-screen antialiased">
-          <main className="mx-auto max-w-5xl px-4 py-8">
-            <ConfiguracaoInvalida mensagem={erro.message} />
-          </main>
-        </body>
-      </html>
-    );
+    if (erro instanceof ErroConfiguracao) return problema(erro.message);
+    if (erro instanceof ErroArmazenamento) return problema(erro.message, 'A plataforma não conseguiu acessar as planilhas');
+    throw erro;
   }
-  const [app, usuario] = await Promise.all([obterAplicacao(), usuarioLogado()]);
   return (
     <html lang="pt-BR">
       <body className="min-h-screen antialiased">
