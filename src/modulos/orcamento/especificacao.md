@@ -1,6 +1,6 @@
 # Especificação — Módulo Orçamento
 
-- Situação: **aprovada pela Diretoria em 27/10/2026** (revisão 2); Entrega 1A construída
+- Situação: revisão 3 (27/10/2026): estrutura da aba Estudo; sem Tabela Salarial; centros de custo = Serviços
 - Dono do produto: Diretoria
 - Base: estrutura das planilhas "Apae Batatais - Orçamento 2027" e
   "Apae Batatais - Folha Pagamento 2027" (Google Drive, versão de 23/10/2026)
@@ -54,48 +54,42 @@ Os salários são dados pessoais. Por isso a folha fica numa **planilha separada
 
 | Planilha | Aba | O que guarda | Sigilo |
 | --- | --- | --- | --- |
-| `orcamento` | CentrosCusto | Centro de custo ligado a uma área do Núcleo (54 hoje, ex.: Apae Rural › Viveiro de mudas) | — |
-| `orcamento_folha` | Cargos | Plano de cargos: grupo, cargo, requisitos, classe e carga horária de referência | — |
-| `orcamento_folha` | TabelaSalarial | Valor de cada cargo por nível (A a K), com início de vigência | — |
-| `orcamento_folha` | Postos | Um colaborador ativo **ou uma vaga prevista**: nº da ficha, colaborador, cargo, nível, carga horária, admissão ou mês de início, desligamento | colaborador: pessoal |
-| `orcamento_folha` | Componentes | Valor mensal de cada componente do posto: salário base, adicional, hora atividade, ajuda de custo, bolsa estágio, insalubridade, periculosidade, gratificação de função, plano de saúde, bolsa estudo, locomoção, alimentação | valor: pessoal |
-| `orcamento_folha` | Rateios | Percentual de cada posto em cada centro de custo, com início e fim de vigência | — |
-| `orcamento_folha` | Parametros | Percentuais de provisões e encargos (férias, 1/3, 13º, FGTS e outros), percentual e mês do reajuste | — |
+| `orcamento_folha` | Funcionarios | Código, nome, admissão (ou início previsto), cargo, departamento, carga horária mensal, desligamento. **Sem código = vaga prevista** | nome: pessoal |
+| `orcamento_folha` | Valores | As colunas digitadas da aba Estudo, com vigência: salário atual, reajuste (%), hora atividade (sim/não), adicional, ajuda de custo, bolsa estágio, insalubridade, periculosidade, gratificação de função, plano de saúde, bolsa estudo, locomoção, alimentação, férias, abono e indenizações | valores: pessoal |
+| `orcamento_folha` | Lotacoes | Percentual de cada funcionário em cada **Serviço** (do Núcleo), com vigência | — |
+| `orcamento_folha` | Parametros | Reajuste padrão e mês do reajuste, % de hora atividade, % de FGTS, INSS, terceiros, FAP, aposentadoria especial e PIS | — |
 
-Na 1B e na 1C entram as abas Exercicios, FontesRecurso, GruposGasto,
-ItensDespesa, ItensReceita, Lancamentos, RegrasRateio, FaixasReferencia,
-Remanejamentos e MapeamentoImportacao, todas na planilha `orcamento`.
-
-O colaborador é registrado pelo nome e pelo nº da ficha, só na planilha da
-folha. A ligação com o Cadastro Único do Núcleo fica para depois. Assim, a
-Entrega 1A não altera o Núcleo, exceto pelo perfil novo.
+**Centros de custo = Serviços** (Administração › Serviços). Não há Tabela Salarial:
+cargo é texto livre, como na planilha. A planilha `orcamento` só entra na Entrega 1B.
 
 ## Regras de negócio — Entrega 1A (Folha)
 
-1. O custo mensal do posto é a soma dos componentes mais as provisões e encargos.
-   As provisões são calculadas pelo app a partir dos percentuais da aba
-   Parametros, aplicados sobre a base de cálculo que os próprios parâmetros
-   definem. Nenhuma fórmula fica na planilha.
-2. O salário base vem da tabela salarial (cargo × nível), proporcional à carga
-   horária. Pode ser ajustado à mão, e o ajuste fica marcado como "valor diferente da tabela".
-3. O rateio de cada posto soma **exatamente 100%**; o app não salva de outro jeito.
-   Na planilha atual, 7 de 140 fichas somam 0%, 113%, 125% ou 150%, o que infla a
-   folha distribuída em cerca de R$ 11,7 mil por mês.
-4. Todo posto ativo tem rateio. Na planilha atual, 6 colaboradores não têm rateio.
-   O app mostra esses postos num atalho "sem rateio" até serem corrigidos.
-5. O valor mensal de um centro de custo é a soma, para cada posto, do custo do posto × o percentual do rateio.
-6. Os percentuais aceitam até duas casas decimais. "Dividir igualmente" ajusta a
-   última linha para fechar 100,00% (ex.: 3 centros = 33,33 + 33,33 + 33,34).
-7. Um mesmo centro de custo não se repete no rateio de um posto.
-8. Vagas previstas (contratações futuras) são postos sem colaborador, com o mês de início.
+1. As colunas com fórmula da aba Estudo são **calculadas pelo app** (nenhuma fórmula na planilha):
+   - Valor Hora = Salário atual ÷ Carga horária
+   - Salário Base = Salário atual × (1 + Reajuste), a partir do mês do reajuste
+   - VHora Base = Salário base ÷ Carga horária
+   - Hora Atividade = 5% do salário base, para quem recebe
+   - 1/3 Férias = Salário base ÷ 3 ÷ 12
+   - 13º = Salário base ÷ 12
+   - FGTS = 8% de (salário base + adicional + hora atividade + insalubridade + 1/3 férias + 13º)
+   - TOTAL = soma de Salário base até FGTS
+2. O **Resumo da folha** reproduz o bloco abaixo da relação de funcionários (coluna C):
+   remuneração salarial, natureza não salarial, benefícios, encargos (INSS 20%, terceiros 5,8%,
+   FAP 0,5%, aposentadoria especial 6% sobre salário base + insalubridade de quem tem insalubridade,
+   FGTS 8% e PIS sobre a remuneração salarial), indenizações e total geral; e os quadros Total sem
+   encargos, **Total CEBAS** (INSS + terceiros + FAP + aposentadoria especial), Total FGTS e
+   Total remuneração + FGTS (= total geral − Total CEBAS).
+   Correções em relação à planilha: Plano de saúde e Bolsa estudo entram em Benefícios; Indenizações sem #REF!.
+3. A lotação de cada funcionário soma **exatamente 100%**; o app não salva de outro jeito.
+4. Todo funcionário ativo tem lotação; quem não tem aparece no atalho "sem lotação".
+5. O valor de um serviço é o resumo (com encargos) dos funcionários × o percentual da lotação.
+6. Percentuais com até duas casas; "Dividir igualmente" fecha 100,00% na última linha.
+7. Um mesmo serviço não se repete na lotação de um funcionário.
+8. **Sem código = vaga prevista** (ex.: "A contratar…", estagiários), com o mês de início.
 9. O reajuste vale a partir do mês definido nos parâmetros, sem alterar os meses anteriores.
-10. Nada é apagado:
-    - Um posto é encerrado com a data de desligamento.
-    - Mudar o rateio ou os componentes grava linhas novas com "vale a partir de";
-      as anteriores continuam guardadas e valem para os meses antes disso.
-    - Assim fica o histórico de quanto cada centro recebeu em cada mês.
-11. Os valores individuais só aparecem para quem tem `orcamento.folha.ver_individual`.
-    Abrir a ficha de um posto registra uma auditoria de leitura. Os demais perfis veem só os totais.
+10. Nada é apagado: desligamento encerra; mudar valores ou lotação grava linhas novas com "vale a partir de".
+11. Valores individuais só para `orcamento.folha.ver_individual`; consultas registram auditoria de leitura.
+    Coordenações veem o resumo só dos serviços do seu escopo (unidade, área ou serviço).
 12. Toda alteração é registrada na auditoria com as colunas alteradas, nunca com os valores.
 
 ## Regras de negócio — Entregas 1B e 1C (resumo, detalhadas antes de construir)
@@ -124,37 +118,15 @@ Entrega 1A não altera o Núcleo, exceto pelo perfil novo.
 
 ## Telas — Entrega 1A
 
-1. **Postos da folha:**
-   - Lista com filtros por cargo, área e centro de custo.
-   - Atalhos "sem rateio", "rateio diferente de 100%" e "vagas previstas".
-   - Mostra o custo total do mês e do ano.
-2. **Ficha do posto:**
-   - Colaborador (ou "vaga prevista"), cargo e nível da tabela salarial, carga horária e admissão.
-   - Os componentes mensais, com o custo total calculado na hora.
-3. **Grid de rateio por centro de custo**, dentro da ficha:
-   - Uma linha por centro de custo, com as colunas Centro de custo, Percentual,
-     Valor mensal e Valor anual. Os valores são calculados.
-   - O rodapé mostra o total, com indicador verde só quando a soma é 100%.
-   - Botões "adicionar centro de custo" e "dividir igualmente".
-   - O botão Salvar fica bloqueado fora de 100%.
-4. **Rateio geral:**
-   - Grade postos × centros de custo, para revisar vários postos de uma vez.
-   - Valem as mesmas validações.
-5. **Resumo por centro de custo:**
-   - Custo mensal e anual da folha por centro e por área.
-   - É a tela que perfis sem acesso individual enxergam.
-6. **Tabela salarial e parâmetros**, editados pelo Financeiro.
-7. **Importar planilha da folha:**
-   - Envio do arquivo .xlsx (Drive → Arquivo → Fazer download → Microsoft Excel).
-   - Aproveita as abas Tabela Salarial, Estudo e Rateio, ligadas pelo nº da ficha.
-   - Mostra um **relatório antes de gravar**: rateios fora de 100%, postos sem
-     rateio, cargos não encontrados e diferenças de custo em relação à planilha.
-   - A aba "Folha Pagto Anual 2027" está com fórmulas quebradas (#REF!). Ela é
-     substituída pelo cálculo do app.
-
-A importação dos dados reais é feita pela Diretoria, pelo Financeiro ou pelo
-Departamento Pessoal, **dentro do app, em produção**. O agente desenvolve e
-testa só com dados fictícios no mesmo formato (ADR-008).
+1. **Resumo da folha:** o resumo da aba Estudo no mês escolhido e no ano, os quadros
+   (Total geral, sem encargos, CEBAS, FGTS, remuneração + FGTS) e o total por serviço.
+2. **Folha de Pagamento:** todas as colunas da aba Estudo, com as calculadas destacadas,
+   totais no rodapé, escolha do mês, vista resumida e atalhos (sem lotação, vagas, desligados).
+3. **Ficha do funcionário:** todos os campos da aba Estudo, os calculados à vista e a lotação.
+4. **Lotação:** grade funcionários × serviços para corrigir vários de uma vez.
+5. **Parâmetros** da folha.
+6. **Importar planilha:** envio do .xlsx; aba Estudo (e Rateio, se existir); a coluna "Lotação"
+   vale 100%; a pessoa escolhe a qual Serviço corresponde cada nome de lotação; relatório antes de gravar.
 
 ## O que muda fora do módulo (precisa de aprovação)
 

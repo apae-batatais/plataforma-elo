@@ -11,7 +11,7 @@ import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { listarPostos, resumoFolha } from '../aplicacao/folha';
-import { analisarImportacao, importarFolha, lerXlsx } from '../aplicacao/importacao';
+import { analisarImportacao, importarFolha, lerXlsx, type PropostaImportacao } from '../aplicacao/importacao';
 import { Postos, Rateios, TABELAS_ORCAMENTO } from '../dados/tabelas';
 import { lerPlanilhaFolha, paraData, paraNumero } from '../dominio/importacao';
 import { manifesto } from '../manifesto';
@@ -23,36 +23,56 @@ async function como(email: string) {
   return new Autorizador(email, { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
 }
 
-/** Planilha fictícia no formato da "Folha Pagamento 2027". */
-async function arquivoFicticio(): Promise<ArrayBuffer> {
+const CABECALHO_ESTUDO = [
+  'Código', 'Nome', 'Admissão', 'Cargo', 'Departamento', 'Lotação', 'Carga Horaria', 'Valor Hora', 'Salario Atual', 'Reajuste',
+  'VHora Base', 'SalárioBase', 'Adicional Salarial', 'Hora Atividade', 'Ajuda de Custo', 'Bolsa Estágio', 'Insalubridade',
+  'Periculosidade', 'G. Função', 'Plano de Saúde', 'Bolsa Estudo', 'Locomoção', 'Alimentação', 'FÉRIAS', '1/3 FÉRIAS', 'ABONO',
+  'INDEZ.', '13º SAL', 'FGTS', 'TOTAL', 'Coluna 1',
+];
+
+/** Uma linha da aba Estudo com valores FICTÍCIOS (as colunas com fórmula levam o resultado, como no .xlsx baixado). */
+function linha(d: { codigo?: number; nome: string; admissao?: Date | string; cargo: string; lotacao?: string; salario: number; ha?: boolean; insal?: number; bolsa?: number; total?: number }) {
+  const sb = d.salario * 1.05;
+  const ha = d.ha ? sb * 0.05 : 0;
+  const terco = sb / 36;
+  const dec = sb / 12;
+  const fgts = (sb + ha + (d.insal ?? 0) + terco + dec) * 0.08;
+  const total = sb + ha + (d.insal ?? 0) + (d.bolsa ?? 0) + 340 + terco + dec + fgts;
+  return [
+    d.codigo ?? null, d.nome, d.admissao ?? null, d.cargo, null, d.lotacao ?? null, 200, d.salario / 200, d.salario, 0.05,
+    sb / 200, sb, null, d.ha ? ha : null, null, d.bolsa ?? null, d.insal ?? null,
+    null, null, null, null, null, 340, null, terco, null,
+    null, dec, fgts, d.total ?? total, null,
+  ];
+}
+
+/** Planilha fictícia no formato da aba "Estudo" da "Folha Pagamento 2027", com o resumo abaixo da relação. */
+async function arquivoFicticio(opcoes: { abaRateio?: boolean } = {}): Promise<ArrayBuffer> {
   const livro = new ExcelJS.Workbook();
-  const tab = livro.addWorksheet('Tabela Salarial');
-  tab.addRow(['PLANO DE CARGOS E SALÁRIOS 2027 (fictício)']);
-  tab.addRow([]);
-  tab.addRow(['Grupo', 'Cargo', 'Requisitos', 'Classe', 'C.H.', 'A', 'B', 'C', 'D']);
-  tab.addRow(['Educação', 'Professora de Educação Especial', 'Pedagogia', 'III', 30, 3000, 3120, 3244.8, 3374.59]);
-  tab.addRow(['Apoio', 'Cuidadora', 'Ensino médio', 'I', 40, 1900, 1976, 2055.04, 2137.24]);
-
   const est = livro.addWorksheet('Estudo');
-  est.addRow(['Ficha', 'Nome', 'Cargo', 'Nível', 'CH', 'Admissão', 'Salário Base', 'Adicional', 'Insalubridade', 'Alimentação', 'Plano de Saúde', 'Férias', '1/3 Férias', '13º', 'FGTS', 'Total', 'Obs. interna']);
-  est.addRow([101, 'Maria Exemplo da Silva', 'Professora de Educação Especial', 'B', 30, new Date(Date.UTC(2015, 2, 2)), 3120, 0, 0, 450, 180, 260, 86.67, 260, 249.6, 4606.27, 'x']);
-  est.addRow([102, 'João Exemplo Souza', 'Cuidadora', 'A', 40, '10/08/2019', 1900, 0, 303.6, 450, 0, 0, 0, 0, 0, 3258.27, '']);
-  est.addRow([103, 'Ana Exemplo Lima', 'Cuidadora', 'C', 40, '2021-05-03', 2055.04, 0, 303.6, 450, 0, 0, 0, 0, 0, 9999, '']);
-  est.addRow([104, 'Paulo Exemplo Reis', 'Motorista', null, 44, '2018-01-15', 2400, 0, 0, 450, 0, 0, 0, 0, 0, null, '']);
-  est.addRow([null, 'VAGA - Centro Dia', 'Cuidadora', 'A', 40, '2027-03-01', 1900, 0, 303.6, 450, 0, 0, 0, 0, 0, null, '']);
-  est.addRow([null, 'TOTAL', null, null, null, null, 11375.04, 0, 910.8, 2250, 180, 0, 0, 0, 0, 0, '']);
-
-  const rat = livro.addWorksheet('Rateio');
-  rat.addRow(['Ficha', 'Nome', 'Escola', 'Centro Dia Intergeracional', 'Apae Rural › Viveiro de mudas', 'Soma']);
-  rat.addRow([101, 'Maria Exemplo da Silva', 1, null, null, 1]);
-  rat.addRow([102, 'João Exemplo Souza', null, 0.5, 0.5, 1]);
-  rat.addRow([103, 'Ana Exemplo Lima', 0.63, 0.5, null, 1.13]); // 113%: não pode ser gravado
-  // 104 sem rateio
-
-  const anual = livro.addWorksheet('Folha Pagto Anual 2027');
-  anual.addRow(['Mês', 'Total']);
-  anual.addRow(['Jan', { formula: '#REF!', result: { error: '#REF!' } } as never]);
-
+  est.addRow([]);
+  est.addRow([]);
+  est.addRow(CABECALHO_ESTUDO);
+  est.addRow(linha({ codigo: 101, nome: 'MARIA EXEMPLO DA SILVA', admissao: new Date(Date.UTC(2015, 2, 2)), cargo: 'PROFESSOR(A)', lotacao: 'Educação', salario: 3000, ha: true }));
+  est.addRow(linha({ codigo: 102, nome: 'JOÃO EXEMPLO SOUZA', admissao: '10/08/2019', cargo: 'CUIDADOR(A)', salario: 1900 }));
+  est.addRow(linha({ codigo: 103, nome: 'ANA EXEMPLO LIMA', admissao: '2021-05-03', cargo: 'CUIDADOR(A)', lotacao: 'Saúde', salario: 1957.2, insal: 303.6, total: 9999 }));
+  est.addRow(linha({ codigo: 104, nome: 'PAULO EXEMPLO REIS', admissao: '2018-01-15', cargo: 'MOTORISTA', lotacao: 'Escola', salario: 2400 }));
+  est.addRow(linha({ nome: 'A contratar - Cuidador(a)', cargo: 'CUIDADOR(A)', salario: 1900 }));
+  est.addRow(linha({ nome: 'Estagiários', cargo: 'ESTAGIÁRIO', salario: 0, bolsa: 1406.76 }));
+  est.addRow([null, null, null, null, null, null, null, null, 11157.2]); // linha de soma da tabela
+  est.addRow([null, 'Total', null, null, null, null, null, null, 11157.2]);
+  est.addRow([null, null, null, null, null, null, null, null, null, null, null, 'a', 'a', 'a', 'h', 'i', 'b']);
+  est.addRow([]);
+  est.addRow([null, 'REMUNERAÇÃO SALARIAL']);
+  est.addRow(['a', 'Vencimentos e Salários', 12345.67]);
+  est.addRow([0.2, 'INSS - 20% Empresa', 2469.13]);
+  est.addRow([null, 'TOTAL GERAL', 99999]);
+  if (opcoes.abaRateio) {
+    const rat = livro.addWorksheet('Rateio');
+    rat.addRow(['Código', 'Nome', 'escola', 'Centro Dia Intergeracional', 'Apae Rural › Viveiro de mudas']);
+    rat.addRow([102, 'JOÃO', 0.5, 0.5, null]);
+    rat.addRow([104, 'PAULO', 0.63, 0.5, null]); // 113%: não pode ser gravado
+  }
   return (await livro.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
@@ -75,34 +95,43 @@ describe('leitura da planilha', () => {
     expect(paraData(43687)).toBe('2019-08-10');
   });
 
-  it('reconhece as abas e colunas, ignora linha de total e marca as provisões como calculadas pelo app', async () => {
+  it('lê a aba Estudo: todas as colunas, vagas sem código, e para antes do resumo', async () => {
     const l = lerPlanilhaFolha(await lerXlsx(await arquivoFicticio()));
-    expect(l.abas).toEqual({ tabela: 'Tabela Salarial', estudo: 'Estudo', rateio: 'Rateio' });
-    expect(l.cargos.map((c) => c.nome)).toEqual(['Professora de Educação Especial', 'Cuidadora']);
-    expect(l.cargos[0].valores).toEqual({ A: 3000, B: 3120, C: 3244.8, D: 3374.59 });
-    expect(l.postos).toHaveLength(5);
-    expect(l.postos[4]).toMatchObject({ ficha: null, colaborador: null, inicio: '2027-03-01' });
-    expect(l.colunasCalculadas).toEqual(expect.arrayContaining(['ferias', '1 3 ferias', '13', 'fgts']));
-    expect(l.colunasIgnoradas).toEqual([{ aba: 'Estudo', colunas: ['obs interna'] }]);
-    expect(l.rateios.get('102')).toEqual([
-      { centro: 'Centro Dia Intergeracional', percentual: 50 },
-      { centro: 'Apae Rural › Viveiro de mudas', percentual: 50 },
-    ]);
+    expect(l.abas).toEqual({ estudo: 'Estudo', rateio: null });
+    expect(l.postos.map((x) => x.ficha)).toEqual(['101', '102', '103', '104', null, null]);
+    expect(l.postos[0]).toMatchObject({ colaborador: 'MARIA EXEMPLO DA SILVA', cargo: 'PROFESSOR(A)', inicio: '2015-03-02', cargaHoraria: 200, reajuste: 5, horaAtividade: true });
+    expect(l.postos[0].componentes).toMatchObject({ salario_atual: 3000, alimentacao: 340 });
+    expect(l.postos[4]).toMatchObject({ ficha: null, colaborador: 'A contratar - Cuidador(a)' });
+    expect(l.postos[5].componentes.bolsa_estagio).toBe(1406.76);
+    expect(l.colunasCalculadas.sort()).toEqual(['1 3 ferias', '13 sal', 'coluna 1', 'fgts', 'salariobase', 'valor hora', 'vhora base']);
+    expect(l.colunasIgnoradas).toEqual([]);
+    // Sem aba Rateio, a coluna "Lotação" vale 100%.
+    expect(l.rateios.get('101')).toEqual([{ centro: 'Educação', percentual: 100 }]);
+    expect(l.rateios.has('102')).toBe(false);
+  });
+
+  it('o cálculo do app bate com a coluna TOTAL da planilha', async () => {
+    const a = await analisarImportacao(p, await como('dp@exemplo.local'), await lerXlsx(await arquivoFicticio()));
+    expect(a.relatorio.diferencasCusto.map((d) => d.ficha)).toEqual(['103']); // a 103 tem TOTAL digitado errado na planilha
   });
 });
 
 describe('análise antes de gravar', () => {
-  it('mostra rateios fora de 100%, postos sem rateio, cargos e centros novos e diferenças de custo', async () => {
+  it('mostra quem está sem lotação, as lotações a escolher e não grava nada', async () => {
     const a = await analisarImportacao(p, await como('dp@exemplo.local'), await lerXlsx(await arquivoFicticio()));
     const r = a.relatorio;
-    expect(r.postos).toEqual({ total: 5, vagas: 1, comRateio: 2 });
-    expect(r.rateiosForaDe100).toEqual([{ ficha: '103', colaborador: 'Ana Exemplo Lima', soma: 113 }]);
-    expect(r.postosSemRateio.map((x) => x.ficha)).toEqual(['104', null]);
-    expect(r.cargos.novos).toBe(3); // Motorista não está na tabela salarial
-    expect(r.centrosNovos).toBe(3);
-    expect(r.diferencasCusto.map((d) => d.ficha)).toContain('103');
-    // Nada foi gravado na folha.
+    expect(r.postos).toEqual({ total: 6, vagas: 2, comLotacao: 3 });
+    expect(r.semLotacao.map((x) => x.ficha)).toEqual(['102', null, null]);
+    // "Escola" é reconhecida (código do serviço); "Educação" e "Saúde" a pessoa escolhe.
+    expect(r.servicos).toEqual({ reconhecidos: 1, aEscolher: 2 });
     expect((await lerTabela(p, Postos)).todos()).toHaveLength(0);
+  });
+
+  it('com aba Rateio, a lotação pode ser dividida; fora de 100% não é gravada', async () => {
+    const a = await analisarImportacao(p, await como('dp@exemplo.local'), await lerXlsx(await arquivoFicticio({ abaRateio: true })));
+    expect(a.relatorio.abas.rateio).toBe('Rateio');
+    expect(a.relatorio.lotacoesForaDe100).toEqual([{ ficha: '104', colaborador: 'PAULO EXEMPLO REIS', soma: 113 }]);
+    expect(a.proposta.postos.find((x) => x.ficha === '102')?.lotacao).toHaveLength(2);
   });
 
   it('Diretoria e Leitura não importam', async () => {
@@ -116,46 +145,56 @@ describe('análise antes de gravar', () => {
   });
 });
 
+const ESCOLHAS: Record<string, string> = { Educação: 'escola', Saúde: 'cer_reabilitacao' };
+const mapear = (proposta: PropostaImportacao, escolhas = ESCOLHAS): PropostaImportacao => ({
+  ...proposta,
+  servicos: proposta.servicos.map((m) => ({ ...m, servico: escolhas[m.nome] ?? m.servico })),
+});
+
 describe('confirmação', () => {
-  it('exige a área dos centros novos; depois grava tudo e o resumo passa a mostrar a folha', async () => {
+  it('exige escolher o serviço de cada lotação; depois grava tudo e o resumo passa a mostrar a folha', async () => {
     const dp = await como('dp@exemplo.local');
     const a = await analisarImportacao(p, dp, await lerXlsx(await arquivoFicticio()));
-    await expect(importarFolha(p, dp, a.proposta)).rejects.toThrow(/área do centro/);
-
-    const proposta = { ...a.proposta, centrosNovos: a.proposta.centrosNovos.map((c) => ({ ...c, area: 'assistencia_social' })) };
-    expect(await importarFolha(p, dp, proposta)).toEqual({ postos: 5 });
+    await expect(importarFolha(p, dp, a.proposta)).rejects.toThrow(/Escolha o serviço correspondente a: Educação, Saúde/);
+    expect(await importarFolha(p, dp, mapear(a.proposta))).toEqual({ postos: 6 });
 
     const lista = await listarPostos(p, dp);
-    expect(lista.postos.find((x) => x.ficha === '103')?.situacaoRateio).toBe('sem_rateio');
-    expect(lista.postos.find((x) => x.ficha === '102')?.situacaoRateio).toBe('ok');
+    expect(lista.postos.find((x) => x.ficha === '101')).toMatchObject({ situacaoRateio: 'ok', centros: ['escola'] });
+    expect(lista.postos.find((x) => x.ficha === '102')?.situacaoRateio).toBe('sem_rateio');
     const resumo = await resumoFolha(p, await como('financeiro@exemplo.local'));
     expect(resumo.alertas?.semRateio).toBe(3);
-    expect(resumo.total.anual).toBeGreaterThan(0);
-    // Nenhum rateio fora de 100% foi gravado.
-    const somas = new Map<string, number>();
-    for (const r of (await lerTabela(p, Rateios)).todos()) somas.set(r.lote, (somas.get(r.lote) ?? 0) + r.percentual);
-    expect([...somas.values()].every((s) => Math.abs(s - 100) < 1e-9)).toBe(true);
+    expect(resumo.estudoMes.pessoas).toBe(6);
+    expect(resumo.centros.map((c) => c.codigo).filter((c) => !c.startsWith('__')).sort()).toEqual(['cer_reabilitacao', 'escola']);
   });
 
-  it('importar o mesmo arquivo de novo não duplica fichas', async () => {
+  it('importar o mesmo arquivo de novo não duplica funcionários nem vagas', async () => {
     const dp = await como('dp@exemplo.local');
-    const primeira = await analisarImportacao(p, dp, await lerXlsx(await arquivoFicticio()));
-    await importarFolha(p, dp, { ...primeira.proposta, centrosNovos: primeira.proposta.centrosNovos.map((c) => ({ ...c, area: 'educacao' })) });
+    await importarFolha(p, dp, mapear((await analisarImportacao(p, dp, await lerXlsx(await arquivoFicticio()))).proposta));
     const segunda = await analisarImportacao(p, dp, await lerXlsx(await arquivoFicticio()));
     expect(segunda.relatorio.fichasJaCadastradas).toEqual(['101', '102', '103', '104']);
-    expect(segunda.relatorio.cargos.novos).toBe(0);
-    expect(segunda.relatorio.centrosNovos).toBe(0);
-    await importarFolha(p, dp, segunda.proposta);
-    expect((await lerTabela(p, Postos)).todos().filter((x) => x.ficha)).toHaveLength(4);
+    expect(segunda.relatorio.vagasJaCadastradas).toBe(2);
+    expect(segunda.proposta.postos).toHaveLength(0);
+    expect((await lerTabela(p, Postos)).todos()).toHaveLength(6);
   });
 
   it('a auditoria registra a importação sem nomes nem valores', async () => {
     const dp = await como('dp@exemplo.local');
     const a = await analisarImportacao(p, dp, await lerXlsx(await arquivoFicticio()));
-    await importarFolha(p, dp, { ...a.proposta, centrosNovos: a.proposta.centrosNovos.map((c) => ({ ...c, area: 'educacao' })) });
+    await importarFolha(p, dp, mapear(a.proposta));
     const texto = JSON.stringify((await lerTabela(p, RegistrosAuditoria)).todos());
     expect(texto).toContain('ImportacaoFolha');
-    expect(texto).not.toContain('Maria Exemplo');
-    expect(texto).not.toContain('3120');
+    expect(texto).not.toContain('MARIA EXEMPLO');
+    expect(texto).not.toContain('3000');
+  });
+
+  it('dois nomes da planilha que caem no mesmo serviço são somados na lotação', async () => {
+    const dp = await como('dp@exemplo.local');
+    const a = await analisarImportacao(p, dp, await lerXlsx(await arquivoFicticio({ abaRateio: true })));
+    await importarFolha(p, dp, mapear(a.proposta, { ...ESCOLHAS, 'Centro Dia Intergeracional': 'escola' }));
+    const lista = await listarPostos(p, dp);
+    expect(lista.postos.find((x) => x.ficha === '102')).toMatchObject({ situacaoRateio: 'ok', centros: ['escola'] });
+    const somas = new Map<string, number>();
+    for (const r of (await lerTabela(p, Rateios)).todos()) somas.set(r.lote, (somas.get(r.lote) ?? 0) + r.percentual);
+    expect([...somas.values()].every((s) => Math.abs(s - 100) < 1e-9)).toBe(true);
   });
 });

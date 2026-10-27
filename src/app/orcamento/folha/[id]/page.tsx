@@ -11,7 +11,7 @@ import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { acaoEncerrarPosto, acaoSalvarPosto } from '../../acoes';
 
-export const metadata: Metadata = { title: 'Posto da folha' };
+export const metadata: Metadata = { title: 'Funcionário' };
 
 export default async function FichaDoPosto({ params }: { params: Promise<{ id: string }> }) {
   const usuario = await usuarioLogado();
@@ -24,12 +24,12 @@ export default async function FichaDoPosto({ params }: { params: Promise<{ id: s
   try {
     ficha = await fichaDoPosto(app.planilhas, usuario.autorizador, novo ? null : id);
   } catch (erro) {
-    if (erro instanceof ErroValidacaoFolha) redirect('/orcamento/postos');
+    if (erro instanceof ErroValidacaoFolha) redirect('/orcamento/folha');
     throw erro;
   }
   const p = ficha.posto;
-  const cargo = p ? (ficha.cadastros.cargos.find((c) => c.codigo === p.cargo)?.nome ?? p.cargo) : null;
-  const titulo = novo ? 'Cadastrar posto' : (p?.colaborador ?? 'Vaga prevista');
+  const cargo = p?.cargo ?? null;
+  const titulo = novo ? 'Cadastrar na folha' : (p?.colaborador ?? 'Vaga prevista');
 
   return (
     <div>
@@ -37,7 +37,7 @@ export default async function FichaDoPosto({ params }: { params: Promise<{ id: s
         trilha={[
           { rotulo: 'Início', href: '/' },
           { rotulo: 'Orçamento', href: '/orcamento' },
-          { rotulo: 'Postos', href: '/orcamento/postos' },
+          { rotulo: 'Folha de Pagamento', href: '/orcamento/folha' },
           { rotulo: titulo },
         ]}
         titulo={titulo}
@@ -46,17 +46,17 @@ export default async function FichaDoPosto({ params }: { params: Promise<{ id: s
             <span className="flex flex-wrap items-center gap-2">
               <span>
                 {cargo}
-                {p.nivel ? `, nível ${p.nivel}` : ''}
-                {p.ficha ? ` · ficha ${p.ficha}` : ''}
+                {p.departamento ? ` · ${p.departamento}` : ''}
+                {p.ficha ? ` · código ${p.ficha}` : ''}
               </span>
               {p.desligamento ? (
                 <Etiqueta tipo="neutro">Desligado em {data(p.desligamento)}</Etiqueta>
-              ) : !p.colaborador ? (
+              ) : !p.ficha ? (
                 <Etiqueta tipo="info">Vaga prevista a partir de {data(p.inicio)}</Etiqueta>
               ) : null}
             </span>
           ) : (
-            'Um colaborador ou uma vaga prevista. O custo e o rateio entram no resumo assim que você salvar.'
+            'Um funcionário ou uma vaga prevista, com todas as colunas da aba Estudo. O custo entra no resumo assim que você salvar.'
           )
         }
         acoes={
@@ -68,7 +68,7 @@ export default async function FichaDoPosto({ params }: { params: Promise<{ id: s
               variante="secundario"
               perigoso={false}
               titulo={`Registrar o desligamento de ${p.colaborador ?? 'esta vaga'}?`}
-              mensagem="O posto deixa de contar no custo depois do mês do desligamento. Os meses anteriores e o histórico são mantidos."
+              mensagem="O funcionário deixa de contar no custo depois do mês do desligamento. Os meses anteriores e o histórico são mantidos."
               confirmar="Registrar desligamento"
             >
               <Campo rotulo="Data de desligamento" obrigatorio>
@@ -79,19 +79,12 @@ export default async function FichaDoPosto({ params }: { params: Promise<{ id: s
         }
       />
 
-      {ficha.cadastros.cargos.length === 0 || ficha.cadastros.centros.length === 0 ? (
+      {ficha.cadastros.centros.length === 0 ? (
         <EstadoVazio
-          titulo="Faltam cargos ou centros de custo"
-          acao={
-            <span className="flex flex-wrap justify-center gap-2">
-              <LinkBotao href="/orcamento/importar">Importar a planilha da folha</LinkBotao>
-              <LinkBotao href="/orcamento/cadastros" variante="secundario">
-                Cadastrar cargos e centros
-              </LinkBotao>
-            </span>
-          }
+          titulo="Cadastre os serviços primeiro"
+          acao={<LinkBotao href="/admin/servicos">Ir para Serviços</LinkBotao>}
         >
-          Antes de cadastrar postos, é preciso ter pelo menos um cargo e um centro de custo.
+          A lotação de cada funcionário é feita nos Serviços da instituição. Peça à administração da plataforma para cadastrá-los.
         </EstadoVazio>
       ) : (
         <FormularioPosto key={`${p?.id}-${p?.versao}`} ficha={ficha} acao={acaoSalvarPosto} />

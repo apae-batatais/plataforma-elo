@@ -2,21 +2,22 @@
  * Importação da planilha da folha, em dois passos:
  * 1. analisar: lê o arquivo, compara com o que já está cadastrado e devolve
  *    uma proposta e um relatório. Não grava nada.
- * 2. importar: a pessoa confere o relatório (e escolhe a área dos centros de
- *    custo novos) e confirma. A proposta é validada de novo antes de gravar.
+ * 2. importar: a pessoa confere o relatório, diz a qual Serviço corresponde
+ *    cada nome de lotação que o app não reconheceu, e confirma. A proposta é
+ *    validada de novo antes de gravar.
  *
- * Regras: rateio fora de 100% não é gravado (o posto entra sem rateio e
- * aparece no atalho "sem rateio"); fichas já cadastradas são ignoradas;
+ * Regras: lotação fora de 100% não é gravada (o funcionário entra sem lotação
+ * e aparece no atalho "sem lotação"); fichas já cadastradas são ignoradas;
  * nada existente é alterado.
  */
 import { z } from 'zod';
 import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
-import { Areas } from '@/nucleo/estrutura/tabelas';
-import { COMPONENTES, custoMensal, parametrosCom, somaRateio, validarRateio } from '../dominio/folha';
-import { codigoDe, lerPlanilhaFolha, normalizar, type AbaImportada, type CelulaImportada } from '../dominio/importacao';
-import { Cargos, CentrosCusto, Componentes, NIVEIS, Parametros, Postos, Rateios, TabelaSalarial } from '../dados/tabelas';
+import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
+import { calcularLinha, COMPONENTES, parametrosCom, somaRateio, validarRateio, type LinhaRateio } from '../dominio/folha';
+import { lerPlanilhaFolha, normalizar, type AbaImportada, type CelulaImportada } from '../dominio/importacao';
+import { Componentes, Parametros, Postos, Rateios } from '../dados/tabelas';
 import { ErroValidacaoFolha } from './folha';
 
 function exigirImportar(quem: Autorizador) {
@@ -29,19 +30,23 @@ function exigirImportar(quem: Autorizador) {
 
 const esquemaProposta = z.object({
   ano: z.number().int(),
-  centrosNovos: z.array(z.object({ codigo: z.string(), nome: z.string(), area: z.string().nullable() })),
-  cargosNovos: z.array(z.object({ codigo: z.string(), nome: z.string(), grupo: z.string().nullable(), requisitos: z.string().nullable(), classe: z.string().nullable(), cargaReferencia: z.number().nullable() })),
-  valoresTabela: z.array(z.object({ cargo: z.string(), nivel: z.enum(NIVEIS), valor: z.number().positive() })),
+  /** Cada nome de lotação da planilha e o Serviço correspondente (null = falta escolher). */
+  servicos: z.array(z.object({ nome: z.string(), servico: z.string().nullable() })),
   postos: z.array(
     z.object({
       ficha: z.string().nullable(),
       colaborador: z.string().nullable(),
       cargo: z.string(),
-      nivel: z.enum(NIVEIS).nullable(),
+      departamento: z.string().nullable(),
       cargaHoraria: z.number().nullable(),
       inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      componentes: z.object(Object.fromEntries(COMPONENTES.map((c) => [c.chave, z.number().min(0)]))),
-      rateio: z.array(z.object({ centro: z.string(), percentual: z.number() })).nullable(),
+      componentes: z.object({
+        ...Object.fromEntries(COMPONENTES.map((c) => [c.chave, z.number().min(0)])),
+        reajuste: z.number().min(0).max(100),
+        hora_atividade: z.boolean(),
+      }),
+      /** Lotação pelo nome usado na planilha. */
+      lotacao: z.array(z.object({ nome: z.string(), percentual: z.number() })).nullable(),
     }),
   ),
 });
@@ -49,16 +54,17 @@ const esquemaProposta = z.object({
 export type PropostaImportacao = z.infer<typeof esquemaProposta>;
 
 export interface RelatorioImportacao {
-  abas: { tabela: string | null; estudo: string | null; rateio: string | null };
+  abas: { estudo: string | null; rateio: string | null };
   avisos: string[];
   colunasIgnoradas: { aba: string; colunas: string[] }[];
   colunasCalculadas: string[];
-  cargos: { novos: number; existentes: number; valores: number };
-  centrosNovos: number;
-  postos: { total: number; vagas: number; comRateio: number };
+  servicos: { reconhecidos: number; aEscolher: number };
+  postos: { total: number; vagas: number; comLotacao: number };
   fichasJaCadastradas: string[];
-  rateiosForaDe100: { ficha: string; colaborador: string | null; soma: number }[];
-  postosSemRateio: { ficha: string | null; colaborador: string | null }[];
+  /** Vagas previstas (sem código) que já existem com a mesma descrição e cargo. */
+  vagasJaCadastradas: number;
+  lotacoesForaDe100: { ficha: string; colaborador: string | null; soma: number }[];
+  semLotacao: { ficha: string | null; colaborador: string | null }[];
   semAdmissao: number;
   diferencasCusto: { ficha: string | null; colaborador: string | null; planilha: number; app: number }[];
   custoMensalApp: number;
@@ -68,7 +74,8 @@ export interface RelatorioImportacao {
 export interface Analise {
   proposta: PropostaImportacao;
   relatorio: RelatorioImportacao;
-  areas: { codigo: string; nome: string }[];
+  /** Serviços cadastrados, para escolher a correspondência. */
+  opcoes: { codigo: string; nome: string; area: string }[];
 }
 
 /** Converte o arquivo .xlsx em abas de células. */
@@ -107,71 +114,37 @@ export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: 
   exigirImportar(quem);
   const leitura = lerPlanilhaFolha(abas);
   if (!leitura.abas.estudo || leitura.postos.length === 0) {
-    throw new ErroValidacaoFolha(
-      ['Não encontrei postos para importar.', ...leitura.avisos].join(' '),
-    );
+    throw new ErroValidacaoFolha(['Não encontrei funcionários para importar.', ...leitura.avisos].join(' '));
   }
-  const [centros, cargos, tabela, postos, parametrosLidos, areas] = await lerTabelas(p, [CentrosCusto, Cargos, TabelaSalarial, Postos, Parametros, Areas] as const);
+  const [postos, parametrosLidos, servicos, areas] = await lerTabelas(p, [Postos, Parametros, Servicos, Areas] as const);
   const parametros = parametrosCom(Object.fromEntries(parametrosLidos.ativos().map((x) => [x.chave, x.valor])));
   const ano = parametros.ano;
 
-  // Cargos: casados pelo nome; os que faltam são criados.
-  const codigosCargo = new Set(cargos.todos().map((c) => c.codigo));
-  const cargoPorNome = new Map(cargos.ativos().map((c) => [normalizar(c.nome), c.codigo]));
-  const cargosNovos: PropostaImportacao['cargosNovos'] = [];
-  const garantirCargo = (nome: string, extra?: Partial<PropostaImportacao['cargosNovos'][number]>) => {
-    const chave = normalizar(nome);
-    let codigo = cargoPorNome.get(chave);
-    if (!codigo) {
-      codigo = codigoDe(nome, codigosCargo);
-      cargoPorNome.set(chave, codigo);
-      cargosNovos.push({ codigo, nome, grupo: null, requisitos: null, classe: null, cargaReferencia: null, ...extra });
-    }
-    return codigo;
-  };
-  const valoresTabela: PropostaImportacao['valoresTabela'] = [];
-  let cargosExistentes = 0;
-  const vigentes = new Map<string, number>();
-  for (const t of tabela.ativos()) vigentes.set(`${t.cargo}|${t.nivel}`, t.valor);
-  for (const c of leitura.cargos) {
-    if (cargoPorNome.has(normalizar(c.nome))) cargosExistentes++;
-    const codigo = garantirCargo(c.nome, { grupo: c.grupo, requisitos: c.requisitos, classe: c.classe, cargaReferencia: c.cargaReferencia });
-    for (const [nivel, valor] of Object.entries(c.valores)) {
-      if (vigentes.get(`${codigo}|${nivel}`) !== valor) valoresTabela.push({ cargo: codigo, nivel: nivel as (typeof NIVEIS)[number], valor: valor! });
-    }
+  // Nomes de lotação da planilha × Serviços cadastrados (pelo nome ou pelo código).
+  const servicoPorNome = new Map<string, string>();
+  for (const s of servicos.ativos()) {
+    servicoPorNome.set(normalizar(s.nome), s.codigo);
+    servicoPorNome.set(normalizar(s.codigo), s.codigo);
   }
-
-  // Centros de custo: casados pelo nome (ou código); os que faltam são criados.
-  const codigosCentro = new Set(centros.todos().map((c) => c.codigo));
-  const centroPorNome = new Map<string, string>();
-  for (const c of centros.ativos()) {
-    centroPorNome.set(normalizar(c.nome), c.codigo);
-    centroPorNome.set(normalizar(c.codigo), c.codigo);
-  }
-  const centrosNovos: PropostaImportacao['centrosNovos'] = [];
-  const garantirCentro = (nome: string) => {
-    const chave = normalizar(nome);
-    let codigo = centroPorNome.get(chave);
-    if (!codigo) {
-      codigo = codigoDe(nome, codigosCentro);
-      centroPorNome.set(chave, codigo);
-      centrosNovos.push({ codigo, nome, area: null });
-    }
-    return codigo;
-  };
+  const nomes = new Map<string, string>();
+  for (const lista of leitura.rateios.values()) for (const l of lista) nomes.set(normalizar(l.centro), l.centro);
+  const mapa = [...nomes.values()]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+    .map((nome) => ({ nome, servico: servicoPorNome.get(normalizar(nome)) ?? null }));
 
   const fichasAtivas = new Set(postos.ativos().filter((x) => x.ficha && !x.desligamento).map((x) => x.ficha!));
+  const vagasAtivas = new Set(postos.ativos().filter((x) => !x.ficha && !x.desligamento).map((x) => chaveVaga(x.colaborador, x.cargo)));
   const relatorio: RelatorioImportacao = {
-    abas: leitura.abas,
+    abas: { estudo: leitura.abas.estudo, rateio: leitura.abas.rateio },
     avisos: leitura.avisos,
     colunasIgnoradas: leitura.colunasIgnoradas,
     colunasCalculadas: leitura.colunasCalculadas,
-    cargos: { novos: 0, existentes: cargosExistentes, valores: 0 },
-    centrosNovos: 0,
-    postos: { total: 0, vagas: 0, comRateio: 0 },
+    servicos: { reconhecidos: mapa.filter((m) => m.servico).length, aEscolher: mapa.filter((m) => !m.servico).length },
+    postos: { total: 0, vagas: 0, comLotacao: 0 },
     fichasJaCadastradas: [],
-    rateiosForaDe100: [],
-    postosSemRateio: [],
+    vagasJaCadastradas: 0,
+    lotacoesForaDe100: [],
+    semLotacao: [],
     semAdmissao: 0,
     diferencasCusto: [],
     custoMensalApp: 0,
@@ -188,17 +161,22 @@ export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: 
       continue;
     }
     if (x.ficha) fichasNaLeitura.add(x.ficha);
-    const cargo = garantirCargo(x.cargo);
-    let rateio: PropostaImportacao['postos'][number]['rateio'] = null;
+    else if (vagasAtivas.has(chaveVaga(x.colaborador, x.cargo))) {
+      relatorio.vagasJaCadastradas++;
+      continue;
+    }
+    let lotacao: PropostaImportacao['postos'][number]['lotacao'] = null;
     const lido = x.ficha ? leitura.rateios.get(x.ficha) : undefined;
     if (lido && lido.length) {
-      const linhas = lido.map((l) => ({ centro: garantirCentro(l.centro), percentual: l.percentual }));
-      if (validarRateio(linhas).length === 0) rateio = linhas;
-      else relatorio.rateiosForaDe100.push({ ficha: x.ficha!, colaborador: x.colaborador, soma: somaRateio(linhas) });
-    } else relatorio.postosSemRateio.push({ ficha: x.ficha, colaborador: x.colaborador });
+      const soma = somaRateio(lido.map((l) => ({ centro: l.centro, percentual: l.percentual })));
+      if (soma === 100) lotacao = lido.map((l) => ({ nome: l.centro, percentual: l.percentual }));
+      else relatorio.lotacoesForaDe100.push({ ficha: x.ficha!, colaborador: x.colaborador, soma });
+    } else relatorio.semLotacao.push({ ficha: x.ficha, colaborador: x.colaborador });
     if (!x.inicio && x.colaborador) relatorio.semAdmissao++;
 
-    const custo = custoMensal(x.componentes, parametros, 1).total;
+    const componentes = { ...x.componentes, reajuste: x.reajuste, hora_atividade: x.horaAtividade };
+    // Compara com a coluna TOTAL da planilha, que já tem o reajuste aplicado.
+    const custo = calcularLinha(componentes, x.cargaHoraria, parametros, 12).total;
     relatorio.custoMensalApp += custo;
     if (x.totalPlanilha !== null) {
       temTotal = true;
@@ -208,32 +186,45 @@ export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: 
     propostos.push({
       ficha: x.ficha,
       colaborador: x.colaborador,
-      cargo,
-      nivel: x.nivel as (typeof NIVEIS)[number] | null,
+      cargo: x.cargo,
+      departamento: x.departamento,
       cargaHoraria: x.cargaHoraria,
       inicio: x.inicio ?? `${ano}-01-01`,
-      componentes: x.componentes,
-      rateio,
+      componentes,
+      lotacao,
     });
   }
 
-  relatorio.cargos.novos = cargosNovos.length;
-  relatorio.cargos.valores = valoresTabela.length;
-  relatorio.centrosNovos = centrosNovos.length;
   relatorio.postos = {
     total: propostos.length,
-    vagas: propostos.filter((x) => !x.colaborador).length,
-    comRateio: propostos.filter((x) => x.rateio).length,
+    vagas: propostos.filter((x) => !x.ficha).length,
+    comLotacao: propostos.filter((x) => x.lotacao).length,
   };
   relatorio.custoMensalApp = Math.round(relatorio.custoMensalApp * 100) / 100;
   relatorio.custoMensalPlanilha = temTotal ? Math.round(somaPlanilha * 100) / 100 : null;
 
+  const nomeArea = new Map(areas.ativos().map((a) => [a.codigo, a.nome]));
   await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'ImportacaoFolha', detalhes: { postos: propostos.length } });
   return {
-    proposta: { ano, centrosNovos, cargosNovos, valoresTabela, postos: propostos },
+    proposta: { ano, servicos: mapa, postos: propostos },
     relatorio,
-    areas: areas.ativos().map((a) => ({ codigo: a.codigo, nome: a.nome })),
+    opcoes: servicos
+      .ativos()
+      .map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
+      .sort((a, b) => a.area.localeCompare(b.area, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
   };
+}
+
+const chaveVaga = (descricao: string | null, cargo: string) => `${normalizar(descricao ?? '')}|${normalizar(cargo)}`;
+
+/** Traduz a lotação pelos nomes da planilha para Serviços, somando nomes que caem no mesmo serviço. */
+function lotacaoEmServicos(lotacao: { nome: string; percentual: number }[], mapa: Map<string, string>): LinhaRateio[] {
+  const porServico = new Map<string, number>();
+  for (const l of lotacao) {
+    const s = mapa.get(normalizar(l.nome))!;
+    porServico.set(s, Math.round(((porServico.get(s) ?? 0) + l.percentual) * 100) / 100);
+  }
+  return [...porServico].map(([centro, percentual]) => ({ centro, percentual }));
 }
 
 export async function importarFolha(p: Planilhas, quem: Autorizador, bruta: unknown): Promise<{ postos: number }> {
@@ -241,50 +232,37 @@ export async function importarFolha(p: Planilhas, quem: Autorizador, bruta: unkn
   const r = esquemaProposta.safeParse(bruta);
   if (!r.success) throw new ErroValidacaoFolha('A importação veio incompleta. Envie o arquivo de novo.');
   const proposta = r.data;
-  const [centros, cargos, tabela, postos, componentes, rateios, areas] = await lerTabelas(p, [
-    CentrosCusto, Cargos, TabelaSalarial, Postos, Componentes, Rateios, Areas,
-  ] as const);
+  const [servicos, postos, componentes, rateios] = await lerTabelas(p, [Servicos, Postos, Componentes, Rateios] as const);
 
-  // Confere de novo contra o que existe agora.
-  const codigosArea = new Set(areas.ativos().map((a) => a.codigo));
-  for (const c of proposta.centrosNovos) {
-    if (centros.todos().some((x) => x.codigo === c.codigo)) throw new ErroValidacaoFolha('Os cadastros mudaram desde a análise. Envie o arquivo de novo.');
-    if (!c.area || !codigosArea.has(c.area)) throw new ErroValidacaoFolha(`Escolha a área do centro de custo "${c.nome}".`);
-  }
-  if (proposta.cargosNovos.some((c) => cargos.todos().some((x) => x.codigo === c.codigo))) {
-    throw new ErroValidacaoFolha('Os cadastros mudaram desde a análise. Envie o arquivo de novo.');
-  }
-  const codigosCargo = new Set([...cargos.ativos().map((c) => c.codigo), ...proposta.cargosNovos.map((c) => c.codigo)]);
-  const codigosCentro = new Set([...centros.ativos().map((c) => c.codigo), ...proposta.centrosNovos.map((c) => c.codigo)]);
+  const existentes = new Set(servicos.ativos().map((s) => s.codigo));
+  const faltando = proposta.servicos.filter((m) => !m.servico).map((m) => m.nome);
+  if (faltando.length) throw new ErroValidacaoFolha(`Escolha o serviço correspondente a: ${faltando.join(', ')}.`);
+  if (proposta.servicos.some((m) => !existentes.has(m.servico!))) throw new ErroValidacaoFolha('Há serviço escolhido que não existe mais. Envie o arquivo de novo.');
+  const mapa = new Map(proposta.servicos.map((m) => [normalizar(m.nome), m.servico!]));
+
   const fichasAtivas = new Set(postos.ativos().filter((x) => x.ficha && !x.desligamento).map((x) => x.ficha!));
-  const novosPostos = proposta.postos.filter((x) => !(x.ficha && fichasAtivas.has(x.ficha)));
-  for (const x of novosPostos) {
-    if (!codigosCargo.has(x.cargo)) throw new ErroValidacaoFolha('Há posto com cargo desconhecido. Envie o arquivo de novo.');
-    if (x.rateio && (validarRateio(x.rateio).length || x.rateio.some((l) => !codigosCentro.has(l.centro)))) {
-      throw new ErroValidacaoFolha('Há rateio inválido na importação. Envie o arquivo de novo.');
-    }
-  }
+  const vagasAtivas = new Set(postos.ativos().filter((x) => !x.ficha && !x.desligamento).map((x) => chaveVaga(x.colaborador, x.cargo)));
+  const novos = proposta.postos
+    .filter((x) => (x.ficha ? !fichasAtivas.has(x.ficha) : !vagasAtivas.has(chaveVaga(x.colaborador, x.cargo))))
+    .map((x) => {
+      if (x.lotacao?.some((l) => !mapa.has(normalizar(l.nome)))) throw new ErroValidacaoFolha('Há lotação com nome sem correspondência. Envie o arquivo de novo.');
+      const linhas = x.lotacao ? lotacaoEmServicos(x.lotacao, mapa) : null;
+      if (linhas && validarRateio(linhas).length) throw new ErroValidacaoFolha('Há lotação inválida na importação. Envie o arquivo de novo.');
+      return { ...x, linhas };
+    });
 
   const autoria = { email: quem.email };
   const vigencia = (inicio: string) => (inicio < `${proposta.ano}-01-01` ? `${proposta.ano}-01-01` : inicio);
-  await inserirRegistros(p, centros, proposta.centrosNovos, autoria);
-  await inserirRegistros(
-    p,
-    cargos,
-    proposta.cargosNovos.map((c) => ({ codigo: c.codigo, nome: c.nome, grupo: c.grupo, requisitos: c.requisitos, classe: c.classe, carga_horaria_referencia: c.cargaReferencia })),
-    autoria,
-  );
-  await inserirRegistros(p, tabela, proposta.valoresTabela.map((v) => ({ ...v, vigencia: `${proposta.ano}-01-01` })), autoria);
   const gravados = await inserirRegistros(
     p,
     postos,
-    novosPostos.map((x) => ({ ficha: x.ficha, colaborador: x.colaborador, cargo: x.cargo, nivel: x.nivel, carga_horaria: x.cargaHoraria, inicio: x.inicio })),
+    novos.map((x) => ({ ficha: x.ficha, colaborador: x.colaborador, cargo: x.cargo, departamento: x.departamento, carga_horaria: x.cargaHoraria, inicio: x.inicio })),
     autoria,
   );
   await inserirRegistros(
     p,
     componentes,
-    gravados.map((g, i) => ({ posto_id: g.id, vigencia: vigencia(g.inicio), ...novosPostos[i].componentes, fora_da_tabela: false })) as never,
+    gravados.map((g, i) => ({ posto_id: g.id, vigencia: vigencia(g.inicio), ...novos[i].componentes })) as never,
     autoria,
   );
   await inserirRegistros(
@@ -292,15 +270,10 @@ export async function importarFolha(p: Planilhas, quem: Autorizador, bruta: unkn
     rateios,
     gravados.flatMap((g, i) => {
       const lote = crypto.randomUUID();
-      return (novosPostos[i].rateio ?? []).map((l) => ({ posto_id: g.id, lote, centro_custo: l.centro, percentual: l.percentual, vigencia: vigencia(g.inicio) }));
+      return (novos[i].linhas ?? []).map((l) => ({ posto_id: g.id, lote, servico: l.centro, percentual: l.percentual, vigencia: vigencia(g.inicio) }));
     }),
     autoria,
   );
-  await registrarAuditoria(p, {
-    usuario: quem.email,
-    acao: 'inclusao',
-    entidade: 'ImportacaoFolha',
-    detalhes: { postos: gravados.length, cargos: proposta.cargosNovos.length, centros: proposta.centrosNovos.length },
-  });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'ImportacaoFolha', detalhes: { postos: gravados.length } });
   return { postos: gravados.length };
 }

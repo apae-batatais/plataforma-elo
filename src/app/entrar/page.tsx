@@ -42,8 +42,8 @@ function Moldura({ children }: { children: React.ReactNode }) {
 const O_QUE_VE: Record<string, string> = {
   diretoria: 'Vê pessoas, auditoria e a folha completa.',
   administrador_plataforma: 'Configura acessos, serviços e planilhas.',
-  financeiro: 'Opera a folha, o rateio e os parâmetros.',
-  departamento_pessoal: 'Cadastra postos, salários e rateios.',
+  financeiro: 'Opera a folha, a lotação e os parâmetros.',
+  departamento_pessoal: 'Cadastra funcionários, salários e lotação.',
   coordenacao_servico: 'Vê atendidos e totais do seu escopo.',
   tecnico_avaliador: 'Vê atendidos do seu serviço.',
   leitura: 'Vê só totais e painéis.',

@@ -1,5 +1,6 @@
 /**
- * Leitura da planilha da folha (abas "Tabela Salarial", "Estudo" e "Rateio").
+ * Leitura da planilha da folha (abas "Estudo" e "Rateio"). A aba
+ * "Tabela Salarial" não é usada: cargo e nível vêm da própria aba Estudo.
  *
  * Regras puras: recebe as abas já convertidas em linhas de células e devolve
  * o que foi entendido e um relatório. As colunas são reconhecidas pelo nome
@@ -33,39 +34,39 @@ export function codigoDe(nome: string, usados: Set<string>): string {
 }
 
 const SINONIMOS = {
-  ficha: ['ficha', 'n ficha', 'no ficha', 'numero ficha', 'n da ficha', 'nº ficha', 'matricula', 'registro'],
+  ficha: ['codigo', 'cod', 'ficha', 'n ficha', 'no ficha', 'numero ficha', 'n da ficha', 'matricula', 'registro'],
   colaborador: ['nome', 'colaborador', 'funcionario', 'nome do colaborador', 'empregado'],
   cargo: ['cargo', 'funcao', 'cargo funcao'],
-  grupo: ['grupo', 'grupo ocupacional'],
-  requisitos: ['requisitos', 'requisito', 'escolaridade'],
-  classe: ['classe'],
-  nivel: ['nivel', 'referencia', 'ref', 'faixa'],
-  carga: ['ch', 'c h', 'carga horaria', 'carga', 'horas', 'horas semanais', 'carga horaria semanal', 'jornada'],
+  departamento: ['departamento', 'depto', 'setor'],
+  lotacao: ['lotacao'],
+  reajuste: ['reajuste', 'reajuste %'],
+  horaAtividade: ['hora atividade', 'h atividade', 'horas atividade'],
+  carga: ['carga horaria', 'ch', 'c h', 'carga', 'horas', 'carga horaria mensal', 'jornada'],
   inicio: ['admissao', 'data admissao', 'data de admissao', 'inicio', 'data inicio', 'data de inicio'],
-  total: ['total', 'custo total', 'custo mensal', 'total mensal', 'total geral'],
+  total: ['total', 'custo total', 'custo mensal', 'total mensal'],
   centro: ['centro de custo', 'centro custo', 'centro', 'cc'],
   percentual: ['percentual', 'rateio', 'perc', 'porcentagem'],
 } as const;
 
 const SINONIMOS_COMPONENTES: Record<ChaveComponente, string[]> = {
-  salario_base: ['salario base', 'salario', 'sal base', 'salario nominal'],
-  adicional: ['adicional', 'adicional tempo de servico', 'ats', 'anuenio', 'quinquenio'],
-  hora_atividade: ['hora atividade', 'h atividade', 'horas atividade'],
-  insalubridade: ['insalubridade', 'adicional insalubridade'],
-  periculosidade: ['periculosidade', 'adicional periculosidade'],
-  gratificacao_funcao: ['gratificacao de funcao', 'gratificacao', 'gratif funcao', 'funcao gratificada'],
+  salario_atual: ['salario atual', 'salario', 'salario nominal'],
+  adicional_salarial: ['adicional salarial', 'adicional', 'adicional tempo de servico', 'ats'],
   ajuda_custo: ['ajuda de custo', 'ajuda custo'],
-  bolsa_estagio: ['bolsa estagio', 'estagio', 'bolsa de estagio'],
-  plano_saude: ['plano de saude', 'plano saude', 'convenio medico', 'convenio'],
-  bolsa_estudo: ['bolsa estudo', 'bolsa de estudo', 'bolsa de estudos'],
-  locomocao: ['locomocao', 'vale transporte', 'transporte', 'vt'],
-  alimentacao: ['alimentacao', 'vale alimentacao', 'cesta basica', 'va', 'vale refeicao'],
+  bolsa_estagio: ['bolsa estagio', 'bolsa de estagio'],
+  insalubridade: ['insalubridade'],
+  periculosidade: ['periculosidade'],
+  gratificacao_funcao: ['g funcao', 'gratificacao de funcao', 'gratificacao', 'funcao gratificada'],
+  plano_saude: ['plano de saude', 'plano saude'],
+  bolsa_estudo: ['bolsa estudo', 'bolsa de estudo'],
+  locomocao: ['locomocao', 'vale transporte'],
+  alimentacao: ['alimentacao', 'vale alimentacao'],
+  ferias: ['ferias'],
+  abono: ['abono'],
+  indenizacoes: ['indez', 'indenizacoes', 'indenizacao'],
 };
 
-/** Colunas que o app calcula sozinho (provisões e encargos) e por isso ignora. */
-const CALCULADAS = ['ferias', '1 3', 'terco', '13', 'decimo', 'fgts', 'abono', 'indenizacao', 'indenizacoes', 'provisao', 'provisoes', 'encargos', 'inss', 'pis'];
-
-const NIVEL_LETRA = /^(?:nivel )?([a-k])$/;
+/** Colunas da aba Estudo com fórmula: o app calcula e por isso não importa. */
+const CALCULADAS = ['valor hora', 'vhora base', 'salariobase', 'salario base', '1 3 ferias', '13o sal', '13 sal', '13o salario', 'fgts', 'coluna 1'];
 
 function acharAba(abas: AbaImportada[], nomes: string[]): AbaImportada | undefined {
   return abas.find((a) => nomes.includes(normalizar(a.nome))) ?? abas.find((a) => nomes.some((n) => normalizar(a.nome).includes(n)));
@@ -114,30 +115,23 @@ const ehTotal = (t: string) => /^(total|subtotal|soma)\b/.test(normalizar(t));
 
 // ---------------------------------------------------------------------------
 
-export interface CargoLido {
-  nome: string;
-  grupo: string | null;
-  requisitos: string | null;
-  classe: string | null;
-  cargaReferencia: number | null;
-  valores: Partial<Record<string, number>>;
-}
-
 export interface PostoLido {
   linha: number;
   ficha: string | null;
   colaborador: string | null;
   cargo: string;
-  nivel: string | null;
+  departamento: string | null;
   cargaHoraria: number | null;
   inicio: string | null;
   componentes: Record<ChaveComponente, number>;
+  /** Reajuste em % (a planilha guarda 0,05 para 5%). */
+  reajuste: number;
+  horaAtividade: boolean;
   totalPlanilha: number | null;
 }
 
 export interface LeituraFolha {
-  abas: { tabela: string | null; estudo: string | null; rateio: string | null };
-  cargos: CargoLido[];
+  abas: { estudo: string | null; rateio: string | null };
   postos: PostoLido[];
   /** Rateio por nº da ficha (centro pelo nome, percentual de 0 a 100). */
   rateios: Map<string, { centro: string; percentual: number }[]>;
@@ -151,49 +145,9 @@ export function lerPlanilhaFolha(abas: AbaImportada[]): LeituraFolha {
   const colunasIgnoradas: LeituraFolha['colunasIgnoradas'] = [];
   const colunasCalculadas: string[] = [];
 
-  // Tabela salarial ---------------------------------------------------------
-  const abaTabela = acharAba(abas, ['tabela salarial', 'tabela', 'cargos']);
-  const cargos: CargoLido[] = [];
-  if (abaTabela) {
-    const i = acharCabecalho(abaTabela, [[...SINONIMOS.cargo]]);
-    if (i < 0) avisos.push(`Aba "${abaTabela.nome}": não encontrei a coluna "Cargo".`);
-    else {
-      const cab = abaTabela.linhas[i].map(normalizar);
-      const col = {
-        cargo: coluna(cab, SINONIMOS.cargo),
-        grupo: coluna(cab, SINONIMOS.grupo),
-        requisitos: coluna(cab, SINONIMOS.requisitos),
-        classe: coluna(cab, SINONIMOS.classe),
-        carga: coluna(cab, SINONIMOS.carga),
-      };
-      const niveis = cab.map((c, j) => [c.match(NIVEL_LETRA)?.[1]?.toUpperCase(), j] as const).filter(([n]) => n);
-      const usadas = new Set([...Object.values(col), ...niveis.map(([, j]) => j)]);
-      const ignoradas = cab.filter((c, j) => c && !usadas.has(j));
-      if (ignoradas.length) colunasIgnoradas.push({ aba: abaTabela.nome, colunas: ignoradas });
-      if (niveis.length === 0) avisos.push(`Aba "${abaTabela.nome}": não encontrei as colunas dos níveis (A a K).`);
-      for (const linha of abaTabela.linhas.slice(i + 1)) {
-        const nome = textoDe(linha[col.cargo]);
-        if (!nome || ehTotal(nome)) continue;
-        const valores: CargoLido['valores'] = {};
-        for (const [n, j] of niveis) {
-          const v = paraNumero(linha[j]);
-          if (v && v > 0) valores[n!] = Math.round(v * 100) / 100;
-        }
-        const existente = cargos.find((c) => normalizar(c.nome) === normalizar(nome));
-        if (existente) continue;
-        cargos.push({
-          nome,
-          grupo: col.grupo >= 0 ? textoDe(linha[col.grupo]) || null : null,
-          requisitos: col.requisitos >= 0 ? textoDe(linha[col.requisitos]) || null : null,
-          classe: col.classe >= 0 ? textoDe(linha[col.classe]) || null : null,
-          cargaReferencia: col.carga >= 0 ? paraNumero(linha[col.carga]) : null,
-          valores,
-        });
-      }
-    }
-  } else avisos.push('Não encontrei a aba "Tabela Salarial". Os cargos serão criados a partir dos postos, sem valores por nível.');
-
-  // Estudo (postos) ---------------------------------------------------------
+  // Estudo (funcionários) -----------------------------------------------------
+  // A coluna "Lotação" da própria aba vale como lotação de 100%, se não houver aba Rateio.
+  const lotacaoDaColuna = new Map<string, { centro: string; percentual: number }[]>();
   const abaEstudo = acharAba(abas, ['estudo', 'postos', 'colaboradores', 'folha']);
   const postos: PostoLido[] = [];
   if (abaEstudo) {
@@ -205,37 +159,44 @@ export function lerPlanilhaFolha(abas: AbaImportada[]): LeituraFolha {
         ficha: coluna(cab, SINONIMOS.ficha),
         colaborador: coluna(cab, SINONIMOS.colaborador),
         cargo: coluna(cab, SINONIMOS.cargo),
-        nivel: coluna(cab, SINONIMOS.nivel),
+        departamento: coluna(cab, SINONIMOS.departamento),
+        lotacao: coluna(cab, SINONIMOS.lotacao),
+        reajuste: coluna(cab, SINONIMOS.reajuste),
+        horaAtividade: coluna(cab, SINONIMOS.horaAtividade),
         carga: coluna(cab, SINONIMOS.carga),
         inicio: coluna(cab, SINONIMOS.inicio),
         total: coluna(cab, SINONIMOS.total),
       };
       const colComp = Object.fromEntries(COMPONENTES.map((c) => [c.chave, coluna(cab, SINONIMOS_COMPONENTES[c.chave])])) as Record<ChaveComponente, number>;
-      if (colComp.salario_base < 0) avisos.push(`Aba "${abaEstudo.nome}": não encontrei a coluna "Salário base".`);
+      if (colComp.salario_atual < 0) avisos.push(`Aba "${abaEstudo.nome}": não encontrei a coluna "Salario Atual".`);
       const usadas = new Set([...Object.values(col), ...Object.values(colComp)]);
       const ignoradas: string[] = [];
       cab.forEach((c, j) => {
         if (!c || usadas.has(j)) return;
-        if (CALCULADAS.some((k) => c.split(' ').includes(k) || c.startsWith(k))) colunasCalculadas.push(c);
+        if (CALCULADAS.includes(c)) colunasCalculadas.push(c);
         else ignoradas.push(c);
       });
       if (ignoradas.length) colunasIgnoradas.push({ aba: abaEstudo.nome, colunas: ignoradas });
 
       abaEstudo.linhas.slice(i + 1).forEach((linha, k) => {
         const cargo = textoDe(linha[col.cargo]);
-        let colaborador = col.colaborador >= 0 ? textoDe(linha[col.colaborador]) : '';
+        const colaborador = col.colaborador >= 0 ? textoDe(linha[col.colaborador]) : '';
         if (!cargo || ehTotal(cargo) || ehTotal(colaborador)) return;
-        if (/^vaga\b/.test(normalizar(colaborador))) colaborador = '';
         const componentes = Object.fromEntries(
           COMPONENTES.map((c) => [c.chave, colComp[c.chave] >= 0 ? Math.round((paraNumero(linha[colComp[c.chave]]) ?? 0) * 100) / 100 : 0]),
         ) as Record<ChaveComponente, number>;
-        const nivelTexto = col.nivel >= 0 ? normalizar(linha[col.nivel]) : '';
+        const reajusteBruto = col.reajuste >= 0 ? (paraNumero(linha[col.reajuste]) ?? 0) : 0;
+        const ficha = col.ficha >= 0 ? fichaDe(linha[col.ficha]) : null;
+        const lotacao = col.lotacao >= 0 ? textoDe(linha[col.lotacao]) : '';
+        if (ficha && lotacao && !lotacaoDaColuna.has(ficha)) lotacaoDaColuna.set(ficha, [{ centro: lotacao, percentual: 100 }]);
         postos.push({
           linha: i + k + 2,
-          ficha: col.ficha >= 0 ? fichaDe(linha[col.ficha]) : null,
+          ficha,
           colaborador: colaborador || null,
           cargo,
-          nivel: nivelTexto.match(NIVEL_LETRA)?.[1]?.toUpperCase() ?? null,
+          departamento: col.departamento >= 0 ? textoDe(linha[col.departamento]) || null : null,
+          reajuste: Math.round((reajusteBruto > 0 && reajusteBruto < 1 ? reajusteBruto * 100 : reajusteBruto) * 100) / 100,
+          horaAtividade: col.horaAtividade >= 0 && (paraNumero(linha[col.horaAtividade]) ?? 0) > 0,
           cargaHoraria: col.carga >= 0 ? paraNumero(linha[col.carga]) : null,
           inicio: col.inicio >= 0 ? paraData(linha[col.inicio]) : null,
           componentes,
@@ -243,7 +204,7 @@ export function lerPlanilhaFolha(abas: AbaImportada[]): LeituraFolha {
         });
       });
     }
-  } else avisos.push('Não encontrei a aba "Estudo" com os postos.');
+  } else avisos.push('Não encontrei a aba "Estudo" com os funcionários.');
 
   // Rateio ------------------------------------------------------------------
   const abaRateio = acharAba(abas, ['rateio']);
@@ -267,7 +228,7 @@ export function lerPlanilhaFolha(abas: AbaImportada[]): LeituraFolha {
           if (ficha && centro && v) brutos.push({ ficha, centro, valor: v });
         }
       } else {
-        const fora = new Set<number>([colFicha, ...(['colaborador', 'cargo', 'total', 'nivel', 'carga'] as const).map((k) => coluna(cab, SINONIMOS[k]))]);
+        const fora = new Set<number>([colFicha, ...(['colaborador', 'cargo', 'total', 'departamento', 'carga'] as const).map((k) => coluna(cab, SINONIMOS[k]))]);
         cab.forEach((c, j) => {
           if (['soma', 'total %', 'soma rateio', 'conferencia'].includes(c)) fora.add(j);
         });
@@ -292,11 +253,12 @@ export function lerPlanilhaFolha(abas: AbaImportada[]): LeituraFolha {
         rateios.set(b.ficha, lista);
       }
     }
-  } else avisos.push('Não encontrei a aba "Rateio". Os postos serão importados sem rateio.');
+  } else {
+    for (const [ficha, linhas] of lotacaoDaColuna) rateios.set(ficha, linhas);
+  }
 
   return {
-    abas: { tabela: abaTabela?.nome ?? null, estudo: abaEstudo?.nome ?? null, rateio: abaRateio?.nome ?? null },
-    cargos,
+    abas: { estudo: abaEstudo?.nome ?? null, rateio: abaRateio?.nome ?? null },
     postos,
     rateios,
     colunasIgnoradas,

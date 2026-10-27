@@ -18,15 +18,17 @@ export function ImportarFolha({ analisar, confirmar }: { analisar: Acao; confirm
   const [analise, enviarArquivo, analisando] = useActionState(analisar, {});
   const [confirmacao, enviarConfirmacao, gravando] = useActionState(confirmar, {});
   const a = analise.analise;
-  const [areas, setAreas] = useState<Record<string, string>>({});
+  const [escolhas, setEscolhas] = useState<Record<string, string>>({});
+  const servicos = a ? a.proposta.servicos.map((m) => ({ ...m, servico: escolhas[m.nome] ?? m.servico })) : [];
+  const faltam = servicos.filter((m) => !m.servico).length;
 
   return (
     <div className="space-y-6">
       <form action={enviarArquivo} className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
         <h2 className="text-lg font-bold">1. Enviar o arquivo</h2>
         <p className="max-w-2xl text-sm text-texto-suave">
-          No Google Drive, abra a planilha da folha e use Arquivo › Fazer download › Microsoft Excel (.xlsx). O app usa as abas Tabela
-          Salarial, Estudo e Rateio, ligadas pelo nº da ficha. Nada é gravado antes da sua confirmação.
+          No Google Drive, abra a planilha da folha e use Arquivo › Fazer download › Microsoft Excel (.xlsx). O app usa as abas Estudo e
+          Rateio, ligadas pelo nº da ficha. Nada é gravado antes da sua confirmação.
         </p>
         <input
           type="file"
@@ -51,39 +53,49 @@ export function ImportarFolha({ analisar, confirmar }: { analisar: Acao; confirm
       {a && (
         <form action={enviarConfirmacao} className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
           <h2 className="text-lg font-bold">3. Confirmar</h2>
-          {a.proposta.centrosNovos.length > 0 && (
+          {servicos.length > 0 && (
             <fieldset className="space-y-2">
-              <legend className="text-sm">
-                Estes centros de custo ainda não existem e serão criados. Escolha a área de cada um:
+              <legend className="mb-2 text-sm">
+                Confira a qual <strong>Serviço</strong> corresponde cada lotação da planilha. Os que o app reconheceu já vêm preenchidos.
               </legend>
-              {a.proposta.centrosNovos.map((c) => (
-                <label key={c.codigo} className="grid items-center gap-2 text-sm sm:grid-cols-[1fr_16rem]">
-                  <span>{c.nome}</span>
+              {servicos.map((m) => (
+                <label key={m.nome} className="grid items-center gap-2 text-sm sm:grid-cols-[1fr_20rem]">
+                  <span className={m.servico ? '' : 'font-semibold'}>{m.nome}</span>
                   <select
                     required
-                    value={areas[c.codigo] ?? ''}
-                    onChange={(e) => setAreas({ ...areas, [c.codigo]: e.target.value })}
-                    className={`${estiloEntrada} !mt-0`}
+                    value={m.servico ?? ''}
+                    onChange={(e) => setEscolhas({ ...escolhas, [m.nome]: e.target.value })}
+                    className={`${estiloEntrada} !mt-0 ${m.servico ? '' : 'border-aviso'}`}
                   >
-                    <option value="">Área…</option>
-                    {a.areas.map((x) => (
-                      <option key={x.codigo} value={x.codigo}>
-                        {x.nome}
-                      </option>
+                    <option value="">Escolha o serviço…</option>
+                    {[...new Set(a.opcoes.map((o) => o.area))].map((area) => (
+                      <optgroup key={area} label={area}>
+                        {a.opcoes
+                          .filter((o) => o.area === area)
+                          .map((o) => (
+                            <option key={o.codigo} value={o.codigo}>
+                              {o.nome}
+                            </option>
+                          ))}
+                      </optgroup>
                     ))}
                   </select>
                 </label>
               ))}
+              {a.opcoes.length === 0 && (
+                <Aviso tipo="atencao">Nenhum serviço cadastrado. Cadastre os serviços em Administração › Serviços antes de importar.</Aviso>
+              )}
             </fieldset>
           )}
-          <input
-            type="hidden"
-            name="proposta"
-            value={JSON.stringify({ ...a.proposta, centrosNovos: a.proposta.centrosNovos.map((c) => ({ ...c, area: areas[c.codigo] || null })) })}
-          />
-          <BotaoEnviar pendente={gravando} disabled={a.proposta.postos.length === 0} enviando="Importando…">
-            Importar {a.proposta.postos.length} postos
+          <input type="hidden" name="proposta" value={JSON.stringify({ ...a.proposta, servicos })} />
+          <BotaoEnviar pendente={gravando} disabled={a.proposta.postos.length === 0 || faltam > 0} enviando="Importando…">
+            Importar {a.proposta.postos.length} {a.proposta.postos.length === 1 ? 'funcionário' : 'funcionários'}
           </BotaoEnviar>
+          {faltam > 0 && (
+            <p className="text-sm text-aviso">
+              Falta escolher o serviço de {faltam} {faltam === 1 ? 'lotação' : 'lotações'}.
+            </p>
+          )}
           {confirmacao.erro && (
             <Aviso tipo="erro" titulo="A importação não foi feita">
               {confirmacao.erro}
@@ -97,25 +109,25 @@ export function ImportarFolha({ analisar, confirmar }: { analisar: Acao; confirm
 
 function Relatorio({ analise }: { analise: Analise }) {
   const r = analise.relatorio;
-  const problemas = r.rateiosForaDe100.length + r.postosSemRateio.length;
+  const problemas = r.lotacoesForaDe100.length + r.semLotacao.length;
   return (
     <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
       <h2 id="t-relatorio" className="text-lg font-bold">2. Conferir o que será importado</h2>
 
       <dl className="grid gap-3 text-sm sm:grid-cols-4">
         <div>
-          <dt className="text-texto-suave">Postos</dt>
+          <dt className="text-texto-suave">Funcionários</dt>
           <dd className="text-2xl font-semibold tabular-nums">{r.postos.total}</dd>
           <dd className="text-texto-suave">{r.postos.vagas} {r.postos.vagas === 1 ? 'vaga prevista' : 'vagas previstas'}</dd>
         </div>
         <div>
-          <dt className="text-texto-suave">Com rateio válido</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{r.postos.comRateio}</dd>
+          <dt className="text-texto-suave">Com lotação válida</dt>
+          <dd className="text-2xl font-semibold tabular-nums">{r.postos.comLotacao}</dd>
         </div>
         <div>
-          <dt className="text-texto-suave">Cargos novos</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{r.cargos.novos}</dd>
-          <dd className="text-texto-suave">{r.cargos.valores} valores na tabela salarial</dd>
+          <dt className="text-texto-suave">Lotações reconhecidas</dt>
+          <dd className="text-2xl font-semibold tabular-nums">{r.servicos.reconhecidos}</dd>
+          <dd className="text-texto-suave">{r.servicos.aEscolher} para você escolher</dd>
         </div>
         <div>
           <dt className="text-texto-suave">Custo mensal calculado</dt>
@@ -127,13 +139,13 @@ function Relatorio({ analise }: { analise: Analise }) {
       {problemas > 0 && (
         <div className="rounded-md bg-aviso-fundo p-4 text-sm text-aviso">
           <p className="font-semibold">
-            {problemas} {problemas === 1 ? 'posto vai' : 'postos vão'} entrar sem rateio e precisarão de ajuste depois.
+            {problemas} {problemas === 1 ? 'funcionário vai' : 'funcionários vão'} entrar sem lotação e precisarão de ajuste depois, na tela Lotação.
           </p>
-          {r.rateiosForaDe100.length > 0 && (
+          {r.lotacoesForaDe100.length > 0 && (
             <>
-              <p className="mt-2">Rateio que não soma 100% (não é gravado):</p>
+              <p className="mt-2">Lotação que não soma 100% (não é gravada):</p>
               <ul className="ml-5 list-disc">
-                {r.rateiosForaDe100.map((x) => (
+                {r.lotacoesForaDe100.map((x) => (
                   <li key={x.ficha}>
                     {quem(x)}: soma {percentual(x.soma)}
                   </li>
@@ -141,11 +153,11 @@ function Relatorio({ analise }: { analise: Analise }) {
               </ul>
             </>
           )}
-          {r.postosSemRateio.length > 0 && (
+          {r.semLotacao.length > 0 && (
             <>
-              <p className="mt-2">Sem rateio na planilha:</p>
+              <p className="mt-2">Sem lotação na planilha:</p>
               <ul className="ml-5 list-disc">
-                {r.postosSemRateio.map((x, i) => (
+                {r.semLotacao.map((x, i) => (
                   <li key={i}>{quem(x)}</li>
                 ))}
               </ul>
@@ -157,7 +169,7 @@ function Relatorio({ analise }: { analise: Analise }) {
       {r.diferencasCusto.length > 0 && (
         <details className="text-sm">
           <summary className="cursor-pointer font-medium">
-            {r.diferencasCusto.length} {r.diferencasCusto.length === 1 ? 'posto tem' : 'postos têm'} custo diferente do total da planilha
+            {r.diferencasCusto.length} {r.diferencasCusto.length === 1 ? 'funcionário tem' : 'funcionários têm'} custo diferente do total da planilha
           </summary>
           <p className="mt-2 text-texto-suave">
             O app calcula provisões e encargos pelos parâmetros da folha. Diferenças grandes podem indicar parâmetro ou componente a conferir.
@@ -187,10 +199,11 @@ function Relatorio({ analise }: { analise: Analise }) {
         <summary className="cursor-pointer font-medium">Detalhes da leitura</summary>
         <ul className="ml-5 mt-2 list-disc space-y-1">
           <li>
-            Abas usadas: {[r.abas.tabela, r.abas.estudo, r.abas.rateio].filter(Boolean).join(', ') || 'nenhuma'}.
+            Abas usadas: {[r.abas.estudo, r.abas.rateio].filter(Boolean).join(', ') || 'nenhuma'}.
           </li>
-          {r.fichasJaCadastradas.length > 0 && <li>Fichas já cadastradas, ignoradas: {r.fichasJaCadastradas.join(', ')}.</li>}
-          {r.semAdmissao > 0 && <li>{r.semAdmissao} postos sem data de admissão: entram com 1º de janeiro.</li>}
+          {r.fichasJaCadastradas.length > 0 && <li>Códigos já cadastrados, ignorados: {r.fichasJaCadastradas.join(', ')}.</li>}
+          {r.vagasJaCadastradas > 0 && <li>{r.vagasJaCadastradas} vagas previstas já cadastradas, ignoradas.</li>}
+          {r.semAdmissao > 0 && <li>{r.semAdmissao} funcionários sem data de admissão: entram com 1º de janeiro.</li>}
           {r.colunasCalculadas.length > 0 && <li>Colunas calculadas pelo app, não importadas: {r.colunasCalculadas.join(', ')}.</li>}
           {r.colunasIgnoradas.map((c) => (
             <li key={c.aba}>

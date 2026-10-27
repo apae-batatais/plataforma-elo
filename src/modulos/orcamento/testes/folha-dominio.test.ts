@@ -1,35 +1,73 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ativoNoMes, componentesZerados, custoMensal, distribuir, dividirIgualmente, parametrosCom, salarioPelaTabela,
+  ativoNoMes, calcularLinha, componentesZerados, distribuir, dividirIgualmente, parametrosCom, resumirEstudo,
   situacaoRateio, somaRateio, validarParametros, validarRateio, vigenteNoMes,
 } from '../dominio/folha';
 
-const semProvisoes = parametrosCom({ ferias: 0, terco_ferias: 0, decimo_terceiro: 0, abono: 0, fgts: 0, indenizacoes: 0 });
+const p = parametrosCom({});
 
-describe('custo do posto (regra 1)', () => {
-  it('soma os componentes e aplica as provisões só sobre a parte remuneratória', () => {
-    const c = { ...componentesZerados(), salario_base: 2000, insalubridade: 300, alimentacao: 500, plano_saude: 200 };
-    const p = parametrosCom({ ferias: 8.33, terco_ferias: 2.78, decimo_terceiro: 8.33, abono: 0, fgts: 8, indenizacoes: 0 });
-    const custo = custoMensal(c, p, 1);
-    expect(custo.remuneracao).toBe(2300);
-    expect(custo.beneficios).toBe(700);
-    expect(custo.provisoes).toBe(631.12); // 2300 × 27,44%
-    expect(custo.total).toBe(3631.12);
+describe('colunas calculadas da aba Estudo (regra 1)', () => {
+  it('reproduz as fórmulas da planilha', () => {
+    const c = { ...componentesZerados(5), salario_atual: 2155, alimentacao: 340 };
+    expect(calcularLinha(c, 200, p)).toEqual({
+      valorHora: 10.78, // Salário atual ÷ carga horária
+      salarioBase: 2262.75, // Salário atual × 1,05
+      valorHoraBase: 11.31,
+      horaAtividade: 0,
+      tercoFerias: 62.85, // (Salário base ÷ 3) ÷ 12
+      decimoTerceiro: 188.56, // Salário base ÷ 12
+      fgts: 201.13, // 8% de (base + adicional + hora atividade + insalubridade + 1/3 + 13º)
+      total: 3055.3, // soma de Salário base até FGTS
+    });
   });
 
-  it('reajuste vale a partir do mês definido, sem mudar os meses anteriores, e não reajusta benefícios (regra 9)', () => {
-    const c = { ...componentesZerados(), salario_base: 1000, alimentacao: 500 };
-    const p = { ...semProvisoes, reajuste_percentual: 5, reajuste_mes: 5 };
-    expect(custoMensal(c, p, 4).total).toBe(1500);
-    expect(custoMensal(c, p, 5).total).toBe(1550);
-    expect(custoMensal(c, p, 12).total).toBe(1550);
+  it('hora atividade é 5% do salário base para quem recebe; entra no FGTS', () => {
+    const c = { ...componentesZerados(5), salario_atual: 3000, hora_atividade: true, adicional_salarial: 100, insalubridade: 300, alimentacao: 340 };
+    const l = calcularLinha(c, 150, p);
+    expect(l.horaAtividade).toBe(157.5);
+    expect(l.fgts).toBe(324.6);
+    expect(l.total).toBe(4722.1);
+  });
+
+  it('reajuste vale a partir do mês definido nos parâmetros (regra 9)', () => {
+    const c = { ...componentesZerados(5), salario_atual: 1000 };
+    const maio = { ...p, reajuste_mes: 5 };
+    expect(calcularLinha(c, 200, maio, 4).salarioBase).toBe(1000);
+    expect(calcularLinha(c, 200, maio, 5).salarioBase).toBe(1050);
   });
 });
 
-describe('salário pela tabela (regra 2)', () => {
-  it('proporcional à carga horária da referência do cargo', () => {
-    expect(salarioPelaTabela(3000, 30, 40)).toBe(2250);
-    expect(salarioPelaTabela(3000, null, 40)).toBe(3000);
+describe('resumo no formato da aba Estudo', () => {
+  const a = { ...componentesZerados(5), salario_atual: 2155, alimentacao: 340 };
+  const b = { ...componentesZerados(5), salario_atual: 3000, hora_atividade: true, adicional_salarial: 100, insalubridade: 300, alimentacao: 340, plano_saude: 200, bolsa_estudo: 50, indenizacoes: 10 };
+  const itens = [a, b].map((c) => ({ c, calc: calcularLinha(c, 200, p) }));
+  const r = resumirEstudo(itens, p);
+
+  it('remuneração salarial: vencimentos (base + adicional + hora atividade), insalubridade, férias e 13º', () => {
+    expect(r.salarial.linhas.map((l) => l.valor)).toEqual([5670.25, 300, 0, 150.35, 451.06]);
+    expect(r.salarial.total).toBe(6571.66); // soma dos valores de cada pessoa, já em centavos
+  });
+
+  it('benefícios incluem plano de saúde e bolsa estudo (erros da planilha corrigidos)', () => {
+    expect(r.beneficios.total).toBe(930);
+  });
+
+  it('encargos sobre a remuneração salarial; aposentadoria especial só de quem tem insalubridade', () => {
+    expect(r.encargos.linhas[3].valor).toBe(207); // 6% de (3150 + 300)
+    expect(r.encargos.total).toBeCloseTo(2461.08, 1);
+    expect(r.indenizacoes).toBe(10);
+    expect(r.totalGeral).toBeCloseTo(9972.75, 1);
+  });
+
+  it('Total CEBAS = INSS + terceiros + FAP + aposentadoria especial; remuneração + FGTS = total geral − CEBAS', () => {
+    expect(r.quadros.totalCebas).toBeCloseTo(1935.35, 1);
+    expect(r.quadros.totalRemuneracaoMaisFgts).toBeCloseTo(r.totalGeral - r.quadros.totalCebas, 2);
+    expect(r.quadros.totalSemEncargos).toBe(r.subtotalRemuneracao);
+  });
+
+  it('peso de lotação divide o resumo proporcionalmente', () => {
+    const metade = resumirEstudo(itens.map((x) => ({ ...x, peso: 0.5 })), p);
+    expect(metade.totalGeral).toBeCloseTo(r.totalGeral / 2, 1);
   });
 });
 

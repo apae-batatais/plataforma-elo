@@ -9,8 +9,8 @@ const campo = 'block w-full min-h-10 rounded-md border border-borda-forte bg-sup
 const OPACIDADES = [1, 0.7, 0.5, 0.85, 0.6, 0.4];
 
 /**
- * Grid de rateio de um posto: uma linha por centro de custo, com percentual e
- * os valores calculados. A barra mostra a fatia de cada centro e fica
+ * Grid de lotação de um funcionário: uma linha por serviço, com percentual e
+ * os valores calculados. A barra mostra a fatia de cada serviço e fica
  * completa (sem sobra nem excesso) só quando a soma é 100%.
  */
 export function GridRateio({
@@ -42,7 +42,7 @@ export function GridRateio({
         <table className="w-full min-w-[36rem] text-left text-sm">
           <thead className="text-texto-suave">
             <tr>
-              <th scope="col" className="pb-2 pr-3 font-medium">Centro de custo</th>
+              <th scope="col" className="pb-2 pr-3 font-medium">Serviço</th>
               <th scope="col" className="w-28 pb-2 pr-3 font-medium">Percentual</th>
               <th scope="col" className="pb-2 pr-3 text-right font-medium">Valor mensal</th>
               <th scope="col" className="pb-2 pr-3 text-right font-medium">Valor anual</th>
@@ -52,14 +52,14 @@ export function GridRateio({
           <tbody>
             {linhas.length === 0 && (
               <tr>
-                <td colSpan={5} className="py-3 text-texto-suave">Nenhum centro de custo. Adicione pelo menos um.</td>
+                <td colSpan={5} className="py-3 text-texto-suave">Nenhum serviço. Adicione pelo menos um.</td>
               </tr>
             )}
             {linhas.map((l, i) => (
               <tr key={i} className="border-t border-borda">
                 <td className="py-2 pr-3">
                   <select
-                    aria-label={`Centro de custo da linha ${i + 1}`}
+                    aria-label={`Serviço da linha ${i + 1}`}
                     value={l.centro}
                     onChange={(e) => alterar(i, { centro: e.target.value })}
                     disabled={somenteLeitura}
@@ -127,13 +127,13 @@ export function GridRateio({
       <div>
         <div
           role="img"
-          aria-label={`Rateio somando ${percentual(soma)}`}
+          aria-label={`Lotação somando ${percentual(soma)}`}
           className="relative flex h-3 overflow-hidden rounded-full bg-borda"
         >
           {linhas.map((l, i) => (
             <div
               key={i}
-              title={`${nome.get(l.centro) ?? 'Sem centro'}: ${percentual(l.percentual || 0)}`}
+              title={`${nome.get(l.centro) ?? 'Sem serviço'}: ${percentual(l.percentual || 0)}`}
               className={soma > 100 ? 'bg-erro' : soma === 100 ? 'bg-sucesso' : 'bg-destaque'}
               style={{ width: `${(Math.min(l.percentual || 0, 100) / Math.max(soma, 100)) * 100}%`, opacity: OPACIDADES[i % OPACIDADES.length] }}
             />
@@ -141,11 +141,11 @@ export function GridRateio({
         </div>
         <p role="status" className={`mt-2 text-sm font-semibold ${linhas.length === 0 ? 'text-texto-suave' : diferenca === 0 && semCentro < 0 && repetido < 0 ? 'text-sucesso' : 'text-aviso'}`}>
           {linhas.length === 0
-            ? 'Adicione os centros de custo deste posto.'
+            ? 'Adicione os serviços em que este funcionário trabalha.'
             : semCentro >= 0
-              ? `Escolha o centro de custo da linha ${semCentro + 1} (ou remova a linha).`
+              ? `Escolha o serviço da linha ${semCentro + 1} (ou remova a linha).`
               : repetido >= 0
-                ? `O centro da linha ${repetido + 1} já aparece em outra linha.`
+                ? `O serviço da linha ${repetido + 1} já aparece em outra linha.`
                 : diferenca === 0
               ? '100% distribuído. Pronto para salvar.'
               : diferenca > 0
@@ -158,7 +158,7 @@ export function GridRateio({
         <div className="flex flex-wrap gap-2">
           <Botao variante="secundario" onClick={() => onChange([...linhas, { centro: '', percentual: diferenca > 0 ? diferenca : 0 }])}>
             <IconeMais tamanho={18} />
-            Adicionar centro de custo
+            Adicionar serviço
           </Botao>
           <Botao variante="secundario" onClick={onDividir} disabled={linhas.filter((l) => l.centro).length === 0}>
             <IconeDividir tamanho={18} />

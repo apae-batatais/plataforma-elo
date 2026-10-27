@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { manifesto } from '@/modulos/orcamento';
-import { CentrosCusto, Parametros } from '@/modulos/orcamento/dados/tabelas';
+import { Parametros } from '@/modulos/orcamento/dados/tabelas';
 import { ErroArmazenamento, ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { lerTabelas } from '@/nucleo/armazenamento/tabela';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
@@ -17,7 +17,7 @@ export default async function LayoutOrcamento({ children }: { children: React.Re
   try {
     const { planilhas } = await obterAplicacao();
     // Confere numa leitura pequena se as planilhas existem e já têm as abas.
-    await lerTabelas(planilhas, [CentrosCusto, Parametros] as const);
+    await lerTabelas(planilhas, [Parametros] as const);
   } catch (erro) {
     if (erro instanceof ErroEstruturaAusente) {
       return (

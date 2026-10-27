@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { cadastros } from '@/modulos/orcamento/aplicacao/folha';
+import { parametrosDaFolha } from '@/modulos/orcamento/aplicacao/folha';
 import { PARAMETROS } from '@/modulos/orcamento/dominio/folha';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -14,19 +14,20 @@ export const metadata: Metadata = { title: 'Parâmetros da folha' };
 
 const GRUPOS = [
   { titulo: 'Ano da folha', chaves: ['ano'] },
+  { titulo: 'Reajuste', texto: 'O reajuste de cada funcionário fica na ficha dele. Aqui ficam o padrão para novos cadastros e o mês em que o reajuste começa a valer.', chaves: ['reajuste_padrao', 'reajuste_mes'] },
+  { titulo: 'Hora atividade', texto: 'Percentual sobre o salário base de quem recebe hora atividade.', chaves: ['hora_atividade'] },
   {
-    titulo: 'Provisões e encargos',
-    texto: 'Percentuais sobre a remuneração (salário base, adicional, hora atividade, insalubridade, periculosidade e gratificação). Benefícios não entram na conta.',
-    chaves: ['ferias', 'terco_ferias', 'decimo_terceiro', 'abono', 'fgts', 'indenizacoes'],
+    titulo: 'Encargos',
+    texto: 'Calculados no Resumo da folha sobre o total da remuneração salarial. A aposentadoria especial incide sobre salário base + insalubridade de quem tem insalubridade.',
+    chaves: ['fgts', 'inss', 'terceiros', 'fap', 'aposentadoria_especial', 'pis'],
   },
-  { titulo: 'Reajuste', texto: 'Aplicado à remuneração a partir do mês indicado. Os meses anteriores não mudam.', chaves: ['reajuste_percentual', 'reajuste_mes'] },
 ];
 
 export default async function Parametros() {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
-  const c = await cadastros(app.planilhas, usuario.autorizador);
+  const c = await parametrosDaFolha(app.planilhas, usuario.autorizador);
   const def = new Map(PARAMETROS.map((p) => [p.chave as string, p]));
   const sufixo = (k: string) => (k === 'ano' || k === 'reajuste_mes' ? '' : '%');
 
@@ -35,7 +36,7 @@ export default async function Parametros() {
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento' }, { rotulo: 'Parâmetros' }]}
         titulo="Parâmetros da folha"
-        descricao="Definidos pelo Financeiro. Valem para o cálculo do custo de todos os postos."
+        descricao="Definidos pelo Financeiro. Valem para o cálculo da folha de todos os funcionários."
       />
       {!c.podeEditar && (
         <div className="mb-6">
@@ -49,7 +50,7 @@ export default async function Parametros() {
             <Secao key={g.titulo} titulo={g.titulo} descricao={g.texto}>
               <div className="grid gap-4 sm:grid-cols-3">
                 {g.chaves.map((k) => (
-                  <Campo key={k} rotulo={def.get(k)!.nome.replace(' (%)', '')}>
+                  <Campo key={k} rotulo={def.get(k)!.nome.replace(' (%)', '').replace(' (% do salário base)', '')}>
                     <div className="relative">
                       <input
                         name={k}

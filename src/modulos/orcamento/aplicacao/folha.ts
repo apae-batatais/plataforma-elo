@@ -2,26 +2,27 @@
  * Casos de uso da Folha de Pagamento (camada de aplicação).
  *
  * Quem vê o quê:
- * - orcamento.folha.ver: totais por centro de custo (global = todos; com escopo
- *   de área = só os centros daquela área).
+ * - orcamento.folha.ver: totais por Serviço (global = todos; com escopo de
+ *   unidade, área ou serviço = só os serviços desse escopo).
  * - orcamento.folha.ver_individual (global): postos, colaboradores e valores.
  *   Abrir a lista ou uma ficha registra auditoria de leitura.
- * - orcamento.folha.editar (global): cadastrar postos, componentes e rateios.
- * - orcamento.parametros.editar (global): cargos, tabela salarial, centros e parâmetros.
+ * - orcamento.folha.editar (global): cadastrar postos, componentes e lotação.
+ * - orcamento.parametros.editar (global): parâmetros da folha.
+ *
+ * Os "centros de custo" da lotação são os Serviços do Núcleo. No código, as
+ * linhas de lotação continuam chamadas de rateio ({ centro, percentual }),
+ * onde `centro` é o código do Serviço.
  */
 import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizar, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
-import { Areas } from '@/nucleo/estrutura/tabelas';
+import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
 import {
-  ativoNoMes, COMPONENTES, componentesZerados, custoMensal, distribuir, PARAMETROS, parametrosCom, salarioPelaTabela,
+  ativoNoMes, calcularLinha, COMPONENTES, componentesZerados, PARAMETROS, parametrosCom, resumirEstudo,
   situacaoRateio, validarParametros, validarRateio, vigenteNoMes,
-  type Componentes as ValoresComponentes, type LinhaRateio, type Parametros as ValoresParametros,
+  type Componentes as ValoresComponentes, type LinhaCalculada, type LinhaRateio, type ResumoEstudo, type Parametros as ValoresParametros,
 } from '../dominio/folha';
-import {
-  Cargos, CentrosCusto, Componentes, NIVEIS, Parametros, Postos, Rateios, TabelaSalarial,
-  type RegComponentes, type RegPosto, type RegRateio,
-} from '../dados/tabelas';
+import { Componentes, Parametros, Postos, Rateios, type RegComponentes, type RegPosto, type RegRateio } from '../dados/tabelas';
 
 export class ErroValidacaoFolha extends Error {}
 
@@ -44,8 +45,8 @@ const DATA = /^\d{4}-\d{2}-\d{2}$/;
 // ---------------------------------------------------------------------------
 
 export async function lerFolha(p: Planilhas) {
-  const [centros, cargos, tabela, postos, componentes, rateios, parametros, areas] = await lerTabelas(p, [
-    CentrosCusto, Cargos, TabelaSalarial, Postos, Componentes, Rateios, Parametros, Areas,
+  const [postos, componentes, rateios, parametros, areas, servicos] = await lerTabelas(p, [
+    Postos, Componentes, Rateios, Parametros, Areas, Servicos,
   ] as const);
   const valores = parametrosCom(Object.fromEntries(parametros.ativos().map((x) => [x.chave, x.valor])));
 
@@ -65,7 +66,7 @@ export async function lerFolha(p: Planilhas) {
         lote,
         vigencia: ls[0].vigencia,
         criado_em: ls[0].criado_em,
-        linhas: ls.map((x) => ({ centro: x.centro_custo, percentual: x.percentual })),
+        linhas: ls.map((x) => ({ centro: x.servico, percentual: x.percentual })),
       })),
     );
   }
@@ -76,9 +77,8 @@ export async function lerFolha(p: Planilhas) {
   return {
     parametros: valores,
     parametrosLidos: parametros,
-    centros: centros.ativos(),
-    cargos: cargos.ativos(),
-    tabela: tabela.ativos(),
+    /** Serviços ativos: são os "centros de custo" da lotação. */
+    centros: servicos.ativos().map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area })),
     postos: postos.ativos(),
     areas: areas.ativos(),
     /** Componentes que valem no mês (ou os mais recentes, sem mês). */
@@ -100,22 +100,30 @@ export type FolhaLida = Awaited<ReturnType<typeof lerFolha>>;
 function paraValores(r: RegComponentes): ValoresComponentes {
   const v = componentesZerados();
   for (const c of COMPONENTES) v[c.chave] = (r[c.chave] as number | null) ?? 0;
+  v.reajuste = r.reajuste ?? 0;
+  v.hora_atividade = r.hora_atividade;
   return v;
 }
 
 function custoDoPosto(f: FolhaLida, posto: RegPosto, mes: number): number {
   if (!ativoNoMes(posto, f.parametros.ano, mes)) return 0;
   const c = f.componentes(posto.id, mes);
-  return c ? custoMensal(c, f.parametros, mes).total : 0;
+  return c ? calcularLinha(c, posto.carga_horaria, f.parametros, mes).total : 0;
 }
 
 // ---------------------------------------------------------------------------
-// Resumo por centro de custo (totais)
+// Resumo por Serviço (totais)
 // ---------------------------------------------------------------------------
 
 export interface ResumoFolha {
   ano: number;
+  mes: number;
   todasAsAreas: boolean;
+  /** Resumo no formato da aba Estudo, no mês escolhido. */
+  estudoMes: ResumoEstudo;
+  /** O mesmo resumo somando os 12 meses do ano. */
+  estudoAno: ResumoEstudo;
+  /** Total geral (com encargos) por serviço da lotação. */
   centros: { codigo: string; nome: string; area: string | null; areaNome: string; mensal: number[]; anual: number }[];
   areas: { codigo: string; nome: string; mensal: number[]; anual: number }[];
   total: { mensal: number[]; anual: number };
@@ -123,61 +131,74 @@ export interface ResumoFolha {
   alertas: { semRateio: number; foraDe100: number; vagasPrevistas: number; postosAtivos: number; custoSemRateio: number } | null;
 }
 
-export async function resumoFolha(p: Planilhas, quem: Autorizador): Promise<ResumoFolha> {
+const SEM_LOTACAO = '__sem_lotacao__';
+
+export async function resumoFolha(p: Planilhas, quem: Autorizador, mesEscolhido?: number): Promise<ResumoFolha> {
   if (!quem.temPermissaoAlgumEscopo(PERM.ver)) throw new ErroPermissao();
   const f = await lerFolha(p);
   const todas = quem.temPermissao(PERM.ver);
-  const areasVisiveis = new Set(
-    f.areas.filter((a) => todas || quem.temPermissao(PERM.ver, { tipo: 'area', codigo: a.codigo })).map((a) => a.codigo),
-  );
+  const ve = (servico: string) => todas || quem.temPermissao(PERM.ver, { tipo: 'servico', codigo: servico });
   const nomeArea = new Map(f.areas.map((a) => [a.codigo, a.nome]));
+  const hoje = new Date();
+  const mes = mesEscolhido && mesEscolhido >= 1 && mesEscolhido <= 12 ? mesEscolhido : f.parametros.ano === hoje.getFullYear() ? hoje.getMonth() + 1 : 1;
+  const arred = (v: number) => Math.round(v * 100) / 100;
 
-  const porCentro = new Map<string, number[]>();
-  const semRateioMensal = MESES.map(() => 0);
-  for (const posto of f.postos) {
-    for (const mes of MESES) {
-      const custo = custoDoPosto(f, posto, mes);
-      if (custo === 0) continue;
-      const rateio = f.rateio(posto.id, mes);
-      if (situacaoRateio(rateio) !== 'ok') {
-        semRateioMensal[mes - 1] += custo;
-        continue;
+  type Item = { c: ValoresComponentes; calc: LinhaCalculada; peso: number };
+  const itensDoMes: Item[][] = [];
+  const porServico = new Map<string, Item[][]>();
+  let custoSemRateio = 0;
+  for (const m of MESES) {
+    const doMes: Item[] = [];
+    for (const posto of f.postos) {
+      if (!ativoNoMes(posto, f.parametros.ano, m)) continue;
+      const c = f.componentes(posto.id, m);
+      if (!c) continue;
+      const calc = calcularLinha(c, posto.carga_horaria, f.parametros, m);
+      const rateio = f.rateio(posto.id, m);
+      const linhas = situacaoRateio(rateio) === 'ok' ? rateio! : [{ centro: SEM_LOTACAO, percentual: 100 }];
+      if (linhas[0].centro === SEM_LOTACAO) custoSemRateio += calc.total;
+      let pesoVisivel = 0;
+      for (const l of linhas) {
+        if (l.centro === SEM_LOTACAO ? !todas : !ve(l.centro)) continue;
+        const peso = l.percentual / 100;
+        pesoVisivel += peso;
+        const lista = porServico.get(l.centro) ?? MESES.map(() => []);
+        lista[m - 1].push({ c, calc, peso });
+        porServico.set(l.centro, lista);
       }
-      for (const [centro, valor] of distribuir(custo, rateio!)) {
-        const linha = porCentro.get(centro) ?? MESES.map(() => 0);
-        linha[mes - 1] += valor;
-        porCentro.set(centro, linha);
-      }
+      if (pesoVisivel > 0) doMes.push({ c, calc, peso: pesoVisivel });
     }
+    itensDoMes.push(doMes);
   }
 
-  const arred = (v: number) => Math.round(v * 100) / 100;
-  const centrosConhecidos = new Map(f.centros.map((c) => [c.codigo, c]));
-  const centros = [...porCentro]
-    .map(([codigo, mensal]) => {
-      const c = centrosConhecidos.get(codigo);
-      const area = c?.area ?? null;
+  const servicos = new Map(f.centros.map((c) => [c.codigo, c]));
+  const centros = [...porServico]
+    .map(([codigo, meses]) => {
+      const s = servicos.get(codigo);
+      const area = s?.area ?? null;
+      const mensal = meses.map((itens) => resumirEstudo(itens, f.parametros).totalGeral);
       return {
         codigo,
-        nome: c?.nome ?? codigo,
+        nome: codigo === SEM_LOTACAO ? 'Sem lotação' : (s?.nome ?? codigo),
         area,
-        areaNome: area ? (nomeArea.get(area) ?? area) : 'Sem área',
-        mensal: mensal.map(arred),
-        anual: arred(mensal.reduce((s, v) => s + v, 0)),
+        areaNome: codigo === SEM_LOTACAO ? 'Sem lotação' : area ? (nomeArea.get(area) ?? area) : 'Sem área',
+        mensal,
+        anual: arred(mensal.reduce((x, v) => x + v, 0)),
       };
     })
-    .filter((c) => todas || (c.area !== null && areasVisiveis.has(c.area)))
-    .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR'));
+    .sort((a, b) => (a.codigo === SEM_LOTACAO ? 1 : b.codigo === SEM_LOTACAO ? -1 : a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')));
 
   const areasMap = new Map<string, { codigo: string; nome: string; mensal: number[] }>();
   for (const c of centros) {
-    const chave = c.area ?? '';
+    const chave = c.codigo === SEM_LOTACAO ? SEM_LOTACAO : (c.area ?? '');
     const a = areasMap.get(chave) ?? { codigo: chave, nome: c.areaNome, mensal: MESES.map(() => 0) };
     c.mensal.forEach((v, i) => (a.mensal[i] += v));
     areasMap.set(chave, a);
   }
   const areas = [...areasMap.values()].map((a) => ({ ...a, mensal: a.mensal.map(arred), anual: arred(a.mensal.reduce((s, v) => s + v, 0)) }));
-  const totalMensal = MESES.map((_, i) => arred(centros.reduce((s, c) => s + c.mensal[i], 0)));
+  const estudoMes = resumirEstudo(itensDoMes[mes - 1], f.parametros);
+  const estudoAno = { ...resumirEstudo(itensDoMes.flat(), f.parametros), pessoas: estudoMes.pessoas };
+  const totalMensal = itensDoMes.map((itens) => resumirEstudo(itens, f.parametros).totalGeral);
 
   let alertas: ResumoFolha['alertas'] = null;
   if (todas) {
@@ -187,14 +208,17 @@ export async function resumoFolha(p: Planilhas, quem: Autorizador): Promise<Resu
       postosAtivos: ativos.length,
       semRateio: situacoes.filter((s) => s === 'sem_rateio').length,
       foraDe100: situacoes.filter((s) => s === 'fora_de_100').length,
-      vagasPrevistas: ativos.filter((x) => !x.colaborador).length,
-      custoSemRateio: arred(semRateioMensal.reduce((s, v) => s + v, 0)),
+      vagasPrevistas: ativos.filter((x) => !x.ficha).length,
+      custoSemRateio: arred(custoSemRateio),
     };
   }
 
   return {
     ano: f.parametros.ano,
+    mes,
     todasAsAreas: todas,
+    estudoMes,
+    estudoAno,
     centros,
     areas,
     total: { mensal: totalMensal, anual: arred(totalMensal.reduce((s, v) => s + v, 0)) },
@@ -211,8 +235,11 @@ export interface LinhaPosto {
   ficha: string | null;
   colaborador: string | null;
   cargo: string;
-  nivel: string | null;
+  departamento: string | null;
   cargaHoraria: number | null;
+  /** Valores digitados e colunas calculadas no mês de referência (aba Estudo). */
+  valores: ValoresComponentes;
+  calculo: LinhaCalculada;
   inicio: string;
   desligamento: string | null;
   custoMensal: number;
@@ -222,37 +249,42 @@ export interface LinhaPosto {
   areas: string[];
 }
 
-export async function listarPostos(p: Planilhas, quem: Autorizador): Promise<{ ano: number; postos: LinhaPosto[]; cargos: string[]; areas: { codigo: string; nome: string }[]; centros: { codigo: string; nome: string }[] }> {
+export async function listarPostos(p: Planilhas, quem: Autorizador, mesEscolhido?: number): Promise<{ ano: number; mes: number; postos: LinhaPosto[]; cargos: string[]; areas: { codigo: string; nome: string }[]; centros: { codigo: string; nome: string }[] }> {
   exigir(quem, PERM.individual);
   const f = await lerFolha(p);
-  const nomeCargo = new Map(f.cargos.map((c) => [c.codigo, c.nome]));
   const nomeCentro = new Map(f.centros.map((c) => [c.codigo, c.nome]));
+  const hoje = new Date();
+  const mes = mesEscolhido && mesEscolhido >= 1 && mesEscolhido <= 12 ? mesEscolhido : f.parametros.ano === hoje.getFullYear() ? hoje.getMonth() + 1 : 1;
   const areaCentro = new Map(f.centros.map((c) => [c.codigo, c.area]));
   const postos = f.postos
     .map((x) => {
       const rateio = f.rateio(x.id);
       const mensal = MESES.map((m) => custoDoPosto(f, x, m));
-      const mesAtual = mensal.findLast((v) => v > 0) ?? 0;
+      const valores = f.componentes(x.id, mes) ?? f.componentes(x.id) ?? componentesZerados();
+      const calculo = calcularLinha(valores, x.carga_horaria, f.parametros, mes);
       return {
         id: x.id,
         ficha: x.ficha,
         colaborador: x.colaborador,
-        cargo: nomeCargo.get(x.cargo) ?? x.cargo,
-        nivel: x.nivel,
+        cargo: x.cargo,
+        departamento: x.departamento,
         cargaHoraria: x.carga_horaria,
+        valores,
+        calculo,
         inicio: x.inicio,
         desligamento: x.desligamento,
-        custoMensal: mesAtual,
+        custoMensal: mensal[mes - 1],
         custoAnual: Math.round(mensal.reduce((s, v) => s + v, 0) * 100) / 100,
         situacaoRateio: situacaoRateio(rateio),
         centros: (rateio ?? []).map((l) => l.centro),
         areas: [...new Set((rateio ?? []).map((l) => areaCentro.get(l.centro)).filter((a): a is string => Boolean(a)))],
       };
     })
-    .sort((a, b) => (a.colaborador ?? '~').localeCompare(b.colaborador ?? '~', 'pt-BR'));
+    .sort((a, b) => (a.ficha ? 0 : 1) - (b.ficha ? 0 : 1) || (a.colaborador ?? '~').localeCompare(b.colaborador ?? '~', 'pt-BR'));
   await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'Postos', detalhes: { lista: true } });
   return {
     ano: f.parametros.ano,
+    mes,
     postos,
     cargos: [...new Set(postos.map((x) => x.cargo))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     areas: f.areas.map((a) => ({ codigo: a.codigo, nome: a.nome })),
@@ -260,30 +292,22 @@ export async function listarPostos(p: Planilhas, quem: Autorizador): Promise<{ a
   };
 }
 
-/** Dados para o formulário: cargos, tabela salarial, centros e parâmetros. */
+/** Dados para o formulário: cargos já usados (sugestões), serviços e parâmetros. */
 export interface CadastrosDoFormulario {
   ano: number;
   parametros: ValoresParametros;
-  cargos: { codigo: string; nome: string; cargaReferencia: number | null }[];
-  /** Valor vigente de cada cargo por nível: chave "cargo|nivel". */
-  tabela: Record<string, number>;
+  /** Cargos que já aparecem na folha, para sugerir ao digitar. */
+  cargos: string[];
+  /** Serviços para a lotação, com o nome da área. */
   centros: { codigo: string; nome: string; area: string }[];
 }
 
 function cadastrosDoFormulario(f: FolhaLida): CadastrosDoFormulario {
   const nomeArea = new Map(f.areas.map((a) => [a.codigo, a.nome]));
-  const tabela: Record<string, number> = {};
-  const porChave = new Map<string, typeof f.tabela>();
-  for (const t of f.tabela) porChave.set(`${t.cargo}|${t.nivel}`, [...(porChave.get(`${t.cargo}|${t.nivel}`) ?? []), t]);
-  for (const [chave, lista] of porChave) {
-    const v = vigenteNoMes(lista, 9999, 12);
-    if (v) tabela[chave] = v.valor;
-  }
   return {
     ano: f.parametros.ano,
     parametros: f.parametros,
-    cargos: f.cargos.map((c) => ({ codigo: c.codigo, nome: c.nome, cargaReferencia: c.carga_horaria_referencia })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-    tabela,
+    cargos: [...new Set(f.postos.map((x) => x.cargo))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
     centros: f.centros
       .map((c) => ({ codigo: c.codigo, nome: c.nome, area: c.area ? (nomeArea.get(c.area) ?? c.area) : 'Sem área' }))
       .sort((a, b) => a.area.localeCompare(b.area, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
@@ -291,10 +315,9 @@ function cadastrosDoFormulario(f: FolhaLida): CadastrosDoFormulario {
 }
 
 export interface FichaPosto {
-  posto: { id: string; versao: number; ficha: string | null; colaborador: string | null; cargo: string; nivel: string | null; cargaHoraria: number | null; inicio: string; desligamento: string | null; observacao: string | null } | null;
+  posto: { id: string; versao: number; ficha: string | null; colaborador: string | null; cargo: string; departamento: string | null; cargaHoraria: number | null; inicio: string; desligamento: string | null; observacao: string | null } | null;
   componentes: ValoresComponentes;
   rateio: LinhaRateio[];
-  foraDaTabela: boolean;
   cadastros: CadastrosDoFormulario;
   podeEditar: boolean;
 }
@@ -304,16 +327,15 @@ export async function fichaDoPosto(p: Planilhas, quem: Autorizador, id: string |
   const f = await lerFolha(p);
   const cadastros = cadastrosDoFormulario(f);
   const podeEditar = quem.temPermissao(PERM.editar);
-  if (!id) return { posto: null, componentes: componentesZerados(), rateio: [], foraDaTabela: false, cadastros, podeEditar };
+  if (!id) return { posto: null, componentes: componentesZerados(f.parametros.reajuste_padrao), rateio: [], cadastros, podeEditar };
 
   const x = f.postos.find((y) => y.id === id);
-  if (!x) throw new ErroValidacaoFolha('Posto não encontrado.');
+  if (!x) throw new ErroValidacaoFolha('Funcionário não encontrado.');
   await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'Postos', registroId: id });
   return {
-    posto: { id: x.id, versao: x.versao, ficha: x.ficha, colaborador: x.colaborador, cargo: x.cargo, nivel: x.nivel, cargaHoraria: x.carga_horaria, inicio: x.inicio, desligamento: x.desligamento, observacao: x.observacao },
+    posto: { id: x.id, versao: x.versao, ficha: x.ficha, colaborador: x.colaborador, cargo: x.cargo, departamento: x.departamento, cargaHoraria: x.carga_horaria, inicio: x.inicio, desligamento: x.desligamento, observacao: x.observacao },
     componentes: f.componentes(id) ?? componentesZerados(),
     rateio: f.rateio(id) ?? [],
-    foraDaTabela: false,
     cadastros,
     podeEditar,
   };
@@ -325,7 +347,7 @@ export interface DadosPosto {
   ficha: string | null;
   colaborador: string | null;
   cargo: string;
-  nivel: string | null;
+  departamento: string | null;
   cargaHoraria: number | null;
   inicio: string;
   observacao: string | null;
@@ -342,32 +364,29 @@ export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto
   exigir(quem, PERM.editar);
   const f = await lerFolha(p);
   const erros: string[] = [];
-  if (!f.cargos.some((c) => c.codigo === d.cargo)) erros.push('Escolha um cargo da tabela.');
-  if (d.nivel && !(NIVEIS as readonly string[]).includes(d.nivel)) erros.push('Nível inválido.');
+  if (d.cargo.trim().length < 2) erros.push('Informe o cargo.');
+  if (!Number.isFinite(d.componentes.reajuste) || d.componentes.reajuste < 0 || d.componentes.reajuste > 100) erros.push('Reajuste: use um número entre 0 e 100.');
   if (!DATA.test(d.inicio)) erros.push('Informe a data de admissão (ou de início da vaga).');
   if (!DATA.test(d.vigencia)) erros.push('Informe a partir de quando valem os valores.');
-  if (d.cargaHoraria !== null && (!Number.isFinite(d.cargaHoraria) || d.cargaHoraria <= 0 || d.cargaHoraria > 44)) erros.push('Carga horária semanal entre 1 e 44.');
+  if (d.cargaHoraria !== null && (!Number.isFinite(d.cargaHoraria) || d.cargaHoraria <= 0 || d.cargaHoraria > 300)) erros.push('Carga horária mensal entre 1 e 300 horas.');
   for (const c of COMPONENTES) {
     const v = d.componentes[c.chave];
     if (!Number.isFinite(v) || v < 0) erros.push(`${c.nome}: valor inválido.`);
   }
-  if (d.componentes.salario_base <= 0 && d.componentes.bolsa_estagio <= 0) erros.push('Informe o salário base (ou a bolsa estágio).');
+  if (d.componentes.salario_atual <= 0 && d.componentes.bolsa_estagio <= 0) erros.push('Informe o salário atual (ou a bolsa estágio).');
   erros.push(...validarRateio(d.rateio));
   const desconhecidos = d.rateio.filter((l) => l.centro && !f.centros.some((c) => c.codigo === l.centro));
-  if (desconhecidos.length) erros.push('Há centro de custo que não existe no cadastro.');
+  if (desconhecidos.length) erros.push('Há serviço na lotação que não existe no cadastro de Serviços.');
   const ficha = d.ficha?.trim() || null;
-  if (ficha && f.postos.some((x) => x.ficha === ficha && x.id !== d.id && !x.desligamento)) erros.push(`Já existe um posto ativo com a ficha ${ficha}.`);
+  if (ficha && f.postos.some((x) => x.ficha === ficha && x.id !== d.id && !x.desligamento)) erros.push(`Já existe um funcionário ativo com o código ${ficha}.`);
   if (erros.length) throw new ErroValidacaoFolha([...new Set(erros)].join(' '));
 
-  const cargo = f.cargos.find((c) => c.codigo === d.cargo)!;
-  const valorTabela = d.nivel ? cadastrosDoFormulario(f).tabela[`${d.cargo}|${d.nivel}`] : undefined;
-  const foraDaTabela = valorTabela !== undefined && salarioPelaTabela(valorTabela, d.cargaHoraria, cargo.carga_horaria_referencia) !== d.componentes.salario_base;
   const autoria = { email: quem.email };
   const camposPosto = {
     ficha,
     colaborador: d.colaborador?.trim() || null,
-    cargo: d.cargo,
-    nivel: d.nivel || null,
+    cargo: d.cargo.trim(),
+    departamento: d.departamento?.trim() || null,
     carga_horaria: d.cargaHoraria,
     inicio: d.inicio,
     observacao: d.observacao?.trim() || null,
@@ -380,7 +399,7 @@ export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto
     postoId = novo.id;
   } else {
     const atual = f.postos.find((x) => x.id === d.id);
-    if (!atual) throw new ErroValidacaoFolha('Posto não encontrado.');
+    if (!atual) throw new ErroValidacaoFolha('Funcionário não encontrado.');
     postoId = atual.id;
     const mudou = Object.entries(camposPosto).some(([k, v]) => (atual as unknown as Record<string, unknown>)[k] !== v);
     if (mudou) {
@@ -391,13 +410,13 @@ export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto
 
   const vigencia = d.id ? d.vigencia : d.inicio <= d.vigencia ? d.inicio : d.vigencia;
   if (!iguais(f.componentes(postoId), d.componentes) || !d.id) {
-    await inserir(p, Componentes, { posto_id: postoId, vigencia, ...d.componentes, fora_da_tabela: foraDaTabela }, autoria);
+    await inserir(p, Componentes, { posto_id: postoId, vigencia, ...d.componentes }, autoria);
     colunas.push('componentes');
   }
   if (!iguais(ordenarRateio(f.rateio(postoId) ?? []), ordenarRateio(d.rateio)) || !d.id) {
     const [rateios] = await lerTabelas(p, [Rateios] as const);
     const lote = crypto.randomUUID();
-    await inserirRegistros(p, rateios, d.rateio.map((l) => ({ posto_id: postoId, lote, centro_custo: l.centro, percentual: l.percentual, vigencia })), autoria);
+    await inserirRegistros(p, rateios, d.rateio.map((l) => ({ posto_id: postoId, lote, servico: l.centro, percentual: l.percentual, vigencia })), autoria);
     colunas.push('rateio');
   }
 
@@ -427,7 +446,6 @@ export async function gradeDeRateio(p: Planilhas, quem: Autorizador): Promise<Gr
   exigir(quem, PERM.editar);
   exigir(quem, PERM.individual);
   const f = await lerFolha(p);
-  const nomeCargo = new Map(f.cargos.map((c) => [c.codigo, c.nome]));
   await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'Rateios', detalhes: { grade: true } });
   return {
     ano: f.parametros.ano,
@@ -438,8 +456,8 @@ export async function gradeDeRateio(p: Planilhas, quem: Autorizador): Promise<Gr
         const rateio = f.rateio(x.id) ?? [];
         return {
           id: x.id,
-          rotulo: x.colaborador ? `${x.colaborador}${x.ficha ? ` (ficha ${x.ficha})` : ''}` : `Vaga prevista desde ${x.inicio.slice(0, 7)}`,
-          cargo: nomeCargo.get(x.cargo) ?? x.cargo,
+          rotulo: x.ficha ? `${x.colaborador ?? 'Sem nome'} (${x.ficha})` : `Vaga prevista: ${x.colaborador ?? x.cargo}`,
+          cargo: x.cargo,
           situacao: situacaoRateio(rateio),
           rateio,
         };
@@ -455,16 +473,16 @@ export async function salvarRateios(
   vigencia: string,
 ): Promise<number> {
   exigir(quem, PERM.editar);
-  if (!DATA.test(vigencia)) throw new ErroValidacaoFolha('Informe a partir de quando vale o rateio.');
+  if (!DATA.test(vigencia)) throw new ErroValidacaoFolha('Informe a partir de quando vale a lotação.');
   const f = await lerFolha(p);
   const erros: string[] = [];
   const nome = new Map(f.postos.map((x) => [x.id, x.colaborador ?? 'Vaga prevista']));
   const mudancas = lista.filter((x) => !iguais(ordenarRateio(f.rateio(x.postoId) ?? []), ordenarRateio(x.rateio)));
   for (const x of mudancas) {
-    if (!nome.has(x.postoId)) erros.push('Posto não encontrado.');
+    if (!nome.has(x.postoId)) erros.push('Funcionário não encontrado.');
     const e = validarRateio(x.rateio);
     if (e.length) erros.push(`${nome.get(x.postoId)}: ${e.join(' ')}`);
-    if (x.rateio.some((l) => !f.centros.some((c) => c.codigo === l.centro))) erros.push(`${nome.get(x.postoId)}: centro de custo inexistente.`);
+    if (x.rateio.some((l) => !f.centros.some((c) => c.codigo === l.centro))) erros.push(`${nome.get(x.postoId)}: serviço inexistente.`);
   }
   if (erros.length) throw new ErroValidacaoFolha(erros.join(' · '));
   if (mudancas.length === 0) return 0;
@@ -472,7 +490,7 @@ export async function salvarRateios(
   const [rateios] = await lerTabelas(p, [Rateios] as const);
   const linhas = mudancas.flatMap((x) => {
     const lote = crypto.randomUUID();
-    return x.rateio.map((l) => ({ posto_id: x.postoId, lote, centro_custo: l.centro, percentual: l.percentual, vigencia }));
+    return x.rateio.map((l) => ({ posto_id: x.postoId, lote, servico: l.centro, percentual: l.percentual, vigencia }));
   });
   await inserirRegistros(p, rateios, linhas, { email: quem.email });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Rateios', detalhes: { postos: mudancas.length, colunas: ['rateio'] } });
@@ -480,55 +498,16 @@ export async function salvarRateios(
 }
 
 // ---------------------------------------------------------------------------
-// Cadastros: centros de custo, cargos, tabela salarial e parâmetros
+// Parâmetros
 // ---------------------------------------------------------------------------
 
-export async function cadastros(p: Planilhas, quem: Autorizador) {
+export async function parametrosDaFolha(p: Planilhas, quem: Autorizador) {
   if (!quem.temPermissaoAlgumEscopo(PERM.ver)) throw new ErroPermissao();
-  const f = await lerFolha(p);
-  const formulario = cadastrosDoFormulario(f);
+  const [lidos] = await lerTabelas(p, [Parametros] as const);
   return {
-    ...formulario,
-    areas: f.areas.map((a) => ({ codigo: a.codigo, nome: a.nome })),
-    cargosCompletos: f.cargos.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    parametros: parametrosCom(Object.fromEntries(lidos.ativos().map((x) => [x.chave, x.valor]))),
     podeEditar: quem.temPermissao(PERM.parametros),
   };
-}
-
-const CODIGO = /^[a-z0-9_]+$/;
-
-export async function salvarCentroCusto(p: Planilhas, quem: Autorizador, d: { codigo: string; nome: string; area: string | null }): Promise<void> {
-  exigir(quem, PERM.parametros);
-  const codigo = d.codigo.trim().toLowerCase();
-  if (!CODIGO.test(codigo)) throw new ErroValidacaoFolha('Código em minúsculas, sem espaços nem acentos (ex.: rural_viveiro).');
-  if (d.nome.trim().length < 2) throw new ErroValidacaoFolha('Informe o nome do centro de custo.');
-  const [centros, areas] = await lerTabelas(p, [CentrosCusto, Areas] as const);
-  if (centros.todos().some((c) => c.codigo === codigo)) throw new ErroValidacaoFolha('Já existe um centro de custo com este código.');
-  if (d.area && !areas.ativos().some((a) => a.codigo === d.area)) throw new ErroValidacaoFolha('Área inexistente.');
-  const r = await inserir(p, CentrosCusto, { codigo, nome: d.nome.trim(), area: d.area }, { email: quem.email });
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'CentrosCusto', registroId: r.id });
-}
-
-export async function salvarCargo(p: Planilhas, quem: Autorizador, d: { codigo: string; nome: string; grupo: string | null; cargaReferencia: number | null }): Promise<void> {
-  exigir(quem, PERM.parametros);
-  const codigo = d.codigo.trim().toLowerCase();
-  if (!CODIGO.test(codigo)) throw new ErroValidacaoFolha('Código em minúsculas, sem espaços nem acentos (ex.: professor).');
-  if (d.nome.trim().length < 2) throw new ErroValidacaoFolha('Informe o nome do cargo.');
-  const [cargos] = await lerTabelas(p, [Cargos] as const);
-  if (cargos.todos().some((c) => c.codigo === codigo)) throw new ErroValidacaoFolha('Já existe um cargo com este código.');
-  const r = await inserir(p, Cargos, { codigo, nome: d.nome.trim(), grupo: d.grupo, carga_horaria_referencia: d.cargaReferencia }, { email: quem.email });
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Cargos', registroId: r.id });
-}
-
-export async function salvarValorTabela(p: Planilhas, quem: Autorizador, d: { cargo: string; nivel: string; valor: number; vigencia: string }): Promise<void> {
-  exigir(quem, PERM.parametros);
-  if (!(NIVEIS as readonly string[]).includes(d.nivel)) throw new ErroValidacaoFolha('Nível inválido.');
-  if (!Number.isFinite(d.valor) || d.valor <= 0) throw new ErroValidacaoFolha('Informe um valor maior que zero.');
-  if (!DATA.test(d.vigencia)) throw new ErroValidacaoFolha('Informe a vigência.');
-  const [cargos] = await lerTabelas(p, [Cargos] as const);
-  if (!cargos.ativos().some((c) => c.codigo === d.cargo)) throw new ErroValidacaoFolha('Cargo inexistente.');
-  const r = await inserir(p, TabelaSalarial, { cargo: d.cargo, nivel: d.nivel as (typeof NIVEIS)[number], valor: d.valor, vigencia: d.vigencia }, { email: quem.email });
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'TabelaSalarial', registroId: r.id });
 }
 
 export async function salvarParametros(p: Planilhas, quem: Autorizador, valores: ValoresParametros): Promise<void> {
