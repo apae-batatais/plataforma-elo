@@ -17,6 +17,12 @@ export default async function Estrutura({ searchParams }: { searchParams: Promis
         ← Portal
       </Link>
       <h1 className="text-2xl font-semibold">Estrutura das planilhas</h1>
+      {usuario.estruturaPendente && (
+        <p role="status" className="rounded-md bg-aviso-fundo p-4 text-aviso">
+          Primeiro uso: as planilhas ainda estão em branco. Clique em <strong>Preparar estrutura</strong> para criar as abas
+          e a configuração inicial. Depois disso, o restante da plataforma fica disponível.
+        </p>
+      )}
       <p className="text-texto-suave">
         Cria nas planilhas do Drive as abas que ainda não existem, com o cabeçalho certo, e grava a configuração inicial
         (unidades, áreas e perfis) nas abas vazias. Pode ser usado quantas vezes for preciso: nada que já existe é apagado

@@ -16,6 +16,7 @@ const ROTULO_PAPEL: Record<string, string> = {
 export default async function Pessoas() {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
+  if (usuario.estruturaPendente) redirect('/admin/estrutura');
   const app = await obterAplicacao();
 
   // A camada de aplicação filtra pelo perfil: cada um recebe só quem pode ver.

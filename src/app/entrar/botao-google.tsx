@@ -27,9 +27,17 @@ export function BotaoGoogle({ clientId, dominio }: { clientId: string; dominio: 
         client_id: clientId,
         hd: dominio,
         callback: async ({ credential }) => {
-          const r = await entrarComGoogle(credential);
-          if (r.erro) setErro(r.erro);
-          else router.push('/');
+          setErro(undefined);
+          try {
+            const r = await entrarComGoogle(credential);
+            if (r.erro) setErro(r.erro);
+            else {
+              router.push('/');
+              router.refresh();
+            }
+          } catch {
+            setErro('Não foi possível entrar agora. Tente de novo em alguns instantes; se continuar, avise a administração da plataforma.');
+          }
         },
       });
       google.accounts.id.renderButton(lugar.current, { theme: 'outline', size: 'large', text: 'signin_with', locale: 'pt-BR' });

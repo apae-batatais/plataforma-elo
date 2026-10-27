@@ -2,9 +2,12 @@
  * "Preparar estrutura": cria as abas que faltam, com o cabeçalho, e grava a
  * configuração inicial nas abas vazias. Pode rodar quantas vezes for preciso:
  * nunca apaga nem altera o que já existe.
+ *
+ * Feito com poucas chamadas ao Google (cerca de 4 por planilha + 5), para
+ * caber no limite de tempo das funções da hospedagem.
  */
 import type { z } from 'zod';
-import { cabecalhoDe, inserir, lerTabela, type DefinicaoTabela, type Entrada, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { cabecalhoDe, inserirVarios, lerTabelas, type DefinicaoTabela, type Entrada, type Planilhas, type TabelaLida } from '@/nucleo/armazenamento/tabela';
 import { AREAS_INICIAIS, PERFIS_INICIAIS, PERMISSOES_INICIAIS, UNIDADES_INICIAIS } from './dados-iniciais';
 import { Areas, PerfilPermissoes, Perfis, TABELAS_DO_NUCLEO, Unidades } from './tabelas';
 
@@ -18,24 +21,24 @@ export async function prepararEstrutura(
   tabelasDosModulos: readonly DefinicaoTabela<z.ZodObject>[] = [],
   autor = 'sistema',
 ): Promise<ResultadoPreparacao> {
-  const abasCriadas: string[] = [];
+  const porPlanilha = new Map<string, { aba: string; cabecalho: string[] }[]>();
   for (const def of [...TABELAS_DO_NUCLEO, ...tabelasDosModulos] as DefinicaoTabela<z.ZodObject>[]) {
-    const r = await p.armazenamento.garantirAba(p.idDe(def.planilha), def.aba, cabecalhoDe(def));
-    if (r === 'criada') abasCriadas.push(`${def.planilha} › ${def.aba}`);
+    porPlanilha.set(def.planilha, [...(porPlanilha.get(def.planilha) ?? []), { aba: def.aba, cabecalho: cabecalhoDe(def) }]);
+  }
+  const abasCriadas: string[] = [];
+  for (const [chave, abas] of porPlanilha) {
+    const criadas = await p.armazenamento.garantirAbas(p.idDe(chave), abas);
+    abasCriadas.push(...criadas.map((a) => `${chave} › ${a}`));
   }
 
-  let registrosIniciais = 0;
-  const semear = async <E extends z.ZodObject>(def: DefinicaoTabela<E>, linhas: Entrada<E>[]) => {
-    if ((await lerTabela(p, def)).todos().length > 0) return;
-    for (const l of linhas) {
-      await inserir(p, def, l, { email: autor });
-      registrosIniciais++;
-    }
-  };
-  await semear(Unidades, UNIDADES_INICIAIS);
-  await semear(Areas, AREAS_INICIAIS);
-  await semear(Perfis, PERFIS_INICIAIS);
-  await semear(PerfilPermissoes, PERMISSOES_INICIAIS);
+  const [unidades, areas, perfis, permissoes] = await lerTabelas(p, [Unidades, Areas, Perfis, PerfilPermissoes] as const);
+  const semear = async <E extends z.ZodObject>(tabela: TabelaLida<E>, linhas: Entrada<E>[]) =>
+    tabela.todos().length > 0 ? 0 : inserirVarios(p, tabela, linhas, { email: autor });
+  const registrosIniciais =
+    (await semear(unidades, UNIDADES_INICIAIS)) +
+    (await semear(areas, AREAS_INICIAIS)) +
+    (await semear(perfis, PERFIS_INICIAIS)) +
+    (await semear(permissoes, PERMISSOES_INICIAIS));
 
   return { abasCriadas, registrosIniciais };
 }

@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ErroConfiguracao, lerConfig } from '@/nucleo/config';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { sair } from './acoes-sessao';
+import { ConfiguracaoInvalida } from './configuracao-invalida';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,6 +15,20 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  try {
+    lerConfig();
+  } catch (erro) {
+    if (!(erro instanceof ErroConfiguracao)) throw erro;
+    return (
+      <html lang="pt-BR">
+        <body className="min-h-screen antialiased">
+          <main className="mx-auto max-w-5xl px-4 py-8">
+            <ConfiguracaoInvalida mensagem={erro.message} />
+          </main>
+        </body>
+      </html>
+    );
+  }
   const [app, usuario] = await Promise.all([obterAplicacao(), usuarioLogado()]);
   return (
     <html lang="pt-BR">
