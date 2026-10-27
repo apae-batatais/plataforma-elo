@@ -1,6 +1,6 @@
 # Especificação — Módulo Orçamento
 
-- Situação: **rascunho para aprovação da Diretoria** (revisão 2, 27/10/2026)
+- Situação: **aprovada pela Diretoria em 27/10/2026** (revisão 2); Entrega 1A construída
 - Dono do produto: Diretoria
 - Base: estrutura das planilhas "Apae Batatais - Orçamento 2027" e
   "Apae Batatais - Folha Pagamento 2027" (Google Drive, versão de 23/10/2026)
@@ -91,7 +91,8 @@ Entrega 1A não altera o Núcleo, exceto pelo perfil novo.
 9. O reajuste vale a partir do mês definido nos parâmetros, sem alterar os meses anteriores.
 10. Nada é apagado:
     - Um posto é encerrado com a data de desligamento.
-    - Mudar o rateio encerra as linhas anteriores (`fim`) e cria as novas.
+    - Mudar o rateio ou os componentes grava linhas novas com "vale a partir de";
+      as anteriores continuam guardadas e valem para os meses antes disso.
     - Assim fica o histórico de quanto cada centro recebeu em cada mês.
 11. Os valores individuais só aparecem para quem tem `orcamento.folha.ver_individual`.
     Abrir a ficha de um posto registra uma auditoria de leitura. Os demais perfis veem só os totais.

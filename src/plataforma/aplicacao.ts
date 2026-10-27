@@ -4,6 +4,7 @@
  */
 import 'server-only';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
+import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
 import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-planilhas';
 import { lerConfig, type Config } from '@/nucleo/config';
@@ -56,7 +57,11 @@ async function montar(): Promise<Aplicacao> {
       armazenamento,
       idDe: (chave) => {
         const id = ids[chave];
-        if (!id) throw new Error(`A planilha "${chave}" não está cadastrada na variável PLANILHAS.`);
+        if (!id) {
+          throw new ErroArmazenamento(
+            `A planilha "${chave}" não está cadastrada na variável PLANILHAS da Netlify. Crie a planilha em branco na pasta da plataforma no Drive, acrescente "${chave}":"<id da planilha>" em PLANILHAS e publique de novo.`,
+          );
+        }
         return id;
       },
     },

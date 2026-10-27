@@ -77,7 +77,7 @@ export async function popularFolhaFicticia(p: Planilhas): Promise<{ postos: numb
       nivel,
       entrada: {
         ficha: pl.vaga ? null : String(1000 + i),
-        colaborador: pl.vaga ? null : f.person.fullName(),
+        colaborador: pl.vaga ? null : `${f.person.firstName()} ${f.person.lastName()}`,
         cargo: pl.cargo.codigo,
         nivel,
         carga_horaria: pl.cargo.carga,
