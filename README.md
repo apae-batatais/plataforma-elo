@@ -1,4 +1,4 @@
-# Plataforma APAE Batatais
+# Plataforma Apae Batatais
 
 Portal com um app para cada departamento (Orçamento, Avaliação Diagnóstica e
 outros), sobre um Núcleo comum de pessoas, acessos e auditoria.

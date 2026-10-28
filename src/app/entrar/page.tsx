@@ -20,7 +20,7 @@ function Moldura({ children }: { children: React.ReactNode }) {
             A
           </span>
           <span className="leading-tight">
-            <span className="block text-lg font-bold">APAE Batatais</span>
+            <span className="block text-lg font-bold">Apae Batatais</span>
             <span className="block text-sm text-lateral-suave">Plataforma de gestão</span>
           </span>
         </div>

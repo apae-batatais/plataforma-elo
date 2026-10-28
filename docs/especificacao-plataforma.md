@@ -6,7 +6,7 @@ em `docs/adr/` valem sobre este resumo. A ADR-011 mudou a arquitetura:
 camada de aplicação na Netlify e armazenamento em Google Planilhas.
 
 ## Objetivo
-Reunir em um só lugar os apps de cada departamento da APAE Batatais, sobre um
+Reunir em um só lugar os apps de cada departamento da Apae Batatais, sobre um
 Núcleo comum de pessoas, acesso e auditoria. Primeiros apps: Orçamento (Fase 1)
 e Avaliação Diagnóstica da Assistência Social (Fase 2).
 
