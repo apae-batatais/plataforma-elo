@@ -1,6 +1,7 @@
 # Especificação — Módulo Orçamento
 
-- Situação: revisão 3 (27/10/2026): estrutura da aba Estudo; sem Tabela Salarial; centros de custo = Serviços
+- Situação: revisão 4 (28/10/2026): Entrega 1B (Previsão) detalhada para aprovação.
+  Revisão 3 (27/10/2026): estrutura da aba Estudo; sem Tabela Salarial; centros de custo = Serviços
 - Dono do produto: Diretoria
 - Base: estrutura das planilhas "Apae Batatais - Orçamento 2027" e
   "Apae Batatais - Folha Pagamento 2027" (Google Drive, versão de 23/10/2026)
@@ -92,17 +93,99 @@ cargo é texto livre, como na planilha. A planilha `orcamento` só entra na Entr
     Coordenações veem o resumo só dos serviços do seu escopo (unidade, área ou serviço).
 12. Toda alteração é registrada na auditoria com as colunas alteradas, nunca com os valores.
 
-## Regras de negócio — Entregas 1B e 1C (resumo, detalhadas antes de construir)
+## Entrega 1B — Previsão (para aprovação)
+
+O orçamento de 2027 começa **do zero no app** (não importa a planilha atual).
+As coordenações propõem, o Financeiro consolida e a Diretoria aprova.
+
+### Cadastros (Orçamento › Cadastros, Financeiro)
+
+| Cadastro | Campos | Observação |
+| --- | --- | --- |
+| **Grupos de gasto** | Nome (único), "é Recursos Humanos?" | Ex.: Material de consumo, Alimentação, Serviços de terceiros. Os de RH somam no indicador da folha. |
+| **Fontes de recurso** | Nome (único), natureza (**pública** ou **própria/privada**), uso (**livre** ou **restrita**) | Ex.: Subvenção municipal (pública, restrita), Projeto Incentivado (**pública**), Leilão (própria, livre). Base dos indicadores. |
+
+Excluir = encerrar (fica guardado e pode ser reativado); não exclui o que está em uso.
+
+### Exercício
+
+- Um exercício por ano (ex.: 2027), com situação: **Em elaboração → Aprovado → Encerrado**.
+- Só a Diretoria aprova. Para aprovar: nenhum item com fonte "a definir" e nenhuma proposta pendente.
+- Depois de aprovado, os valores só mudam por **remanejamento** (abaixo).
+
+### Despesas
+
+Cada item de despesa tem: **Serviço** (centro de custo; a área vem do serviço), **Grupo de gasto**,
+**Fonte de recurso** (uma por item; pode ficar "a definir" durante a elaboração), descrição,
+quantidade × ocorrências × valor unitário (o app calcula o valor) e a **distribuição nos meses**:
+igual nos 12 meses, só em meses escolhidos, ou mês a mês digitado. A distribuição sempre soma o valor do item.
+
+**Recursos Humanos** entra de dois jeitos:
+1. **Automático da folha:** custo de cada funcionário × lotação, mês a mês, por serviço
+   (Resumo da folha). Não se digita; muda quando a folha muda. Fonte: escolhida por serviço
+   (ex.: "Escola → Convênio Educação"), com "a definir" enquanto não escolhida.
+2. **Itens à parte**, num grupo marcado como RH: RPA, terceirizados, rescisões, etc.
+
+### Receitas
+
+Cada item de receita tem: **Fonte de recurso**, descrição, valor e distribuição nos meses (igual à despesa),
+e a situação da captação: **Garantida** (contrato/termo assinado), **Em negociação** ou **A captar**.
+O painel mostra o quanto da receita prevista já está garantido.
+
+### Propostas das coordenações
+
+- A coordenação lança itens de despesa **só nos serviços do seu escopo**, como "Proposta".
+- O Financeiro **aceita** (entra no orçamento), **ajusta e aceita** ou **recusa** (com motivo).
+- A coordenação vê a situação das suas propostas; não vê salários nem outros serviços.
+- As propostas só são aceitas até a aprovação do exercício.
+
+### Remanejamentos (depois de aprovado)
+
+- O Financeiro pede: tirar valor de um item (ou mês) e pôr em outro, com justificativa.
+- A Diretoria aprova ou recusa. Aprovado, os dois itens mudam; o original fica no histórico.
+- O total do orçamento não muda num remanejamento; aumento de receita/despesa entra como **suplementação**, que também precisa da Diretoria.
+
+### Painel da previsão
+
+Despesa × receita do ano e mês a mês; resultado previsto; por área, serviço, grupo e fonte;
+RH (folha + itens à parte) e os indicadores abaixo com os sinais de alerta.
+
+### Permissões novas
+
+| Permissão | Quem |
+| --- | --- |
+| `orcamento.painel.ver` | Diretoria, Financeiro, Leitura |
+| `orcamento.previsao.editar` (despesas, receitas, cadastros, aceitar propostas, pedir remanejamento) | Financeiro |
+| `orcamento.previsao.propor` (escopo: serviços da coordenação) | Coordenação de serviço |
+| `orcamento.exercicio.aprovar` (aprovar exercício, remanejamentos e suplementações) | Diretoria |
+
+### Onde os dados ficam (planilha `orcamento`, não sigilosa)
+
+Abas: `GruposGasto`, `Fontes`, `Exercicios`, `Despesas`, `DespesasMeses`, `Receitas`, `ReceitasMeses`,
+`FontesFolha` (fonte da folha por serviço), `Propostas` (histórico de decisões) e `Remanejamentos`.
+Itens nunca são apagados: são cancelados (`ativo = FALSE`) ou alterados com histórico na auditoria.
+
+### Regras de negócio — 1B
 
 1. Valor do item = quantidade × ocorrências × valor unitário, calculado pelo app.
-2. A distribuição mensal do item soma exatamente o valor do item.
-3. Todo item e todo lançamento tem fonte de recurso. A fonte pode ficar "a definir"
-   durante a elaboração, mas o exercício só é aprovado com todas as fontes preenchidas.
-4. **As coordenações de área propõem itens da própria área**; o Financeiro aceita, ajusta ou recusa.
-5. Exercício aprovado só muda por remanejamento aprovado pela Diretoria.
-6. A previsão de Recursos Humanos é gerada a partir da folha (custo × rateio, mês a mês).
-7. A importação do realizado não duplica lançamentos, e o que não se reconhece vai para a fila "a classificar".
-8. **O realizado de 2026 também é importado**, para comparar ano a ano.
+2. A distribuição mensal soma exatamente o valor do item (centavos ajustados no último mês).
+3. Todo item tem fonte; "a definir" é permitido só em elaboração. O exercício só é aprovado sem "a definir" e sem propostas pendentes.
+4. Coordenação propõe só nos serviços do seu escopo; o Financeiro decide; recusa exige motivo.
+5. Exercício aprovado só muda por remanejamento ou suplementação aprovados pela Diretoria.
+6. RH da folha = resumo com encargos × lotação, mês a mês (o mesmo número do Resumo da folha).
+7. Nomes de grupos e fontes são únicos (sem diferença de acento ou maiúscula).
+8. Toda alteração é auditada (colunas, nunca valores pessoais). Os valores do orçamento não são pessoais.
+
+### Construção em duas partes
+
+- **1B.1** — Cadastros (grupos e fontes), exercício, despesas, receitas, RH da folha e painel.
+- **1B.2** — Propostas das coordenações, aprovação do exercício, remanejamentos e suplementações.
+
+## Entrega 1C — Execução (resumo, detalhada antes de construir)
+
+1. A importação do realizado não duplica lançamentos, e o que não se reconhece vai para a fila "a classificar".
+2. **O realizado de 2026 também é importado**, para comparar ano a ano.
+3. A importação usará o mesmo DE-PARA de colunas da folha.
 
 ## Indicadores
 
@@ -149,10 +232,9 @@ cargo é texto livre, como na planilha. A planilha `orcamento` só entra na Entr
 ## Pendências (não bloqueiam a Entrega 1A)
 
 - **Diferença entre a folha e o orçamento.** A folha atual custa R$ 6,78 mi por
-  ano, e o orçamento 2027 prevê R$ 8,38 mi em RH. Falta explicar a diferença de
-  R$ 1,6 mi. A Diretoria vai conferir. Isso é necessário antes da 1B, porque a
-  previsão de RH passa a vir da folha. As vagas previstas e o reajuste,
-  cadastrados na 1A, já devem explicar parte dela.
+  ano, e a planilha do orçamento 2027 prevê R$ 8,38 mi em RH (diferença de R$ 1,6 mi).
+  Não bloqueia mais a 1B: o orçamento começa do zero, o RH vem da folha e o que
+  não está na folha (RPA, terceirizados, rescisões…) entra como itens de RH à parte.
 - **Sistema contábil e formato do arquivo do realizado.** A Diretoria vai
   verificar. Isso é necessário antes da 1C.
 
@@ -164,6 +246,13 @@ cargo é texto livre, como na planilha. A planilha `orcamento` só entra na Entr
 4. O realizado de 2026 também é importado.
 5. Será criado o perfil Departamento Pessoal, que pode ver os salários individuais.
 6. A construção começa pela Folha de Pagamento.
+
+## Decisões da Diretoria (28/10/2026)
+
+1. Item de despesa classificado por **Serviço + Grupo de gasto + Fonte**.
+2. **Uma fonte por item** (despesa paga por duas fontes vira dois itens).
+3. RH = **folha automática + itens de RH à parte**.
+4. O orçamento 2027 **começa do zero no app** (sem importar a planilha atual).
 
 ## Critérios de pronto — Entrega 1A
 
