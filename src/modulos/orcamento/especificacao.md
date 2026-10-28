@@ -105,7 +105,14 @@ As coordenações propõem, o Financeiro consolida e a Diretoria aprova.
 | **Grupos de gasto** | Nome (único), "é Recursos Humanos?" | Ex.: Material de consumo, Alimentação, Serviços de terceiros. Os de RH somam no indicador da folha. |
 | **Fontes de recurso** | Nome (único), natureza (**pública** ou **própria/privada**), uso (**livre** ou **restrita**) | Ex.: Subvenção municipal (pública, restrita), Projeto Incentivado (**pública**), Leilão (própria, livre). Base dos indicadores. |
 
-Excluir = encerrar (fica guardado e pode ser reativado); não exclui o que está em uso.
+Cada cadastro tem a sua tela com as opções **Adicionar**, **Alterar** e **Excluir**, no mesmo padrão
+de Administração › Áreas e Serviços:
+- **Adicionar:** formulário ao lado da lista; recusa nome repetido (sem diferença de acento ou maiúscula).
+- **Alterar:** botão em cada linha; muda nome e marcações. O que já foi lançado passa a mostrar o nome novo.
+- **Excluir:** pede confirmação; o registro sai das listas, mas fica guardado em "excluídos" e pode ser
+  reativado. Não deixa excluir um grupo ou fonte usado em item ativo do exercício em elaboração ou aprovado
+  (avisa quantos itens usam).
+- Quem pode: Financeiro (`orcamento.previsao.editar`). Os demais só veem os nomes nas listas.
 
 ### Exercício
 
