@@ -79,6 +79,8 @@ export async function lerFolha(p: Planilhas) {
     parametrosLidos: parametros,
     /** Serviços ativos: são os "centros de custo" da lotação. */
     centros: servicos.ativos().map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area })),
+    /** Todos os serviços, inclusive os excluídos: para mostrar o nome de lotações antigas. */
+    todosCentros: servicos.todos().map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area })),
     postos: postos.ativos(),
     areas: areas.ativos(),
     /** Componentes que valem no mês (ou os mais recentes, sem mês). */
@@ -171,7 +173,7 @@ export async function resumoFolha(p: Planilhas, quem: Autorizador, mesEscolhido?
     itensDoMes.push(doMes);
   }
 
-  const servicos = new Map(f.centros.map((c) => [c.codigo, c]));
+  const servicos = new Map(f.todosCentros.map((c) => [c.codigo, c]));
   const centros = [...porServico]
     .map(([codigo, meses]) => {
       const s = servicos.get(codigo);

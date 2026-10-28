@@ -6,10 +6,10 @@
  * Toda alteração é auditada (só nomes de colunas, nunca valores pessoais).
  * Nada é apagado: atribuições são encerradas (fim) e usuários desativados.
  */
-import { atualizar, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { atualizar, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import {
-  Areas, Atribuicoes, Papeis, Perfis, Pessoas, Servicos, Unidades, Usuarios,
+  Areas, Atribuicoes, Papeis, Perfis, Pessoas, Servicos, Unidades, Usuarios, VinculosServico,
   type EscopoTipo,
 } from '@/nucleo/estrutura/tabelas';
 import { ErroPermissao, type Autorizador } from './autorizador';
@@ -190,4 +190,299 @@ export async function cadastrarServico(
     { email: quem.email },
   );
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Servicos', registroId: s.id });
+}
+
+// ---------------------------------------------------------------------------
+// Serviços em lote (lista colada de uma planilha)
+// ---------------------------------------------------------------------------
+
+export interface LinhaServicoLote {
+  linha: number;
+  nome: string;
+  codigo: string;
+  area: string | null;
+  areaNome: string | null;
+  unidade: string | null;
+  unidadeNome: string | null;
+  vagas: number | null;
+  situacao: 'ok' | 'ja_existe' | 'erro';
+  problema: string | null;
+}
+
+const semAcento = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[()\-_.,/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+function codigoDoNome(nome: string, usados: Set<string>): string {
+  const base = semAcento(nome).replace(/[^a-z0-9 ]/g, '').trim().replace(/ /g, '_').slice(0, 40) || 'servico';
+  let c = base;
+  for (let i = 2; usados.has(c); i++) c = `${base}_${i}`;
+  usados.add(c);
+  return c;
+}
+
+/** Acha pelo código, pelo nome ou por uma palavra do nome entre parênteses (ex.: "Sede", "Filial"). */
+function acharPorNome<T extends { codigo: string; nome: string }>(lista: T[], texto: string): T | undefined {
+  const t = semAcento(texto);
+  if (!t) return undefined;
+  return (
+    lista.find((x) => semAcento(x.codigo) === t || semAcento(x.nome) === t) ??
+    lista.find((x) => semAcento(x.nome).split(' ').includes(t)) ??
+    lista.find((x) => semAcento(x.nome).includes(t) || t.includes(semAcento(x.nome)))
+  );
+}
+
+/**
+ * Lê uma lista colada (linhas copiadas de uma planilha, separadas por
+ * tabulação ou ponto e vírgula): Nome; Área; Unidade (opcional); Vagas (opcional).
+ * Não grava nada: devolve o que seria cadastrado, para a pessoa conferir.
+ */
+export async function analisarServicosEmLote(p: Planilhas, quem: Autorizador, texto: string): Promise<LinhaServicoLote[]> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const [servicos, unidades, areas] = await lerTabelas(p, [Servicos, Unidades, Areas] as const);
+  const usados = new Set(servicos.todos().map((s) => s.codigo));
+  const nomesExistentes = new Set(servicos.todos().map((s) => semAcento(s.nome)));
+  const nomesNoLote = new Set<string>();
+  const sede = unidades.ativos().find((u) => u.codigo === 'sede') ?? unidades.ativos()[0];
+
+  const linhas = texto.split(/\r?\n/).map((l, i) => ({ numero: i + 1, partes: l.split(/\t|;/).map((x) => x.trim()) }));
+  const resultado: LinhaServicoLote[] = [];
+  for (const { numero, partes } of linhas) {
+    const [nome = '', areaTexto = '', unidadeTexto = '', vagasTexto = ''] = partes;
+    if (!nome) continue;
+    // Linha de cabeçalho copiada junto.
+    if (semAcento(nome) === 'nome' || (semAcento(nome).startsWith('servico') && semAcento(areaTexto) === 'area')) continue;
+
+    const area = acharPorNome(areas.ativos(), areaTexto);
+    const unidade = unidadeTexto ? acharPorNome(unidades.ativos(), unidadeTexto) : sede;
+    const vagas = vagasTexto ? Number(vagasTexto.replace(/\D/g, '')) : null;
+    const chave = semAcento(nome);
+    let situacao: LinhaServicoLote['situacao'] = 'ok';
+    let problema: string | null = null;
+    if (nomesExistentes.has(chave)) {
+      situacao = 'ja_existe';
+      problema = 'Já cadastrado: será ignorado.';
+    } else if (nomesNoLote.has(chave)) {
+      situacao = 'ja_existe';
+      problema = 'Repetido na lista: será ignorado.';
+    } else if (!areaTexto) {
+      situacao = 'erro';
+      problema = 'Falta a área.';
+    } else if (!area) {
+      situacao = 'erro';
+      problema = `Área "${areaTexto}" não encontrada.`;
+    } else if (!unidade) {
+      situacao = 'erro';
+      problema = `Unidade "${unidadeTexto}" não encontrada.`;
+    } else if (vagas !== null && !Number.isInteger(vagas)) {
+      situacao = 'erro';
+      problema = 'Vagas deve ser um número inteiro.';
+    }
+    nomesNoLote.add(chave);
+    resultado.push({
+      linha: numero,
+      nome: nome.replace(/\s+/g, ' '),
+      codigo: situacao === 'ok' ? codigoDoNome(nome, usados) : '',
+      area: area?.codigo ?? null,
+      areaNome: area?.nome ?? null,
+      unidade: unidade?.codigo ?? null,
+      unidadeNome: unidade?.nome ?? null,
+      vagas,
+      situacao,
+      problema,
+    });
+  }
+  return resultado;
+}
+
+/** Cadastra as linhas conferidas, com uma gravação só e um registro de auditoria. */
+export async function cadastrarServicosEmLote(
+  p: Planilhas,
+  quem: Autorizador,
+  linhas: { codigo: string; nome: string; area: string; unidade: string; vagas: number | null }[],
+): Promise<number> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  if (linhas.length === 0) throw new ErroValidacao('Não há serviços para cadastrar.');
+  const [servicos, unidades, areas] = await lerTabelas(p, [Servicos, Unidades, Areas] as const);
+  const codigos = new Set(servicos.todos().map((s) => s.codigo));
+  const nomes = new Set(servicos.todos().map((s) => semAcento(s.nome)));
+  for (const l of linhas) {
+    if (!/^[a-z0-9_]+$/.test(l.codigo) || codigos.has(l.codigo) || nomes.has(semAcento(l.nome))) {
+      throw new ErroValidacao('A lista mudou ou já foi cadastrada. Confira de novo antes de cadastrar.');
+    }
+    if (!areas.ativos().some((a) => a.codigo === l.area) || !unidades.ativos().some((u) => u.codigo === l.unidade)) {
+      throw new ErroValidacao(`Área ou unidade inválida em "${l.nome}".`);
+    }
+    if (l.nome.trim().length < 2) throw new ErroValidacao('Há serviço sem nome.');
+    codigos.add(l.codigo);
+    nomes.add(semAcento(l.nome));
+  }
+  const gravados = await inserirRegistros(
+    p,
+    servicos,
+    linhas.map((l) => ({ codigo: l.codigo, nome: l.nome.trim(), area: l.area, unidade: l.unidade, vagas: l.vagas, inicio: hoje() })),
+    { email: quem.email },
+  );
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Servicos', detalhes: { lote: gravados.length } });
+  return gravados.length;
+}
+
+// ---------------------------------------------------------------------------
+// Editar, excluir (encerrar) e reativar serviço
+// ---------------------------------------------------------------------------
+
+/**
+ * Altera nome, área, unidade e vagas. O código não muda: ele liga o serviço
+ * à lotação da folha, aos perfis de acesso e aos atendidos.
+ */
+export async function editarServico(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  dados: { nome: string; unidade: string; area: string; vagas: number | null },
+): Promise<void> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const [servicos, unidades, areas] = await lerTabelas(p, [Servicos, Unidades, Areas] as const);
+  const alvo = servicos.porId(id);
+  if (!alvo || alvo.ativo === false) throw new ErroValidacao('Serviço não encontrado.');
+  const nome = dados.nome.trim();
+  if (!nome) throw new ErroValidacao('Informe o nome do serviço.');
+  if (!unidades.ativos().some((u) => u.codigo === dados.unidade)) throw new ErroValidacao('Unidade inexistente.');
+  if (!areas.ativos().some((a) => a.codigo === dados.area)) throw new ErroValidacao('Escolha a área do serviço.');
+  if (dados.vagas !== null && (!Number.isInteger(dados.vagas) || dados.vagas < 0)) throw new ErroValidacao('Vagas deve ser um número inteiro.');
+  const { colunasAlteradas } = await atualizar(
+    p,
+    Servicos,
+    id,
+    versao,
+    { nome, unidade: dados.unidade, area: dados.area, vagas: dados.vagas },
+    { email: quem.email },
+  );
+  if (colunasAlteradas.length === 0) return;
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Servicos', registroId: id, detalhes: { colunas: colunasAlteradas } });
+}
+
+/**
+ * "Excluir" um serviço: ele sai das listas (ativo = FALSE, fim = hoje), mas o
+ * registro fica guardado e pode ser reativado. Não deixa excluir enquanto houver
+ * perfis de acesso ou atendidos ligados a ele.
+ */
+export async function excluirServico(p: Planilhas, quem: Autorizador, id: string, versao: number): Promise<void> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const [servicos, atribuicoes, vinculos] = await lerTabelas(p, [Servicos, Atribuicoes, VinculosServico] as const);
+  const alvo = servicos.porId(id);
+  if (!alvo || alvo.ativo === false) throw new ErroValidacao('Serviço não encontrado.');
+  const h = hoje();
+  const perfis = atribuicoes
+    .ativos()
+    .filter((a) => a.escopo_tipo === 'servico' && a.escopo === alvo.codigo && (!a.fim || a.fim >= h)).length;
+  if (perfis > 0) {
+    throw new ErroValidacao(
+      `Não dá para excluir "${alvo.nome}": ${perfis} ${perfis === 1 ? 'perfil de acesso vale' : 'perfis de acesso valem'} para ele. Retire-os antes em Acessos.`,
+    );
+  }
+  const atendidos = vinculos.ativos().filter((v) => v.servico === alvo.codigo && (!v.saida || v.saida >= h)).length;
+  if (atendidos > 0) {
+    throw new ErroValidacao(
+      `Não dá para excluir "${alvo.nome}": ${atendidos} ${atendidos === 1 ? 'pessoa está vinculada' : 'pessoas estão vinculadas'} a ele. Registre a saída antes.`,
+    );
+  }
+  const { colunasAlteradas } = await atualizar(p, Servicos, id, versao, { ativo: false, fim: h }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: 'Servicos', registroId: id, detalhes: { colunas: colunasAlteradas } });
+}
+
+/** Volta a mostrar um serviço excluído por engano. */
+export async function reativarServico(p: Planilhas, quem: Autorizador, id: string, versao: number): Promise<void> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const [servicos] = await lerTabelas(p, [Servicos] as const);
+  const alvo = servicos.porId(id);
+  if (!alvo || alvo.ativo !== false) throw new ErroValidacao('Serviço não encontrado entre os excluídos.');
+  const { colunasAlteradas } = await atualizar(p, Servicos, id, versao, { ativo: true, fim: null }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Servicos', registroId: id, detalhes: { colunas: colunasAlteradas } });
+}
+
+// ---------------------------------------------------------------------------
+// Áreas (agrupam os serviços)
+// ---------------------------------------------------------------------------
+
+/** Nome comparável: sem acento, sem maiúsculas e sem espaços sobrando. */
+const nomeComparavel = (t: string) => semAcento(t).replace(/[^a-z0-9 ]/g, '').trim();
+
+function conferirNomeDeArea(lista: { id: string; nome: string; ativo: boolean }[], nome: string, ignorarId?: string) {
+  if (!nome) throw new ErroValidacao('Informe o nome da área.');
+  const igual = lista.find((a) => a.id !== ignorarId && nomeComparavel(a.nome) === nomeComparavel(nome));
+  if (igual) {
+    throw new ErroValidacao(
+      igual.ativo === false
+        ? `Já existe uma área excluída chamada "${igual.nome}". Reative-a em vez de cadastrar outra.`
+        : `Já existe uma área chamada "${igual.nome}". O nome da área não pode se repetir.`,
+    );
+  }
+}
+
+/** Cadastra uma área. O nome é único (sem diferença de acento ou maiúsculas); o código é gerado do nome. */
+export async function cadastrarArea(p: Planilhas, quem: Autorizador, dados: { nome: string }): Promise<string> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const nome = dados.nome.trim().replace(/\s+/g, ' ');
+  const [areas] = await lerTabelas(p, [Areas] as const);
+  conferirNomeDeArea(areas.todos(), nome);
+  const codigo = codigoDoNome(nome, new Set(areas.todos().map((a) => a.codigo)));
+  const a = await inserir(p, Areas, { codigo, nome }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Areas', registroId: a.id });
+  return codigo;
+}
+
+/** Muda o nome da área (o código fica o mesmo, os serviços continuam ligados). */
+export async function editarArea(p: Planilhas, quem: Autorizador, id: string, versao: number, dados: { nome: string }): Promise<void> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const nome = dados.nome.trim().replace(/\s+/g, ' ');
+  const [areas] = await lerTabelas(p, [Areas] as const);
+  const alvo = areas.porId(id);
+  if (!alvo || alvo.ativo === false) throw new ErroValidacao('Área não encontrada.');
+  conferirNomeDeArea(areas.todos(), nome, id);
+  const { colunasAlteradas } = await atualizar(p, Areas, id, versao, { nome }, { email: quem.email });
+  if (colunasAlteradas.length === 0) return;
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Areas', registroId: id, detalhes: { colunas: colunasAlteradas } });
+}
+
+/** "Excluir" uma área: sai das listas (ativo = FALSE). Só se nenhum serviço ou perfil de acesso usar a área. */
+export async function excluirArea(p: Planilhas, quem: Autorizador, id: string, versao: number): Promise<void> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const [areas, servicos, atribuicoes] = await lerTabelas(p, [Areas, Servicos, Atribuicoes] as const);
+  const alvo = areas.porId(id);
+  if (!alvo || alvo.ativo === false) throw new ErroValidacao('Área não encontrada.');
+  const qtd = servicos.ativos().filter((s) => s.area === alvo.codigo).length;
+  if (qtd > 0) {
+    throw new ErroValidacao(
+      `Não dá para excluir "${alvo.nome}": ${qtd} ${qtd === 1 ? 'serviço pertence' : 'serviços pertencem'} a ela. Mude a área desses serviços ou exclua-os antes.`,
+    );
+  }
+  const h = hoje();
+  const perfis = atribuicoes.ativos().filter((a) => a.escopo_tipo === 'area' && a.escopo === alvo.codigo && (!a.fim || a.fim >= h)).length;
+  if (perfis > 0) {
+    throw new ErroValidacao(
+      `Não dá para excluir "${alvo.nome}": ${perfis} ${perfis === 1 ? 'perfil de acesso vale' : 'perfis de acesso valem'} para ela. Retire-os antes em Acessos.`,
+    );
+  }
+  await atualizar(p, Areas, id, versao, { ativo: false }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: 'Areas', registroId: id, detalhes: { colunas: ['ativo'] } });
+}
+
+/** Volta a mostrar uma área excluída (se nenhuma ativa tiver o mesmo nome). */
+export async function reativarArea(p: Planilhas, quem: Autorizador, id: string, versao: number): Promise<void> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const [areas] = await lerTabelas(p, [Areas] as const);
+  const alvo = areas.porId(id);
+  if (!alvo || alvo.ativo !== false) throw new ErroValidacao('Área não encontrada entre as excluídas.');
+  if (areas.ativos().some((a) => nomeComparavel(a.nome) === nomeComparavel(alvo.nome))) {
+    throw new ErroValidacao(`Já existe uma área ativa chamada "${alvo.nome}".`);
+  }
+  await atualizar(p, Areas, id, versao, { ativo: true }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Areas', registroId: id, detalhes: { colunas: ['ativo'] } });
 }

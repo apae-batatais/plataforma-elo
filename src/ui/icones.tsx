@@ -57,6 +57,14 @@ export const IconeServicos = (p: Props) => (
     <path d="M9 21v-6h6v6M9 10.5h.01M15 10.5h.01" />
   </Icone>
 );
+export const IconeAreas = (p: Props) => (
+  <Icone {...p}>
+    <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
+    <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5" />
+    <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5" />
+    <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5" />
+  </Icone>
+);
 export const IconePlanilha = (p: Props) => (
   <Icone {...p}>
     <rect x="3" y="3" width="18" height="18" rx="2" />

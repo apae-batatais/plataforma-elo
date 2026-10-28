@@ -33,7 +33,7 @@ export function navegacaoDoUsuario(autorizador: Autorizador, estruturaPendente: 
   }
   const admin: GrupoNavegacao['itens'] = [];
   if (!estruturaPendente && autorizador.temPermissao('core.acessos.gerenciar')) admin.push({ rotulo: 'Acessos', href: '/admin/acessos', icone: 'acessos' });
-  if (!estruturaPendente && autorizador.temPermissao('core.organizacao.gerenciar')) admin.push({ rotulo: 'Serviços', href: '/admin/servicos', icone: 'servicos' });
+  if (!estruturaPendente && autorizador.temPermissao('core.organizacao.gerenciar')) admin.push({ rotulo: 'Áreas', href: '/admin/areas', icone: 'areas' }, { rotulo: 'Serviços', href: '/admin/servicos', icone: 'servicos' });
   if (autorizador.temPermissao('core.organizacao.gerenciar')) admin.push({ rotulo: 'Estrutura das planilhas', href: '/admin/estrutura', icone: 'planilhas' });
   if (admin.length) grupos.push({ titulo: 'Administração', itens: admin });
   return grupos;

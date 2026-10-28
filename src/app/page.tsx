@@ -8,7 +8,7 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { APPS_PLANEJADOS } from '@/plataforma/apps-planejados';
 import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
-import { IconeAtencao, IconeChave, IconeCerto, IconeOrcamento, IconePessoas, IconeSeta, IconeServicos } from '@/ui/icones';
+import { IconeAreas, IconeAtencao, IconeChave, IconeCerto, IconeOrcamento, IconePessoas, IconeSeta, IconeServicos } from '@/ui/icones';
 import { CabecalhoPagina } from '@/ui/pagina';
 
 interface Pendencia {
@@ -160,6 +160,9 @@ export default async function Portal() {
           ))}
           {a.temPermissao('core.acessos.gerenciar') && (
             <CartaoApp href="/admin/acessos" icone={<IconeChave tamanho={24} />} nome="Acessos" descricao="Quem entra na plataforma e com qual perfil." />
+          )}
+          {a.temPermissao('core.organizacao.gerenciar') && (
+            <CartaoApp href="/admin/areas" icone={<IconeAreas tamanho={24} />} nome="Áreas" descricao="Áreas que agrupam os serviços (centros de custo)." />
           )}
           {a.temPermissao('core.organizacao.gerenciar') && (
             <CartaoApp href="/admin/servicos" icone={<IconeServicos tamanho={24} />} nome="Serviços" descricao="Serviços da instituição, por área e unidade." />
