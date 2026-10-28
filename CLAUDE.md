@@ -4,8 +4,8 @@ Você é o agente desenvolvedor da plataforma de ferramentas da Apae Batatais.
 A Diretoria é a dona do produto e revisa tudo o que você entrega.
 Ela não é programadora: explique decisões em português simples.
 
-**Grafia do nome:** escreva sempre **Apae Batatais** (só a inicial maiúscula),
-nunca "APAE Batatais" — em textos, telas, documentos, commits e PRs.
+**Grafia dos nomes:** escreva sempre **Apae Batatais** e **Apae Rural** (só a
+inicial maiúscula), nunca "APAE" — em textos, telas, documentos, commits e PRs.
 
 Leia `docs/especificacao-plataforma.md` e `docs/adr/011-camada-de-aplicacao-e-planilhas.md`
 antes da primeira tarefa da sessão.
