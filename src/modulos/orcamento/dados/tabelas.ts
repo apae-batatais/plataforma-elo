@@ -1,11 +1,12 @@
 /**
  * Abas do módulo Orçamento.
  *
- * - Planilha "orcamento": cadastros não pessoais (centros de custo).
  * - Planilha "orcamento_folha": a folha. Salários são dados pessoais, então
  *   ficam numa planilha à parte, que pode ter compartilhamento mais restrito.
+ * - Os "centros de custo" são os Serviços do Núcleo (Administração › Serviços).
+ * - A planilha "orcamento" será usada a partir da Entrega 1B (previsão).
  *
- * Abas com vigência (Componentes, Rateios, TabelaSalarial) só recebem
+ * Abas com vigência (Componentes e Lotacoes) só recebem
  * inclusões: mudar um valor grava uma linha nova, e a mais recente vale a
  * partir da sua vigência. Assim o histórico mês a mês é preservado.
  */
@@ -20,53 +21,18 @@ const data = () => z.preprocess((v) => (vazio(v) ? undefined : String(v).trim())
 export const PLANILHA_ORCAMENTO = 'orcamento';
 export const PLANILHA_FOLHA = 'orcamento_folha';
 
-export const CentrosCusto = definirTabela({
-  planilha: PLANILHA_ORCAMENTO,
-  aba: 'CentrosCusto',
-  esquema: z.object({
-    codigo: texto(),
-    nome: texto(),
-    /** Área do Núcleo (código). */
-    area: textoOpcional(),
-  }),
-});
-
-export const Cargos = definirTabela({
-  planilha: PLANILHA_FOLHA,
-  aba: 'Cargos',
-  esquema: z.object({
-    codigo: texto(),
-    nome: texto(),
-    grupo: textoOpcional(),
-    requisitos: textoOpcional(),
-    classe: textoOpcional(),
-    carga_horaria_referencia: numeroOpcional(),
-  }),
-});
-
-export const NIVEIS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'] as const;
-
-export const TabelaSalarial = definirTabela({
-  planilha: PLANILHA_FOLHA,
-  aba: 'TabelaSalarial',
-  esquema: z.object({
-    cargo: texto(),
-    nivel: z.enum(NIVEIS),
-    valor: numero(),
-    vigencia: data(),
-  }),
-});
-
+/** Funcionários e vagas previstas (colunas de identificação da aba Estudo). */
 export const Postos = definirTabela({
   planilha: PLANILHA_FOLHA,
-  aba: 'Postos',
+  aba: 'Funcionarios',
   esquema: z.object({
-    /** Nº da ficha do colaborador. Vagas previstas ficam sem ficha. */
+    /** Código do funcionário. Sem código = vaga prevista. */
     ficha: textoOpcional(),
-    /** Vazio = vaga prevista. */
+    /** Nome do funcionário (ou descrição da vaga, ex.: "A contratar – Fisioterapeuta"). */
     colaborador: textoOpcional(),
     cargo: texto(),
-    nivel: textoOpcional(),
+    departamento: textoOpcional(),
+    /** Carga horária mensal (ex.: 200, 220). */
     carga_horaria: numeroOpcional(),
     /** Admissão, ou mês de início da vaga prevista. */
     inicio: data(),
@@ -83,25 +49,27 @@ const colunasComponentes = Object.fromEntries(COMPONENTES.map((c) => [c.chave, n
 
 export const Componentes = definirTabela({
   planilha: PLANILHA_FOLHA,
-  aba: 'Componentes',
+  aba: 'Valores',
   esquema: z.object({
     posto_id: texto(),
     vigencia: data(),
     ...colunasComponentes,
-    /** O salário base foi informado à mão, diferente da tabela salarial. */
-    fora_da_tabela: booleano(),
+    /** Reajuste do funcionário em %. */
+    reajuste: numeroOpcional(),
+    hora_atividade: booleano(),
   }),
-  sigilo: Object.fromEntries(COMPONENTES.map((c) => [c.chave, 'pessoal'])),
+  sigilo: { ...Object.fromEntries(COMPONENTES.map((c) => [c.chave, 'pessoal'])), reajuste: 'pessoal' },
 });
 
+/** Lotação: em quais Serviços (do Núcleo) o custo do posto se divide, em %. */
 export const Rateios = definirTabela({
   planilha: PLANILHA_FOLHA,
-  aba: 'Rateios',
+  aba: 'Lotacoes',
   esquema: z.object({
     posto_id: texto(),
-    /** Identifica as linhas gravadas juntas (um rateio completo). */
+    /** Identifica as linhas gravadas juntas (uma lotação completa). */
     lote: texto(),
-    centro_custo: texto(),
+    servico: texto(),
     percentual: numero(),
     vigencia: data(),
   }),
@@ -116,11 +84,8 @@ export const Parametros = definirTabela({
   }),
 });
 
-export type RegCentroCusto = Registro<typeof CentrosCusto.esquema>;
-export type RegCargo = Registro<typeof Cargos.esquema>;
-export type RegTabelaSalarial = Registro<typeof TabelaSalarial.esquema>;
 export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [CentrosCusto, Cargos, TabelaSalarial, Postos, Componentes, Rateios, Parametros] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros] as const;

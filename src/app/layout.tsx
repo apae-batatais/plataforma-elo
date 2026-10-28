@@ -12,8 +12,8 @@ import { ConfiguracaoInvalida } from './configuracao-invalida';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Plataforma APAE Batatais', template: '%s · APAE Batatais' },
-  description: 'Ferramentas de gestão da APAE Batatais',
+  title: { default: 'Plataforma Apae Batatais', template: '%s · Apae Batatais' },
+  description: 'Ferramentas de gestão da Apae Batatais',
 };
 
 export const dynamic = 'force-dynamic';

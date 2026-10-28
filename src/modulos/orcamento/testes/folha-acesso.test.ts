@@ -37,13 +37,13 @@ function novoPosto(extra: Partial<Parameters<typeof salvarPosto>[2]> = {}): Para
   return {
     ficha: '9001',
     colaborador: 'Pessoa Fictícia de Teste',
-    cargo: 'professor',
-    nivel: 'A',
-    cargaHoraria: 30,
+    cargo: 'PROFESSOR(A)',
+    departamento: 'Educação',
+    cargaHoraria: 150,
     inicio: '2020-02-01',
     observacao: null,
-    componentes: { ...componentesZerados(), salario_base: 3000 },
-    rateio: [{ centro: 'edu_escola', percentual: 100 }],
+    componentes: { ...componentesZerados(5), salario_atual: 3000 },
+    rateio: [{ centro: 'escola', percentual: 100 }],
     vigencia: '2027-01-01',
     ...extra,
   };
@@ -56,14 +56,15 @@ beforeEach(async () => {
   await popularFolhaFicticia(p);
 });
 
-describe('resumo por centro de custo (totais)', () => {
+describe('resumo por serviço (totais)', () => {
   it('Financeiro vê todas as áreas, com alertas; o total bate com a soma dos centros', async () => {
     const r = await resumoFolha(p, await financeiro());
     expect(r.todasAsAreas).toBe(true);
     expect(new Set(r.centros.map((c) => c.area)).size).toBeGreaterThan(4);
     expect(r.alertas?.semRateio).toBe(2);
     expect(r.alertas?.vagasPrevistas).toBe(2);
-    expect(r.total.anual).toBeCloseTo(r.centros.reduce((s, c) => s + c.anual, 0), 1);
+    expect(Math.abs(r.total.anual - r.centros.reduce((s, c) => s + c.anual, 0))).toBeLessThan(1); // arredondamento por serviço
+    expect(r.estudoAno.totalGeral).toBeCloseTo(r.total.anual, 0);
   });
 
   it('coordenação com escopo de área vê só os centros da própria área, sem alertas', async () => {
@@ -74,8 +75,10 @@ describe('resumo por centro de custo (totais)', () => {
     expect(r.alertas).toBeNull();
   });
 
-  it('coordenação de um serviço (sem escopo de área) não vê centros', async () => {
-    expect((await resumoFolha(p, await como('coord.ur@exemplo.local'))).centros).toEqual([]);
+  it('coordenação de um serviço vê só o próprio serviço, proporcional à lotação', async () => {
+    const r = await resumoFolha(p, await como('coord.ur@exemplo.local'));
+    expect(r.centros.map((c) => c.codigo)).toEqual(['ur']);
+    expect(r.estudoMes.totalGeral).toBeCloseTo(r.centros[0].mensal[r.mes - 1], 1);
   });
 
   it('Leitura vê totais; quem não tem permissão é recusado', async () => {
@@ -100,21 +103,21 @@ describe('valores individuais (regra 11)', () => {
     expect(auditoria.filter((a) => a.acao === 'leitura' && a.entidade === 'Postos').map((a) => a.registro_id)).toEqual([null, posto.id]);
     const texto = JSON.stringify(auditoria);
     expect(texto).not.toContain(posto.colaborador!);
-    expect(texto).not.toContain(String(ficha.componentes.salario_base));
+    expect(texto).not.toContain(String(ficha.componentes.salario_atual));
   });
 });
 
 describe('cadastro do posto e do rateio', () => {
   it('Departamento Pessoal cadastra; o posto entra no resumo do centro', async () => {
-    const antes = (await resumoFolha(p, await financeiro())).centros.find((c) => c.codigo === 'edu_escola')!.anual;
+    const antes = (await resumoFolha(p, await financeiro())).centros.find((c) => c.codigo === 'escola')!.anual;
     await salvarPosto(p, await dp(), novoPosto());
-    const depois = (await resumoFolha(p, await financeiro())).centros.find((c) => c.codigo === 'edu_escola')!.anual;
-    expect(depois).toBeGreaterThan(antes + 36000);
+    const depois = (await resumoFolha(p, await financeiro())).centros.find((c) => c.codigo === 'escola')!.anual;
+    expect(depois).toBeGreaterThan(antes + 3000 * 1.05 * 12);
   });
 
   it('rateio fora de 100% não é salvo (regra 3)', async () => {
     await expect(
-      salvarPosto(p, await dp(), novoPosto({ rateio: [{ centro: 'edu_escola', percentual: 60 }, { centro: 'edu_transporte', percentual: 53 }] })),
+      salvarPosto(p, await dp(), novoPosto({ rateio: [{ centro: 'escola', percentual: 60 }, { centro: 'transporte', percentual: 53 }] })),
     ).rejects.toThrow(/113%/);
     expect((await lerTabela(p, Postos)).todos().some((x) => x.ficha === '9001')).toBe(false);
   });
@@ -123,7 +126,7 @@ describe('cadastro do posto e do rateio', () => {
     await expect(salvarPosto(p, await dp(), novoPosto({ rateio: [] }))).rejects.toBeInstanceOf(ErroValidacaoFolha);
     await expect(salvarPosto(p, await dp(), novoPosto({ rateio: [{ centro: 'nao_existe', percentual: 100 }] }))).rejects.toThrow(/não existe/);
     await salvarPosto(p, await dp(), novoPosto());
-    await expect(salvarPosto(p, await dp(), novoPosto())).rejects.toThrow(/ficha 9001/);
+    await expect(salvarPosto(p, await dp(), novoPosto())).rejects.toThrow(/código 9001/);
   });
 
   it('Diretoria e Leitura não alteram a folha', async () => {
@@ -138,16 +141,17 @@ describe('cadastro do posto e do rateio', () => {
       ...novoPosto(),
       id,
       versao: ficha.posto!.versao,
-      rateio: [{ centro: 'edu_transporte', percentual: 100 }],
+      rateio: [{ centro: 'transporte', percentual: 100 }],
       vigencia: '2027-07-01',
     });
     const r = await resumoFolha(p, await financeiro());
-    const transporte = r.centros.find((c) => c.codigo === 'edu_transporte')!;
-    const escola = r.centros.find((c) => c.codigo === 'edu_escola')!;
-    // O custo do posto aparece na Escola de janeiro a junho e no Transporte de julho em diante.
+    const transporte = r.centros.find((c) => c.codigo === 'transporte')!;
+    const escola = r.centros.find((c) => c.codigo === 'escola')!;
+    // O custo (com encargos) sai da Escola em julho e entra no Transporte.
     const custo = (await listarPostos(p, await dp())).postos.find((x) => x.id === id)!.custoMensal;
-    expect(escola.mensal[5] - escola.mensal[6]).toBeCloseTo(custo, 1);
-    expect(transporte.mensal[6] - transporte.mensal[5]).toBeCloseTo(custo, 1);
+    const saiu = escola.mensal[5] - escola.mensal[6];
+    expect(saiu).toBeGreaterThan(custo);
+    expect(transporte.mensal[6] - transporte.mensal[5]).toBeCloseTo(saiu, 1);
     // Nada foi apagado: as linhas do rateio antigo continuam na planilha.
     expect((await lerTabela(p, Postos)).todos().filter((x) => x.id === id)).toHaveLength(1);
   });
@@ -167,7 +171,7 @@ describe('rateio geral', () => {
     const sem = grade.postos.filter((x) => x.situacao === 'sem_rateio');
     expect(sem).toHaveLength(2);
     const n = await salvarRateios(p, await dp(), [
-      ...sem.map((x) => ({ postoId: x.id, rateio: [{ centro: 'adm_geral', percentual: 100 }] })),
+      ...sem.map((x) => ({ postoId: x.id, rateio: [{ centro: 'administracao', percentual: 100 }] })),
       { postoId: grade.postos[0].id, rateio: grade.postos[0].rateio }, // sem mudança: ignorado
     ], '2027-01-01');
     expect(n).toBe(2);
@@ -179,8 +183,8 @@ describe('rateio geral', () => {
     const [a, b] = grade.postos;
     await expect(
       salvarRateios(p, await dp(), [
-        { postoId: a.id, rateio: [{ centro: 'adm_geral', percentual: 100 }] },
-        { postoId: b.id, rateio: [{ centro: 'adm_geral', percentual: 125 }] },
+        { postoId: a.id, rateio: [{ centro: 'administracao', percentual: 100 }] },
+        { postoId: b.id, rateio: [{ centro: 'administracao', percentual: 125 }] },
       ], '2027-01-01'),
     ).rejects.toThrow(/125%/);
     expect((await gradeDeRateio(p, await dp())).postos.find((x) => x.id === a.id)!.rateio).toEqual(a.rateio);
@@ -188,13 +192,14 @@ describe('rateio geral', () => {
 });
 
 describe('parâmetros', () => {
-  it('só o Financeiro altera; o reajuste aumenta o custo a partir do mês definido', async () => {
-    await expect(salvarParametros(p, await dp(), parametrosCom({ reajuste_percentual: 5, reajuste_mes: 5 }))).rejects.toBeInstanceOf(ErroPermissao);
+  it('só o Financeiro altera; o reajuste só vale a partir do mês definido', async () => {
+    await expect(salvarParametros(p, await dp(), parametrosCom({ reajuste_mes: 5 }))).rejects.toBeInstanceOf(ErroPermissao);
     const antes = await resumoFolha(p, await financeiro());
-    await salvarParametros(p, await financeiro(), parametrosCom({ reajuste_percentual: 5, reajuste_mes: 5 }));
+    await salvarParametros(p, await financeiro(), parametrosCom({ reajuste_mes: 5 }));
     const depois = await resumoFolha(p, await financeiro());
-    expect(depois.total.mensal[3]).toBe(antes.total.mensal[3]);
-    expect(depois.total.mensal[4]).toBeGreaterThan(antes.total.mensal[4]);
+    // Antes o reajuste valia desde janeiro; agora só a partir de maio.
+    expect(depois.total.mensal[3]).toBeLessThan(antes.total.mensal[3]);
+    expect(depois.total.mensal[4]).toBe(antes.total.mensal[4]);
   });
 });
 

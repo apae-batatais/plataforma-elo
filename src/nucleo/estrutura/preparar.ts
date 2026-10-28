@@ -19,7 +19,8 @@ export interface ResultadoPreparacao {
 }
 
 /** Nomes antigos das unidades, trocados pelos nomes definidos pela Diretoria (27/10/2026). */
-const NOMES_ANTIGOS_UNIDADES: Record<string, string> = { sede: 'Sede', rural: 'APAE Rural' };
+/** Comparação sem diferenciar maiúsculas: pega a grafia antiga, toda em maiúsculas, gravada na planilha. */
+const NOMES_ANTIGOS_UNIDADES: Record<string, string> = { sede: 'sede', rural: 'apae rural' };
 
 /** O que os módulos ativos acrescentam à estrutura. */
 export interface EstruturaDosModulos {
@@ -66,7 +67,7 @@ export async function prepararEstrutura(
   const autoria = { email: autor };
   for (const u of unidades.ativos()) {
     const novo = UNIDADES_INICIAIS.find((x) => x.codigo === u.codigo);
-    if (novo && NOMES_ANTIGOS_UNIDADES[u.codigo] === u.nome) {
+    if (novo && NOMES_ANTIGOS_UNIDADES[u.codigo] === u.nome.toLowerCase()) {
       await atualizar(p, Unidades, u.id, u.versao, { nome: novo.nome }, autoria);
       ajustes.push(`unidade "${u.nome}" renomeada para "${novo.nome}"`);
     }

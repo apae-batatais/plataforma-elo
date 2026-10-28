@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import {
-  encerrarPosto, ErroValidacaoFolha, salvarCargo, salvarCentroCusto, salvarParametros, salvarPosto, salvarRateios, salvarValorTabela,
+  encerrarPosto, ErroValidacaoFolha, salvarParametros, salvarPosto, salvarRateios,
 } from '@/modulos/orcamento/aplicacao/folha';
 import { analisarImportacao, importarFolha, lerXlsx, type Analise } from '@/modulos/orcamento/aplicacao/importacao';
 import { COMPONENTES, PARAMETROS, parametrosCom } from '@/modulos/orcamento/dominio/folha';
@@ -58,11 +58,11 @@ const esquemaPosto = z.object({
   ficha: z.string().nullable(),
   colaborador: z.string().nullable(),
   cargo: z.string(),
-  nivel: z.string().nullable(),
+  departamento: z.string().nullable(),
   cargaHoraria: z.number().nullable(),
   inicio: z.string(),
   observacao: z.string().nullable(),
-  componentes: z.object(Object.fromEntries(COMPONENTES.map((c) => [c.chave, z.number()]))),
+  componentes: z.object({ ...Object.fromEntries(COMPONENTES.map((c) => [c.chave, z.number()])), reajuste: z.number(), hora_atividade: z.boolean() }),
   rateio: z.array(z.object({ centro: z.string(), percentual: z.number() })),
   vigencia: z.string(),
 });
@@ -79,12 +79,12 @@ export async function acaoSalvarPosto(_: EstadoAcao, f: FormData): Promise<Estad
     throw erro;
   }
   revalidatePath('/orcamento', 'layout');
-  redirect(`/orcamento/postos/${id}?ok=${encodeURIComponent('Posto salvo.')}`);
+  redirect(`/orcamento/folha/${id}?ok=${encodeURIComponent('Funcionário salvo.')}`);
 }
 
 export async function acaoEncerrarPosto(f: FormData) {
   const id = texto(f, 'id');
-  await executar(`/orcamento/postos/${id}`, 'Desligamento registrado.', ({ usuario, app }) =>
+  await executar(`/orcamento/folha/${id}`, 'Desligamento registrado.', ({ usuario, app }) =>
     encerrarPosto(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), texto(f, 'desligamento')),
   );
 }
@@ -106,40 +106,12 @@ export async function acaoSalvarRateios(_: EstadoAcao, f: FormData): Promise<Est
     throw erro;
   }
   revalidatePath('/orcamento', 'layout');
-  redirect(`/orcamento/rateio?ok=${encodeURIComponent(n === 0 ? 'Nada mudou.' : `Rateio salvo em ${n} ${n === 1 ? 'posto' : 'postos'}.`)}`);
+  redirect(`/orcamento/lotacao?ok=${encodeURIComponent(n === 0 ? 'Nada mudou.' : `Lotação salva para ${n} ${n === 1 ? 'funcionário' : 'funcionários'}.`)}`);
 }
 
 // ---------------------------------------------------------------------------
 // Cadastros e parâmetros
 // ---------------------------------------------------------------------------
-
-export async function acaoSalvarCentro(f: FormData) {
-  await executar('/orcamento/cadastros', 'Centro de custo cadastrado.', ({ usuario, app }) =>
-    salvarCentroCusto(app.planilhas, usuario.autorizador, { codigo: texto(f, 'codigo'), nome: texto(f, 'nome'), area: texto(f, 'area') || null }),
-  );
-}
-
-export async function acaoSalvarCargo(f: FormData) {
-  await executar('/orcamento/cadastros', 'Cargo cadastrado.', ({ usuario, app }) =>
-    salvarCargo(app.planilhas, usuario.autorizador, {
-      codigo: texto(f, 'codigo'),
-      nome: texto(f, 'nome'),
-      grupo: texto(f, 'grupo') || null,
-      cargaReferencia: numeroOuNulo(f, 'carga'),
-    }),
-  );
-}
-
-export async function acaoSalvarValorTabela(f: FormData) {
-  await executar('/orcamento/cadastros', 'Valor da tabela salarial gravado.', ({ usuario, app }) =>
-    salvarValorTabela(app.planilhas, usuario.autorizador, {
-      cargo: texto(f, 'cargo'),
-      nivel: texto(f, 'nivel'),
-      valor: numeroOuNulo(f, 'valor') ?? NaN,
-      vigencia: inicioDoMes(texto(f, 'vigencia')),
-    }),
-  );
-}
 
 export async function acaoSalvarParametros(f: FormData) {
   await executar('/orcamento/parametros', 'Parâmetros salvos.', ({ usuario, app }) =>
@@ -184,5 +156,5 @@ export async function acaoConfirmarImportacao(_: EstadoImportacao, f: FormData):
     throw erro;
   }
   revalidatePath('/orcamento', 'layout');
-  redirect(`/orcamento/postos?ok=${encodeURIComponent(`${n} postos importados.`)}`);
+  redirect(`/orcamento/folha?ok=${encodeURIComponent(`${n} funcionários e vagas importados.`)}`);
 }

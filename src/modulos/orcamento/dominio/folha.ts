@@ -1,57 +1,60 @@
 /**
- * Regras puras da Folha de Pagamento (sem acesso a planilhas).
+ * Regras puras da Folha de Pagamento, no formato da aba "Estudo" da planilha
+ * "Folha Pagamento 2027". Nenhuma fórmula fica na planilha: o app calcula.
  *
- * Valores em reais com centavos; percentuais com até duas casas.
- * Para não acumular erro de arredondamento, as contas de percentual usam
- * centésimos inteiros (100% = 10000).
+ * Valores mensais em reais com centavos; percentuais com até duas casas.
+ * Contas de percentual de lotação usam centésimos inteiros (100% = 10000).
  */
 
 // ---------------------------------------------------------------------------
-// Componentes do custo
+// Campos digitados (valores mensais em R$), na ordem da aba Estudo
 // ---------------------------------------------------------------------------
 
-/** Componentes mensais do custo de um posto, na ordem da planilha. */
 export const COMPONENTES = [
-  { chave: 'salario_base', nome: 'Salário base', remuneratorio: true },
-  { chave: 'adicional', nome: 'Adicional', remuneratorio: true },
-  { chave: 'hora_atividade', nome: 'Hora atividade', remuneratorio: true },
-  { chave: 'insalubridade', nome: 'Insalubridade', remuneratorio: true },
-  { chave: 'periculosidade', nome: 'Periculosidade', remuneratorio: true },
-  { chave: 'gratificacao_funcao', nome: 'Gratificação de função', remuneratorio: true },
-  { chave: 'ajuda_custo', nome: 'Ajuda de custo', remuneratorio: false },
-  { chave: 'bolsa_estagio', nome: 'Bolsa estágio', remuneratorio: false },
-  { chave: 'plano_saude', nome: 'Plano de saúde', remuneratorio: false },
-  { chave: 'bolsa_estudo', nome: 'Bolsa estudo', remuneratorio: false },
-  { chave: 'locomocao', nome: 'Locomoção', remuneratorio: false },
-  { chave: 'alimentacao', nome: 'Alimentação', remuneratorio: false },
+  { chave: 'salario_atual', nome: 'Salário atual', coluna: 'Salario Atual' },
+  { chave: 'adicional_salarial', nome: 'Adicional salarial', coluna: 'Adicional Salarial' },
+  { chave: 'ajuda_custo', nome: 'Ajuda de custo', coluna: 'Ajuda de Custo' },
+  { chave: 'bolsa_estagio', nome: 'Bolsa estágio', coluna: 'Bolsa Estágio' },
+  { chave: 'insalubridade', nome: 'Insalubridade', coluna: 'Insalubridade' },
+  { chave: 'periculosidade', nome: 'Periculosidade', coluna: 'Periculosidade' },
+  { chave: 'gratificacao_funcao', nome: 'Gratificação de função', coluna: 'G. Função' },
+  { chave: 'plano_saude', nome: 'Plano de saúde', coluna: 'Plano de Saúde' },
+  { chave: 'bolsa_estudo', nome: 'Bolsa estudo', coluna: 'Bolsa Estudo' },
+  { chave: 'locomocao', nome: 'Locomoção', coluna: 'Locomoção' },
+  { chave: 'alimentacao', nome: 'Alimentação', coluna: 'Alimentação' },
+  { chave: 'ferias', nome: 'Férias', coluna: 'FÉRIAS' },
+  { chave: 'abono', nome: 'Abono', coluna: 'ABONO' },
+  { chave: 'indenizacoes', nome: 'Indenizações', coluna: 'INDEZ.' },
 ] as const;
 
 export type ChaveComponente = (typeof COMPONENTES)[number]['chave'];
-export type Componentes = Record<ChaveComponente, number>;
 
-export const componentesZerados = (): Componentes =>
-  Object.fromEntries(COMPONENTES.map((c) => [c.chave, 0])) as Componentes;
+/** O que se digita para cada funcionário, além dos dados de identificação. */
+export type Componentes = Record<ChaveComponente, number> & {
+  /** Reajuste do funcionário, em % (na planilha, 5%). */
+  reajuste: number;
+  /** Recebe hora atividade (professores)? */
+  hora_atividade: boolean;
+};
+
+export const componentesZerados = (reajuste = 0): Componentes =>
+  ({ ...Object.fromEntries(COMPONENTES.map((c) => [c.chave, 0])), reajuste, hora_atividade: false }) as Componentes;
 
 // ---------------------------------------------------------------------------
-// Parâmetros
+// Parâmetros (definidos pelo Financeiro)
 // ---------------------------------------------------------------------------
 
-/**
- * Provisões e encargos, em % sobre a base remuneratória (salário base,
- * adicional, hora atividade, insalubridade, periculosidade e gratificação).
- * Os benefícios (ajuda de custo, bolsas, plano de saúde, locomoção,
- * alimentação) não entram na base.
- */
 export const PARAMETROS = [
-  { chave: 'ano', nome: 'Ano da folha', padrao: 2027, provisao: false },
-  { chave: 'ferias', nome: 'Provisão de férias (%)', padrao: 8.33, provisao: true },
-  { chave: 'terco_ferias', nome: 'Provisão de 1/3 de férias (%)', padrao: 2.78, provisao: true },
-  { chave: 'decimo_terceiro', nome: 'Provisão de 13º salário (%)', padrao: 8.33, provisao: true },
-  { chave: 'abono', nome: 'Provisão de abono (%)', padrao: 0, provisao: true },
-  { chave: 'fgts', nome: 'FGTS (%)', padrao: 8, provisao: true },
-  { chave: 'indenizacoes', nome: 'Provisão de indenizações (%)', padrao: 0, provisao: true },
-  { chave: 'reajuste_percentual', nome: 'Reajuste salarial (%)', padrao: 0, provisao: false },
-  { chave: 'reajuste_mes', nome: 'Mês do reajuste (1 a 12)', padrao: 1, provisao: false },
+  { chave: 'ano', nome: 'Ano da folha', padrao: 2027, grupo: 'geral' },
+  { chave: 'reajuste_padrao', nome: 'Reajuste para novos funcionários (%)', padrao: 5, grupo: 'reajuste' },
+  { chave: 'reajuste_mes', nome: 'Mês em que o reajuste começa (1 a 12)', padrao: 1, grupo: 'reajuste' },
+  { chave: 'hora_atividade', nome: 'Hora atividade (% do salário base)', padrao: 5, grupo: 'folha' },
+  { chave: 'fgts', nome: 'FGTS (%)', padrao: 8, grupo: 'encargos' },
+  { chave: 'inss', nome: 'INSS empresa (%)', padrao: 20, grupo: 'encargos' },
+  { chave: 'terceiros', nome: 'Terceiros (%)', padrao: 5.8, grupo: 'encargos' },
+  { chave: 'fap', nome: 'FAP ajustado (RAT × FAP) (%)', padrao: 0.5, grupo: 'encargos' },
+  { chave: 'aposentadoria_especial', nome: 'INSS aposentadoria especial (%)', padrao: 6, grupo: 'encargos' },
+  { chave: 'pis', nome: 'PIS (%)', padrao: 0, grupo: 'encargos' },
 ] as const;
 
 export type ChaveParametro = (typeof PARAMETROS)[number]['chave'];
@@ -65,7 +68,7 @@ export function validarParametros(p: Parametros): string[] {
   const erros: string[] = [];
   if (!Number.isInteger(p.ano) || p.ano < 2020 || p.ano > 2100) erros.push('Ano inválido.');
   if (!Number.isInteger(p.reajuste_mes) || p.reajuste_mes < 1 || p.reajuste_mes > 12) erros.push('Mês do reajuste deve ser de 1 a 12.');
-  for (const d of PARAMETROS.filter((x) => x.provisao || x.chave === 'reajuste_percentual')) {
+  for (const d of PARAMETROS.filter((x) => x.grupo !== 'geral' && x.chave !== 'reajuste_mes')) {
     const v = p[d.chave];
     if (!Number.isFinite(v) || v < 0 || v > 100) erros.push(`${d.nome}: use um número entre 0 e 100.`);
   }
@@ -73,45 +76,169 @@ export function validarParametros(p: Parametros): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Custo do posto
+// Colunas calculadas da aba Estudo
 // ---------------------------------------------------------------------------
 
 export const centavos = (v: number) => Math.round(v * 100) / 100;
 
-export interface CustoMensal {
-  remuneracao: number;
-  beneficios: number;
-  provisoes: number;
+export interface LinhaCalculada {
+  /** Valor Hora = Salário atual ÷ Carga horária. */
+  valorHora: number;
+  /** Salário Base = Salário atual × (1 + Reajuste), a partir do mês do reajuste. */
+  salarioBase: number;
+  /** VHora Base = Salário base ÷ Carga horária. */
+  valorHoraBase: number;
+  /** Hora Atividade = % do salário base (quem tem). */
+  horaAtividade: number;
+  /** 1/3 Férias = Salário base ÷ 3 ÷ 12. */
+  tercoFerias: number;
+  /** 13º = Salário base ÷ 12. */
+  decimoTerceiro: number;
+  /** FGTS = % de (salário base + adicional + hora atividade + insalubridade + 1/3 férias + 13º). */
+  fgts: number;
+  /** TOTAL = soma de Salário base até FGTS. */
   total: number;
 }
 
-/**
- * Custo de um posto em um mês (1 a 12): componentes + provisões e encargos.
- * A partir do mês do reajuste, a parte remuneratória é reajustada; benefícios não.
- */
-export function custoMensal(c: Componentes, p: Parametros, mes: number): CustoMensal {
-  const fator = p.reajuste_percentual > 0 && mes >= p.reajuste_mes ? 1 + p.reajuste_percentual / 100 : 1;
-  let remuneracao = 0;
-  let beneficios = 0;
-  for (const def of COMPONENTES) {
-    const v = c[def.chave] ?? 0;
-    if (def.remuneratorio) remuneracao += v * fator;
-    else beneficios += v;
-  }
-  const percentual = PARAMETROS.filter((x) => x.provisao).reduce((s, x) => s + p[x.chave], 0);
-  const provisoes = (remuneracao * percentual) / 100;
+/** Calcula as colunas com fórmula da aba Estudo para um funcionário, no mês (1 a 12). */
+export function calcularLinha(c: Componentes, cargaHoraria: number | null, p: Parametros, mes = 12): LinhaCalculada {
+  const comReajuste = mes >= p.reajuste_mes;
+  const salarioBase = c.salario_atual * (1 + (comReajuste ? c.reajuste : 0) / 100);
+  const horaAtividade = c.hora_atividade ? (salarioBase * p.hora_atividade) / 100 : 0;
+  const tercoFerias = salarioBase / 3 / 12;
+  const decimoTerceiro = salarioBase / 12;
+  const fgts = ((salarioBase + c.adicional_salarial + horaAtividade + c.insalubridade + tercoFerias + decimoTerceiro) * p.fgts) / 100;
+  const total =
+    salarioBase +
+    c.adicional_salarial +
+    horaAtividade +
+    c.ajuda_custo +
+    c.bolsa_estagio +
+    c.insalubridade +
+    c.periculosidade +
+    c.gratificacao_funcao +
+    c.plano_saude +
+    c.bolsa_estudo +
+    c.locomocao +
+    c.alimentacao +
+    c.ferias +
+    tercoFerias +
+    c.abono +
+    c.indenizacoes +
+    decimoTerceiro +
+    fgts;
   return {
-    remuneracao: centavos(remuneracao),
-    beneficios: centavos(beneficios),
-    provisoes: centavos(provisoes),
-    total: centavos(remuneracao + beneficios + provisoes),
+    valorHora: cargaHoraria ? centavos(c.salario_atual / cargaHoraria) : 0,
+    salarioBase: centavos(salarioBase),
+    valorHoraBase: cargaHoraria ? centavos(salarioBase / cargaHoraria) : 0,
+    horaAtividade: centavos(horaAtividade),
+    tercoFerias: centavos(tercoFerias),
+    decimoTerceiro: centavos(decimoTerceiro),
+    fgts: centavos(fgts),
+    total: centavos(total),
   };
 }
 
-/** Salário pela tabela: valor do cargo no nível, proporcional à carga horária. */
-export function salarioPelaTabela(valorTabela: number, cargaHoraria: number | null, cargaReferencia: number | null): number {
-  if (!cargaHoraria || !cargaReferencia) return centavos(valorTabela);
-  return centavos((valorTabela * cargaHoraria) / cargaReferencia);
+// ---------------------------------------------------------------------------
+// Resumo (o bloco que fica abaixo da relação de funcionários na aba Estudo)
+// ---------------------------------------------------------------------------
+
+export interface LinhaResumo {
+  rotulo: string;
+  valor: number;
+}
+
+export interface GrupoResumo {
+  titulo: string;
+  linhas: LinhaResumo[];
+  total: number;
+}
+
+export interface ResumoEstudo {
+  salarial: GrupoResumo;
+  naoSalarial: GrupoResumo;
+  beneficios: GrupoResumo;
+  subtotalRemuneracao: number;
+  encargos: GrupoResumo;
+  subtotalComEncargos: number;
+  indenizacoes: number;
+  totalGeral: number;
+  quadros: { totalSemEncargos: number; totalCebas: number; totalFgts: number; totalRemuneracaoMaisFgts: number };
+  pessoas: number;
+}
+
+/**
+ * Monta o resumo a partir das linhas dos funcionários. Cada linha pode ter um
+ * peso (fração da lotação num serviço), para resumir só uma parte da folha.
+ *
+ * Diferenças em relação à planilha (erros corrigidos, aprovado pela Diretoria):
+ * Plano de saúde entra no total de Benefícios; Bolsa estudo entra em Benefícios;
+ * Indenizações sem #REF!; Total CEBAS = INSS + Terceiros + FAP + aposentadoria especial.
+ */
+export function resumirEstudo(itens: { c: Componentes; calc: LinhaCalculada; peso?: number }[], p: Parametros): ResumoEstudo {
+  const soma = (f: (x: (typeof itens)[number]) => number) => itens.reduce((s, x) => s + f(x) * (x.peso ?? 1), 0);
+  const grupo = (titulo: string, linhas: LinhaResumo[]): GrupoResumo => ({
+    titulo,
+    linhas: linhas.map((l) => ({ ...l, valor: centavos(l.valor) })),
+    total: centavos(linhas.reduce((s, l) => s + l.valor, 0)),
+  });
+
+  const salarial = grupo('Remuneração salarial', [
+    { rotulo: 'Vencimentos e salários', valor: soma((x) => x.calc.salarioBase + x.c.adicional_salarial + x.calc.horaAtividade) },
+    { rotulo: 'Insalubridade e periculosidade', valor: soma((x) => x.c.insalubridade + x.c.periculosidade) },
+    { rotulo: 'Gratificação por exercício de cargos e funções', valor: soma((x) => x.c.gratificacao_funcao) },
+    { rotulo: 'Férias vencidas e proporcionais', valor: soma((x) => x.c.ferias + x.calc.tercoFerias + x.c.abono) },
+    { rotulo: '13º salário', valor: soma((x) => x.calc.decimoTerceiro) },
+  ]);
+  const naoSalarial = grupo('Remuneração de natureza não salarial', [
+    { rotulo: 'Ajuda de custo', valor: soma((x) => x.c.ajuda_custo) },
+    { rotulo: 'Bolsa estágio', valor: soma((x) => x.c.bolsa_estagio) },
+  ]);
+  const beneficios = grupo('Benefícios', [
+    { rotulo: 'Auxílio locomoção', valor: soma((x) => x.c.locomocao) },
+    { rotulo: 'Auxílio alimentação', valor: soma((x) => x.c.alimentacao) },
+    { rotulo: 'Plano de saúde', valor: soma((x) => x.c.plano_saude) },
+    { rotulo: 'Bolsa estudo', valor: soma((x) => x.c.bolsa_estudo) },
+  ]);
+  const subtotalRemuneracao = centavos(salarial.total + naoSalarial.total + beneficios.total);
+
+  const base = salarial.total;
+  const baseEspecial = soma((x) => (x.c.insalubridade > 0 ? x.calc.salarioBase + x.c.insalubridade : 0));
+  const inss = (base * p.inss) / 100;
+  const terceiros = (base * p.terceiros) / 100;
+  const fap = (base * p.fap) / 100;
+  const especial = (baseEspecial * p.aposentadoria_especial) / 100;
+  const fgts = (base * p.fgts) / 100;
+  const encargos = grupo('Encargos', [
+    { rotulo: `INSS empresa (${p.inss}%)`, valor: inss },
+    { rotulo: `Terceiros (${p.terceiros}%)`, valor: terceiros },
+    { rotulo: `FAP ajustado (${p.fap}%)`, valor: fap },
+    { rotulo: `INSS aposentadoria especial (${p.aposentadoria_especial}% sobre quem tem insalubridade)`, valor: especial },
+    { rotulo: `FGTS (${p.fgts}%)`, valor: fgts },
+    { rotulo: `PIS (${p.pis}%)`, valor: (base * p.pis) / 100 },
+  ]);
+  const subtotalComEncargos = centavos(subtotalRemuneracao + encargos.total);
+  const indenizacoes = centavos(soma((x) => x.c.indenizacoes));
+  const totalGeral = centavos(subtotalComEncargos + indenizacoes);
+  const totalCebas = centavos(inss + terceiros + fap + especial);
+
+  return {
+    salarial,
+    naoSalarial,
+    beneficios,
+    subtotalRemuneracao,
+    encargos,
+    subtotalComEncargos,
+    indenizacoes,
+    totalGeral,
+    quadros: {
+      totalSemEncargos: subtotalRemuneracao,
+      totalCebas,
+      totalFgts: centavos(fgts),
+      totalRemuneracaoMaisFgts: centavos(totalGeral - totalCebas),
+    },
+    pessoas: itens.length,
+  };
 }
 
 // ---------------------------------------------------------------------------

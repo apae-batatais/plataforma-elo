@@ -13,7 +13,7 @@ type Acao = (estado: { erro?: string }, f: FormData) => Promise<{ erro?: string 
 
 const celula = 'w-20 rounded-md border border-borda-forte bg-superficie px-2 py-1.5 text-right tabular-nums';
 
-/** Grade postos × centros de custo para revisar e corrigir vários rateios de uma vez. */
+/** Lotação: grade funcionários × serviços para revisar e corrigir vários de uma vez. */
 export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; acao: Acao; soPendentes: boolean }) {
   const [estado, enviar, enviando] = useActionState(acao, {});
   const original = useMemo(() => new Map(grade.postos.map((p) => [p.id, p.rateio])), [grade]);
@@ -57,16 +57,16 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
         <label className="text-sm font-semibold">
           Mostrar
           <select value={filtro} onChange={(e) => setFiltro(e.target.value)} className={estiloEntrada}>
-            <option value="">Todos os postos ({grade.postos.length})</option>
-            <option value="pendentes">Sem rateio ou fora de 100%</option>
+            <option value="">Todos ({grade.postos.length})</option>
+            <option value="pendentes">Sem lotação ou fora de 100%</option>
             <option value="alterados">Alterados agora ({alterados.length})</option>
           </select>
         </label>
         <label className="text-sm font-semibold">
-          Acrescentar coluna
+          Acrescentar serviço
           <span className="mt-1.5 flex gap-2">
             <select value={novaColuna} onChange={(e) => setNovaColuna(e.target.value)} className={`${estiloEntrada} !mt-0`}>
-              <option value="">Centro de custo…</option>
+              <option value="">Serviço…</option>
               {grade.centros
                 .filter((c) => !colunas.includes(c.codigo))
                 .map((c) => (
@@ -93,7 +93,7 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
         <table className="text-left text-sm">
           <thead className="sticky top-0 z-10 bg-superficie-2 text-texto-suave shadow-[0_1px_0_var(--borda)]">
             <tr>
-              <th scope="col" className="sticky left-0 z-20 min-w-56 bg-superficie-2 px-3 py-2 font-semibold">Posto</th>
+              <th scope="col" className="sticky left-0 z-20 min-w-56 bg-superficie-2 px-3 py-2 font-semibold">Funcionário</th>
               <th scope="col" className="px-3 py-2 text-right font-medium">Soma</th>
               {colunas.map((c) => (
                 <th key={c} scope="col" className="max-w-32 px-2 py-2 align-bottom text-xs font-medium">
@@ -106,7 +106,7 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
             {visiveis.length === 0 && (
               <tr>
                 <td colSpan={colunas.length + 2} className="px-3 py-4">
-                  Nenhum posto pendente. Todos os rateios somam 100%.
+                  Ninguém pendente. Todas as lotações somam 100%.
                 </td>
               </tr>
             )}
@@ -143,15 +143,15 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
 
       <div className="sticky bottom-0 z-20 -mx-4 flex flex-wrap items-end gap-4 border-t border-borda bg-superficie/95 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
         <label className="text-sm font-semibold">
-          Os rateios alterados valem a partir de
+          As lotações alteradas valem a partir de
           <input type="month" name="vigencia" value={vigencia} onChange={(e) => setVigencia(e.target.value)} required className={estiloEntrada} />
         </label>
         <BotaoEnviar pendente={enviando} disabled={alterados.length === 0 || comErro.length > 0} enviando="Salvando…">
-          {alterados.length === 0 ? 'Salvar' : `Salvar ${alterados.length} ${alterados.length === 1 ? 'rateio' : 'rateios'}`}
+          {alterados.length === 0 ? 'Salvar' : `Salvar ${alterados.length} ${alterados.length === 1 ? 'lotação' : 'lotações'}`}
         </BotaoEnviar>
         <p role="status" className={`pb-2 text-sm ${comErro.length ? 'font-semibold text-aviso' : 'text-texto-suave'}`}>
           {comErro.length
-            ? `${comErro.length} ${comErro.length === 1 ? 'posto alterado não soma' : 'postos alterados não somam'} 100%. Ajuste antes de salvar.`
+            ? `${comErro.length} ${comErro.length === 1 ? 'funcionário alterado não soma' : 'funcionários alterados não somam'} 100%. Ajuste antes de salvar.`
             : alterados.length
               ? 'Tudo certo para salvar.'
               : 'Altere os percentuais na grade; as linhas alteradas ficam destacadas.'}

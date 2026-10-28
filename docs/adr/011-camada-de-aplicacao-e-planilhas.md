@@ -31,7 +31,7 @@ Navegador ──► Camada de aplicação (Next.js em Netlify Functions) ──�
   `atualizado_*`). Nada é apagado: registros são encerrados (`ativo = FALSE`).
 - **Edição simultânea**: gravação só com a versão lida; senão, a pessoa é
   avisada e nada é sobrescrito. Há uma janela de milissegundos entre conferir e
-  gravar que as planilhas não permitem fechar; para o porte da APAE é aceitável.
+  gravar que as planilhas não permitem fechar; para o porte da Apae é aceitável.
 - **Planilhas** (catálogo na variável `PLANILHAS`): `nucleo` (organização,
   pessoas, acessos), `auditoria` (somente inclusão) e uma por módulo ou serviço
   (ex.: avaliação da UR), para separar dados sensíveis.

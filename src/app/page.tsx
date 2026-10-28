@@ -73,10 +73,10 @@ export default async function Portal() {
       const n = (r.alertas?.semRateio ?? 0) + (r.alertas?.foraDe100 ?? 0);
       if (n > 0) {
         pendencias.push({
-          texto: `${n} ${n === 1 ? 'posto da folha está' : 'postos da folha estão'} sem rateio válido`,
-          detalhe: 'O custo deles não aparece em nenhum centro de custo.',
-          href: '/orcamento/rateio?atalho=pendentes',
-          acao: 'Corrigir rateio',
+          texto: `${n} ${n === 1 ? 'funcionário está' : 'funcionários estão'} sem lotação válida`,
+          detalhe: 'O custo deles não aparece em nenhum serviço no resumo por serviço.',
+          href: '/orcamento/lotacao?atalho=pendentes',
+          acao: 'Corrigir lotação',
         });
       }
     } catch {

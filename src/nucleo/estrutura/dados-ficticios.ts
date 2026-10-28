@@ -13,6 +13,11 @@ export const SERVICOS_FICTICIOS = [
   { codigo: 'servico_domicilio', nome: 'Serviço no Domicílio (exemplo)', unidade: 'sede', area: 'assistencia_social', vagas: 40, atendidos: 5 },
   { codigo: 'cer_reabilitacao', nome: 'Reabilitação CER (exemplo)', unidade: 'sede', area: 'saude', vagas: null, atendidos: 6 },
   { codigo: 'escola', nome: 'Escola (exemplo)', unidade: 'sede', area: 'educacao', vagas: null, atendidos: 6 },
+  // Serviços sem atendidos: também são centros de custo da folha.
+  { codigo: 'transporte', nome: 'Transporte escolar (exemplo)', unidade: 'sede', area: 'educacao', vagas: null, atendidos: 0 },
+  { codigo: 'administracao', nome: 'Administração (exemplo)', unidade: 'sede', area: 'administrativo', vagas: null, atendidos: 0 },
+  { codigo: 'rural_viveiro', nome: 'Viveiro de mudas (exemplo)', unidade: 'rural', area: 'rural', vagas: null, atendidos: 0 },
+  { codigo: 'comunicacao', nome: 'Comunicação e Mobilização (exemplo)', unidade: 'sede', area: 'comunicacao', vagas: null, atendidos: 0 },
 ] as const;
 
 export const USUARIOS_FICTICIOS = [

@@ -7,7 +7,7 @@ import { usuarioLogado } from '@/plataforma/sessao';
 import { CabecalhoPagina } from '@/ui/pagina';
 import { acaoSalvarRateios } from '../acoes';
 
-export const metadata: Metadata = { title: 'Rateio geral' };
+export const metadata: Metadata = { title: 'Lotação' };
 
 export default async function PaginaRateioGeral({ searchParams }: { searchParams: Promise<{ atalho?: string }> }) {
   const usuario = await usuarioLogado();
@@ -20,9 +20,9 @@ export default async function PaginaRateioGeral({ searchParams }: { searchParams
   return (
     <div>
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento' }, { rotulo: 'Rateio geral' }]}
-        titulo="Rateio geral"
-        descricao="Todos os postos ativos e o percentual em cada centro de custo. Altere quantos quiser e salve de uma vez; cada posto alterado precisa somar exatamente 100%."
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento' }, { rotulo: 'Lotação' }]}
+        titulo="Lotação"
+        descricao="Em quais serviços cada funcionário trabalha, em percentual. Altere quantos quiser e salve de uma vez; cada funcionário alterado precisa somar exatamente 100%."
       />
       <RateioGeral key={grade.postos.map((p) => p.rateio.length).join()} grade={grade} acao={acaoSalvarRateios} soPendentes={atalho === 'pendentes'} />
     </div>
