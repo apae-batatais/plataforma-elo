@@ -8,7 +8,8 @@ import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import {
   encerrarPosto, ErroValidacaoFolha, salvarParametros, salvarPosto, salvarRateios,
 } from '@/modulos/orcamento/aplicacao/folha';
-import { analisarImportacao, importarFolha, lerXlsx, type Analise } from '@/modulos/orcamento/aplicacao/importacao';
+import { analisarImportacao, descreverArquivo, importarFolha, lerMapeamento, lerXlsx, type Analise } from '@/modulos/orcamento/aplicacao/importacao';
+import type { AbaResumida, Mapeamento } from '@/modulos/orcamento/dominio/importacao';
 import { COMPONENTES, PARAMETROS, parametrosCom } from '@/modulos/orcamento/dominio/folha';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -132,15 +133,39 @@ export interface EstadoImportacao {
   analise?: Analise;
 }
 
-export async function acaoAnalisarImportacao(_: EstadoImportacao, f: FormData): Promise<EstadoImportacao> {
-  const { usuario, app } = await contexto();
+export interface EstadoArquivo {
+  erro?: string;
+  abas?: AbaResumida[];
+  sugestao?: Mapeamento | null;
+}
+
+async function abasDoArquivo(f: FormData) {
   const arquivo = f.get('arquivo');
-  if (!(arquivo instanceof File) || arquivo.size === 0) return { erro: 'Escolha o arquivo .xlsx da folha.' };
-  if (arquivo.size > 5 * 1024 * 1024) return { erro: 'O arquivo passa de 5 MB. Apague abas que não são da folha e tente de novo.' };
+  if (!(arquivo instanceof File) || arquivo.size === 0) throw new ErroValidacaoFolha('Escolha o arquivo .xlsx da folha.');
+  if (arquivo.size > 5 * 1024 * 1024) throw new ErroValidacaoFolha('O arquivo passa de 5 MB. Apague abas que não são da folha e tente de novo.');
+  return lerXlsx(await arquivo.arrayBuffer());
+}
+
+/** Passo 1: lê as abas do arquivo e sugere o DE-PARA. */
+export async function acaoLerArquivo(_: EstadoArquivo, f: FormData): Promise<EstadoArquivo> {
+  const { usuario } = await contexto();
   try {
-    return { analise: await analisarImportacao(app.planilhas, usuario.autorizador, await lerXlsx(await arquivo.arrayBuffer())) };
+    return descreverArquivo(usuario.autorizador, await abasDoArquivo(f));
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+}
+
+/** Passo 2: lê o arquivo pelo DE-PARA escolhido e mostra o que será importado. */
+export async function acaoAnalisarImportacao(_: EstadoImportacao, f: FormData): Promise<EstadoImportacao> {
+  const { usuario, app } = await contexto();
+  try {
+    const mapeamento = lerMapeamento(JSON.parse(texto(f, 'mapeamento') || 'null'));
+    return { analise: await analisarImportacao(app.planilhas, usuario.autorizador, await abasDoArquivo(f), mapeamento) };
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    if (erro instanceof SyntaxError) return { erro: 'O DE-PARA das colunas veio incompleto. Confira as escolhas e tente de novo.' };
     throw erro;
   }
 }
