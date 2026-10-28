@@ -9,7 +9,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
 import {
-  IconeChave, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeSair, IconeServicos,
+  IconeAreas, IconeChave, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeSair, IconeServicos,
 } from './icones';
 
 const ICONES = {
@@ -18,6 +18,7 @@ const ICONES = {
   orcamento: IconeOrcamento,
   acessos: IconeChave,
   servicos: IconeServicos,
+  areas: IconeAreas,
   planilhas: IconePlanilha,
 } as const;
 

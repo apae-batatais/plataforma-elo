@@ -3,8 +3,8 @@
 import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import {
-  analisarServicosEmLote, atribuirPerfil, cadastrarServico, cadastrarServicosEmLote, cadastrarUsuario, desativarUsuario, encerrarAtribuicao,
-  ErroValidacao, type LinhaServicoLote,
+  analisarServicosEmLote, atribuirPerfil, cadastrarArea, cadastrarServico, cadastrarServicosEmLote, cadastrarUsuario, desativarUsuario, editarArea, editarServico, encerrarAtribuicao,
+  ErroValidacao, excluirArea, excluirServico, reativarArea, reativarServico, type LinhaServicoLote,
 } from '@/nucleo/acesso/gestao';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { ESCOPOS, type EscopoTipo } from '@/nucleo/estrutura/tabelas';
@@ -81,6 +81,30 @@ export async function acaoCadastrarServico(f: FormData) {
   );
 }
 
+export async function acaoEditarServico(f: FormData) {
+  const vagas = texto(f, 'vagas');
+  await executar('/admin/servicos', 'Serviço alterado.', ({ usuario, app }) =>
+    editarServico(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), {
+      nome: texto(f, 'nome'),
+      unidade: texto(f, 'unidade'),
+      area: texto(f, 'area'),
+      vagas: vagas === '' ? null : Number(vagas),
+    }),
+  );
+}
+
+export async function acaoExcluirServico(f: FormData) {
+  await executar('/admin/servicos', 'Serviço excluído. Ele fica guardado em “Serviços excluídos”.', ({ usuario, app }) =>
+    excluirServico(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
+}
+
+export async function acaoReativarServico(f: FormData) {
+  await executar('/admin/servicos', 'Serviço reativado.', ({ usuario, app }) =>
+    reativarServico(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Serviços em lote
 // ---------------------------------------------------------------------------
@@ -119,4 +143,32 @@ export async function acaoCadastrarServicosEmLote(estado: EstadoLote, f: FormDat
     throw erro;
   }
   redirect(`/admin/servicos?ok=${encodeURIComponent(`${n} ${n === 1 ? 'serviço cadastrado' : 'serviços cadastrados'}.`)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Áreas
+// ---------------------------------------------------------------------------
+
+export async function acaoCadastrarArea(f: FormData) {
+  await executar('/admin/areas', 'Área cadastrada.', async ({ usuario, app }) => {
+    await cadastrarArea(app.planilhas, usuario.autorizador, { nome: texto(f, 'nome') });
+  });
+}
+
+export async function acaoEditarArea(f: FormData) {
+  await executar('/admin/areas', 'Área alterada.', ({ usuario, app }) =>
+    editarArea(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), { nome: texto(f, 'nome') }),
+  );
+}
+
+export async function acaoExcluirArea(f: FormData) {
+  await executar('/admin/areas', 'Área excluída. Ela fica guardada em “Áreas excluídas”.', ({ usuario, app }) =>
+    excluirArea(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
+}
+
+export async function acaoReativarArea(f: FormData) {
+  await executar('/admin/areas', 'Área reativada.', ({ usuario, app }) =>
+    reativarArea(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
 }
