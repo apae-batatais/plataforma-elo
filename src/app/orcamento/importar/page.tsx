@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { ImportarFolha } from '@/modulos/orcamento/telas/importar-folha';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { CabecalhoPagina } from '@/ui/pagina';
-import { acaoAnalisarImportacao, acaoConfirmarImportacao } from '../acoes';
+import { acaoAnalisarImportacao, acaoConfirmarImportacao, acaoLerArquivo } from '../acoes';
 
 export const metadata: Metadata = { title: 'Importar planilha da folha' };
 
@@ -17,9 +17,9 @@ export default async function Importar() {
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento' }, { rotulo: 'Importar planilha' }]}
         titulo="Importar a planilha da folha"
-        descricao="Traz todos os funcionários e vagas da aba Estudo, com a lotação. Códigos já cadastrados são ignorados e nada existente é alterado, então dá para importar de novo com segurança."
+        descricao="Traz os funcionários e vagas de qualquer planilha: você escolhe a aba e diz qual coluna corresponde a cada campo. Códigos já cadastrados são ignorados e nada existente é alterado, então dá para importar de novo com segurança."
       />
-      <ImportarFolha analisar={acaoAnalisarImportacao} confirmar={acaoConfirmarImportacao} />
+      <ImportarFolha lerArquivo={acaoLerArquivo} analisar={acaoAnalisarImportacao} confirmar={acaoConfirmarImportacao} />
     </div>
   );
 }

@@ -16,7 +16,10 @@ import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenam
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
 import { calcularLinha, COMPONENTES, parametrosCom, somaRateio, validarRateio, type LinhaRateio } from '../dominio/folha';
-import { lerPlanilhaFolha, normalizar, type AbaImportada, type CelulaImportada } from '../dominio/importacao';
+import {
+  conferirMapeamento, lerPlanilhaFolha, mapeamentoSugerido, normalizar, resumirAbas,
+  type AbaImportada, type AbaResumida, type CelulaImportada, type Mapeamento,
+} from '../dominio/importacao';
 import { Componentes, Parametros, Postos, Rateios } from '../dados/tabelas';
 import { ErroValidacaoFolha } from './folha';
 
@@ -53,6 +56,24 @@ const esquemaProposta = z.object({
 
 export type PropostaImportacao = z.infer<typeof esquemaProposta>;
 
+const coluna = z.number().int().min(0).max(500);
+const esquemaMapeamento = z.object({
+  folha: z.object({ aba: z.string(), cabecalho: z.number().int(), colunas: z.record(z.string(), coluna) }),
+  lotacao: z.discriminatedUnion('modo', [
+    z.object({ modo: z.literal('nenhuma') }),
+    z.object({ modo: z.literal('coluna') }),
+    z.object({ modo: z.literal('linhas'), aba: z.string(), cabecalho: z.number().int(), funcionario: coluna, servico: coluna, percentual: coluna.nullable() }),
+    z.object({ modo: z.literal('colunas'), aba: z.string(), cabecalho: z.number().int(), funcionario: coluna, servicos: z.array(coluna) }),
+  ]),
+});
+
+/** Confere o formato do DE-PARA que veio da tela. */
+export function lerMapeamento(bruto: unknown): Mapeamento {
+  const r = esquemaMapeamento.safeParse(bruto);
+  if (!r.success) throw new ErroValidacaoFolha('O DE-PARA das colunas veio incompleto. Confira as escolhas e tente de novo.');
+  return r.data as Mapeamento;
+}
+
 export interface RelatorioImportacao {
   abas: { estudo: string | null; rateio: string | null };
   avisos: string[];
@@ -63,7 +84,9 @@ export interface RelatorioImportacao {
   fichasJaCadastradas: string[];
   /** Vagas previstas (sem código) que já existem com a mesma descrição e cargo. */
   vagasJaCadastradas: number;
-  lotacoesForaDe100: { ficha: string; colaborador: string | null; soma: number }[];
+  lotacoesForaDe100: { ficha: string | null; colaborador: string | null; soma: number }[];
+  /** Funcionários da aba de lotação que não estão na aba da folha. */
+  lotacaoSemFuncionario: string[];
   semLotacao: { ficha: string | null; colaborador: string | null }[];
   semAdmissao: number;
   diferencasCusto: { ficha: string | null; colaborador: string | null; planilha: number; app: number }[];
@@ -110,11 +133,23 @@ export async function lerXlsx(conteudo: ArrayBuffer): Promise<AbaImportada[]> {
   });
 }
 
-export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: AbaImportada[]): Promise<Analise> {
+/** Passo 1: as abas do arquivo e o DE-PARA sugerido, para a pessoa conferir. Não grava nada. */
+export function descreverArquivo(quem: Autorizador, abas: AbaImportada[]): { abas: AbaResumida[]; sugestao: Mapeamento | null } {
   exigirImportar(quem);
-  const leitura = lerPlanilhaFolha(abas);
+  if (abas.length === 0) throw new ErroValidacaoFolha('O arquivo não tem abas.');
+  return { abas: resumirAbas(abas), sugestao: mapeamentoSugerido(abas) };
+}
+
+/** Passo 2: lê o arquivo pelo DE-PARA escolhido e compara com o que já está cadastrado. Não grava nada. */
+export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: AbaImportada[], mapeamento?: Mapeamento): Promise<Analise> {
+  exigirImportar(quem);
+  if (mapeamento) {
+    const erros = conferirMapeamento(abas, mapeamento);
+    if (erros.length) throw new ErroValidacaoFolha(erros.join(' '));
+  }
+  const leitura = lerPlanilhaFolha(abas, mapeamento);
   if (!leitura.abas.estudo || leitura.postos.length === 0) {
-    throw new ErroValidacaoFolha(['Não encontrei funcionários para importar.', ...leitura.avisos].join(' '));
+    throw new ErroValidacaoFolha(['Não encontrei funcionários para importar. Confira a aba, a linha do cabeçalho e a coluna do Cargo.', ...leitura.avisos].join(' '));
   }
   const [postos, parametrosLidos, servicos, areas] = await lerTabelas(p, [Postos, Parametros, Servicos, Areas] as const);
   const parametros = parametrosCom(Object.fromEntries(parametrosLidos.ativos().map((x) => [x.chave, x.valor])));
@@ -127,7 +162,7 @@ export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: 
     servicoPorNome.set(normalizar(s.codigo), s.codigo);
   }
   const nomes = new Map<string, string>();
-  for (const lista of leitura.rateios.values()) for (const l of lista) nomes.set(normalizar(l.centro), l.centro);
+  for (const x of leitura.postos) for (const l of x.lotacao ?? []) nomes.set(normalizar(l.centro), l.centro);
   const mapa = [...nomes.values()]
     .sort((a, b) => a.localeCompare(b, 'pt-BR'))
     .map((nome) => ({ nome, servico: servicoPorNome.get(normalizar(nome)) ?? null }));
@@ -144,6 +179,7 @@ export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: 
     fichasJaCadastradas: [],
     vagasJaCadastradas: 0,
     lotacoesForaDe100: [],
+    lotacaoSemFuncionario: leitura.lotacaoSemFuncionario,
     semLotacao: [],
     semAdmissao: 0,
     diferencasCusto: [],
@@ -166,11 +202,11 @@ export async function analisarImportacao(p: Planilhas, quem: Autorizador, abas: 
       continue;
     }
     let lotacao: PropostaImportacao['postos'][number]['lotacao'] = null;
-    const lido = x.ficha ? leitura.rateios.get(x.ficha) : undefined;
+    const lido = x.lotacao;
     if (lido && lido.length) {
       const soma = somaRateio(lido.map((l) => ({ centro: l.centro, percentual: l.percentual })));
       if (soma === 100) lotacao = lido.map((l) => ({ nome: l.centro, percentual: l.percentual }));
-      else relatorio.lotacoesForaDe100.push({ ficha: x.ficha!, colaborador: x.colaborador, soma });
+      else relatorio.lotacoesForaDe100.push({ ficha: x.ficha, colaborador: x.colaborador, soma });
     } else relatorio.semLotacao.push({ ficha: x.ficha, colaborador: x.colaborador });
     if (!x.inicio && x.colaborador) relatorio.semAdmissao++;
 

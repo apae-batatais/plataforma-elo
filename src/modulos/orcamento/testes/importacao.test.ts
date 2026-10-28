@@ -11,9 +11,9 @@ import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { listarPostos, resumoFolha } from '../aplicacao/folha';
-import { analisarImportacao, importarFolha, lerXlsx, type PropostaImportacao } from '../aplicacao/importacao';
+import { analisarImportacao, descreverArquivo, importarFolha, lerXlsx, type PropostaImportacao } from '../aplicacao/importacao';
 import { Postos, Rateios, TABELAS_ORCAMENTO } from '../dados/tabelas';
-import { lerPlanilhaFolha, paraData, paraNumero } from '../dominio/importacao';
+import { conferirMapeamento, lerPlanilhaFolha, mapeamentoSugerido, paraData, paraNumero, type Mapeamento } from '../dominio/importacao';
 import { manifesto } from '../manifesto';
 
 let p: Planilhas;
@@ -106,8 +106,8 @@ describe('leitura da planilha', () => {
     expect(l.colunasCalculadas.sort()).toEqual(['1 3 ferias', '13 sal', 'coluna 1', 'fgts', 'salariobase', 'valor hora', 'vhora base']);
     expect(l.colunasIgnoradas).toEqual([]);
     // Sem aba Rateio, a coluna "Lotação" vale 100%.
-    expect(l.rateios.get('101')).toEqual([{ centro: 'Educação', percentual: 100 }]);
-    expect(l.rateios.has('102')).toBe(false);
+    expect(l.postos[0].lotacao).toEqual([{ centro: 'Educação', percentual: 100 }]);
+    expect(l.postos[1].lotacao).toBeNull();
   });
 
   it('o cálculo do app bate com a coluna TOTAL da planilha', async () => {
@@ -196,5 +196,84 @@ describe('confirmação', () => {
     const somas = new Map<string, number>();
     for (const r of (await lerTabela(p, Rateios)).todos()) somas.set(r.lote, (somas.get(r.lote) ?? 0) + r.percentual);
     expect([...somas.values()].every((s) => Math.abs(s - 100) < 1e-9)).toBe(true);
+  });
+});
+
+/** Planilha FICTÍCIA com nomes de abas e colunas diferentes, para o DE-PARA escolhido pela pessoa. */
+async function arquivoOutroFormato(): Promise<ArrayBuffer> {
+  const livro = new ExcelJS.Workbook();
+  livro.addWorksheet('Capa').addRow(['Folha fictícia']);
+  const f = livro.addWorksheet('Pessoal 2027');
+  f.addRow(['Relação de pessoal']);
+  f.addRow(['Mat.', 'Empregado', 'Função exercida', 'Remuneração', 'VA', 'Observação']);
+  f.addRow([7, 'CARLA EXEMPLO', 'PSICÓLOGO(A)', 4200, 340, 'qualquer']);
+  f.addRow([8, 'DIEGO EXEMPLO', 'MOTORISTA', 2400, 340, null]);
+  f.addRow([null, 'A contratar', 'CUIDADOR(A)', 1900, 0, null]);
+  const r = livro.addWorksheet('Distribuição');
+  r.addRow(['Quem', 'Onde', 'Quanto']);
+  r.addRow(['7', 'Centro Dia Intergeracional', '60%']);
+  r.addRow(['7', 'escola', '40%']);
+  r.addRow(['DIEGO EXEMPLO', 'escola', '100%']); // achado pelo nome
+  r.addRow([99, 'escola', '100%']); // não está na folha
+  return (await livro.xlsx.writeBuffer()) as ArrayBuffer;
+}
+
+const DE_PARA: Mapeamento = {
+  folha: { aba: 'Pessoal 2027', cabecalho: 2, colunas: { ficha: 0, colaborador: 1, cargo: 2, salario_atual: 3, alimentacao: 4 } },
+  lotacao: { modo: 'linhas', aba: 'Distribuição', cabecalho: 1, funcionario: 0, servico: 1, percentual: 2 },
+};
+
+describe('DE-PARA escolhido na tela', () => {
+  it('mostra as abas com as primeiras linhas e sugere aba, cabeçalho e colunas', async () => {
+    const abas = await lerXlsx(await arquivoFicticio({ abaRateio: true }));
+    const d = descreverArquivo(await como('dp@exemplo.local'), abas);
+    expect(d.abas.map((a) => [a.nome, a.cabecalhoSugerido])).toEqual([['Estudo', 3], ['Rateio', 1]]);
+    expect(d.sugestao?.folha).toMatchObject({ aba: 'Estudo', cabecalho: 3, colunas: { ficha: 0, colaborador: 1, cargo: 3, salario_atual: 8 } });
+    expect(d.sugestao?.lotacao).toEqual({ modo: 'colunas', aba: 'Rateio', cabecalho: 1, funcionario: 0, servicos: [2, 3, 4] });
+    await expect(async () => descreverArquivo(await como('leitura@exemplo.local'), abas)).rejects.toBeInstanceOf(ErroPermissao);
+  });
+
+  it('lê qualquer aba e colunas pelo DE-PARA; a lotação acha o funcionário pelo código ou pelo nome', async () => {
+    const abas = await lerXlsx(await arquivoOutroFormato());
+    expect(mapeamentoSugerido(abas)?.folha.aba).toBe('Pessoal 2027'); // achada pelas colunas, mesmo com outro nome
+    const l = lerPlanilhaFolha(abas, DE_PARA);
+    expect(l.postos.map((x) => [x.ficha, x.cargo, x.componentes.salario_atual, x.componentes.alimentacao])).toEqual([
+      ['7', 'PSICÓLOGO(A)', 4200, 340],
+      ['8', 'MOTORISTA', 2400, 340],
+      [null, 'CUIDADOR(A)', 1900, 0],
+    ]);
+    expect(l.postos[0].lotacao).toEqual([{ centro: 'Centro Dia Intergeracional', percentual: 60 }, { centro: 'escola', percentual: 40 }]);
+    expect(l.postos[1].lotacao).toEqual([{ centro: 'escola', percentual: 100 }]);
+    expect(l.postos[2].lotacao).toBeNull();
+    expect(l.lotacaoSemFuncionario).toEqual(['99']);
+    expect(l.colunasIgnoradas).toEqual([{ aba: 'Pessoal 2027', colunas: ['Observação'] }]);
+  });
+
+  it('com o DE-PARA, a análise reconhece os serviços e importa', async () => {
+    const dp = await como('dp@exemplo.local');
+    const a = await analisarImportacao(p, dp, await lerXlsx(await arquivoOutroFormato()), DE_PARA);
+    expect(a.relatorio.servicos).toEqual({ reconhecidos: 2, aEscolher: 0 });
+    expect(a.relatorio.lotacaoSemFuncionario).toEqual(['99']);
+    expect(await importarFolha(p, dp, a.proposta)).toEqual({ postos: 3 });
+    const lista = await listarPostos(p, dp);
+    expect(lista.postos.find((x) => x.ficha === '7')).toMatchObject({ situacaoRateio: 'ok' });
+  });
+
+  it('lotação pela coluna da folha, ou nenhuma', async () => {
+    const abas = await lerXlsx(await arquivoFicticio());
+    const base = mapeamentoSugerido(abas)!;
+    expect(lerPlanilhaFolha(abas, { ...base, lotacao: { modo: 'nenhuma' } }).postos.every((x) => x.lotacao === null)).toBe(true);
+    expect(lerPlanilhaFolha(abas, { ...base, lotacao: { modo: 'coluna' } }).postos[0].lotacao).toEqual([{ centro: 'Educação', percentual: 100 }]);
+  });
+
+  it('recusa DE-PARA incompleto com mensagem clara', async () => {
+    const abas = await lerXlsx(await arquivoOutroFormato());
+    const semSalario: Mapeamento = { ...DE_PARA, folha: { ...DE_PARA.folha, colunas: { ficha: 0, cargo: 2, alimentacao: 2 } } };
+    const erros = conferirMapeamento(abas, semSalario);
+    expect(erros.join(' ')).toMatch(/Salário atual/);
+    expect(erros.join(' ')).toMatch(/mesma coluna/);
+    expect(conferirMapeamento(abas, { ...DE_PARA, folha: { ...DE_PARA.folha, aba: 'Não existe' } })).toEqual(['A aba "Não existe" não existe no arquivo.']);
+    expect(conferirMapeamento(abas, { ...DE_PARA, lotacao: { modo: 'coluna' } }).join(' ')).toMatch(/coluna "Lotação"/);
+    await expect(analisarImportacao(p, await como('dp@exemplo.local'), abas, semSalario)).rejects.toThrow(/Salário atual/);
   });
 });

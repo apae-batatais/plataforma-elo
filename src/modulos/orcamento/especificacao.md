@@ -125,8 +125,14 @@ cargo é texto livre, como na planilha. A planilha `orcamento` só entra na Entr
 3. **Ficha do funcionário:** todos os campos da aba Estudo, os calculados à vista e a lotação.
 4. **Lotação:** grade funcionários × serviços para corrigir vários de uma vez.
 5. **Parâmetros** da folha.
-6. **Importar planilha:** envio do .xlsx; aba Estudo (e Rateio, se existir); a coluna "Lotação"
-   vale 100%; a pessoa escolhe a qual Serviço corresponde cada nome de lotação; relatório antes de gravar.
+6. **Importar planilha:** envio do .xlsx e **DE-PARA escolhido pela pessoa**:
+   - Folha: qual aba tem os funcionários, a linha do cabeçalho e qual coluna corresponde a cada
+     campo do cadastro (Cargo e Salário atual obrigatórios; Código ou Nome para identificar).
+   - Lotação: coluna "Lotação" da própria folha (100%), outra aba (uma linha por serviço com
+     Funcionário, Serviço e Percentual, ou uma coluna por serviço) ou nenhuma. O funcionário da
+     aba de lotação é achado pelo código ou pelo nome.
+   - O app sugere o DE-PARA pelos títulos das colunas; a pessoa confere e muda.
+   - Depois: a pessoa escolhe a qual Serviço corresponde cada nome de lotação; relatório antes de gravar.
 
 ## O que muda fora do módulo (precisa de aprovação)
 
