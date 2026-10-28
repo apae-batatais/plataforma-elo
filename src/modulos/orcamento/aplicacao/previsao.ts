@@ -610,3 +610,54 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
   };
 }
 
+
+// ---------------------------------------------------------------------------
+// Árvore mês a mês: Receita › fonte › item  e  Despesa › grupo › item
+// ---------------------------------------------------------------------------
+
+export interface NoArvore {
+  id: string;
+  nome: string;
+  /** Texto curto abaixo do nome (ex.: o serviço do item). */
+  detalhe?: string;
+  mensal: number[];
+  anual: number;
+  filhos?: NoArvore[];
+}
+
+function no(id: string, nome: string, filhos: NoArvore[]): NoArvore {
+  const ordenados = [...filhos].sort((a, b) => b.anual - a.anual);
+  const mensal = ordenados.reduce((acc, f) => soma12(acc, f.mensal), zeros()).map(arred);
+  return { id, nome, mensal, anual: arred(mensal.reduce((s, v) => s + v, 0)), filhos: ordenados };
+}
+const folhaNo = (id: string, nome: string, mensal: number[], detalhe?: string): NoArvore => ({
+  id,
+  nome,
+  detalhe,
+  mensal: mensal.map(arred),
+  anual: arred(mensal.reduce((s, v) => s + v, 0)),
+});
+
+/** Monta a árvore da tabela mês a mês. Os totais de cada nível são a soma dos filhos. */
+export function arvoreMensal(prev: Pick<Previsao, 'despesas' | 'receitas' | 'folha'>): { receita: NoArvore; despesa: NoArvore } {
+  const porChave = <T,>(lista: T[], chave: (x: T) => string) => {
+    const m = new Map<string, T[]>();
+    for (const x of lista) m.set(chave(x), [...(m.get(chave(x)) ?? []), x]);
+    return m;
+  };
+
+  const fontes = [...porChave(prev.receitas, (r) => r.fonte_id)].map(([fonte, itens]) =>
+    no(`r:${fonte}`, itens[0].fonteNome, itens.map((r) => folhaNo(`r:${fonte}:${r.id}`, r.descricao, r.meses, CAPTACAO_TEXTO[r.captacao]))),
+  );
+
+  const grupos = [...porChave(prev.despesas, (d) => d.grupo_id)].map(([grupo, itens]) =>
+    no(`d:${grupo}`, itens[0].grupoNome, itens.map((d) => folhaNo(`d:${grupo}:${d.id}`, d.descricao, d.meses, d.servicoNome))),
+  );
+  if (prev.folha && prev.folha.linhas.length) {
+    grupos.push(no('d:__folha__', 'Folha de pagamento (automática)', prev.folha.linhas.map((l) => folhaNo(`d:__folha__:${l.servico}`, l.nome, l.mensal, l.areaNome))));
+  }
+
+  return { receita: no('receita', 'Receita', fontes), despesa: no('despesa', 'Despesa', grupos) };
+}
+
+const CAPTACAO_TEXTO: Record<Captacao, string> = { garantida: 'Garantida', negociacao: 'Em negociação', a_captar: 'A captar' };

@@ -1,15 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { lerPrevisao, type Grupamento } from '@/modulos/orcamento/aplicacao/previsao';
+import { arvoreMensal, lerPrevisao, type Grupamento } from '@/modulos/orcamento/aplicacao/previsao';
 import { REFERENCIAS } from '@/modulos/orcamento/dominio/previsao';
-import { MESES, reais } from '@/modulos/orcamento/telas/formato';
+import { reais } from '@/modulos/orcamento/telas/formato';
+import { TabelaMensal } from '@/modulos/orcamento/telas/tabela-mensal';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
-import { CabecalhoPagina, EstadoVazio, Etiqueta, tabela } from '@/ui/pagina';
+import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { acaoAbrirExercicio } from './acoes';
 
 export const metadata: Metadata = { title: 'Previsão' };
@@ -58,6 +59,7 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
   const podeAbrir = usuario.autorizador.temPermissao('orcamento.previsao.editar');
   const t = prev.totais;
   const i = prev.indicadores;
+  const arvore = arvoreMensal(prev);
   const vazio = prev.despesas.length === 0 && prev.receitas.length === 0 && !prev.folha?.anual;
 
   const indicadores = [
@@ -202,46 +204,12 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
               <h2 id="t-meses" className="text-lg font-bold">
                 Mês a mês
               </h2>
-              <div className={tabela.moldura}>
-                <table className={tabela.tabela}>
-                  <caption className="sr-only">Despesa, receita e resultado por mês em {prev.ano}</caption>
-                  <thead className={tabela.cabeca}>
-                    <tr>
-                      <th scope="col" className={`${tabela.th} sticky left-0 bg-superficie-2`}>
-                        <span className="sr-only">Linha</span>
-                      </th>
-                      {MESES.map((m) => (
-                        <th key={m} scope="col" className={`${tabela.th} text-right`}>
-                          {m.slice(0, 3)}
-                        </th>
-                      ))}
-                      <th scope="col" className={`${tabela.th} text-right`}>
-                        Ano
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { rotulo: 'Receita', v: t.receita.mensal, ano: t.receita.anual },
-                      { rotulo: 'Despesa', v: t.despesa.mensal, ano: t.despesa.anual },
-                      { rotulo: 'Resultado', v: t.receita.mensal.map((r, k) => Math.round((r - t.despesa.mensal[k]) * 100) / 100), ano: i.resultado, forte: true },
-                    ].map((l) => (
-                      <tr key={l.rotulo} className={`border-b border-borda last:border-0 ${l.forte ? 'font-semibold' : ''}`}>
-                        <th scope="row" className="sticky left-0 bg-superficie px-4 py-2.5 text-left">
-                          {l.rotulo}
-                        </th>
-                        {l.v.map((v, k) => (
-                          <td key={k} className={`whitespace-nowrap px-3 py-2.5 text-right tabular-nums ${l.forte && v < 0 ? 'text-erro' : ''}`}>
-                            {v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}
-                          </td>
-                        ))}
-                        <td className={`whitespace-nowrap px-4 py-2.5 text-right font-semibold tabular-nums ${l.forte && l.ano < 0 ? 'text-erro' : ''}`}>{reais(l.ano)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs text-texto-suave">Valores mensais em reais, sem centavos. Resultado negativo em vermelho.</p>
+              <TabelaMensal
+                ano={prev.ano}
+                receita={arvore.receita}
+                despesa={arvore.despesa}
+                resultado={{ mensal: t.receita.mensal.map((r, k) => Math.round((r - t.despesa.mensal[k]) * 100) / 100), anual: i.resultado }}
+              />
             </section>
           )}
 

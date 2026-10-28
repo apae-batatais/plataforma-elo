@@ -11,7 +11,7 @@ import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { resumoFolha } from '../aplicacao/folha';
 import {
-  abrirExercicio, cancelarItem, definirFonteDaFolha, excluirFonte, excluirGrupo, lerPrevisao, listarCadastros,
+  abrirExercicio, arvoreMensal, cancelarItem, definirFonteDaFolha, excluirFonte, excluirGrupo, lerPrevisao, listarCadastros,
   reativarGrupo, salvarDespesa, salvarFonte, salvarGrupo, salvarReceita, type DadosDespesa,
 } from '../aplicacao/previsao';
 import { popularFolhaFicticia, popularPrevisaoFicticia } from '../dados/ficticios';
@@ -189,5 +189,30 @@ describe('painel da previsão', () => {
     await expect(lerPrevisao(p, await como('dp@exemplo.local'))).rejects.toBeInstanceOf(ErroPermissao);
     await expect(lerPrevisao(p, await como('coord.ur@exemplo.local'))).rejects.toBeInstanceOf(ErroPermissao);
     expect((await lerPrevisao(p, await fin())).podeEditar).toBe(true);
+  });
+});
+
+describe('árvore mês a mês', () => {
+  beforeEach(async () => {
+    await popularFolhaFicticia(p);
+    await popularPrevisaoFicticia(p);
+  });
+
+  it('Receita › fonte › item e Despesa › grupo › item, com os mesmos totais do painel', async () => {
+    const prev = await lerPrevisao(p, await fin());
+    const { receita, despesa } = arvoreMensal(prev);
+    expect(receita.anual).toBeCloseTo(prev.totais.receita.anual, 1);
+    expect(despesa.anual).toBeCloseTo(prev.totais.despesa.anual, 1);
+    receita.mensal.forEach((v, i) => expect(v).toBeCloseTo(prev.totais.receita.mensal[i], 1));
+    // Cada nível soma os filhos
+    for (const raiz of [receita, despesa]) {
+      for (const g of raiz.filhos!) expect(g.anual).toBeCloseTo(g.filhos!.reduce((s, f) => s + f.anual, 0), 1);
+    }
+    const folha = despesa.filhos!.find((g) => g.id === 'd:__folha__')!;
+    expect(folha.anual).toBe(prev.folha!.anual);
+    expect(folha.filhos!.length).toBe(prev.folha!.linhas.length);
+    const leilao = receita.filhos!.find((f) => f.nome.startsWith('Leilão'))!;
+    expect(leilao.filhos![0]).toMatchObject({ nome: 'Leilão 2027 (exemplo)', detalhe: 'Em negociação' });
+    expect(leilao.mensal[7]).toBe(420000);
   });
 });
