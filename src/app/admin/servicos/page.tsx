@@ -7,7 +7,8 @@ import { usuarioLogado } from '@/plataforma/sessao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina, EstadoVazio, Secao, tabela } from '@/ui/pagina';
-import { acaoCadastrarServico } from '../acoes';
+import { acaoCadastrarServico, acaoCadastrarServicosEmLote, acaoConferirServicosEmLote } from '../acoes';
+import { CadastroEmLote } from './cadastro-em-lote';
 
 export const metadata: Metadata = { title: 'Serviços' };
 
@@ -31,13 +32,23 @@ export default async function ServicosAdmin() {
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Administração' }, { rotulo: 'Serviços' }]}
         titulo="Serviços"
-        descricao="Os serviços organizam atendidos, equipes e perfis de acesso. Cada serviço pertence a uma área e a uma unidade."
+        descricao="Os serviços são os centros de custo da folha e organizam atendidos, equipes e perfis de acesso. Cada serviço pertence a uma área e a uma unidade."
       />
+
+      <details className="mb-6 rounded-xl border border-borda bg-superficie" open={ativos.length === 0}>
+        <summary className="cursor-pointer select-none px-5 py-4">
+          <span className="text-lg font-bold">Cadastrar vários de uma vez</span>
+          <span className="ml-2 text-sm text-texto-suave">Cole uma lista copiada da planilha, confira e confirme.</span>
+        </summary>
+        <div className="border-t border-borda p-5">
+          <CadastroEmLote conferir={acaoConferirServicosEmLote} cadastrar={acaoCadastrarServicosEmLote} />
+        </div>
+      </details>
 
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div>
           {ativos.length === 0 ? (
-            <EstadoVazio titulo="Nenhum serviço cadastrado">Cadastre os serviços ao lado para poder dar perfis por serviço e vincular atendidos.</EstadoVazio>
+            <EstadoVazio titulo="Nenhum serviço cadastrado">Cadastre os serviços (um a um ao lado, ou vários de uma vez acima) para usar na lotação da folha, nos perfis de acesso e no vínculo de atendidos.</EstadoVazio>
           ) : (
             <div className={tabela.moldura}>
               <table className={tabela.tabela}>

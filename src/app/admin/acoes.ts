@@ -3,7 +3,8 @@
 import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import {
-  atribuirPerfil, cadastrarServico, cadastrarUsuario, desativarUsuario, encerrarAtribuicao, ErroValidacao,
+  analisarServicosEmLote, atribuirPerfil, cadastrarServico, cadastrarServicosEmLote, cadastrarUsuario, desativarUsuario, encerrarAtribuicao,
+  ErroValidacao, type LinhaServicoLote,
 } from '@/nucleo/acesso/gestao';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { ESCOPOS, type EscopoTipo } from '@/nucleo/estrutura/tabelas';
@@ -78,4 +79,44 @@ export async function acaoCadastrarServico(f: FormData) {
       vagas: vagas === '' ? null : Number(vagas),
     }),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Serviços em lote
+// ---------------------------------------------------------------------------
+
+export interface EstadoLote {
+  erro?: string;
+  linhas?: LinhaServicoLote[];
+  texto?: string;
+}
+
+export async function acaoConferirServicosEmLote(_: EstadoLote, f: FormData): Promise<EstadoLote> {
+  const { usuario, app } = await contexto();
+  const conteudo = texto(f, 'lista');
+  if (!conteudo) return { erro: 'Cole a lista de serviços no campo.' };
+  try {
+    const linhas = await analisarServicosEmLote(app.planilhas, usuario.autorizador, conteudo);
+    if (linhas.length === 0) return { erro: 'Não encontrei nenhuma linha com nome de serviço.', texto: conteudo };
+    return { linhas, texto: conteudo };
+  } catch (erro) {
+    if (erro instanceof ErroPermissao) return { erro: erro.message };
+    throw erro;
+  }
+}
+
+export async function acaoCadastrarServicosEmLote(estado: EstadoLote, f: FormData): Promise<EstadoLote> {
+  const { usuario, app } = await contexto();
+  let n: number;
+  try {
+    const linhas = (JSON.parse(texto(f, 'linhas')) as LinhaServicoLote[])
+      .filter((l) => l.situacao === 'ok' && l.area && l.unidade)
+      .map((l) => ({ codigo: l.codigo, nome: l.nome, area: l.area!, unidade: l.unidade!, vagas: l.vagas }));
+    n = await cadastrarServicosEmLote(app.planilhas, usuario.autorizador, linhas);
+  } catch (erro) {
+    if (erro instanceof ErroValidacao || erro instanceof ErroPermissao) return { ...estado, erro: erro.message };
+    if (erro instanceof SyntaxError) return { ...estado, erro: 'A lista veio incompleta. Confira de novo.' };
+    throw erro;
+  }
+  redirect(`/admin/servicos?ok=${encodeURIComponent(`${n} ${n === 1 ? 'serviço cadastrado' : 'serviços cadastrados'}.`)}`);
 }

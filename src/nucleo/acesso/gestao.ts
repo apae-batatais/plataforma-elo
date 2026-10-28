@@ -6,7 +6,7 @@
  * Toda alteração é auditada (só nomes de colunas, nunca valores pessoais).
  * Nada é apagado: atribuições são encerradas (fim) e usuários desativados.
  */
-import { atualizar, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { atualizar, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import {
   Areas, Atribuicoes, Papeis, Perfis, Pessoas, Servicos, Unidades, Usuarios,
@@ -190,4 +190,144 @@ export async function cadastrarServico(
     { email: quem.email },
   );
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Servicos', registroId: s.id });
+}
+
+// ---------------------------------------------------------------------------
+// Serviços em lote (lista colada de uma planilha)
+// ---------------------------------------------------------------------------
+
+export interface LinhaServicoLote {
+  linha: number;
+  nome: string;
+  codigo: string;
+  area: string | null;
+  areaNome: string | null;
+  unidade: string | null;
+  unidadeNome: string | null;
+  vagas: number | null;
+  situacao: 'ok' | 'ja_existe' | 'erro';
+  problema: string | null;
+}
+
+const semAcento = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[()\-_.,/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+function codigoDoNome(nome: string, usados: Set<string>): string {
+  const base = semAcento(nome).replace(/[^a-z0-9 ]/g, '').trim().replace(/ /g, '_').slice(0, 40) || 'servico';
+  let c = base;
+  for (let i = 2; usados.has(c); i++) c = `${base}_${i}`;
+  usados.add(c);
+  return c;
+}
+
+/** Acha pelo código, pelo nome ou por uma palavra do nome entre parênteses (ex.: "Sede", "Filial"). */
+function acharPorNome<T extends { codigo: string; nome: string }>(lista: T[], texto: string): T | undefined {
+  const t = semAcento(texto);
+  if (!t) return undefined;
+  return (
+    lista.find((x) => semAcento(x.codigo) === t || semAcento(x.nome) === t) ??
+    lista.find((x) => semAcento(x.nome).split(' ').includes(t)) ??
+    lista.find((x) => semAcento(x.nome).includes(t) || t.includes(semAcento(x.nome)))
+  );
+}
+
+/**
+ * Lê uma lista colada (linhas copiadas de uma planilha, separadas por
+ * tabulação ou ponto e vírgula): Nome; Área; Unidade (opcional); Vagas (opcional).
+ * Não grava nada: devolve o que seria cadastrado, para a pessoa conferir.
+ */
+export async function analisarServicosEmLote(p: Planilhas, quem: Autorizador, texto: string): Promise<LinhaServicoLote[]> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  const [servicos, unidades, areas] = await lerTabelas(p, [Servicos, Unidades, Areas] as const);
+  const usados = new Set(servicos.todos().map((s) => s.codigo));
+  const nomesExistentes = new Set(servicos.todos().map((s) => semAcento(s.nome)));
+  const nomesNoLote = new Set<string>();
+  const sede = unidades.ativos().find((u) => u.codigo === 'sede') ?? unidades.ativos()[0];
+
+  const linhas = texto.split(/\r?\n/).map((l, i) => ({ numero: i + 1, partes: l.split(/\t|;/).map((x) => x.trim()) }));
+  const resultado: LinhaServicoLote[] = [];
+  for (const { numero, partes } of linhas) {
+    const [nome = '', areaTexto = '', unidadeTexto = '', vagasTexto = ''] = partes;
+    if (!nome) continue;
+    // Linha de cabeçalho copiada junto.
+    if (semAcento(nome) === 'nome' || (semAcento(nome).startsWith('servico') && semAcento(areaTexto) === 'area')) continue;
+
+    const area = acharPorNome(areas.ativos(), areaTexto);
+    const unidade = unidadeTexto ? acharPorNome(unidades.ativos(), unidadeTexto) : sede;
+    const vagas = vagasTexto ? Number(vagasTexto.replace(/\D/g, '')) : null;
+    const chave = semAcento(nome);
+    let situacao: LinhaServicoLote['situacao'] = 'ok';
+    let problema: string | null = null;
+    if (nomesExistentes.has(chave)) {
+      situacao = 'ja_existe';
+      problema = 'Já cadastrado: será ignorado.';
+    } else if (nomesNoLote.has(chave)) {
+      situacao = 'ja_existe';
+      problema = 'Repetido na lista: será ignorado.';
+    } else if (!areaTexto) {
+      situacao = 'erro';
+      problema = 'Falta a área.';
+    } else if (!area) {
+      situacao = 'erro';
+      problema = `Área "${areaTexto}" não encontrada.`;
+    } else if (!unidade) {
+      situacao = 'erro';
+      problema = `Unidade "${unidadeTexto}" não encontrada.`;
+    } else if (vagas !== null && !Number.isInteger(vagas)) {
+      situacao = 'erro';
+      problema = 'Vagas deve ser um número inteiro.';
+    }
+    nomesNoLote.add(chave);
+    resultado.push({
+      linha: numero,
+      nome: nome.replace(/\s+/g, ' '),
+      codigo: situacao === 'ok' ? codigoDoNome(nome, usados) : '',
+      area: area?.codigo ?? null,
+      areaNome: area?.nome ?? null,
+      unidade: unidade?.codigo ?? null,
+      unidadeNome: unidade?.nome ?? null,
+      vagas,
+      situacao,
+      problema,
+    });
+  }
+  return resultado;
+}
+
+/** Cadastra as linhas conferidas, com uma gravação só e um registro de auditoria. */
+export async function cadastrarServicosEmLote(
+  p: Planilhas,
+  quem: Autorizador,
+  linhas: { codigo: string; nome: string; area: string; unidade: string; vagas: number | null }[],
+): Promise<number> {
+  exigir(quem, 'core.organizacao.gerenciar');
+  if (linhas.length === 0) throw new ErroValidacao('Não há serviços para cadastrar.');
+  const [servicos, unidades, areas] = await lerTabelas(p, [Servicos, Unidades, Areas] as const);
+  const codigos = new Set(servicos.todos().map((s) => s.codigo));
+  const nomes = new Set(servicos.todos().map((s) => semAcento(s.nome)));
+  for (const l of linhas) {
+    if (!/^[a-z0-9_]+$/.test(l.codigo) || codigos.has(l.codigo) || nomes.has(semAcento(l.nome))) {
+      throw new ErroValidacao('A lista mudou ou já foi cadastrada. Confira de novo antes de cadastrar.');
+    }
+    if (!areas.ativos().some((a) => a.codigo === l.area) || !unidades.ativos().some((u) => u.codigo === l.unidade)) {
+      throw new ErroValidacao(`Área ou unidade inválida em "${l.nome}".`);
+    }
+    if (l.nome.trim().length < 2) throw new ErroValidacao('Há serviço sem nome.');
+    codigos.add(l.codigo);
+    nomes.add(semAcento(l.nome));
+  }
+  const gravados = await inserirRegistros(
+    p,
+    servicos,
+    linhas.map((l) => ({ codigo: l.codigo, nome: l.nome.trim(), area: l.area, unidade: l.unidade, vagas: l.vagas, inicio: hoje() })),
+    { email: quem.email },
+  );
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Servicos', detalhes: { lote: gravados.length } });
+  return gravados.length;
 }
