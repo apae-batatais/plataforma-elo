@@ -13,4 +13,6 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   abrir a ficha de um posto registra auditoria de leitura. Os demais veem totais.
 - Rateio: nunca salvar fora de 100% (`validarRateio`). Abas com vigência só
   recebem inclusões; a linha mais recente vale a partir da vigência.
+- Previsão (1B): planilha `orcamento`, sem dados pessoais. O RH da folha entra automático
+  (`resumoFolha`, custo × lotação) e fecha em centavos com o Resumo da folha.
 - Permissões: `orcamento.<recurso>.<acao>`, declaradas no manifesto.

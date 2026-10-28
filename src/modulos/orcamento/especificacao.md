@@ -168,8 +168,9 @@ RH (folha + itens à parte) e os indicadores abaixo com os sinais de alerta.
 
 ### Onde os dados ficam (planilha `orcamento`, não sigilosa)
 
-Abas: `GruposGasto`, `Fontes`, `Exercicios`, `Despesas`, `DespesasMeses`, `Receitas`, `ReceitasMeses`,
-`FontesFolha` (fonte da folha por serviço), `Propostas` (histórico de decisões) e `Remanejamentos`.
+Abas da 1B.1: `GruposGasto`, `Fontes`, `Exercicios`, `Despesas` e `Receitas` (cada item com as colunas
+`m1` a `m12` da distribuição nos meses) e `FontesFolha` (fonte da folha por serviço, com histórico).
+A 1B.2 acrescenta `Propostas` (histórico de decisões) e `Remanejamentos`.
 Itens nunca são apagados: são cancelados (`ativo = FALSE`) ou alterados com histórico na auditoria.
 
 ### Regras de negócio — 1B

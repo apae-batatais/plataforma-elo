@@ -4,7 +4,7 @@
  * - Planilha "orcamento_folha": a folha. Salários são dados pessoais, então
  *   ficam numa planilha à parte, que pode ter compartilhamento mais restrito.
  * - Os "centros de custo" são os Serviços do Núcleo (Administração › Serviços).
- * - A planilha "orcamento" será usada a partir da Entrega 1B (previsão).
+ * - Planilha "orcamento": a previsão (Entrega 1B). Não tem dados pessoais.
  *
  * Abas com vigência (Componentes e Lotacoes) só recebem
  * inclusões: mudar um valor grava uma linha nova, e a mais recente vale a
@@ -84,8 +84,97 @@ export const Parametros = definirTabela({
   }),
 });
 
+// ---------------------------------------------------------------------------
+// Previsão (Entrega 1B) — planilha "orcamento"
+// ---------------------------------------------------------------------------
+
+const MESES_COLUNAS = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`m${i + 1}`, numeroOpcional()])) as Record<
+  `m${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12}`,
+  ReturnType<typeof numeroOpcional>
+>;
+const distribuicao = () => z.preprocess((v) => (vazio(v) ? 'igual' : v), z.enum(['igual', 'meses', 'manual']));
+
+/** Grupos de gasto (ex.: Material de consumo). "rh" = soma em Recursos Humanos. */
+export const GruposGasto = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'GruposGasto',
+  esquema: z.object({ nome: texto(), rh: booleano() }),
+});
+
+/** Fontes de recurso. Natureza e uso alimentam os indicadores. */
+export const Fontes = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'Fontes',
+  esquema: z.object({
+    nome: texto(),
+    natureza: z.enum(['publica', 'propria']),
+    uso: z.enum(['livre', 'restrita']),
+  }),
+});
+
+export const Exercicios = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'Exercicios',
+  esquema: z.object({
+    ano: numero(),
+    situacao: z.enum(['elaboracao', 'aprovado', 'encerrado']),
+    aprovado_em: dataOpcional(),
+    aprovado_por: textoOpcional(),
+  }),
+});
+
+/** Itens de despesa. Valor = quantidade × ocorrências × valor unitário; m1..m12 = distribuição nos meses. */
+export const Despesas = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'Despesas',
+  esquema: z.object({
+    ano: numero(),
+    servico: texto(),
+    grupo_id: texto(),
+    /** Vazio = "a definir" (só durante a elaboração). */
+    fonte_id: textoOpcional(),
+    descricao: texto(),
+    quantidade: numero(),
+    ocorrencias: numero(),
+    valor_unitario: numero(),
+    distribuicao: distribuicao(),
+    ...MESES_COLUNAS,
+    /** aceito; na Entrega 1B.2: proposta, recusada. */
+    situacao: z.preprocess((v) => (vazio(v) ? 'aceito' : v), z.enum(['aceito', 'proposta', 'recusada'])),
+    observacao: textoOpcional(),
+  }),
+});
+
+/** Itens de receita, com a situação da captação. */
+export const Receitas = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'Receitas',
+  esquema: z.object({
+    ano: numero(),
+    fonte_id: texto(),
+    descricao: texto(),
+    valor: numero(),
+    captacao: z.enum(['garantida', 'negociacao', 'a_captar']),
+    distribuicao: distribuicao(),
+    ...MESES_COLUNAS,
+    observacao: textoOpcional(),
+  }),
+});
+
+/** Qual fonte paga a folha de cada serviço, no ano. Vigente = a linha ativa mais recente. */
+export const FontesFolha = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'FontesFolha',
+  esquema: z.object({ ano: numero(), servico: texto(), fonte_id: textoOpcional() }),
+});
+
+export type RegGrupo = Registro<typeof GruposGasto.esquema>;
+export type RegFonte = Registro<typeof Fontes.esquema>;
+export type RegDespesa = Registro<typeof Despesas.esquema>;
+export type RegReceita = Registro<typeof Receitas.esquema>;
+
 export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha] as const;
