@@ -21,7 +21,7 @@ describe('ajuste das unidades', () => {
     // Volta ao estado das planilhas preparadas antes do ajuste.
     const atuais = (await lerTabela(p, Unidades)).todos();
     await atualizar(p, Unidades, atuais.find((u) => u.codigo === 'sede')!.id, 1, { nome: 'Sede' }, { email: 'teste' });
-    await atualizar(p, Unidades, atuais.find((u) => u.codigo === 'rural')!.id, 1, { nome: 'Apae Rural'.toUpperCase() } // grafia antiga, em maiúsculas, { email: 'teste' });
+    await atualizar(p, Unidades, atuais.find((u) => u.codigo === 'rural')!.id, 1, { nome: 'Apae Rural'.toUpperCase() }, { email: 'teste' }); // grafia antiga, em maiúsculas
     await inserir(p, Unidades, { codigo: 'cer', nome: 'CER' }, { email: 'teste' });
 
     const r = await prepararEstrutura(p);
