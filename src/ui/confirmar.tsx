@@ -18,6 +18,7 @@ export function FormularioConfirmado({
   variante = 'perigo',
   pequeno,
   perigoso = true,
+  rotuloAcessivel,
   children,
 }: {
   acao: (f: FormData) => void | Promise<void>;
@@ -30,6 +31,8 @@ export function FormularioConfirmado({
   pequeno?: boolean;
   /** A confirmação é uma ação sem volta (botão vermelho)? */
   perigoso?: boolean;
+  /** Nome do botão para leitores de tela, quando o rótulo é só um ícone. */
+  rotuloAcessivel?: string;
   /** Campos visíveis do formulário (ex.: data), mostrados dentro da janela. */
   children?: ReactNode;
 }) {
@@ -37,7 +40,13 @@ export function FormularioConfirmado({
   const idTitulo = useId();
   return (
     <>
-      <Botao variante={variante} className={pequeno ? '!min-h-8 !px-3 !py-1 !text-sm' : ''} onClick={() => janela.current?.showModal()}>
+      <Botao
+        variante={variante}
+        className={pequeno && !variante.startsWith('icone') ? '!min-h-8 !px-3 !py-1 !text-sm' : ''}
+        aria-label={rotuloAcessivel}
+        title={rotuloAcessivel}
+        onClick={() => janela.current?.showModal()}
+      >
         {rotulo}
       </Botao>
       <dialog

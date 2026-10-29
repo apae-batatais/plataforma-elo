@@ -12,6 +12,24 @@ export const CAPTACAO: Record<Captacao, string> = {
   a_captar: 'A captar',
 };
 
+export type Categoria = 'operacional' | 'projetos';
+export const CATEGORIA: Record<Categoria, string> = { operacional: 'Operacional', projetos: 'Projetos/Capital' };
+
+export type Prioridade = 'ui' | 'un' | 'ni' | 'nn';
+export const PRIORIDADE: Record<Prioridade, string> = {
+  ui: 'Urgente e importante',
+  un: 'Urgente e não importante',
+  ni: 'Não urgente e importante',
+  nn: 'Não urgente e não importante',
+};
+
+/** Rótulos curtos para as grades. */
+export const PRIORIDADE_CURTA: Record<Prioridade, string> = { ui: 'Urgente', un: 'Urgente, pouco imp.', ni: 'Importante', nn: 'Baixa' };
+
+export type Cotacao = 'ok' | 'atualizar' | 'pendente';
+export const COTACAO: Record<Cotacao, string> = { ok: 'Cotação OK', atualizar: 'Atualizar cotação', pendente: 'Pendente de cotação' };
+export const COTACAO_CURTA: Record<Cotacao, string> = { ok: 'OK', atualizar: 'Atualizar', pendente: 'Pendente' };
+
 export const NATUREZA = { publica: 'Pública', propria: 'Própria' } as const;
 export const USO = { livre: 'Livre', restrita: 'Restrita' } as const;
 

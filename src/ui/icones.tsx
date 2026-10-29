@@ -120,6 +120,21 @@ export const IconeSeta = (p: Props) => (
     <path d="m9 6 6 6-6 6" />
   </Icone>
 );
+export const IconeEditar = (p: Props) => (
+  <Icone {...p}>
+    <path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
+  </Icone>
+);
+export const IconeReativar = (p: Props) => (
+  <Icone {...p}>
+    <path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" />
+  </Icone>
+);
+export const IconeMaisOpcoes = (p: Props) => (
+  <Icone {...p}>
+    <path d="M5 12h.01M12 12h.01M19 12h.01" strokeWidth={3} />
+  </Icone>
+);
 export const IconeLixeira = (p: Props) => (
   <Icone {...p}>
     <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />

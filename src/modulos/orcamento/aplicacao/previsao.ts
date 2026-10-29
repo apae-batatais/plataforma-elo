@@ -16,7 +16,8 @@ import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
 import {
   arred, calcularIndicadores, distribuir, ErroDistribuicao, nomeComparavel, valorDoItem,
-  type Captacao, type Distribuicao, type Indicadores,
+  COTACAO, PRIORIDADE,
+  type Captacao, type Categoria, type Cotacao, type Distribuicao, type Indicadores, type Prioridade,
 } from '../dominio/previsao';
 import {
   Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Receitas, Parametros,
@@ -210,6 +211,9 @@ export interface DadosDespesa extends DadosDistribuicao {
   quantidade: number;
   ocorrencias: number;
   valor_unitario: number;
+  categoria?: Categoria;
+  prioridade?: Prioridade | null;
+  cotacao?: Cotacao | null;
   observacao?: string | null;
 }
 
@@ -248,6 +252,9 @@ export async function salvarDespesa(p: Planilhas, quem: Autorizador, dados: Dado
     valor_unitario: dados.valor_unitario,
     distribuicao: dados.distribuicao,
     ...colunasMeses(meses),
+    categoria: dados.categoria === 'projetos' ? 'projetos' : 'operacional',
+    prioridade: dados.prioridade && dados.prioridade in PRIORIDADE ? dados.prioridade : null,
+    cotacao: dados.cotacao && dados.cotacao in COTACAO ? dados.cotacao : null,
     observacao: dados.observacao?.trim() || null,
   };
   if (!existente) {
@@ -269,13 +276,16 @@ export interface DadosReceita extends DadosDistribuicao {
   descricao: string;
   valor: number;
   captacao: Captacao;
+  /** Área (código) a que a receita se destina; null = geral. */
+  area?: string | null;
   observacao?: string | null;
 }
 
 export async function salvarReceita(p: Planilhas, quem: Autorizador, dados: DadosReceita, existente?: { id: string; versao: number }): Promise<string> {
   exigir(quem, PERM.editar);
-  const [exercicios, fontes, receitas] = await lerTabelas(p, [Exercicios, Fontes, Receitas] as const);
+  const [exercicios, fontes, receitas, areas] = await lerTabelas(p, [Exercicios, Fontes, Receitas, Areas] as const);
   exigirEmElaboracao(exercicios, dados.ano);
+  if (dados.area && !areas.ativos().some((a) => a.codigo === dados.area)) throw new ErroPrevisao('Área não encontrada.');
   if (!fontes.ativos().some((f) => f.id === dados.fonte_id)) throw new ErroPrevisao('Escolha a fonte de recurso.');
   const descricao = limparNome(dados.descricao);
   if (!descricao) throw new ErroPrevisao('Descreva a receita.');
@@ -289,6 +299,7 @@ export async function salvarReceita(p: Planilhas, quem: Autorizador, dados: Dado
     descricao,
     valor,
     captacao: dados.captacao,
+    area: dados.area || null,
     distribuicao: dados.distribuicao,
     ...colunasMeses(meses),
     observacao: dados.observacao?.trim() || null,
@@ -365,6 +376,9 @@ export interface LinhaDespesa {
   valor: number;
   distribuicao: Distribuicao;
   meses: number[];
+  categoria: Categoria;
+  prioridade: Prioridade | null;
+  cotacao: Cotacao | null;
   observacao: string | null;
 }
 
@@ -378,6 +392,8 @@ export interface LinhaReceita {
   descricao: string;
   valor: number;
   captacao: Captacao;
+  area: string | null;
+  areaNome: string | null;
   distribuicao: Distribuicao;
   meses: number[];
   observacao: string | null;
@@ -408,6 +424,7 @@ export interface Previsao {
   podeEditar: boolean;
   opcoes: {
     servicos: { codigo: string; nome: string; areaNome: string }[];
+    areas: { codigo: string; nome: string }[];
     grupos: { id: string; nome: string; rh: boolean }[];
     fontes: { id: string; nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita' }[];
   };
@@ -486,6 +503,9 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         valor: valorDoItem(d.quantidade, d.ocorrencias, d.valor_unitario),
         distribuicao: d.distribuicao,
         meses: mesesDe(d),
+        categoria: d.categoria,
+        prioridade: d.prioridade,
+        cotacao: d.cotacao,
         observacao: d.observacao,
       };
     })
@@ -506,6 +526,8 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         descricao: r.descricao,
         valor: r.valor,
         captacao: r.captacao,
+        area: r.area,
+        areaNome: r.area ? (nomeArea.get(r.area) ?? r.area) : null,
         distribuicao: r.distribuicao,
         meses: mesesDe(r),
         observacao: r.observacao,
@@ -577,6 +599,7 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
     exercicio: ex ? { id: ex.id, versao: ex.versao, situacao: ex.situacao } : null,
     podeEditar: quem.temPermissao(PERM.editar) && ex?.situacao === 'elaboracao',
     opcoes: {
+      areas: areasT.ativos().map((a) => ({ codigo: a.codigo, nome: a.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       servicos: servicosT
         .ativos()
         .map((s) => ({ codigo: s.codigo, nome: s.nome, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))

@@ -535,3 +535,25 @@ export async function salvarParametros(p: Planilhas, quem: Autorizador, valores:
 }
 
 export { componentesZerados };
+
+// ---------------------------------------------------------------------------
+// Profissionais por serviço (para a Análise por área)
+// ---------------------------------------------------------------------------
+
+/**
+ * Nº de profissionais de cada serviço pela lotação: quem está 50% num serviço
+ * conta 0,5. Considera quem trabalha em algum mês do ano da folha, com a
+ * lotação do último mês trabalhado. Só totais: nenhum nome sai daqui.
+ */
+export async function profissionaisPorServico(p: Planilhas): Promise<Map<string, number>> {
+  const f = await lerFolha(p);
+  const r = new Map<string, number>();
+  for (const posto of f.postos) {
+    const ultimo = [...MESES].reverse().find((m) => ativoNoMes(posto, f.parametros.ano, m));
+    if (!ultimo) continue;
+    const rateio = f.rateio(posto.id, ultimo);
+    if (situacaoRateio(rateio) !== 'ok') continue;
+    for (const l of rateio!) r.set(l.centro, Math.round(((r.get(l.centro) ?? 0) + l.percentual / 100) * 100) / 100);
+  }
+  return r;
+}

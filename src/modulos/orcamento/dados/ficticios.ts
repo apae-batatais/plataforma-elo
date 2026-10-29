@@ -6,7 +6,7 @@ import { Faker, base, pt_BR } from '@faker-js/faker';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { distribuir, valorDoItem } from '../dominio/previsao';
-import { Componentes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas } from './tabelas';
+import { CentrosCusto, Componentes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -123,8 +123,8 @@ const FONTES_FICTICIAS = [
 
 export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
   const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
-  const [grupos, fontes, exercicios, despesas, receitas, fontesFolha] = await lerTabelas(p, [
-    GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha,
+  const [grupos, fontes, exercicios, despesas, receitas, fontesFolha, centros] = await lerTabelas(p, [
+    GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto,
   ] as const);
   const g = await inserirRegistros(p, grupos, GRUPOS_FICTICIOS, autor);
   const f = await inserirRegistros(p, fontes, FONTES_FICTICIAS.map((x) => ({ ...x })), autor);
@@ -134,7 +134,13 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
 
   const igual = (valor: number) => Object.fromEntries(distribuir(valor, 'igual').map((v, i) => [`m${i + 1}`, v]));
   const nosMeses = (valor: number, meses: number[]) => Object.fromEntries(distribuir(valor, 'meses', { meses }).map((v, i) => [`m${i + 1}`, v]));
+  const projetos = new Set(['Material pedagógico (exemplo)', 'Reforma do telhado (exemplo)', 'Manutenção de equipamentos (exemplo)']);
+  const prioridades = ['ui', 'ni', 'un', 'nn'] as const;
+  let k = 0;
   const item = (servico: string, grupo: number, fonte: number | null, descricao: string, q: number, o: number, vu: number, meses?: number[]) => ({
+    categoria: projetos.has(descricao) ? ('projetos' as const) : ('operacional' as const),
+    prioridade: prioridades[k++ % 4],
+    cotacao: k % 5 === 0 ? ('pendente' as const) : ('ok' as const),
     ano: 2027,
     servico,
     grupo_id: G(grupo),
@@ -170,8 +176,10 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
     autor,
   );
 
+  const AREA_DA_FONTE = ['assistencia_social', 'educacao', 'saude', 'saude', null, null, 'rural'];
   const receita = (fonte: number, descricao: string, valor: number, captacao: 'garantida' | 'negociacao' | 'a_captar', meses?: number[]) => ({
     ano: 2027,
+    area: AREA_DA_FONTE[fonte],
     fonte_id: F(fonte),
     descricao,
     valor,
@@ -192,6 +200,23 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       receita(4, 'Leilão 2027 (exemplo)', 420000, 'negociacao', [8]),
       receita(5, 'Doações mensais (exemplo)', 96000, 'garantida'),
       receita(6, 'Vendas Vem da Rural (exemplo)', 72000, 'a_captar'),
+    ],
+    autor,
+  );
+
+  await inserirRegistros(
+    p,
+    centros,
+    [
+      { servico: 'administracao', tipo: 'despesa', atendidos: null, sessoes: null, area_m2: 180 },
+      { servico: 'comunicacao', tipo: 'despesa', atendidos: null, sessoes: null, area_m2: 40 },
+      { servico: 'transporte', tipo: 'indireto', atendidos: null, sessoes: null, area_m2: null },
+      { servico: 'escola', tipo: 'direto', atendidos: 107, sessoes: null, area_m2: 900 },
+      { servico: 'ur', tipo: 'direto', atendidos: 90, sessoes: null, area_m2: 250 },
+      { servico: 'centro_dia_intergeracional', tipo: 'direto', atendidos: 80, sessoes: null, area_m2: 400 },
+      { servico: 'servico_domicilio', tipo: 'direto', atendidos: 40, sessoes: null, area_m2: 30 },
+      { servico: 'cer_reabilitacao', tipo: 'direto', atendidos: 120, sessoes: 9600, area_m2: 600 },
+      { servico: 'rural_viveiro', tipo: 'direto', atendidos: 25, sessoes: null, area_m2: 5000 },
     ],
     autor,
   );

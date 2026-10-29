@@ -169,7 +169,8 @@ RH (folha + itens à parte) e os indicadores abaixo com os sinais de alerta.
 ### Onde os dados ficam (planilha `orcamento`, não sigilosa)
 
 Abas da 1B.1: `GruposGasto`, `Fontes`, `Exercicios`, `Despesas` e `Receitas` (cada item com as colunas
-`m1` a `m12` da distribuição nos meses) e `FontesFolha` (fonte da folha por serviço, com histórico).
+`m1` a `m12` da distribuição nos meses), `FontesFolha` (fonte da folha por serviço, com histórico) e
+`CentrosCusto` (classificação de cada serviço para a Análise por área).
 A 1B.2 acrescenta `Propostas` (histórico de decisões) e `Remanejamentos`.
 Itens nunca são apagados: são cancelados (`ativo = FALSE`) ou alterados com histórico na auditoria.
 
@@ -183,6 +184,24 @@ Itens nunca são apagados: são cancelados (`ativo = FALSE`) ou alterados com hi
 6. RH da folha = resumo com encargos × lotação, mês a mês (o mesmo número do Resumo da folha).
 7. Nomes de grupos e fontes são únicos (sem diferença de acento ou maiúscula).
 8. Toda alteração é auditada (colunas, nunca valores pessoais). Os valores do orçamento não são pessoais.
+
+### Análise por área (decisões de 28/10/2026)
+
+Modelo da aba "Análise por Área" da planilha do orçamento 2027 (só o desenho; nenhum valor copiado).
+
+- **Centros de custo** (Orçamento › Centros de custo): cada Serviço é *custo direto*, *custo indireto*
+  (apoio da área, rateado entre os diretos) ou *despesa* (administrativo, rateado entre as áreas), com
+  atendidos, sessões no ano e área (m²). Sem classificação = custo direto. Nº de profissionais = soma da
+  lotação da folha (50% conta 0,5).
+- **Item de despesa:** + categoria (Operacional ou Projetos/Capital), prioridade (urgente/importante)
+  e situação da cotação. **Receita:** + área (opcional).
+- **Painel:** filtros de área, categoria e base de rateio (% do custo direto, profissionais, atendidos
+  ou m²). Cards: resultado (receita restrita − gastos), receita restrita, gastos, custos e despesas.
+  Matriz grupos × centros diretos; rateio A (direto), B (indireto da área), C = A + B, D (despesas
+  administrativas: a área recebe a fração do seu custo no custo total, rateada entre os seus centros pela
+  mesma base), total, per capita mensal (÷ atendidos ÷ 12) e por sessão; detalhamento do custo indireto;
+  despesas administrativas por centro e grupo. A folha entra como "Recursos Humanos – folha" (operacional).
+- Base vazia em todos os centros → usa o custo direto; se ele também for zero, partes iguais.
 
 ### Construção em duas partes
 

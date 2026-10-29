@@ -5,57 +5,58 @@
  * Tokens visuais da plataforma. Contraste mínimo AA em claro e escuro.
  * Mude cores aqui, nunca direto nas telas.
  *
- * - Azul institucional: navegação e ações principais.
+ * Tons neutros (cinza quente) para fundo, bordas e texto; a barra lateral é grafite.
+ * - Azul sóbrio: ações principais e links.
  * - Amarelo "margarida": só para marcar onde a pessoa está e o foco do teclado.
  * - Verde, âmbar e vermelho: estados (salvo, atenção, erro). Nunca decoração.
  */
 :root {
-  --fundo: #f3f5f8;
+  --fundo: #f5f5f4;
   --superficie: #ffffff;
-  --superficie-2: #f8f9fb;
-  --borda: #dce1e7;
-  --borda-forte: #b9c1cb;
-  --texto: #17212b;
-  --texto-suave: #56606b;
-  --destaque: #1f5a9e;
-  --destaque-forte: #174a84;
-  --destaque-suave: #e8f0f9;
+  --superficie-2: #fafaf9;
+  --borda: #e7e5e4;
+  --borda-forte: #cfccc9;
+  --texto: #1c1917;
+  --texto-suave: #5f5a55;
+  --destaque: #2d5b86;
+  --destaque-forte: #234a6e;
+  --destaque-suave: #eff3f7;
   --sobre-destaque: #ffffff;
-  --marca: #f5c518;
-  --lateral: #12304f;
-  --lateral-texto: #dce6f1;
-  --lateral-suave: #9fb3c8;
-  --lateral-ativo: #1c426a;
-  --sucesso: #17633d;
-  --sucesso-fundo: #e5f3ea;
-  --aviso: #7a5000;
-  --aviso-fundo: #fff4d6;
-  --erro: #a8231a;
-  --erro-fundo: #fdecea;
-  --foco: #f5c518;
+  --marca: #f2c230;
+  --lateral: #1f1f1e;
+  --lateral-texto: #e7e5e4;
+  --lateral-suave: #a8a29e;
+  --lateral-ativo: #2f2e2c;
+  --sucesso: #1d6b45;
+  --sucesso-fundo: #ecf6f0;
+  --aviso: #7a5200;
+  --aviso-fundo: #fdf6e3;
+  --erro: #a5281f;
+  --erro-fundo: #fcefed;
+  --foco: #f2c230;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --fundo: #0f1318;
-    --superficie: #171c22;
-    --superficie-2: #1c222a;
-    --borda: #2b333c;
-    --borda-forte: #3d4752;
-    --texto: #e8ecf0;
-    --texto-suave: #a3adb8;
-    --destaque: #7fb2ec;
-    --destaque-forte: #a4c9f2;
-    --destaque-suave: #1a2a3d;
-    --sobre-destaque: #0e1a27;
-    --lateral: #0b1d31;
-    --lateral-ativo: #15314f;
-    --sucesso: #7fd3a3;
-    --sucesso-fundo: #12291d;
-    --aviso: #f2c75c;
-    --aviso-fundo: #3a2f12;
-    --erro: #f3a59e;
-    --erro-fundo: #3a1714;
+    --fundo: #121212;
+    --superficie: #1a1a19;
+    --superficie-2: #201f1e;
+    --borda: #2e2d2b;
+    --borda-forte: #44423f;
+    --texto: #ecebea;
+    --texto-suave: #a8a29e;
+    --destaque: #8fb4d8;
+    --destaque-forte: #b0cbe5;
+    --destaque-suave: #1e2732;
+    --sobre-destaque: #10151b;
+    --lateral: #0d0d0d;
+    --lateral-ativo: #262524;
+    --sucesso: #86d1a6;
+    --sucesso-fundo: #14261c;
+    --aviso: #f0c868;
+    --aviso-fundo: #33290f;
+    --erro: #f0a69f;
+    --erro-fundo: #351815;
   }
 }
 
