@@ -17,6 +17,8 @@ export interface Serie {
 }
 
 const cor = (n: Serie['cor']) => (typeof n === 'string' ? `var(--${n})` : `var(--serie-${Math.min(Math.max(n, 1), 4)})`);
+/** Cor do texto escrito sobre uma área pintada com a cor da série (contraste garantido nos dois temas). */
+const sobre = (n: Serie['cor']) => (typeof n === 'string' ? `var(--sobre-${n})` : '#ffffff');
 
 export function formatarValor(v: number, formato: Formato, curto = false): string {
   if (formato === 'pct') return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
@@ -267,8 +269,10 @@ export function Linhas({ categorias, series, formato, altura = 240, referencias 
 }
 
 /** Barras horizontais agrupadas: bom para muitas categorias (áreas, grupos). */
-export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria, descricao }: {
+export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria, descricao, notas }: {
   categorias: string[]; series: Serie[]; formato: Formato; rotuloCategoria: string; descricao: string;
+  /** Observação curta embaixo do nome de cada categoria (opcional). */
+  notas?: (ReactNode | null)[];
 }) {
   const maximo = Math.max(...series.flatMap((s) => s.valores), 1);
   return (
@@ -276,9 +280,12 @@ export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria
       <Legenda series={series} />
       <ul className="space-y-3">
         {categorias.map((c, i) => (
-          <li key={c} className="grid grid-cols-[minmax(8rem,15rem)_1fr] items-center gap-3 text-sm">
-            <span className="truncate text-texto" title={c}>
-              {c}
+          <li key={c} className="grid items-center gap-x-3 gap-y-1 text-sm sm:grid-cols-[minmax(8rem,15rem)_1fr]">
+            <span className="min-w-0">
+              <span className="block truncate text-texto" title={c}>
+                {c}
+              </span>
+              {notas?.[i] && <span className="mt-0.5 block text-xs text-texto-suave">{notas[i]}</span>}
             </span>
             <span className="space-y-1">
               {series.map((s) => {
@@ -320,8 +327,8 @@ export function Barras100({ categorias, series, rotuloCategoria, descricao }: { 
                     <span
                       key={s.nome}
                       title={`${s.nome}: ${formatarValor(p, 'pct')}`}
-                      className={`flex items-center justify-center text-[11px] font-semibold text-white ${k > 0 ? 'border-l-2 border-superficie' : ''}`}
-                      style={{ width: `${p}%`, background: cor(s.cor) }}
+                      className={`flex items-center justify-center text-[11px] font-semibold ${k > 0 ? 'border-l-2 border-superficie' : ''}`}
+                      style={{ width: `${p}%`, background: cor(s.cor), color: sobre(s.cor) }}
                     >
                       {p >= 9 ? formatarValor(p, 'pct') : ''}
                     </span>
@@ -333,6 +340,151 @@ export function Barras100({ categorias, series, rotuloCategoria, descricao }: { 
         })}
       </ul>
       <TabelaDoGrafico categorias={categorias} series={series} formato="moeda" rotuloCategoria={rotuloCategoria} />
+    </figure>
+  );
+}
+
+/**
+ * Indicadores com referência (gráfico de "meta"): uma barra de 0 a 100% com o
+ * valor do ano, o limite de referência tracejado e marcas dos anos anteriores.
+ * A situação vem sempre escrita (nunca só pela cor).
+ */
+export interface Indicador {
+  nome: string;
+  valor: number | null;
+  explicacao: string;
+  /** Limite de referência: "ate" = o bom é ficar abaixo; "desde" = o bom é ficar acima. */
+  referencia?: { valor: number; sentido: 'ate' | 'desde' };
+  anteriores: { rotulo: string; valor: number | null }[];
+}
+
+export function Indicadores({ itens }: { itens: Indicador[] }) {
+  return (
+    <ul className="grid gap-x-8 gap-y-6 md:grid-cols-2">
+      {itens.map((i) => {
+        const v = i.valor;
+        const fora = v !== null && i.referencia ? (i.referencia.sentido === 'ate' ? v > i.referencia.valor : v < i.referencia.valor) : false;
+        const anteriores = i.anteriores.filter((a) => a.valor !== null) as { rotulo: string; valor: number }[];
+        const limite = (x: number) => Math.min(Math.max(x, 0), 100);
+        return (
+          <li key={i.nome} className="space-y-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <span className="font-semibold">{i.nome}</span>
+              <span className="text-2xl font-bold tabular-nums">{v === null ? '—' : formatarValor(v, 'pct')}</span>
+            </div>
+            <div className="relative h-3 rounded-full bg-superficie-2 ring-1 ring-inset ring-borda" role="img" aria-label={`${i.nome}: ${v === null ? 'sem dado' : formatarValor(v, 'pct')}${i.referencia ? `; referência ${i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} ${i.referencia.valor}%` : ''}`}>
+              {v !== null && (
+                <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${limite(v)}%`, background: fora ? 'var(--negativo)' : 'var(--serie-1)' }} />
+              )}
+              {anteriores.map((a) => (
+                <span
+                  key={a.rotulo}
+                  title={`${a.rotulo}: ${formatarValor(a.valor, 'pct')}`}
+                  className="absolute -top-1 h-5 w-0.5 rounded bg-texto/60"
+                  style={{ left: `calc(${limite(a.valor)}% - 1px)` }}
+                />
+              ))}
+              {i.referencia && (
+                <span className="absolute -inset-y-2 border-l-2 border-dashed border-[var(--referencia)]" style={{ left: `${limite(i.referencia.valor)}%` }} />
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-texto-suave">
+              <span>
+                {anteriores.length > 0 ? `Antes: ${anteriores.map((a) => `${a.rotulo} ${formatarValor(a.valor, 'pct')}`).join(', ')}` : 'Sem anos anteriores'}
+              </span>
+              {i.referencia && (
+                <span className={`font-semibold ${fora ? 'text-erro' : 'text-sucesso'}`}>
+                  <span aria-hidden="true">{fora ? '▲ ' : '✓ '}</span>
+                  {fora ? 'Fora' : 'Dentro'} da referência ({i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} {i.referencia.valor}%)
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-texto-suave">{i.explicacao}</p>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * Resultado de cada mês (receita − despesa): barras para cima (sobra) e para
+ * baixo (falta), com o saldo acumulado no ano na dica e na tabela.
+ */
+export function ResultadoMensal({ categorias, receita, despesa, descricao }: { categorias: string[]; receita: number[]; despesa: number[]; descricao: string }) {
+  const [foco, setFoco] = useState<number | null>(null);
+  const id = useId();
+  const [quadro, L] = useLargura();
+  const resultado = categorias.map((_, i) => Math.round(((receita[i] ?? 0) - (despesa[i] ?? 0)) * 100) / 100);
+  const acumulado = resultado.reduce<number[]>((acc, v, i) => [...acc, (acc[i - 1] ?? 0) + v], []);
+  const altura = 220;
+  const { topo, base, marcas } = escala(Math.max(...resultado, 0), Math.min(...resultado, 0));
+  const h = altura - MARGEM.topo - MARGEM.base;
+  const w = L - MARGEM.esq - MARGEM.dir;
+  const y = (v: number) => MARGEM.topo + ((topo - v) / (topo - base)) * h;
+  const faixa = w / categorias.length;
+  const larg = Math.min(28, faixa * 0.6);
+  const series: Serie[] = [
+    { nome: 'Receita', valores: receita, cor: 1 },
+    { nome: 'Despesa', valores: despesa, cor: 2 },
+    { nome: 'Resultado do mês', valores: resultado, cor: 1 },
+    { nome: 'Saldo acumulado', valores: acumulado, cor: 1 },
+  ];
+  return (
+    <figure className="space-y-2">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-texto-suave">
+        <li className="flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-sm" style={{ background: 'var(--positivo)' }} aria-hidden="true" />
+          Sobra no mês
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span className="inline-block size-2.5 rounded-sm" style={{ background: 'var(--negativo)' }} aria-hidden="true" />
+          Falta no mês
+        </li>
+      </ul>
+      <div ref={quadro} className="relative" onMouseLeave={() => setFoco(null)}>
+        <svg viewBox={`0 0 ${L} ${altura}`} width={L} height={altura} className="block max-w-full" role="img" aria-labelledby={id}>
+          <title id={id}>{descricao}</title>
+          {marcas.map((m) => (
+            <g key={m}>
+              <line x1={MARGEM.esq} x2={L - MARGEM.dir} y1={y(m)} y2={y(m)} stroke={m === 0 ? 'var(--borda-forte)' : 'var(--grade)'} strokeWidth={m === 0 ? 1.5 : 1} />
+              <text x={MARGEM.esq - 8} y={y(m)} dy="0.32em" textAnchor="end" className="fill-texto-suave text-[11px]">
+                {formatarValor(m, 'moeda', true)}
+              </text>
+            </g>
+          ))}
+          {categorias.map((c, i) => {
+            const v = resultado[i];
+            const cx = MARGEM.esq + faixa * i + faixa / 2;
+            return (
+              <g key={c} onMouseEnter={() => setFoco(i)} onFocus={() => setFoco(i)} tabIndex={0} aria-label={`${c}: ${formatarValor(v, 'moeda')}`}>
+                <rect x={MARGEM.esq + faixa * i} y={MARGEM.topo} width={faixa} height={h} fill={foco === i ? 'var(--superficie-2)' : 'transparent'} />
+                <rect x={cx - larg / 2} y={y(Math.max(v, 0))} width={larg} height={Math.max(Math.abs(y(v) - y(0)), v ? 1 : 0)} rx={3} fill={v < 0 ? 'var(--negativo)' : 'var(--positivo)'} />
+                <text x={cx} y={altura - 8} textAnchor="middle" className="fill-texto-suave text-[11px]">
+                  {c}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+        {foco !== null && (
+          <Dica pct={((MARGEM.esq + faixa * foco + faixa / 2) / L) * 100}>
+            <p className="mb-1 font-semibold">{categorias[foco]}</p>
+            {[
+              ['Receita', receita[foco] ?? 0],
+              ['Despesa', despesa[foco] ?? 0],
+              [resultado[foco] < 0 ? 'Falta no mês' : 'Sobra no mês', resultado[foco]],
+              ['Saldo acumulado', acumulado[foco]],
+            ].map(([n, v]) => (
+              <p key={n as string} className="flex justify-between gap-3">
+                <span className="text-texto-suave">{n}</span>
+                <span className={`font-semibold tabular-nums ${(v as number) < 0 ? 'text-erro' : ''}`}>{formatarValor(v as number, 'moeda')}</span>
+              </p>
+            ))}
+          </Dica>
+        )}
+      </div>
+      <TabelaDoGrafico categorias={categorias} series={series} formato="moeda" rotuloCategoria="Mês" />
     </figure>
   );
 }

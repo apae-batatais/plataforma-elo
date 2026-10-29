@@ -28,6 +28,10 @@ export interface ResumoDoAno {
   receitaLivre: number;
   receitaRestrita: number;
   aDefinir: number;
+  /** Receita por situação da captação (garantida, em negociação, a captar). */
+  porCaptacao: Record<'garantida' | 'negociacao' | 'a_captar', number>;
+  /** Cada fonte de recurso: quanto entra (receita) e quanto já está comprometido (despesa). */
+  porFonte: { nome: string; receita: number; despesa: number }[];
 }
 
 export interface PainelGeral {
@@ -73,6 +77,8 @@ export async function painelGeral(p: Planilhas, quem: Autorizador): Promise<Pain
       receitaLivre: soma((r) => r.uso === 'livre'),
       receitaRestrita: soma((r) => r.uso === 'restrita'),
       aDefinir: t.aDefinir.valor,
+      porCaptacao: t.porCaptacao,
+      porFonte: fontesDoAno(t.receitaPorFonte, t.despesaPorFonte),
     });
   }
 
@@ -82,6 +88,18 @@ export async function painelGeral(p: Planilhas, quem: Autorizador): Promise<Pain
     return [...nomes].sort((x, y) => (ultimo?.[chave][y] ?? 0) - (ultimo?.[chave][x] ?? 0));
   };
   return { anos, areas: ordenar('porArea'), grupos: ordenar('porGrupo') };
+}
+
+/** Junta receita e despesa por fonte; "A definir" (despesa sem fonte) fica por último. */
+function fontesDoAno(receita: { nome: string; anual: number }[], despesa: { chave: string; nome: string; anual: number }[]) {
+  const mapa = new Map<string, { nome: string; receita: number; despesa: number }>();
+  for (const r of receita) mapa.set(r.nome, { nome: r.nome, receita: r.anual, despesa: 0 });
+  for (const d of despesa) {
+    const atual = mapa.get(d.nome) ?? { nome: d.nome, receita: 0, despesa: 0 };
+    atual.despesa = arred(atual.despesa + d.anual);
+    mapa.set(d.nome, atual);
+  }
+  return [...mapa.values()].sort((a, b) => (a.receita === 0 && a.despesa > 0 ? 1 : 0) - (b.receita === 0 && b.despesa > 0 ? 1 : 0) || b.receita - a.receita);
 }
 
 /** Variação percentual de um valor em relação ao ano anterior (null sem base). */
