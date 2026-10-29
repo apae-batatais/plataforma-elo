@@ -12,7 +12,7 @@ import type { Manifesto } from '@/nucleo/modulos/manifesto';
 import { validarRegistro } from '@/nucleo/modulos/registro';
 
 import type { EstruturaDosModulos } from '@/nucleo/estrutura/preparar';
-import { manifesto as orcamento, popularFolhaFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
+import { manifesto as orcamento, popularFolhaFicticia, popularPrevisaoFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 
 export const MODULOS: readonly Manifesto[] = [orcamento];
@@ -30,6 +30,7 @@ export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
 /** Dados fictícios dos módulos, gravados só na demonstração (em memória). */
 export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void> {
   await popularFolhaFicticia(p);
+  await popularPrevisaoFicticia(p);
 }
 
 validarRegistro(MODULOS);

@@ -5,7 +5,8 @@
 import { Faker, base, pt_BR } from '@faker-js/faker';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { componentesZerados, dividirIgualmente } from '../dominio/folha';
-import { Componentes, Postos, Rateios } from './tabelas';
+import { distribuir, valorDoItem } from '../dominio/previsao';
+import { Componentes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -94,4 +95,118 @@ export async function popularFolhaFicticia(p: Planilhas): Promise<{ postos: numb
     autor,
   );
   return { postos: gravados.length };
+}
+
+// ---------------------------------------------------------------------------
+// Previsão FICTÍCIA (Entrega 1B): grupos, fontes, exercício 2027, despesas e receitas
+// ---------------------------------------------------------------------------
+
+const GRUPOS_FICTICIOS = [
+  { nome: 'Material de consumo (exemplo)', rh: false },
+  { nome: 'Alimentação (exemplo)', rh: false },
+  { nome: 'Serviços de terceiros (exemplo)', rh: false },
+  { nome: 'Manutenção e conservação (exemplo)', rh: false },
+  { nome: 'Combustível e transporte (exemplo)', rh: false },
+  { nome: 'RH – RPA e autônomos (exemplo)', rh: true },
+  { nome: 'RH – Rescisões (exemplo)', rh: true },
+];
+
+const FONTES_FICTICIAS = [
+  { nome: 'Subvenção municipal – Assistência (exemplo)', natureza: 'publica', uso: 'restrita' },
+  { nome: 'Convênio estadual – Educação (exemplo)', natureza: 'publica', uso: 'restrita' },
+  { nome: 'SUS – Reabilitação (exemplo)', natureza: 'publica', uso: 'restrita' },
+  { nome: 'Projeto Incentivado (exemplo)', natureza: 'publica', uso: 'restrita' },
+  { nome: 'Leilão anual (exemplo)', natureza: 'propria', uso: 'livre' },
+  { nome: 'Doações e contribuições (exemplo)', natureza: 'propria', uso: 'livre' },
+  { nome: 'Vendas da Rural (exemplo)', natureza: 'propria', uso: 'livre' },
+] as const;
+
+export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
+  const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const [grupos, fontes, exercicios, despesas, receitas, fontesFolha] = await lerTabelas(p, [
+    GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha,
+  ] as const);
+  const g = await inserirRegistros(p, grupos, GRUPOS_FICTICIOS, autor);
+  const f = await inserirRegistros(p, fontes, FONTES_FICTICIAS.map((x) => ({ ...x })), autor);
+  await inserirRegistros(p, exercicios, [{ ano: 2027, situacao: 'elaboracao', aprovado_em: null, aprovado_por: null }], autor);
+  const G = (i: number) => g[i].id;
+  const F = (i: number) => f[i].id;
+
+  const igual = (valor: number) => Object.fromEntries(distribuir(valor, 'igual').map((v, i) => [`m${i + 1}`, v]));
+  const nosMeses = (valor: number, meses: number[]) => Object.fromEntries(distribuir(valor, 'meses', { meses }).map((v, i) => [`m${i + 1}`, v]));
+  const item = (servico: string, grupo: number, fonte: number | null, descricao: string, q: number, o: number, vu: number, meses?: number[]) => ({
+    ano: 2027,
+    servico,
+    grupo_id: G(grupo),
+    fonte_id: fonte === null ? null : F(fonte),
+    descricao,
+    quantidade: q,
+    ocorrencias: o,
+    valor_unitario: vu,
+    distribuicao: meses ? ('meses' as const) : ('igual' as const),
+    ...(meses ? nosMeses(valorDoItem(q, o, vu), meses) : igual(valorDoItem(q, o, vu))),
+    situacao: 'aceito' as const,
+    observacao: null,
+  });
+  await inserirRegistros(
+    p,
+    despesas,
+    [
+      item('escola', 0, 1, 'Material pedagógico (exemplo)', 1, 2, 9800, [2, 8]),
+      item('escola', 1, 1, 'Merenda escolar (exemplo)', 60, 200, 7.5),
+      item('transporte', 4, 1, 'Diesel do transporte escolar (exemplo)', 1, 12, 6400),
+      item('transporte', 3, null, 'Revisão dos veículos (exemplo)', 3, 1, 4200, [1, 7]),
+      item('centro_dia_intergeracional', 1, 0, 'Refeições do Centro Dia (exemplo)', 80, 240, 9.2),
+      item('centro_dia_intergeracional', 0, 0, 'Material de oficinas (exemplo)', 1, 12, 1500),
+      item('servico_domicilio', 4, 0, 'Deslocamento das equipes (exemplo)', 1, 12, 2100),
+      item('cer_reabilitacao', 2, 2, 'Manutenção de equipamentos (exemplo)', 1, 4, 3500, [3, 6, 9, 12]),
+      item('cer_reabilitacao', 5, 3, 'Fonoaudióloga – RPA (exemplo)', 1, 12, 4800),
+      item('administracao', 2, 5, 'Contabilidade (exemplo)', 1, 12, 5200),
+      item('administracao', 3, 4, 'Reforma do telhado (exemplo)', 1, 1, 38000, [4]),
+      item('administracao', 6, 4, 'Provisão para rescisões (exemplo)', 1, 1, 60000, [12]),
+      item('rural_viveiro', 0, 6, 'Insumos do viveiro (exemplo)', 1, 12, 1800),
+      item('comunicacao', 2, null, 'Impressão de materiais (exemplo)', 1, 2, 4500, [5, 10]),
+    ],
+    autor,
+  );
+
+  const receita = (fonte: number, descricao: string, valor: number, captacao: 'garantida' | 'negociacao' | 'a_captar', meses?: number[]) => ({
+    ano: 2027,
+    fonte_id: F(fonte),
+    descricao,
+    valor,
+    captacao,
+    distribuicao: meses ? ('meses' as const) : ('igual' as const),
+    ...(meses ? nosMeses(valor, meses) : igual(valor)),
+    observacao: null,
+  });
+  await inserirRegistros(
+    p,
+    receitas,
+    [
+      receita(0, 'Termo de colaboração – Centro Dia (exemplo)', 980000, 'garantida'),
+      receita(0, 'Termo de colaboração – Serviço no Domicílio (exemplo)', 420000, 'negociacao'),
+      receita(1, 'Convênio da Escola (exemplo)', 1350000, 'garantida'),
+      receita(2, 'Produção SUS do CER (exemplo)', 610000, 'garantida'),
+      receita(3, 'Projeto Incentivado 2027 (exemplo)', 300000, 'a_captar', [6, 7, 8, 9, 10, 11, 12]),
+      receita(4, 'Leilão 2027 (exemplo)', 420000, 'negociacao', [8]),
+      receita(5, 'Doações mensais (exemplo)', 96000, 'garantida'),
+      receita(6, 'Vendas Vem da Rural (exemplo)', 72000, 'a_captar'),
+    ],
+    autor,
+  );
+
+  await inserirRegistros(
+    p,
+    fontesFolha,
+    [
+      { ano: 2027, servico: 'escola', fonte_id: F(1) },
+      { ano: 2027, servico: 'transporte', fonte_id: F(1) },
+      { ano: 2027, servico: 'centro_dia_intergeracional', fonte_id: F(0) },
+      { ano: 2027, servico: 'servico_domicilio', fonte_id: F(0) },
+      { ano: 2027, servico: 'cer_reabilitacao', fonte_id: F(2) },
+      { ano: 2027, servico: 'administracao', fonte_id: F(5) },
+    ],
+    autor,
+  );
 }
