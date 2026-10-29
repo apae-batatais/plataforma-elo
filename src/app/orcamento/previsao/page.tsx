@@ -8,10 +8,131 @@ import { TabelaMensal } from '@/modulos/orcamento/telas/tabela-mensal';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
-import { LinkBotao } from '@/ui/botao';
+import { Botao, LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
-import { acaoAbrirExercicio } from './acoes';
+import { FormularioConfirmado } from '@/ui/confirmar';
+import { IconeCerto } from '@/ui/icones';
+import { acaoAbrirExercicio, acaoAprovarExercicio, acaoEncerrarExercicio } from './acoes';
+
+const ETAPAS = [
+  { chave: 'elaboracao', rotulo: 'Em elaboração', dica: 'Financeiro lança; coordenações propõem' },
+  { chave: 'aprovado', rotulo: 'Aprovado', dica: 'Muda só por remanejamento' },
+  { chave: 'encerrado', rotulo: 'Encerrado', dica: 'Ano fechado' },
+] as const;
+
+/** Onde o exercício está, o que falta para aprovar e o botão da Diretoria. */
+function SituacaoDoExercicio(props: {
+  ano: number;
+  situacao: 'elaboracao' | 'aprovado' | 'encerrado';
+  aprovadoEm: string | null;
+  fontesADefinir: number;
+  valorADefinir: number;
+  propostas: number;
+  ajustes: number;
+  podeAprovar: boolean;
+}) {
+  const atual = ETAPAS.findIndex((e) => e.chave === props.situacao);
+  const pendencias = [
+    props.fontesADefinir > 0 && {
+      texto: `${props.fontesADefinir} ${props.fontesADefinir === 1 ? 'linha' : 'linhas'} com fonte “a definir” (${reais(props.valorADefinir)})`,
+      href: `/orcamento/previsao/despesas?ano=${props.ano}`,
+      acao: 'Escolher as fontes',
+    },
+    props.propostas > 0 && {
+      texto: `${props.propostas} ${props.propostas === 1 ? 'proposta das coordenações aguarda' : 'propostas das coordenações aguardam'} decisão`,
+      href: `/orcamento/previsao/propostas?ano=${props.ano}`,
+      acao: 'Ver propostas',
+    },
+  ].filter(Boolean) as { texto: string; href: string; acao: string }[];
+
+  return (
+    <section aria-label="Situação do exercício" className="rounded-xl border border-borda bg-superficie p-5">
+      <ol className="grid gap-3 sm:grid-cols-3">
+        {ETAPAS.map((e, i) => (
+          <li key={e.chave} className={`flex items-start gap-3 ${i > atual ? 'opacity-50' : ''}`} aria-current={i === atual ? 'step' : undefined}>
+            <span
+              className={`flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                i < atual ? 'bg-sucesso-fundo text-sucesso' : i === atual ? 'bg-destaque text-sobre-destaque' : 'border border-borda-forte text-texto-suave'
+              }`}
+            >
+              {i < atual ? <IconeCerto tamanho={14} /> : i + 1}
+            </span>
+            <span>
+              <span className="block font-semibold">{e.rotulo}</span>
+              <span className="block text-xs text-texto-suave">
+                {e.chave === 'aprovado' && props.aprovadoEm ? `Aprovado em ${props.aprovadoEm.split('-').reverse().join('/')}` : e.dica}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+
+      {props.situacao === 'elaboracao' && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-borda pt-4">
+          {pendencias.length > 0 ? (
+            <ul className="space-y-1 text-sm">
+              <li className="font-semibold">Para a Diretoria aprovar, falta:</li>
+              {pendencias.map((p) => (
+                <li key={p.href} className="flex flex-wrap items-center gap-2">
+                  <span aria-hidden="true" className="text-aviso">●</span> {p.texto}
+                  <Link href={p.href} className="font-semibold text-destaque underline-offset-2 hover:underline">
+                    {p.acao}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm">
+              <span aria-hidden="true" className="text-sucesso">●</span> Tudo pronto: todas as fontes escolhidas e nenhuma proposta pendente.
+            </p>
+          )}
+          {props.podeAprovar && pendencias.length > 0 && (
+            <Botao disabled title="Resolva as pendências ao lado primeiro">
+              Aprovar o exercício {props.ano}
+            </Botao>
+          )}
+          {props.podeAprovar && pendencias.length === 0 && (
+            <FormularioConfirmado
+              acao={acaoAprovarExercicio}
+              campos={{ ano: props.ano }}
+              rotulo={`Aprovar o exercício ${props.ano}`}
+              variante="primario"
+              perigoso={false}
+              titulo={`Aprovar o exercício ${props.ano}?`}
+              mensagem="Depois de aprovado, despesas e receitas só mudam por remanejamento ou suplementação, sempre com aprovação da Diretoria."
+              confirmar="Aprovar exercício"
+            />
+          )}
+        </div>
+      )}
+      {props.situacao === 'aprovado' && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-borda pt-4 text-sm">
+          <p>
+            Mudanças só por{' '}
+            <Link href={`/orcamento/previsao/ajustes?ano=${props.ano}`} className="font-semibold text-destaque underline-offset-2 hover:underline">
+              remanejamento ou suplementação
+            </Link>
+            {props.ajustes > 0 ? ` · ${props.ajustes} ${props.ajustes === 1 ? 'pedido aguarda' : 'pedidos aguardam'} a Diretoria` : ''}.
+          </p>
+          {props.podeAprovar && (
+            <FormularioConfirmado
+              acao={acaoEncerrarExercicio}
+              campos={{ ano: props.ano }}
+              rotulo="Encerrar o exercício"
+              variante="secundario"
+              pequeno
+              perigoso={false}
+              titulo={`Encerrar o exercício ${props.ano}?`}
+              mensagem="O ano fica fechado: nenhum remanejamento ou suplementação a mais. Use no fim do ano."
+              confirmar="Encerrar exercício"
+            />
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export const metadata: Metadata = { title: 'Previsão' };
 const pequeno = '!min-h-8 !px-3 !py-1 !text-sm';
@@ -130,20 +251,17 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
         </EstadoVazio>
       ) : (
         <>
-          {(t.aDefinir.itens > 0 || prev.avisoFolha) && (
-            <div className="space-y-2">
-              {t.aDefinir.itens > 0 && (
-                <Aviso
-                  tipo="atencao"
-                  titulo={`${reais(t.aDefinir.valor)} em despesas com fonte “a definir”`}
-                  acao={<LinkBotao href={`/orcamento/previsao/despesas?ano=${prev.ano}&fonte=__a_definir__#t-folha`} variante="secundario">Escolher as fontes</LinkBotao>}
-                >
-                  {t.aDefinir.itens} {t.aDefinir.itens === 1 ? 'linha' : 'linhas'} (itens ou folha de um serviço). O exercício só é aprovado com todas as fontes escolhidas.
-                </Aviso>
-              )}
-              {prev.avisoFolha && <Aviso tipo="info">{prev.avisoFolha}</Aviso>}
-            </div>
-          )}
+          <SituacaoDoExercicio
+            ano={prev.ano}
+            situacao={prev.exercicio.situacao}
+            aprovadoEm={prev.exercicio.aprovadoEm}
+            fontesADefinir={t.aDefinir.itens}
+            valorADefinir={t.aDefinir.valor}
+            propostas={prev.propostasPendentes}
+            ajustes={prev.ajustesPendentes}
+            podeAprovar={usuario.autorizador.temPermissao('orcamento.exercicio.aprovar')}
+          />
+          {prev.avisoFolha && <Aviso tipo="info">{prev.avisoFolha}</Aviso>}
 
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-borda bg-superficie px-5 py-4">

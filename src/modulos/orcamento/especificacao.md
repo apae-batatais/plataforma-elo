@@ -212,6 +212,22 @@ longo dos anos com as referências (65% e 70%); despesa mês a mês por ano; des
 (todo o RH numa linha); composição da receita (pública × própria e restrita × livre); resumo em tabela.
 Cada gráfico tem "Ver os números" em tabela.
 
+### Entrega 1B.2 — decisões de construção (29/10/2026)
+
+- **Propostas** (Orçamento › Planejamento › Propostas): a coordenação propõe despesas só nos serviços do
+  seu escopo; pode alterar ou retirar enquanto a proposta aguarda. O Financeiro aceita (entra no
+  orçamento), ajusta e aceita, ou recusa com motivo (a coordenação lê o motivo). Propostas ficam na aba
+  `Despesas` com `situacao` (proposta/aceito/recusada), `proposto_por` e `motivo_decisao`.
+- **Aprovação**: quadro "Situação do exercício" na Previsão do ano (Em elaboração → Aprovado → Encerrado),
+  com as pendências e o botão da Diretoria. Só aprova sem fonte "a definir" e sem proposta pendente.
+  Encerrar só com nenhum pedido de ajuste pendente.
+- **Remanejamentos e suplementações** (aba `Ajustes`): o Financeiro pede, a Diretoria aprova ou recusa
+  (com motivo). Remanejamento tira valor de uma despesa num mês e põe em outra (o total não muda);
+  suplementação aumenta ou reduz uma despesa ou receita num mês. O item original não muda: a Previsão
+  soma os ajustes aprovados e mostra o valor "antes". Na aprovação, o saldo do mês é conferido de novo.
+- **Preparar estrutura** passa a acrescentar colunas novas em abas que já existem (no fim do cabeçalho),
+  sem mexer nos dados.
+
 ### Construção em duas partes
 
 - **1B.1** — Cadastros (grupos e fontes), exercício, despesas, receitas, RH da folha e painel.

@@ -19,8 +19,9 @@ import {
   COTACAO, PRIORIDADE,
   type Captacao, type Categoria, type Cotacao, type Distribuicao, type Indicadores, type Prioridade,
 } from '../dominio/previsao';
+import { deltasDosAjustes, mesesComAjuste } from '../dominio/ajustes';
 import {
-  Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Receitas, Parametros,
+  Ajustes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Receitas, Parametros,
   type RegDespesa, type RegFonte, type RegGrupo, type RegReceita,
 } from '../dados/tabelas';
 import { parametrosCom } from '../dominio/folha';
@@ -374,6 +375,8 @@ export interface LinhaDespesa {
   ocorrencias: number;
   valor_unitario: number;
   valor: number;
+  /** Valor antes dos remanejamentos e suplementações aprovados. */
+  valorOriginal: number;
   distribuicao: Distribuicao;
   meses: number[];
   categoria: Categoria;
@@ -391,6 +394,8 @@ export interface LinhaReceita {
   uso: 'livre' | 'restrita';
   descricao: string;
   valor: number;
+  /** Valor antes das suplementações aprovadas. */
+  valorOriginal: number;
   captacao: Captacao;
   area: string | null;
   areaNome: string | null;
@@ -420,8 +425,12 @@ export interface Grupamento {
 export interface Previsao {
   ano: number;
   anos: number[];
-  exercicio: { id: string; versao: number; situacao: 'elaboracao' | 'aprovado' | 'encerrado' } | null;
+  exercicio: { id: string; versao: number; situacao: 'elaboracao' | 'aprovado' | 'encerrado'; aprovadoEm: string | null } | null;
   podeEditar: boolean;
+  /** Propostas das coordenações aguardando o Financeiro. */
+  propostasPendentes: number;
+  /** Remanejamentos e suplementações aguardando a Diretoria. */
+  ajustesPendentes: number;
   opcoes: {
     servicos: { codigo: string; nome: string; areaNome: string }[];
     areas: { codigo: string; nome: string }[];
@@ -465,8 +474,8 @@ function agrupar<T>(lista: T[], chave: (x: T) => string, nome: (x: T) => string,
 
 export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?: number): Promise<Previsao> {
   exigirVer(quem);
-  const [exercicios, despesasT, receitasT, gruposT, fontesT, fontesFolhaT, servicosT, areasT] = await lerTabelas(p, [
-    Exercicios, Despesas, Receitas, GruposGasto, Fontes, FontesFolha, Servicos, Areas,
+  const [exercicios, despesasT, receitasT, gruposT, fontesT, fontesFolhaT, servicosT, areasT, ajustesT] = await lerTabelas(p, [
+    Exercicios, Despesas, Receitas, GruposGasto, Fontes, FontesFolha, Servicos, Areas, Ajustes,
   ] as const);
   const anos = [...new Set(exercicios.ativos().map((e) => e.ano))].sort();
   const ano = anoEscolhido && Number.isInteger(anoEscolhido) ? anoEscolhido : (anos.at(-1) ?? (await anoPadrao(p)));
@@ -477,6 +486,9 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
   const grupo = new Map(gruposT.todos().map((g) => [g.id, g]));
   const fonte = new Map(fontesT.todos().map((f) => [f.id, f]));
   const nomeFonte = (id: string | null) => (id ? (fonte.get(id)?.nome ?? '?') : 'A definir');
+  // Remanejamentos e suplementações aprovados mudam os meses dos itens (o item original fica como está).
+  const deltas = deltasDosAjustes(ajustesT.ativos().filter((a) => a.ano === ano && a.situacao === 'aprovado'));
+  const somaMeses = (l: number[]) => arred(l.reduce((t, v) => t + v, 0));
 
   const despesas: LinhaDespesa[] = despesasT
     .ativos()
@@ -500,9 +512,10 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         quantidade: d.quantidade,
         ocorrencias: d.ocorrencias,
         valor_unitario: d.valor_unitario,
-        valor: valorDoItem(d.quantidade, d.ocorrencias, d.valor_unitario),
+        valor: deltas.has(d.id) ? somaMeses(mesesComAjuste(mesesDe(d), deltas.get(d.id))) : valorDoItem(d.quantidade, d.ocorrencias, d.valor_unitario),
+        valorOriginal: valorDoItem(d.quantidade, d.ocorrencias, d.valor_unitario),
         distribuicao: d.distribuicao,
-        meses: mesesDe(d),
+        meses: mesesComAjuste(mesesDe(d), deltas.get(d.id)),
         categoria: d.categoria,
         prioridade: d.prioridade,
         cotacao: d.cotacao,
@@ -524,12 +537,13 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         natureza: f?.natureza ?? 'propria',
         uso: f?.uso ?? 'livre',
         descricao: r.descricao,
-        valor: r.valor,
+        valor: deltas.has(r.id) ? somaMeses(mesesComAjuste(mesesDe(r), deltas.get(r.id))) : r.valor,
+        valorOriginal: r.valor,
         captacao: r.captacao,
         area: r.area,
         areaNome: r.area ? (nomeArea.get(r.area) ?? r.area) : null,
         distribuicao: r.distribuicao,
-        meses: mesesDe(r),
+        meses: mesesComAjuste(mesesDe(r), deltas.get(r.id)),
         observacao: r.observacao,
       };
     })
@@ -596,8 +610,10 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
   return {
     ano,
     anos: anos.includes(ano) ? anos : [...anos, ano].sort(),
-    exercicio: ex ? { id: ex.id, versao: ex.versao, situacao: ex.situacao } : null,
+    exercicio: ex ? { id: ex.id, versao: ex.versao, situacao: ex.situacao, aprovadoEm: ex.aprovado_em } : null,
     podeEditar: quem.temPermissao(PERM.editar) && ex?.situacao === 'elaboracao',
+    propostasPendentes: despesasT.ativos().filter((d) => d.ano === ano && d.situacao === 'proposta').length,
+    ajustesPendentes: ajustesT.ativos().filter((a) => a.ano === ano && a.situacao === 'pendente').length,
     opcoes: {
       areas: areasT.ativos().map((a) => ({ codigo: a.codigo, nome: a.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       servicos: servicosT

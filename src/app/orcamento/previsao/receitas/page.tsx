@@ -133,6 +133,13 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
                 area: r.areaNome ?? <span className="text-texto-suave">Geral</span>,
                 captacao: <Etiqueta tipo={TIPO_CAPTACAO[r.captacao]}>{CAPTACAO[r.captacao]}</Etiqueta>,
                 meses: <span className="text-xs text-texto-suave">{resumoMeses(r)}</span>,
+                valor:
+                  r.valor !== r.valorOriginal ? (
+                    <span title="Valor com remanejamentos e suplementações aprovados">
+                      <span className="font-semibold">{reais(r.valor)}</span>
+                      <span className="block text-xs text-texto-suave">antes: {reais(r.valorOriginal)}</span>
+                    </span>
+                  ) : undefined,
                 acoes: (
                   <div className="flex justify-end gap-1">
                     <LinkBotao href={`${base}&editar=${r.id}`} scroll={false} variante="icone" aria-label={`Alterar ${r.descricao}`} title="Alterar">

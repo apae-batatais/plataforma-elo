@@ -12,6 +12,11 @@ export type ObterToken = () => Promise<string>;
 type Fetch = typeof fetch;
 
 /** Nome de aba entre aspas, como a API exige ('Minha Aba'!A1). */
+/** 0 → A, 25 → Z, 26 → AA. */
+function letraDaColuna(i: number): string {
+  return i < 26 ? String.fromCharCode(65 + i) : letraDaColuna(Math.floor(i / 26) - 1) + letraDaColuna(i % 26);
+}
+
 function intervalo(aba: string, celula = ''): string {
   return `'${aba.replace(/'/g, "''")}'${celula ? `!${celula}` : ''}`;
 }
@@ -103,11 +108,19 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
     const jaExistem = abas.filter((a) => existentes.has(a.aba));
 
     let vazias: typeof abas = [];
+    /** Abas que já existem mas não têm todas as colunas: as que faltam vão para o fim do cabeçalho. */
+    const completar: { aba: string; inicio: number; colunas: string[] }[] = [];
     if (jaExistem.length > 0) {
       const params = new URLSearchParams({ majorDimension: 'ROWS' });
       for (const a of jaExistem) params.append('ranges', intervalo(a.aba, '1:1'));
       const corpo = (await this.chamar(planilha, `/values:batchGet?${params}`)) as { valueRanges?: { values?: Linha[] }[] };
       vazias = jaExistem.filter((_, i) => (corpo.valueRanges?.[i]?.values ?? []).length === 0);
+      jaExistem.forEach((a, i) => {
+        const atual = (corpo.valueRanges?.[i]?.values?.[0] ?? []).map((c) => String(c ?? '').trim());
+        if (atual.length === 0) return;
+        const faltam = a.cabecalho.filter((c) => !atual.includes(c));
+        if (faltam.length) completar.push({ aba: a.aba, inicio: atual.length, colunas: faltam });
+      });
     }
     if (faltando.length > 0) {
       await this.chamar(planilha, ':batchUpdate', {
@@ -125,7 +138,16 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
         }),
       });
     }
-    return preencher.map((a) => a.aba);
+    if (completar.length > 0) {
+      await this.chamar(planilha, '/values:batchUpdate', {
+        method: 'POST',
+        body: JSON.stringify({
+          valueInputOption: 'RAW',
+          data: completar.map((c) => ({ range: intervalo(c.aba, `${letraDaColuna(c.inicio)}1`), values: [c.colunas] })),
+        }),
+      });
+    }
+    return [...preencher.map((a) => a.aba), ...completar.map((c) => `${c.aba} (colunas novas: ${c.colunas.join(', ')})`)];
   }
 
   /** Atalho para uma aba só. */

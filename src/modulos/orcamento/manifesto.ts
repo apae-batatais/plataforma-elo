@@ -1,6 +1,6 @@
 /**
- * Manifesto do módulo Orçamento — Entregas 1A (Folha de Pagamento) e 1B.1 (Previsão).
- * As permissões da 1B.2 (aprovação) e da 1C entram quando forem construídas.
+ * Manifesto do módulo Orçamento — Entregas 1A (Folha de Pagamento) e 1B (Previsão).
+ * As permissões da 1C (execução) entram quando ela for construída.
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
 
@@ -18,6 +18,8 @@ export const manifesto = defineModulo({
     { rotulo: 'Análise por área', caminho: '/previsao/areas', permissao: 'orcamento.painel.ver', secao: 'Painéis' },
     { rotulo: 'Despesas', caminho: '/previsao/despesas', permissao: 'orcamento.painel.ver', secao: 'Planejamento' },
     { rotulo: 'Receitas', caminho: '/previsao/receitas', permissao: 'orcamento.painel.ver', secao: 'Planejamento' },
+    { rotulo: 'Propostas', caminho: '/previsao/propostas', permissao: 'orcamento.previsao.propor', secao: 'Planejamento' },
+    { rotulo: 'Remanejamentos', caminho: '/previsao/ajustes', permissao: 'orcamento.painel.ver', secao: 'Planejamento' },
     { rotulo: 'Grupos de gasto', caminho: '/previsao/grupos', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Fontes de recurso', caminho: '/previsao/fontes', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Centros de custo', caminho: '/previsao/centros', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
@@ -33,19 +35,21 @@ export const manifesto = defineModulo({
     'orcamento.folha.editar': 'Cadastrar funcionários, valores e lotação; importar a folha',
     'orcamento.parametros.editar': 'Editar os parâmetros da folha',
     'orcamento.painel.ver': 'Ver a previsão do orçamento (despesas, receitas e indicadores)',
-    'orcamento.previsao.editar': 'Lançar despesas e receitas, cadastrar grupos e fontes, abrir o exercício',
+    'orcamento.previsao.editar': 'Lançar despesas e receitas, cadastrar grupos e fontes, abrir o exercício, decidir propostas e pedir remanejamentos',
+    'orcamento.previsao.propor': 'Propor itens de despesa nos serviços do seu escopo',
+    'orcamento.exercicio.aprovar': 'Aprovar e encerrar o exercício; aprovar remanejamentos e suplementações',
   },
   perfis: [
     { codigo: 'departamento_pessoal', nome: 'Departamento Pessoal', descricao: 'Cadastra a folha e a lotação. Vê salários individuais.' },
   ],
   permissoesPorPerfil: {
-    diretoria: ['orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.painel.ver'],
+    diretoria: ['orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.painel.ver', 'orcamento.exercicio.aprovar'],
     financeiro: [
       'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.folha.editar', 'orcamento.parametros.editar',
-      'orcamento.painel.ver', 'orcamento.previsao.editar',
+      'orcamento.painel.ver', 'orcamento.previsao.editar', 'orcamento.previsao.propor',
     ],
     departamento_pessoal: ['orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.folha.editar'],
-    coordenacao_servico: ['orcamento.folha.ver'],
+    coordenacao_servico: ['orcamento.folha.ver', 'orcamento.previsao.propor'],
     leitura: ['orcamento.folha.ver', 'orcamento.painel.ver'],
   },
   eventos: { publica: [], consome: [] },
