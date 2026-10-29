@@ -14,10 +14,12 @@ export const manifesto = defineModulo({
   permissaoAcesso: 'orcamento.folha.ver',
   menu: [
     { rotulo: 'Previsão', caminho: '/previsao', permissao: 'orcamento.painel.ver' },
+    { rotulo: 'Análise por área', caminho: '/previsao/areas', permissao: 'orcamento.painel.ver' },
     { rotulo: 'Despesas', caminho: '/previsao/despesas', permissao: 'orcamento.painel.ver' },
     { rotulo: 'Receitas', caminho: '/previsao/receitas', permissao: 'orcamento.painel.ver' },
     { rotulo: 'Grupos de gasto', caminho: '/previsao/grupos', permissao: 'orcamento.previsao.editar' },
     { rotulo: 'Fontes de recurso', caminho: '/previsao/fontes', permissao: 'orcamento.previsao.editar' },
+    { rotulo: 'Centros de custo', caminho: '/previsao/centros', permissao: 'orcamento.painel.ver' },
     { rotulo: 'Resumo da folha', caminho: '/', permissao: 'orcamento.folha.ver' },
     { rotulo: 'Folha de Pagamento', caminho: '/folha', permissao: 'orcamento.folha.ver_individual' },
     { rotulo: 'Lotação', caminho: '/lotacao', permissao: 'orcamento.folha.editar' },

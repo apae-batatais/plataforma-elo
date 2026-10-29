@@ -139,6 +139,11 @@ export const Despesas = definirTabela({
     valor_unitario: numero(),
     distribuicao: distribuicao(),
     ...MESES_COLUNAS,
+    /** Operacional ou Projetos/Capital (filtro da Análise por área). */
+    categoria: z.preprocess((v) => (vazio(v) ? 'operacional' : v), z.enum(['operacional', 'projetos'])),
+    /** Urgente e importante (ui), urgente e não importante (un), não urgente e importante (ni), não urgente e não importante (nn). */
+    prioridade: z.preprocess((v) => (vazio(v) ? null : v), z.enum(['ui', 'un', 'ni', 'nn']).nullable()),
+    cotacao: z.preprocess((v) => (vazio(v) ? null : v), z.enum(['ok', 'atualizar', 'pendente']).nullable()),
     /** aceito; na Entrega 1B.2: proposta, recusada. */
     situacao: z.preprocess((v) => (vazio(v) ? 'aceito' : v), z.enum(['aceito', 'proposta', 'recusada'])),
     observacao: textoOpcional(),
@@ -155,6 +160,8 @@ export const Receitas = definirTabela({
     descricao: texto(),
     valor: numero(),
     captacao: z.enum(['garantida', 'negociacao', 'a_captar']),
+    /** Área (código do Núcleo) a que a receita se destina; vazio = geral. */
+    area: textoOpcional(),
     distribuicao: distribuicao(),
     ...MESES_COLUNAS,
     observacao: textoOpcional(),
@@ -168,6 +175,23 @@ export const FontesFolha = definirTabela({
   esquema: z.object({ ano: numero(), servico: texto(), fonte_id: textoOpcional() }),
 });
 
+/**
+ * Classificação de custo de cada Serviço (centro de custo), para a Análise por área:
+ * direto (atende), indireto (apoio da área, rateado entre os diretos) ou despesa
+ * (administrativo, rateado entre as áreas). Uma linha por serviço; sem linha = direto.
+ */
+export const CentrosCusto = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'CentrosCusto',
+  esquema: z.object({
+    servico: texto(),
+    tipo: z.enum(['direto', 'indireto', 'despesa']),
+    atendidos: numeroOpcional(),
+    sessoes: numeroOpcional(),
+    area_m2: numeroOpcional(),
+  }),
+});
+
 export type RegGrupo = Registro<typeof GruposGasto.esquema>;
 export type RegFonte = Registro<typeof Fontes.esquema>;
 export type RegDespesa = Registro<typeof Despesas.esquema>;
@@ -177,4 +201,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto] as const;

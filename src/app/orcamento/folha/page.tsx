@@ -9,10 +9,11 @@ import { estiloBotao, LinkBotao } from '@/ui/botao';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { IconeMais } from '@/ui/icones';
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
+import { TabelaDados } from '@/ui/tabela-dados';
 
 export const metadata: Metadata = { title: 'Folha de Pagamento' };
 
-type Filtros = { busca?: string; cargo?: string; area?: string; centro?: string; atalho?: string; mes?: string; vista?: string };
+type Filtros = { atalho?: string; mes?: string };
 
 const ATALHOS: { valor: string; rotulo: string; filtro: (x: LinhaPosto) => boolean; alerta?: boolean }[] = [
   { valor: '', rotulo: 'Ativos', filtro: (x) => !x.desligamento },
@@ -81,38 +82,26 @@ export default async function FolhaDePagamento({ searchParams }: { searchParams:
   const app = await obterAplicacao();
   const f = await searchParams;
   const r = await listarPostos(app.planilhas, usuario.autorizador, Number(f.mes) || undefined);
-  const busca = (f.busca ?? '').trim().toLowerCase();
   const atalho = ATALHOS.find((a) => a.valor === (f.atalho ?? '')) ?? ATALHOS[0];
-  const temFiltro = Boolean(busca || f.cargo || f.area || f.centro);
-  const resumida = f.vista === 'resumida';
-  const colunas = COLUNAS.filter((c) => !resumida || c.resumida);
   const servicos = new Map(r.centros.map((c) => [c.codigo, c.nome]));
 
-  const lista = r.postos.filter((x) => {
-    if (!atalho.filtro(x)) return false;
-    if (busca && !`${x.colaborador ?? ''} ${x.ficha ?? ''}`.toLowerCase().includes(busca)) return false;
-    if (f.cargo && x.cargo !== f.cargo) return false;
-    if (f.area && !x.areas.includes(f.area)) return false;
-    if (f.centro && !x.centros.includes(f.centro)) return false;
-    return true;
-  });
+  const lista = r.postos.filter(atalho.filtro);
   const podeEditar = usuario.autorizador.temPermissao('orcamento.folha.editar');
   const link = (mudancas: Partial<Filtros>) => {
     const q = new URLSearchParams(Object.entries({ ...f, ...mudancas }).filter(([, v]) => v) as [string, string][]);
     return `/orcamento/folha${q.size ? `?${q}` : ''}`;
   };
-  const somaColuna = (c: Coluna) => lista.reduce((s, x) => s + Number(c.valor(x, servicos) ?? 0), 0);
 
   return (
     <div>
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento' }, { rotulo: 'Folha de Pagamento' }]}
         titulo={`Folha de Pagamento ${r.ano}`}
-        descricao="Todas as colunas da aba Estudo. As colunas em azul-claro são calculadas pelo app, como as fórmulas da planilha. São dados pessoais: cada consulta fica registrada."
+        descricao="Todas as colunas da aba Estudo, com filtro e classificação em cada coluna. As colunas destacadas são calculadas pelo app, como as fórmulas da planilha. São dados pessoais: cada consulta fica registrada."
         acoes={
           podeEditar ? (
-            <LinkBotao href="/orcamento/folha/novo">
-              <IconeMais tamanho={18} />
+            <LinkBotao href="/orcamento/folha/novo" className="!min-h-8 !px-3 !py-1 !text-sm">
+              <IconeMais tamanho={16} />
               Cadastrar
             </LinkBotao>
           ) : undefined
@@ -144,159 +133,72 @@ export default async function FolhaDePagamento({ searchParams }: { searchParams:
         </ul>
       </nav>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <form className="flex items-end gap-2">
-          {Object.entries(f)
-            .filter(([k, v]) => k !== 'mes' && v)
-            .map(([k, v]) => (
-              <input key={k} type="hidden" name={k} value={v} />
+      <form className="mb-4 flex items-end gap-2">
+        {f.atalho && <input type="hidden" name="atalho" value={f.atalho} />}
+        <Campo rotulo="Valores do mês">
+          <select name="mes" defaultValue={r.mes} className={`${estiloEntrada} !min-h-9 !py-1.5`}>
+            {MESES.map((m, i) => (
+              <option key={m} value={i + 1}>
+                {m}
+              </option>
             ))}
-          <Campo rotulo="Valores do mês">
-            <select name="mes" defaultValue={r.mes} className={estiloEntrada}>
-              {MESES.map((m, i) => (
-                <option key={m} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <button className={estiloBotao('secundario')}>Ver</button>
-        </form>
-        <div className="flex rounded-lg border border-borda bg-superficie p-1 text-sm" role="group" aria-label="Colunas">
-          <Link href={link({ vista: '' })} aria-current={!resumida ? 'true' : undefined} className={`rounded-md px-3 py-1.5 ${!resumida ? 'bg-destaque font-semibold text-sobre-destaque' : 'text-texto-suave hover:text-texto'}`}>
-            Todas as colunas
-          </Link>
-          <Link href={link({ vista: 'resumida' })} aria-current={resumida ? 'true' : undefined} className={`rounded-md px-3 py-1.5 ${resumida ? 'bg-destaque font-semibold text-sobre-destaque' : 'text-texto-suave hover:text-texto'}`}>
-            Resumida
-          </Link>
-        </div>
-      </div>
-
-      <details className="mb-4 rounded-xl border border-borda bg-superficie" open={temFiltro}>
-        <summary className="cursor-pointer select-none px-5 py-3 font-semibold">
-          Filtrar {temFiltro && <Etiqueta tipo="info">filtros ativos</Etiqueta>}
-        </summary>
-        <form className="grid gap-4 border-t border-borda p-5 sm:grid-cols-2 lg:grid-cols-4">
-          {(['atalho', 'mes', 'vista'] as const).map((k) => f[k] && <input key={k} type="hidden" name={k} value={f[k]} />)}
-          <Campo rotulo="Nome ou código">
-            <input name="busca" defaultValue={f.busca} className={estiloEntrada} />
-          </Campo>
-          <Campo rotulo="Cargo">
-            <select name="cargo" defaultValue={f.cargo ?? ''} className={estiloEntrada}>
-              <option value="">Todos</option>
-              {r.cargos.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo="Área">
-            <select name="area" defaultValue={f.area ?? ''} className={estiloEntrada}>
-              <option value="">Todas</option>
-              {r.areas.map((a) => (
-                <option key={a.codigo} value={a.codigo}>
-                  {a.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo="Serviço (lotação)">
-            <select name="centro" defaultValue={f.centro ?? ''} className={estiloEntrada}>
-              <option value="">Todos</option>
-              {r.centros.map((c) => (
-                <option key={c.codigo} value={c.codigo}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <div className="flex gap-2 sm:col-span-2 lg:col-span-4">
-            <button className={estiloBotao('primario')}>Aplicar filtros</button>
-            {temFiltro && (
-              <Link href={link({ busca: '', cargo: '', area: '', centro: '' })} className={estiloBotao('fantasma')}>
-                Limpar
-              </Link>
-            )}
-          </div>
-        </form>
-      </details>
+          </select>
+        </Campo>
+        <button className={estiloBotao('secundario', '!min-h-9')}>Ver</button>
+      </form>
 
       {lista.length === 0 ? (
         <EstadoVazio
-          titulo={temFiltro ? 'Ninguém com esses filtros' : atalho.alerta ? 'Nada pendente' : 'Ninguém aqui'}
-          acao={
-            r.postos.length === 0 && podeEditar ? <LinkBotao href="/orcamento/importar">Importar a planilha da folha</LinkBotao> : undefined
-          }
+          titulo={atalho.alerta ? 'Nada pendente' : 'Ninguém aqui'}
+          acao={r.postos.length === 0 && podeEditar ? <LinkBotao href="/orcamento/importar">Importar a planilha da folha</LinkBotao> : undefined}
         >
-          {atalho.alerta && !temFiltro ? 'Todos os funcionários ativos têm lotação somando 100%.' : undefined}
+          {atalho.alerta ? 'Todos os funcionários ativos têm lotação somando 100%.' : undefined}
         </EstadoVazio>
       ) : (
-        <div className="max-h-[75vh] overflow-auto rounded-xl border border-borda bg-superficie">
-          <table className="w-max min-w-full border-separate border-spacing-0 text-left text-sm">
-            <caption className="sr-only">
-              Folha de pagamento, valores de {MESES[r.mes - 1]}
-            </caption>
-            <thead className="sticky top-0 z-20">
-              <tr className="bg-superficie-2 text-texto-suave">
-                <th scope="col" className="sticky left-0 z-30 border-b border-borda bg-superficie-2 px-3 py-2.5 font-semibold">Código</th>
-                <th scope="col" className="sticky left-[4.5rem] z-30 min-w-60 border-b border-r border-borda bg-superficie-2 px-3 py-2.5 font-semibold">Nome</th>
-                {colunas.map((c) => (
-                  <th
-                    key={c.titulo}
-                    scope="col"
-                    title={c.calculado ? 'Calculado pelo app' : undefined}
-                    className={`border-b border-borda px-3 py-2.5 font-semibold whitespace-nowrap ${c.tipo === 'texto' || c.tipo === 'data' ? '' : 'text-right'} ${c.calculado ? 'bg-destaque-suave text-destaque' : ''}`}
-                  >
-                    {c.titulo}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {lista.map((x) => (
-                <tr key={x.id} className="group">
-                  <td className="sticky left-0 z-10 w-[4.5rem] border-b border-borda bg-superficie px-3 py-2 tabular-nums group-hover:bg-superficie-2">
-                    {x.ficha ?? <Etiqueta tipo="info">vaga</Etiqueta>}
-                  </td>
-                  <td className="sticky left-[4.5rem] z-10 border-b border-r border-borda bg-superficie px-3 py-2 group-hover:bg-superficie-2">
-                    <Link href={`/orcamento/folha/${x.id}`} className="font-semibold text-destaque hover:underline">
-                      {x.colaborador ?? 'Vaga prevista'}
-                    </Link>
+        <TabelaDados
+          grande
+          legenda={`Folha de pagamento, valores de ${MESES[r.mes - 1]}`}
+          totalRotulo="Total"
+          colunas={[
+            { chave: 'nome', rotulo: 'Nome' },
+            { chave: 'codigo', rotulo: 'Código', tipo: 'numero' },
+            ...COLUNAS.map((c) => ({
+              chave: c.titulo,
+              rotulo: c.titulo,
+              tipo: c.tipo === 'reais' ? ('moeda' as const) : c.tipo === 'numero' || c.tipo === 'percentual' ? ('numero' as const) : ('texto' as const),
+              somar: c.somar,
+              calculada: c.calculado,
+              secundaria: false,
+            })),
+          ]}
+          linhas={lista.map((x) => ({
+            id: x.id,
+            valores: {
+              nome: x.colaborador ?? 'Vaga prevista',
+              codigo: x.ficha ? Number(x.ficha) || x.ficha : null,
+              ...Object.fromEntries(COLUNAS.map((c) => [c.titulo, c.valor(x, servicos)])),
+            },
+            celulas: {
+              nome: (
+                <span className="inline-flex flex-col">
+                  <Link href={`/orcamento/folha/${x.id}`} className="font-semibold text-destaque hover:underline">
+                    {x.colaborador ?? 'Vaga prevista'}
+                  </Link>
+                  <span className="flex flex-wrap gap-1">
+                    {!x.ficha && <Etiqueta tipo="info">vaga</Etiqueta>}
                     {x.situacaoRateio !== 'ok' && (
-                      <span className="ml-2">
-                        <Etiqueta tipo={x.situacaoRateio === 'sem_rateio' ? 'atencao' : 'erro'}>
-                          {x.situacaoRateio === 'sem_rateio' ? 'sem lotação' : 'lotação ≠ 100%'}
-                        </Etiqueta>
-                      </span>
+                      <Etiqueta tipo={x.situacaoRateio === 'sem_rateio' ? 'atencao' : 'erro'}>{x.situacaoRateio === 'sem_rateio' ? 'sem lotação' : 'lotação ≠ 100%'}</Etiqueta>
                     )}
-                    {x.desligamento && <span className="block text-xs text-texto-suave">Desligado em {data(x.desligamento)}</span>}
-                  </td>
-                  {colunas.map((c) => (
-                    <td
-                      key={c.titulo}
-                      className={`border-b border-borda px-3 py-2 whitespace-nowrap group-hover:bg-superficie-2 ${
-                        c.tipo === 'texto' || c.tipo === 'data' ? '' : 'text-right tabular-nums'
-                      } ${c.calculado ? 'bg-destaque-suave/40' : ''} ${c.titulo === 'Total' ? 'font-bold' : ''}`}
-                    >
-                      {formatar(c.valor(x, servicos), c.tipo)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="sticky bottom-0 z-20">
-              <tr className="bg-superficie-2 font-bold">
-                <th scope="row" colSpan={2} className="sticky left-0 z-30 border-t-2 border-r border-borda-forte bg-superficie-2 px-3 py-2.5 text-left">
-                  Total ({lista.length})
-                </th>
-                {colunas.map((c) => (
-                  <td key={c.titulo} className="border-t-2 border-borda-forte px-3 py-2.5 text-right tabular-nums whitespace-nowrap">
-                    {c.somar ? reais(somaColuna(c)) : ''}
-                  </td>
-                ))}
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+                    {x.desligamento && <span className="text-xs text-texto-suave">Desligado em {data(x.desligamento)}</span>}
+                  </span>
+                </span>
+              ),
+              ...Object.fromEntries(
+                COLUNAS.filter((c) => c.tipo !== 'reais').map((c) => [c.titulo, formatar(c.valor(x, servicos), c.tipo)]),
+              ),
+            },
+          }))}
+        />
       )}
     </div>
   );

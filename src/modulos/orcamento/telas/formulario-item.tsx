@@ -11,7 +11,7 @@ import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import type { LinhaDespesa, LinhaReceita, Previsao } from '../aplicacao/previsao';
-import { CAPTACAO, mesesUsados, type Distribuicao } from '../dominio/previsao';
+import { CAPTACAO, CATEGORIA, COTACAO, mesesUsados, PRIORIDADE, type Distribuicao } from '../dominio/previsao';
 import { MESES, reais } from './formato';
 
 type Estado = { erro?: string };
@@ -151,6 +151,57 @@ export function FormularioItem({
         Valor do item: <strong className="tabular-nums">{reais(valor)}</strong>
         {tipo === 'despesa' && <span className="block text-xs text-texto-suave">Quantidade × vezes × valor unitário (ex.: 60 alunos × 200 dias × R$ 7,50).</span>}
       </p>
+
+      {tipo === 'despesa' && (
+        <>
+          <fieldset className="text-sm">
+            <legend className="font-semibold">Categoria</legend>
+            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1">
+              {(Object.keys(CATEGORIA) as (keyof typeof CATEGORIA)[]).map((c) => (
+                <label key={c} className="flex items-center gap-1.5">
+                  <input type="radio" name="categoria" value={c} defaultChecked={(d?.categoria ?? 'operacional') === c} />
+                  {CATEGORIA[c]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Campo rotulo="Prioridade">
+              <select name="prioridade" defaultValue={d?.prioridade ?? ''} className={estiloEntrada}>
+                <option value="">Não informada</option>
+                {(Object.keys(PRIORIDADE) as (keyof typeof PRIORIDADE)[]).map((k) => (
+                  <option key={k} value={k}>
+                    {PRIORIDADE[k]}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            <Campo rotulo="Cotação">
+              <select name="cotacao" defaultValue={d?.cotacao ?? ''} className={estiloEntrada}>
+                <option value="">Não informada</option>
+                {(Object.keys(COTACAO) as (keyof typeof COTACAO)[]).map((k) => (
+                  <option key={k} value={k}>
+                    {COTACAO[k]}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          </div>
+        </>
+      )}
+
+      {tipo === 'receita' && (
+        <Campo rotulo="Área" dica="Para quem a receita se destina. Em branco = receita geral.">
+          <select name="area" defaultValue={r?.area ?? ''} className={estiloEntrada}>
+            <option value="">Geral (sem área)</option>
+            {opcoes.areas.map((a) => (
+              <option key={a.codigo} value={a.codigo}>
+                {a.nome}
+              </option>
+            ))}
+          </select>
+        </Campo>
+      )}
 
       {tipo === 'receita' && (
         <fieldset className="text-sm">

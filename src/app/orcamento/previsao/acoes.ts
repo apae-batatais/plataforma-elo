@@ -9,7 +9,9 @@ import {
   abrirExercicio, cancelarItem, definirFonteDaFolha, excluirFonte, excluirGrupo, reativarFonte, reativarGrupo,
   salvarDespesa, salvarFonte, salvarGrupo, salvarReceita, type DadosDistribuicao,
 } from '@/modulos/orcamento/aplicacao/previsao';
-import type { Captacao, Distribuicao } from '@/modulos/orcamento/dominio/previsao';
+import type { Captacao, Cotacao, Distribuicao, Prioridade } from '@/modulos/orcamento/dominio/previsao';
+import { salvarCentro } from '@/modulos/orcamento/aplicacao/analise-area';
+import type { TipoCentro } from '@/modulos/orcamento/dominio/analise-area';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 
@@ -148,6 +150,9 @@ export async function acaoSalvarDespesa(_: EstadoItem, f: FormData): Promise<Est
         quantidade: numero(f, 'quantidade'),
         ocorrencias: numero(f, 'ocorrencias'),
         valor_unitario: numero(f, 'valor_unitario'),
+        categoria: texto(f, 'categoria') === 'projetos' ? 'projetos' : 'operacional',
+        prioridade: (texto(f, 'prioridade') || null) as Prioridade | null,
+        cotacao: (texto(f, 'cotacao') || null) as Cotacao | null,
         observacao: texto(f, 'observacao') || null,
         ...distribuicaoDe(f),
       },
@@ -168,6 +173,7 @@ export async function acaoSalvarReceita(_: EstadoItem, f: FormData): Promise<Est
         descricao: texto(f, 'descricao'),
         valor: numero(f, 'valor'),
         captacao: texto(f, 'captacao') as Captacao,
+        area: texto(f, 'area') || null,
         observacao: texto(f, 'observacao') || null,
         ...distribuicaoDe(f),
       },
@@ -188,5 +194,21 @@ export async function acaoFonteDaFolha(f: FormData) {
   const ano = Number(texto(f, 'ano'));
   await executar(`/orcamento/previsao/despesas?ano=${ano}`, 'Fonte da folha atualizada.', ({ usuario, app }) =>
     definirFonteDaFolha(app.planilhas, usuario.autorizador, ano, texto(f, 'servico'), texto(f, 'fonte_id') || null),
+  );
+}
+
+export async function acaoSalvarCentro(f: FormData) {
+  const opcional = (c: string) => {
+    const v = numero(f, c);
+    return Number.isFinite(v) ? v : null;
+  };
+  await executar('/orcamento/previsao/centros', 'Centro de custo atualizado.', ({ usuario, app }) =>
+    salvarCentro(app.planilhas, usuario.autorizador, {
+      servico: texto(f, 'servico'),
+      tipo: texto(f, 'tipo') as TipoCentro,
+      atendidos: opcional('atendidos'),
+      sessoes: opcional('sessoes'),
+      area_m2: opcional('area_m2'),
+    }),
   );
 }
