@@ -26,7 +26,7 @@ export function navegacaoDoUsuario(autorizador: Autorizador, estruturaPendente: 
           rotulo: a.nome,
           href: a.rota,
           icone: ICONE_DO_MODULO[a.icone] ?? 'planilhas',
-          filhos: a.itens.map((i) => ({ rotulo: i.rotulo, href: i.href })),
+          filhos: a.itens.map((i) => ({ rotulo: i.rotulo, href: i.href, secao: i.secao })),
         })),
       });
     }

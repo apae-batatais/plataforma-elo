@@ -203,6 +203,15 @@ Modelo da aba "Análise por Área" da planilha do orçamento 2027 (só o desenho
   despesas administrativas por centro e grupo. A folha entra como "Recursos Humanos – folha" (operacional).
 - Base vazia em todos os centros → usa o custo direto; se ele também for zero, partes iguais.
 
+### Painel geral (28/10/2026)
+
+Compara os exercícios (até os 4 mais recentes), com os mesmos números da Previsão de cada ano:
+cartões do ano atual com a variação sobre o anterior (receita, despesa, resultado, folha sobre a
+receita, dependência de recursos públicos, recursos livres); receita × despesa por ano; indicadores ao
+longo dos anos com as referências (65% e 70%); despesa mês a mês por ano; despesa por área e por grupo
+(todo o RH numa linha); composição da receita (pública × própria e restrita × livre); resumo em tabela.
+Cada gráfico tem "Ver os números" em tabela.
+
 ### Construção em duas partes
 
 - **1B.1** — Cadastros (grupos e fontes), exercício, despesas, receitas, RH da folha e painel.

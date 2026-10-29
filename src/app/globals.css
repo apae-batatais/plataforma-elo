@@ -34,6 +34,13 @@
   --erro: #a5281f;
   --erro-fundo: #fcefed;
   --foco: #f2c230;
+  /* Séries dos gráficos (ordem fixa, validada para daltonismo). */
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --serie-3: #1baf7a;
+  --serie-4: #6250d6;
+  --grade: #e7e5e4;
+  --referencia: #a5281f;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -57,6 +64,12 @@
     --aviso-fundo: #33290f;
     --erro: #f0a69f;
     --erro-fundo: #351815;
+    --serie-1: #3987e5;
+    --serie-2: #d95926;
+    --serie-3: #199e70;
+    --serie-4: #9085e9;
+    --grade: #2e2d2b;
+    --referencia: #f0a69f;
   }
 }
 

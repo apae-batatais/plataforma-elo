@@ -43,7 +43,7 @@ export interface AppNoMenu {
   descricao: string;
   icone: string;
   rota: string;
-  itens: { rotulo: string; href: string }[];
+  itens: { rotulo: string; href: string; secao?: string }[];
 }
 
 /** Apps e itens de menu que um usuário com estas permissões pode ver. */
@@ -58,6 +58,6 @@ export function menuDoUsuario(manifestos: readonly Manifesto[], permissoes: Read
       rota: m.rota,
       itens: m.menu
         .filter((i) => permissoes.has(i.permissao))
-        .map((i) => ({ rotulo: i.rotulo, href: i.caminho === '/' ? m.rota : `${m.rota}${i.caminho}` })),
+        .map((i) => ({ rotulo: i.rotulo, href: i.caminho === '/' ? m.rota : `${m.rota}${i.caminho}`, secao: i.secao })),
     }));
 }
