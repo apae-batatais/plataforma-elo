@@ -148,6 +148,8 @@ export const Despesas = definirTabela({
     proposto_por: textoOpcional(),
     /** Motivo da recusa (ou observação da decisão) do Financeiro. */
     motivo_decisao: textoOpcional(),
+    /** Quem do Setor de Compras informou o valor (cotação) da proposta. */
+    cotado_por: textoOpcional(),
     /** aceito (entra no orçamento), proposta (aguarda o Financeiro) ou recusada. */
     situacao: z.preprocess((v) => (vazio(v) ? 'aceito' : v), z.enum(['aceito', 'proposta', 'recusada'])),
     observacao: textoOpcional(),

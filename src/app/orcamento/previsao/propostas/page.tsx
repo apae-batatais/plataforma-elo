@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { listarPropostas } from '@/modulos/orcamento/aplicacao/aprovacao';
+import { COTACAO_CURTA } from '@/modulos/orcamento/dominio/previsao';
 import { reais } from '@/modulos/orcamento/telas/formato';
 import { FormularioItem } from '@/modulos/orcamento/telas/formulario-item';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -17,6 +18,7 @@ import { TabelaDados } from '@/ui/tabela-dados';
 import { acaoDecidirProposta, acaoRetirarProposta, acaoSalvarProposta } from '../acoes';
 
 export const metadata: Metadata = { title: 'Propostas' };
+const AGUARDANDO = 'Aguardando cotação';
 const SITUACAO = { proposta: 'Aguardando o Financeiro', aceito: 'Aceita', recusada: 'Recusada' } as const;
 const COR = { proposta: 'atencao', aceito: 'sucesso', recusada: 'erro' } as const;
 
@@ -28,19 +30,24 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
   const r = await listarPropostas(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined);
   const base = `/orcamento/previsao/propostas?ano=${r.ano}`;
   const emEdicao = sp.editar ? r.lista.find((x) => x.id === sp.editar && x.podeAlterar) : undefined;
+  const emCotacao = sp.editar && !emEdicao ? r.lista.find((x) => x.id === sp.editar && x.podeCotar) : undefined;
+  const somenteCota = r.cota && !r.decide;
   const aRecusar = sp.recusar && r.decide ? r.lista.find((x) => x.id === sp.recusar && x.situacao === 'proposta') : undefined;
   const pendentes = r.lista.filter((x) => x.situacao === 'proposta');
+  const semCotacao = pendentes.filter((x) => x.valor === 0);
   const emElaboracao = r.situacao === 'elaboracao';
 
   return (
     <div className="space-y-4">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento' }, { rotulo: `Propostas ${r.ano}` }]}
-        titulo={`Propostas ${r.ano}`}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento' }, { rotulo: `${somenteCota ? 'Cotações' : 'Propostas'} ${r.ano}` }]}
+        titulo={somenteCota ? `Cotações ${r.ano}` : `Propostas ${r.ano}`}
         descricao={
-          r.decide
-            ? 'Itens de despesa propostos pelas coordenações. Aceite (entra no orçamento), ajuste antes de aceitar ou recuse com um motivo.'
-            : 'Proponha os itens de despesa dos seus serviços. O Financeiro aceita, ajusta ou recusa; o motivo aparece aqui.'
+          somenteCota
+            ? 'Propostas das coordenações que aguardam o Financeiro. Informe quantidade, valor, situação da cotação e meses; a decisão continua com o Financeiro.'
+            : r.decide
+              ? 'Itens de despesa propostos pelas coordenações. Aceite (entra no orçamento), ajuste antes de aceitar ou recuse com um motivo.'
+              : 'Proponha os itens de despesa dos seus serviços. Compras cota o valor, o Financeiro aceita, ajusta ou recusa; o motivo aparece aqui.'
         }
         acoes={
           r.podePropor && !r.decide ? (
@@ -66,6 +73,11 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
           O exercício {r.ano} {r.situacao === 'aprovado' ? 'já foi aprovado' : r.situacao === 'encerrado' ? 'está encerrado' : 'ainda não foi aberto'}: não recebe mais propostas.
         </Aviso>
       )}
+      {r.cota && semCotacao.length > 0 && emElaboracao && (
+        <Aviso tipo="atencao" titulo={`${semCotacao.length} ${semCotacao.length === 1 ? 'proposta aguarda' : 'propostas aguardam'} cotação`}>
+          Use o lápis para informar quantidade, valor e meses. Filtre a coluna “Cotação” por “{AGUARDANDO}” para ver só essas.
+        </Aviso>
+      )}
       {r.decide && pendentes.length > 0 && (
         <Aviso tipo="atencao" titulo={`${pendentes.length} ${pendentes.length === 1 ? 'proposta aguarda' : 'propostas aguardam'} a sua decisão`}>
           O exercício só pode ser aprovado pela Diretoria depois que todas forem decididas.
@@ -75,6 +87,11 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
       {emEdicao && (
         <JanelaFormulario rotulo={null} abrirAoCarregar voltarPara={base} larga titulo={r.decide ? `Ajustar “${emEdicao.descricao}”` : `Alterar “${emEdicao.descricao}”`} descricao={r.decide ? 'Depois de salvar, aceite a proposta na lista.' : undefined}>
           <FormularioItem tipo="despesa" acao={acaoSalvarProposta} ano={r.ano} opcoes={r.opcoes} item={emEdicao} cancelarHref={base} proposta={!r.decide} />
+        </JanelaFormulario>
+      )}
+      {emCotacao && (
+        <JanelaFormulario rotulo={null} abrirAoCarregar voltarPara={base} larga titulo="Informar a cotação" descricao="A proposta continua aguardando a decisão do Financeiro.">
+          <FormularioItem tipo="despesa" acao={acaoSalvarProposta} ano={r.ano} opcoes={r.opcoes} item={emCotacao} cancelarHref={base} cotacao />
         </JanelaFormulario>
       )}
       {aRecusar && (
@@ -96,14 +113,15 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
 
       <TabelaDados
         legenda={`Propostas de ${r.ano}`}
-        vazio={r.decide ? 'Nenhuma proposta das coordenações.' : 'Você ainda não propôs nada. Use “Propor despesa”.'}
+        vazio={r.decide || r.cota ? 'Nenhuma proposta das coordenações.' : 'Você ainda não propôs nada. Use “Propor despesa”.'}
         totalRotulo="Total"
         colunas={[
           { chave: 'situacao', rotulo: 'Situação' },
           { chave: 'descricao', rotulo: 'Item' },
           { chave: 'servico', rotulo: 'Serviço' },
-          { chave: 'grupo', rotulo: 'Grupo' },
-          { chave: 'proposto', rotulo: 'Proposto por', secundaria: !r.decide },
+          { chave: 'grupo', rotulo: 'Grupo', secundaria: true },
+          { chave: 'proposto', rotulo: 'Proposto por', secundaria: true },
+          { chave: 'cotacao', rotulo: 'Cotação' },
           { chave: 'valor', rotulo: 'Valor', tipo: 'moeda', somar: true },
           { chave: 'acoes', rotulo: '', fixa: true, largura: 'w-28' },
         ]}
@@ -115,6 +133,7 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
             servico: x.servicoNome,
             grupo: x.grupoNome,
             proposto: x.propostoPor,
+            cotacao: x.valor === 0 ? AGUARDANDO : x.cotacao ? COTACAO_CURTA[x.cotacao] : x.cotadoPor ? 'Cotado' : 'Informada pela coordenação',
             valor: x.valor,
           },
           celulas: {
@@ -131,7 +150,24 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
               </>
             ),
             valor: x.valor === 0 ? <span className="text-sm italic text-texto-suave">a definir</span> : undefined,
-            acoes: x.podeAlterar ? (
+            cotacao:
+              x.valor === 0 ? (
+                <Etiqueta tipo="atencao">{AGUARDANDO}</Etiqueta>
+              ) : (
+                <span className="text-sm">
+                  {x.cotacao ? COTACAO_CURTA[x.cotacao] : '—'}
+                  {x.cotadoPor && <span className="block text-xs text-texto-suave">por {x.cotadoPor}</span>}
+                </span>
+              ),
+            acoes: somenteCota ? (
+              x.podeCotar ? (
+                <div className="flex justify-end">
+                  <LinkBotao href={`${base}&editar=${x.id}`} scroll={false} variante="icone" aria-label={`Informar a cotação de ${x.descricao}`} title="Informar a cotação">
+                    <IconeEditar tamanho={16} />
+                  </LinkBotao>
+                </div>
+              ) : null
+            ) : x.podeAlterar ? (
               <div className="flex justify-end gap-1">
                 {r.decide && x.valor > 0 && (
                   <FormularioConfirmado

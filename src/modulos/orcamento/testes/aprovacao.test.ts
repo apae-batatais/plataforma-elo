@@ -10,9 +10,10 @@ import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
-  aprovarExercicio, decidirAjuste, decidirProposta, encerrarExercicio, listarAjustes, listarPropostas, pendenciasDoExercicio,
+  aprovarExercicio, cotarProposta, decidirAjuste, decidirProposta, encerrarExercicio, listarAjustes, listarPropostas, pendenciasDoExercicio,
   proporDespesa, retirarProposta, solicitarAjuste,
 } from '../aplicacao/aprovacao';
+import { resumoFolha } from '../aplicacao/folha';
 import { definirFonteDaFolha, lerPrevisao, salvarDespesa, type DadosDespesa } from '../aplicacao/previsao';
 import { popularFolhaFicticia, popularPrevisaoFicticia } from '../dados/ficticios';
 import { Despesas, TABELAS_ORCAMENTO } from '../dados/tabelas';
@@ -26,6 +27,7 @@ const como = async (email: string) => {
 const fin = () => como('financeiro@exemplo.local');
 const dir = () => como('diretoria@exemplo.local');
 const coordUr = () => como('coord.ur@exemplo.local');
+const compras = () => como('compras@exemplo.local');
 
 beforeEach(async () => {
   p = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha']), idDe: (c) => c };
@@ -120,13 +122,52 @@ describe('propostas das coordenações', () => {
   });
 });
 
+describe('cotação pelo Setor de Compras', () => {
+  it('Compras vê as propostas de todos os serviços, cota sem decidir; o Financeiro aceita com o valor cotado', async () => {
+    await decidirPendentes();
+    const id = await proporDespesa(p, await coordUr(), { ...(await proposta()), quantidade: NaN, ocorrencias: NaN, valor_unitario: NaN, distribuicao: 'igual' });
+    const c = await compras();
+    const vista = await listarPropostas(p, c);
+    expect([vista.cota, vista.decide, vista.podePropor]).toEqual([true, false, false]);
+    expect(new Set(vista.lista.map((x) => x.servico)).size).toBeGreaterThan(1);
+    const linha = vista.lista.find((x) => x.id === id)!;
+    expect([linha.podeCotar, linha.podeAlterar, linha.valor]).toEqual([true, false, 0]);
+
+    const cot = { quantidade: 4, ocorrencias: 1, valor_unitario: 250, cotacao: 'ok' as const, observacao: '3 orçamentos', distribuicao: 'meses' as const, meses: [3] };
+    await expect(cotarProposta(p, c, id, linha.versao, { ...cot, valor_unitario: 0 })).rejects.toThrow(/maior que zero/);
+    await expect(cotarProposta(p, await coordUr(), id, linha.versao, cot)).rejects.toBeInstanceOf(ErroPermissao);
+    await cotarProposta(p, c, id, linha.versao, cot);
+    const cotada = (await lerTabela(p, Despesas)).porId(id)!;
+    expect([cotada.situacao, cotada.cotado_por, cotada.valor_unitario, cotada.m3, cotada.cotacao]).toEqual(['proposta', 'compras@exemplo.local', 250, 1000, 'ok']);
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.registro_id === id && a.usuario === 'compras@exemplo.local');
+    expect(aud).toHaveLength(1);
+
+    // Compras não decide, não propõe e não vê a folha nem a previsão.
+    await expect(decidirProposta(p, c, id, cotada.versao, 'aceitar')).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(proporDespesa(p, c, await proposta())).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(resumoFolha(p, c)).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(lerPrevisao(p, c)).rejects.toBeInstanceOf(ErroPermissao);
+
+    await decidirProposta(p, await fin(), id, cotada.versao, 'aceitar');
+    expect((await lerPrevisao(p, await fin())).despesas.find((d) => d.id === id)?.valor).toBe(1000);
+    // Decidida, não dá mais para cotar.
+    await expect(cotarProposta(p, c, id, (await lerTabela(p, Despesas)).porId(id)!.versao, cot)).rejects.toThrow(/aguarda/);
+  });
+
+  it('o módulo aparece para Compras só com o item Cotações', async () => {
+    const { menuDoUsuario } = await import('@/nucleo/modulos/registro');
+    const [app] = menuDoUsuario([manifesto], (await compras()).permissoes());
+    expect(app.itens.map((i) => i.rotulo)).toEqual(['Cotações']);
+  });
+});
+
 describe('aprovação do exercício', () => {
   it('só a Diretoria aprova, e só sem fontes a definir nem propostas pendentes', async () => {
     const pend = await pendenciasDoExercicio(p, await dir(), 2027);
     expect(pend.fontesADefinir).toBeGreaterThan(0);
     await expect(aprovarExercicio(p, await dir(), 2027)).rejects.toThrow(/fonte “a definir”/);
     await escolherTodasAsFontes();
-    await expect(aprovarExercicio(p, await dir(), 2027)).rejects.toThrow(/proposta pendente/);
+    await expect(aprovarExercicio(p, await dir(), 2027)).rejects.toThrow(/propostas? pendentes?/);
     await decidirPendentes();
     await expect(aprovarExercicio(p, await fin(), 2027)).rejects.toBeInstanceOf(ErroPermissao);
     await aprovarExercicio(p, await dir(), 2027);

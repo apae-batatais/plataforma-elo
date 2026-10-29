@@ -5,6 +5,8 @@
  * Quem pode:
  * - orcamento.previsao.propor (escopo da coordenação): propor despesas nos
  *   serviços do seu escopo, alterar ou retirar a própria proposta pendente.
+ * - orcamento.previsao.cotar (Compras): informar quantidade, valor, situação da
+ *   cotação e meses das propostas pendentes de qualquer serviço; não decide.
  * - orcamento.previsao.editar (Financeiro): aceitar, ajustar ou recusar
  *   propostas (recusa com motivo); pedir remanejamentos e suplementações.
  * - orcamento.exercicio.aprovar (Diretoria): aprovar e encerrar o exercício;
@@ -19,11 +21,12 @@ import { conferirAjuste, ErroAjuste, type AjusteSimples } from '../dominio/ajust
 import { distribuir, ErroDistribuicao, valorDoItem } from '../dominio/previsao';
 import { Ajustes, Despesas, Exercicios, Fontes, GruposGasto, type RegDespesa } from '../dados/tabelas';
 import { ErroValidacaoFolha } from './folha';
-import { lerPrevisao, type DadosDespesa, type LinhaDespesa } from './previsao';
+import { lerPrevisao, type DadosDespesa, type DadosDistribuicao, type LinhaDespesa } from './previsao';
 
 const Erro = ErroValidacaoFolha;
 const PERM = {
   propor: 'orcamento.previsao.propor',
+  cotar: 'orcamento.previsao.cotar',
   editar: 'orcamento.previsao.editar',
   aprovar: 'orcamento.exercicio.aprovar',
   ver: 'orcamento.painel.ver',
@@ -40,8 +43,11 @@ export interface LinhaProposta extends LinhaDespesa {
   situacao: 'proposta' | 'aceito' | 'recusada';
   propostoPor: string | null;
   motivoDecisao: string | null;
+  cotadoPor: string | null;
   /** Quem está vendo pode alterar ou retirar (coordenação, proposta pendente). */
   podeAlterar: boolean;
+  /** Quem está vendo pode informar a cotação (Compras, proposta pendente). */
+  podeCotar: boolean;
 }
 
 export interface Propostas {
@@ -49,6 +55,8 @@ export interface Propostas {
   situacao: 'elaboracao' | 'aprovado' | 'encerrado' | null;
   /** É do Financeiro: decide as propostas. */
   decide: boolean;
+  /** É do Setor de Compras: informa a cotação das propostas. */
+  cota: boolean;
   /** Pode lançar proposta nova (exercício em elaboração e algum serviço no escopo). */
   podePropor: boolean;
   lista: LinhaProposta[];
@@ -62,7 +70,9 @@ export interface Propostas {
 
 export async function listarPropostas(p: Planilhas, quem: Autorizador, anoEscolhido?: number): Promise<Propostas> {
   const decide = quem.temPermissao(PERM.editar);
-  if (!decide && !quem.temPermissaoAlgumEscopo(PERM.propor)) throw new ErroPermissao();
+  const cota = quem.temPermissao(PERM.cotar);
+  const veTodos = decide || cota;
+  if (!veTodos && !quem.temPermissaoAlgumEscopo(PERM.propor)) throw new ErroPermissao();
   const [exercicios, despesas, servicos, areas, grupos, fontes] = await lerTabelas(p, [Exercicios, Despesas, Servicos, Areas, GruposGasto, Fontes] as const);
   const abertos = exercicios.ativos().sort((a, b) => b.ano - a.ano);
   const ex = (anoEscolhido ? abertos.find((e) => e.ano === anoEscolhido) : undefined) ?? abertos.find((e) => e.situacao === 'elaboracao') ?? abertos[0];
@@ -76,7 +86,7 @@ export async function listarPropostas(p: Planilhas, quem: Autorizador, anoEscolh
   const lista: LinhaProposta[] = despesas
     .ativos()
     .filter((d) => d.ano === ano && (d.proposto_por || d.situacao !== 'aceito'))
-    .filter((d) => decide || podePropor(quem, d.servico))
+    .filter((d) => veTodos || podePropor(quem, d.servico))
     .map((d: RegDespesa) => {
       const s = servico.get(d.servico);
       const g = grupo.get(d.grupo_id);
@@ -109,7 +119,9 @@ export async function listarPropostas(p: Planilhas, quem: Autorizador, anoEscolh
         situacao: d.situacao,
         propostoPor: d.proposto_por,
         motivoDecisao: d.motivo_decisao,
+        cotadoPor: d.cotado_por,
         podeAlterar: ex?.situacao === 'elaboracao' && d.situacao === 'proposta' && (decide || podePropor(quem, d.servico)),
+        podeCotar: ex?.situacao === 'elaboracao' && d.situacao === 'proposta' && cota,
       };
     })
     .sort((a, b) => (a.situacao === 'proposta' ? 0 : 1) - (b.situacao === 'proposta' ? 0 : 1) || a.servicoNome.localeCompare(b.servicoNome, 'pt-BR'));
@@ -118,6 +130,7 @@ export async function listarPropostas(p: Planilhas, quem: Autorizador, anoEscolh
     ano,
     situacao: ex?.situacao ?? null,
     decide,
+    cota,
     podePropor: ex?.situacao === 'elaboracao' && noEscopo.length > 0 && quem.temPermissaoAlgumEscopo(PERM.propor),
     lista,
     opcoes: {
@@ -186,6 +199,57 @@ export async function proporDespesa(p: Planilhas, quem: Autorizador, dados: Dado
   return existente.id;
 }
 
+export interface DadosCotacao extends DadosDistribuicao {
+  quantidade: number;
+  ocorrencias: number;
+  valor_unitario: number;
+  cotacao: 'ok' | 'atualizar' | 'pendente' | null;
+  observacao?: string | null;
+}
+
+/**
+ * O Setor de Compras informa a cotação de uma proposta pendente: quantidade,
+ * valor, situação da cotação, observação e meses. Não muda serviço, grupo,
+ * fonte nem descrição, e não decide: a proposta continua aguardando o Financeiro.
+ */
+export async function cotarProposta(p: Planilhas, quem: Autorizador, id: string, versao: number, dados: DadosCotacao): Promise<void> {
+  if (!quem.temPermissao(PERM.cotar)) throw new ErroPermissao();
+  const [despesas, exercicios] = await lerTabelas(p, [Despesas, Exercicios] as const);
+  const alvo = despesas.porId(id);
+  if (!alvo || !alvo.ativo || alvo.situacao !== 'proposta') throw new Erro('Só dá para cotar proposta que ainda aguarda o Financeiro.');
+  const ex = exercicios.ativos().find((e) => e.ano === alvo.ano);
+  if (ex?.situacao !== 'elaboracao') throw new Erro(`O exercício ${alvo.ano} não está em elaboração.`);
+  for (const [v, rotulo] of [[dados.quantidade, 'Quantidade'], [dados.ocorrencias, 'Vezes'], [dados.valor_unitario, 'Valor unitário']] as const) {
+    if (!Number.isFinite(v) || v <= 0) throw new Erro(`${rotulo} precisa ser maior que zero.`);
+  }
+  const valor = valorDoItem(dados.quantidade, dados.ocorrencias, dados.valor_unitario);
+  let meses: number[];
+  try {
+    meses = distribuir(valor, dados.distribuicao, { meses: dados.meses, manual: dados.manual });
+  } catch (e) {
+    if (e instanceof ErroDistribuicao) throw new Erro(e.message);
+    throw e;
+  }
+  const { colunasAlteradas } = await atualizar(
+    p,
+    Despesas,
+    id,
+    versao,
+    {
+      quantidade: dados.quantidade,
+      ocorrencias: dados.ocorrencias,
+      valor_unitario: dados.valor_unitario,
+      distribuicao: dados.distribuicao,
+      ...Object.fromEntries(meses.map((v, i) => [`m${i + 1}`, v])),
+      cotacao: dados.cotacao ?? 'ok',
+      observacao: dados.observacao?.trim() || null,
+      cotado_por: quem.email,
+    } as never,
+    { email: quem.email },
+  );
+  if (colunasAlteradas.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Despesas', registroId: id, detalhes: { colunas: colunasAlteradas, cotacao: true } });
+}
+
 /** A coordenação retira a própria proposta pendente (fica registrada como cancelada). */
 export async function retirarProposta(p: Planilhas, quem: Autorizador, id: string, versao: number): Promise<void> {
   const [despesas] = await lerTabelas(p, [Despesas] as const);
@@ -207,7 +271,7 @@ export async function decidirProposta(p: Planilhas, quem: Autorizador, id: strin
   const texto = motivo?.trim() || null;
   if (decisao === 'recusar' && !texto) throw new Erro('Escreva o motivo da recusa: a coordenação vai ler.');
   if (decisao === 'aceitar' && valorDoItem(alvo.quantidade, alvo.ocorrencias, alvo.valor_unitario) <= 0) {
-    throw new Erro('A proposta está sem valor. Use “Ajustar” para informar o valor e os meses, e depois aceite.');
+    throw new Erro('A proposta está sem valor. Aguarde a cotação de Compras ou use “Ajustar” para informar o valor e os meses, e depois aceite.');
   }
   const { colunasAlteradas } = await atualizar(
     p,

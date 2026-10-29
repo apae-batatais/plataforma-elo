@@ -11,7 +11,7 @@ export default async function LayoutPrevisao({ children }: { children: React.Rea
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const a = usuario.autorizador;
-  if (!a.temPermissao('orcamento.painel.ver') && !a.temPermissao('orcamento.previsao.editar') && !a.temPermissaoAlgumEscopo('orcamento.previsao.propor')) redirect('/orcamento');
+  if (!a.temPermissao('orcamento.painel.ver') && !a.temPermissao('orcamento.previsao.editar') && !a.temPermissao('orcamento.previsao.cotar') && !a.temPermissaoAlgumEscopo('orcamento.previsao.propor')) redirect('/');
   try {
     const { planilhas } = await obterAplicacao();
     await lerTabelas(planilhas, [Exercicios] as const);

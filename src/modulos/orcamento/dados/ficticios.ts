@@ -171,12 +171,19 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       item('comunicacao', 2, null, 'Impressão de materiais (exemplo)', 1, 2, 4500, [5, 10]),
   ];
   await inserirRegistros(p, despesas, itens2027, autor);
-  // Propostas das coordenações (uma aguardando o Financeiro, uma recusada).
+  // Propostas das coordenações (uma aguardando o Financeiro, uma aguardando cotação de Compras, uma recusada).
   await inserirRegistros(
     p,
     despesas,
     [
       { ...item('ur', 0, null, 'Jogos e materiais lúdicos (proposta, exemplo)', 10, 1, 180, [3]), situacao: 'proposta' as const, proposto_por: 'coord.ur@exemplo.local' },
+      {
+        ...item('ur', 0, null, 'Colchonetes para a sala de convivência (proposta, exemplo)', 1, 1, 0),
+        cotacao: null,
+        observacao: 'Precisamos em março; não temos referência de preço (exemplo).',
+        situacao: 'proposta' as const,
+        proposto_por: 'coord.ur@exemplo.local',
+      },
       {
         ...item('escola', 3, null, 'Pintura das salas (proposta, exemplo)', 1, 1, 24000, [1]),
         situacao: 'recusada' as const,

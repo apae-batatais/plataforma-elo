@@ -12,7 +12,7 @@ import {
 import type { Captacao, Cotacao, Distribuicao, Prioridade } from '@/modulos/orcamento/dominio/previsao';
 import { salvarCentro } from '@/modulos/orcamento/aplicacao/analise-area';
 import {
-  aprovarExercicio, decidirAjuste, decidirProposta, encerrarExercicio, proporDespesa, retirarProposta, solicitarAjuste,
+  aprovarExercicio, cotarProposta, decidirAjuste, decidirProposta, encerrarExercicio, proporDespesa, retirarProposta, solicitarAjuste,
 } from '@/modulos/orcamento/aplicacao/aprovacao';
 import type { TipoCentro } from '@/modulos/orcamento/dominio/analise-area';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -238,14 +238,18 @@ export async function acaoSalvarCentro(f: FormData) {
 // Propostas, aprovação do exercício e remanejamentos (Entrega 1B.2)
 // ---------------------------------------------------------------------------
 
-/** Coordenação: propõe ou altera a proposta. Financeiro: ajusta a proposta antes de aceitar. */
+/**
+ * Coordenação: propõe ou altera a proposta. Financeiro: ajusta a proposta antes de aceitar.
+ * Compras: informa a cotação (só valores, situação da cotação, observação e meses).
+ */
 export async function acaoSalvarProposta(_: EstadoItem, f: FormData): Promise<EstadoItem> {
   const dados = dadosDespesa(f);
-  return salvarItem(f, `/orcamento/previsao/propostas?ano=${dados.ano}`, ({ usuario, app }, existente) =>
-    existente && usuario.autorizador.temPermissao('orcamento.previsao.editar')
-      ? salvarDespesa(app.planilhas, usuario.autorizador, dados, existente)
-      : proporDespesa(app.planilhas, usuario.autorizador, dados, existente),
-  );
+  return salvarItem(f, `/orcamento/previsao/propostas?ano=${dados.ano}`, ({ usuario, app }, existente) => {
+    const a = usuario.autorizador;
+    if (existente && a.temPermissao('orcamento.previsao.editar')) return salvarDespesa(app.planilhas, a, dados, existente);
+    if (existente && texto(f, 'modo') === 'cotacao') return cotarProposta(app.planilhas, a, existente.id, existente.versao, dados);
+    return proporDespesa(app.planilhas, a, dados, existente);
+  });
 }
 
 export async function acaoRetirarProposta(f: FormData) {

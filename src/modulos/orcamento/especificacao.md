@@ -144,8 +144,15 @@ O painel mostra o quanto da receita prevista já está garantido.
 - A coordenação lança itens de despesa **só nos serviços do seu escopo**, como "Proposta".
 - O Financeiro **aceita** (entra no orçamento), **ajusta e aceita** ou **recusa** (com motivo).
 - Na proposta, quantidade, valor e distribuição nos meses são **opcionais**: a coordenação nem sempre
-  tem referência de preço. Proposta sem valor aparece como "a definir"; o Financeiro informa o valor e
-  os meses ("Ajustar") e só então pode aceitar. Nenhum item sem valor entra no orçamento.
+  tem referência de preço. Proposta sem valor aparece como "a definir" / "Aguardando cotação".
+  Nenhum item sem valor entra no orçamento: o Financeiro só aceita depois que houver valor.
+- **Setor de Compras** (perfil `compras`, permissão `orcamento.previsao.cotar`): no menu "Cotações", vê as
+  propostas pendentes de todos os serviços e informa quantidade, valor unitário, situação da cotação,
+  observação e distribuição nos meses (`cotado_por` registra quem cotou). Não muda serviço, grupo, fonte
+  nem descrição, não aceita nem recusa, e não vê a folha nem a previsão. Fluxo: coordenação propõe →
+  Compras cota → Financeiro aceita (ou ajusta/recusa) → Diretoria aprova o exercício.
+- O acesso ao módulo passa a ser `orcamento.acessar` (todos os perfis do módulo); o que aparece no menu
+  depende das demais permissões.
 - A coordenação vê a situação das suas propostas; não vê salários nem outros serviços.
 - As propostas só são aceitas até a aprovação do exercício.
 
@@ -167,6 +174,7 @@ RH (folha + itens à parte) e os indicadores abaixo com os sinais de alerta.
 | `orcamento.painel.ver` | Diretoria, Financeiro, Leitura |
 | `orcamento.previsao.editar` (despesas, receitas, cadastros, aceitar propostas, pedir remanejamento) | Financeiro |
 | `orcamento.previsao.propor` (escopo: serviços da coordenação) | Coordenação de serviço |
+| `orcamento.previsao.cotar` (todas as propostas pendentes, sem decidir) | Compras |
 | `orcamento.exercicio.aprovar` (aprovar exercício, remanejamentos e suplementações) | Diretoria |
 
 ### Onde os dados ficam (planilha `orcamento`, não sigilosa)
