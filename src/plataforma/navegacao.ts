@@ -36,5 +36,6 @@ export function navegacaoDoUsuario(autorizador: Autorizador, estruturaPendente: 
   if (!estruturaPendente && autorizador.temPermissao('core.organizacao.gerenciar')) admin.push({ rotulo: 'Áreas', href: '/admin/areas', icone: 'areas' }, { rotulo: 'Serviços', href: '/admin/servicos', icone: 'servicos' });
   if (autorizador.temPermissao('core.organizacao.gerenciar')) admin.push({ rotulo: 'Estrutura das planilhas', href: '/admin/estrutura', icone: 'planilhas' });
   if (admin.length) grupos.push({ titulo: 'Administração', itens: admin });
+  if (!estruturaPendente) grupos.push({ titulo: 'Suporte', itens: [{ rotulo: 'Ajuda', href: '/ajuda', icone: 'ajuda' }] });
   return grupos;
 }

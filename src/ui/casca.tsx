@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
 import {
+  IconeAjuda,
   IconeAreas, IconeChave, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeSair, IconeServicos,
 } from './icones';
 
@@ -21,6 +22,7 @@ const ICONES = {
   servicos: IconeServicos,
   areas: IconeAreas,
   planilhas: IconePlanilha,
+  ajuda: IconeAjuda,
 } as const;
 
 export type NomeIcone = keyof typeof ICONES;
