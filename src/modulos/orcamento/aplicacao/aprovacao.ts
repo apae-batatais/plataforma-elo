@@ -142,10 +142,17 @@ export async function proporDespesa(p: Planilhas, quem: Autorizador, dados: Dado
   if (dados.fonte_id && !fontes.ativos().some((f) => f.id === dados.fonte_id)) throw new Erro('Fonte inválida.');
   const descricao = dados.descricao.trim().replace(/\s+/g, ' ');
   if (!descricao) throw new Erro('Descreva o item.');
-  if (!(dados.quantidade > 0) || !(dados.ocorrencias > 0) || !(dados.valor_unitario >= 0)) throw new Erro('Confira quantidade, vezes e valor unitário.');
+  // Na proposta, valores e meses são opcionais: em branco, o Financeiro completa antes de aceitar.
+  const quantidade = Number.isFinite(dados.quantidade) && dados.quantidade > 0 ? dados.quantidade : 1;
+  const ocorrencias = Number.isFinite(dados.ocorrencias) && dados.ocorrencias > 0 ? dados.ocorrencias : 1;
+  const valorUnitario = Number.isFinite(dados.valor_unitario) && dados.valor_unitario > 0 ? dados.valor_unitario : 0;
+  if (dados.valor_unitario < 0) throw new Erro('O valor unitário não pode ser negativo.');
+  const valor = valorDoItem(quantidade, ocorrencias, valorUnitario);
+  const semValor = valor === 0;
+  const distribuicao = semValor ? 'igual' : dados.distribuicao;
   let meses: number[];
   try {
-    meses = distribuir(valorDoItem(dados.quantidade, dados.ocorrencias, dados.valor_unitario), dados.distribuicao, { meses: dados.meses, manual: dados.manual });
+    meses = semValor ? Array(12).fill(0) : distribuir(valor, distribuicao, { meses: dados.meses, manual: dados.manual });
   } catch (e) {
     if (e instanceof ErroDistribuicao) throw new Erro(e.message);
     throw e;
@@ -156,10 +163,10 @@ export async function proporDespesa(p: Planilhas, quem: Autorizador, dados: Dado
     grupo_id: dados.grupo_id,
     fonte_id: dados.fonte_id || null,
     descricao,
-    quantidade: dados.quantidade,
-    ocorrencias: dados.ocorrencias,
-    valor_unitario: dados.valor_unitario,
-    distribuicao: dados.distribuicao,
+    quantidade,
+    ocorrencias,
+    valor_unitario: valorUnitario,
+    distribuicao,
     ...Object.fromEntries(meses.map((v, i) => [`m${i + 1}`, v])),
     categoria: dados.categoria === 'projetos' ? 'projetos' : 'operacional',
     prioridade: dados.prioridade ?? null,
@@ -199,6 +206,9 @@ export async function decidirProposta(p: Planilhas, quem: Autorizador, id: strin
   if (ex?.situacao !== 'elaboracao') throw new Erro('O exercício já foi aprovado: as propostas não podem mais ser decididas.');
   const texto = motivo?.trim() || null;
   if (decisao === 'recusar' && !texto) throw new Erro('Escreva o motivo da recusa: a coordenação vai ler.');
+  if (decisao === 'aceitar' && valorDoItem(alvo.quantidade, alvo.ocorrencias, alvo.valor_unitario) <= 0) {
+    throw new Erro('A proposta está sem valor. Use “Ajustar” para informar o valor e os meses, e depois aceite.');
+  }
   const { colunasAlteradas } = await atualizar(
     p,
     Despesas,

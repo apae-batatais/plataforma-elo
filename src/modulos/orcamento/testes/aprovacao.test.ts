@@ -88,6 +88,24 @@ describe('propostas das coordenações', () => {
     expect(depois.propostasPendentes).toBe(0);
   });
 
+  it('a coordenação pode propor sem valor nem meses; o Financeiro só aceita depois de informar o valor', async () => {
+    await decidirPendentes();
+    const coord = await coordUr();
+    const id = await proporDespesa(p, coord, {
+      ...(await proposta()), quantidade: NaN, ocorrencias: NaN, valor_unitario: NaN, distribuicao: 'meses', meses: [],
+    });
+    const salvo = (await lerTabela(p, Despesas)).porId(id)!;
+    expect([salvo.quantidade, salvo.ocorrencias, salvo.valor_unitario, salvo.situacao]).toEqual([1, 1, 0, 'proposta']);
+    expect((await listarPropostas(p, coord)).lista.find((x) => x.id === id)?.valor).toBe(0);
+    await expect(decidirProposta(p, await fin(), id, salvo.versao, 'aceitar')).rejects.toThrow(/sem valor/);
+    // O Financeiro ajusta (informa valor e meses) e então aceita.
+    await salvarDespesa(p, await fin(), await proposta(), { id, versao: salvo.versao });
+    const ajustada = (await lerTabela(p, Despesas)).porId(id)!;
+    expect(ajustada.situacao).toBe('proposta');
+    await decidirProposta(p, await fin(), id, ajustada.versao, 'aceitar');
+    expect((await lerPrevisao(p, await fin())).despesas.find((d) => d.id === id)?.valor).toBe(1000);
+  });
+
   it('recusa exige motivo; a coordenação vê o motivo; retirar só proposta pendente', async () => {
     const coord = await coordUr();
     const id = await proporDespesa(p, coord, await proposta());

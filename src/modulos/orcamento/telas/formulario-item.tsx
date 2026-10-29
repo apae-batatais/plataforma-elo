@@ -33,6 +33,7 @@ export function FormularioItem({
   opcoes,
   item,
   cancelarHref,
+  proposta = false,
 }: {
   tipo: 'despesa' | 'receita';
   acao: Acao;
@@ -40,6 +41,8 @@ export function FormularioItem({
   opcoes: Previsao['opcoes'];
   item?: LinhaDespesa | LinhaReceita;
   cancelarHref: string;
+  /** Proposta da coordenação: valores e distribuição são opcionais (o Financeiro completa). */
+  proposta?: boolean;
 }) {
   const [estado, enviar] = useActionState(acao, {});
   const d = tipo === 'despesa' ? (item as LinhaDespesa | undefined) : undefined;
@@ -131,16 +134,20 @@ export function FormularioItem({
       </Campo>
 
       {tipo === 'despesa' ? (
-        <div className="grid grid-cols-3 gap-2">
-          <Campo rotulo="Quantidade" obrigatorio>
-            <input name="quantidade" required inputMode="decimal" value={qtd} onChange={(e) => setQtd(e.target.value)} className={estiloEntrada} />
-          </Campo>
-          <Campo rotulo="Vezes" obrigatorio>
-            <input name="ocorrencias" required inputMode="decimal" value={ocor} onChange={(e) => setOcor(e.target.value)} className={estiloEntrada} />
-          </Campo>
-          <Campo rotulo="Valor unit. (R$)" obrigatorio>
-            <input name="valor_unitario" required inputMode="decimal" value={unit} onChange={(e) => setUnit(e.target.value)} className={estiloEntrada} />
-          </Campo>
+        <div className="space-y-1">
+          {proposta && <p className="text-sm font-semibold">Valores (opcional)</p>}
+          {proposta && <p className="text-sm text-texto-suave">Se não souber, deixe em branco: o Financeiro completa antes de aceitar.</p>}
+          <div className="grid grid-cols-3 gap-2">
+            <Campo rotulo="Quantidade" obrigatorio={!proposta}>
+              <input name="quantidade" required={!proposta} inputMode="decimal" value={qtd} onChange={(e) => setQtd(e.target.value)} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Vezes" obrigatorio={!proposta}>
+              <input name="ocorrencias" required={!proposta} inputMode="decimal" value={ocor} onChange={(e) => setOcor(e.target.value)} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Valor unit. (R$)" obrigatorio={!proposta}>
+              <input name="valor_unitario" required={!proposta} inputMode="decimal" value={unit} onChange={(e) => setUnit(e.target.value)} className={estiloEntrada} />
+            </Campo>
+          </div>
         </div>
       ) : (
         <Campo rotulo="Valor no ano (R$)" obrigatorio>
@@ -148,7 +155,7 @@ export function FormularioItem({
         </Campo>
       )}
       <p className="rounded-md bg-superficie-2 px-3 py-2 text-sm">
-        Valor do item: <strong className="tabular-nums">{reais(valor)}</strong>
+        Valor do item: <strong className="tabular-nums">{proposta && valor === 0 ? 'a definir pelo Financeiro' : reais(valor)}</strong>
         {tipo === 'despesa' && <span className="block text-xs text-texto-suave">Quantidade × vezes × valor unitário (ex.: 60 alunos × 200 dias × R$ 7,50).</span>}
       </p>
 
@@ -218,8 +225,9 @@ export function FormularioItem({
         </fieldset>
       )}
 
+      <Opcional ativo={proposta && valor === 0} rotulo="Distribuição nos meses (opcional)">
       <fieldset className="min-w-0 space-y-2 text-sm">
-        <legend className="font-semibold">Distribuição nos meses</legend>
+        <legend className="font-semibold">Distribuição nos meses{proposta ? ' (opcional)' : ''}</legend>
         <input type="hidden" name="distribuicao" value={modo} />
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {(
@@ -278,6 +286,7 @@ export function FormularioItem({
           </>
         )}
       </fieldset>
+      </Opcional>
 
       <Campo rotulo="Observação" dica="Opcional.">
         <textarea name="observacao" rows={2} defaultValue={item?.observacao ?? ''} className={estiloEntrada} />
@@ -299,5 +308,17 @@ export function FormularioItem({
         )}
       </div>
     </form>
+  );
+}
+
+/** Recolhe um trecho opcional do formulário (ex.: distribuição numa proposta sem valor). */
+function Opcional({ ativo, rotulo, children }: { ativo: boolean; rotulo: string; children: React.ReactNode }) {
+  if (!ativo) return <>{children}</>;
+  return (
+    <details className="rounded-md border border-borda px-3 py-2 text-sm">
+      <summary className="cursor-pointer font-semibold">{rotulo}</summary>
+      <p className="mt-1 text-texto-suave">Sem valor, a distribuição fica para o Financeiro. Se quiser, indique os meses em que precisa.</p>
+      <div className="mt-2">{children}</div>
+    </details>
   );
 }

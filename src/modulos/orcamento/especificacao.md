@@ -143,6 +143,9 @@ O painel mostra o quanto da receita prevista já está garantido.
 
 - A coordenação lança itens de despesa **só nos serviços do seu escopo**, como "Proposta".
 - O Financeiro **aceita** (entra no orçamento), **ajusta e aceita** ou **recusa** (com motivo).
+- Na proposta, quantidade, valor e distribuição nos meses são **opcionais**: a coordenação nem sempre
+  tem referência de preço. Proposta sem valor aparece como "a definir"; o Financeiro informa o valor e
+  os meses ("Ajustar") e só então pode aceitar. Nenhum item sem valor entra no orçamento.
 - A coordenação vê a situação das suas propostas; não vê salários nem outros serviços.
 - As propostas só são aceitas até a aprovação do exercício.
 

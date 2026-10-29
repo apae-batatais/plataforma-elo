@@ -55,7 +55,7 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
               titulo="Propor despesa"
               descricao="Só nos serviços em que você é coordenação."
             >
-              <FormularioItem tipo="despesa" acao={acaoSalvarProposta} ano={r.ano} opcoes={r.opcoes} cancelarHref={base} />
+              <FormularioItem tipo="despesa" acao={acaoSalvarProposta} ano={r.ano} opcoes={r.opcoes} cancelarHref={base} proposta={!r.decide} />
             </JanelaFormulario>
           ) : undefined
         }
@@ -74,7 +74,7 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
 
       {emEdicao && (
         <JanelaFormulario rotulo={null} abrirAoCarregar voltarPara={base} larga titulo={r.decide ? `Ajustar “${emEdicao.descricao}”` : `Alterar “${emEdicao.descricao}”`} descricao={r.decide ? 'Depois de salvar, aceite a proposta na lista.' : undefined}>
-          <FormularioItem tipo="despesa" acao={acaoSalvarProposta} ano={r.ano} opcoes={r.opcoes} item={emEdicao} cancelarHref={base} />
+          <FormularioItem tipo="despesa" acao={acaoSalvarProposta} ano={r.ano} opcoes={r.opcoes} item={emEdicao} cancelarHref={base} proposta={!r.decide} />
         </JanelaFormulario>
       )}
       {aRecusar && (
@@ -130,9 +130,10 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
                 <span className="block text-xs text-texto-suave">Fonte: {x.fonteNome}</span>
               </>
             ),
+            valor: x.valor === 0 ? <span className="text-sm italic text-texto-suave">a definir</span> : undefined,
             acoes: x.podeAlterar ? (
               <div className="flex justify-end gap-1">
-                {r.decide && (
+                {r.decide && x.valor > 0 && (
                   <FormularioConfirmado
                     acao={acaoDecidirProposta}
                     campos={{ id: x.id, versao: x.versao, ano: r.ano, decisao: 'aceitar' }}
@@ -145,7 +146,7 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
                     confirmar="Aceitar"
                   />
                 )}
-                <LinkBotao href={`${base}&editar=${x.id}`} scroll={false} variante="icone" aria-label={`${r.decide ? 'Ajustar' : 'Alterar'} ${x.descricao}`} title={r.decide ? 'Ajustar' : 'Alterar'}>
+                <LinkBotao href={`${base}&editar=${x.id}`} scroll={false} variante="icone" aria-label={`${r.decide ? 'Ajustar' : 'Alterar'} ${x.descricao}`} title={r.decide ? (x.valor > 0 ? 'Ajustar' : 'Informar o valor para poder aceitar') : 'Alterar'}>
                   <IconeEditar tamanho={16} />
                 </LinkBotao>
                 {r.decide ? (
