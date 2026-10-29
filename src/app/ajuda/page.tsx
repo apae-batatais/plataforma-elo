@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { instituicaoAtual } from '@/plataforma/instituicao';
 import { usuarioLogado } from '@/plataforma/sessao';
+import { LinkBotao } from '@/ui/botao';
 import { NOME_PLATAFORMA, textoVersao } from '@/ui/marca';
 import { CabecalhoPagina } from '@/ui/pagina';
 
@@ -269,6 +270,15 @@ export default async function Ajuda() {
         titulo="Ajuda"
         descricao={`Como usar o ${NOME_PLATAFORMA} na ${instituicao.nome}. Aparecem aqui só os assuntos do seu perfil.`}
       />
+      <section aria-label="Manual completo" className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-borda bg-superficie px-5 py-4">
+        <div>
+          <p className="font-bold">Manual completo do {NOME_PLATAFORMA}</p>
+          <p className="text-sm text-texto-suave">Todas as telas e todos os perfis num documento só, para ler, imprimir ou compartilhar (PDF, 6 páginas).</p>
+        </div>
+        <LinkBotao href="/manual/manual-elo.pdf" target="_blank" rel="noopener" variante="secundario" download="Manual do Elo.pdf">
+          Baixar o manual (PDF)
+        </LinkBotao>
+      </section>
       <nav aria-label="Assuntos" className="flex flex-wrap gap-2">
         {assuntos.map((s) => (
           <a key={s.id} href={`#${s.id}`} className="rounded-full border border-borda bg-superficie px-3 py-1 text-sm hover:border-destaque/60">
