@@ -83,7 +83,7 @@ function Navegacao({ grupos, aoNavegar }: { grupos: GrupoNavegacao[]; aoNavegar?
                         const novaSecao = f.secao && f.secao !== item.filhos![k - 1]?.secao;
                         return (
                           <li key={f.href}>
-                            {novaSecao && <p className="mb-0.5 mt-3 px-3 text-[0.7rem] font-semibold uppercase tracking-wider text-lateral-suave first:mt-1">{f.secao}</p>}
+                            {novaSecao && <p className="mb-0.5 mt-3 px-3 text-xs font-medium text-lateral-suave first:mt-1">{f.secao}</p>}
                             <Link
                               href={f.href}
                               onClick={aoNavegar}

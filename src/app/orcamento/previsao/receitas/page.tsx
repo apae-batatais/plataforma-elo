@@ -12,6 +12,7 @@ import { FormularioConfirmado } from '@/ui/confirmar';
 import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
+import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from '@/ui/tabela-dados';
 import { acaoCancelarItem, acaoSalvarReceita } from '../acoes';
 
@@ -38,12 +39,7 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
         descricao="O que se espera receber, por fonte de recurso e área, e a situação da captação de cada receita."
         acoes={
           <>
-            {prev.anos.length > 1 &&
-              prev.anos.map((a) => (
-                <LinkBotao key={a} href={`/orcamento/previsao/receitas?ano=${a}`} variante={a === prev.ano ? 'secundario' : 'fantasma'} className={pequeno}>
-                  {a}
-                </LinkBotao>
-              ))}
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/receitas?ano=${a}`} />
             {podeLancar && (
               <JanelaFormulario
                 rotulo={

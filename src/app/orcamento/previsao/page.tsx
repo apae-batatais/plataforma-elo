@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { SeletorAno } from '@/ui/seletor-ano';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { arvoreMensal, lerPrevisao, type Grupamento } from '@/modulos/orcamento/aplicacao/previsao';
@@ -8,7 +9,7 @@ import { TabelaMensal } from '@/modulos/orcamento/telas/tabela-mensal';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
-import { Botao, LinkBotao } from '@/ui/botao';
+import { Botao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { FormularioConfirmado } from '@/ui/confirmar';
@@ -215,12 +216,7 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
         descricao="Despesas (itens lançados + folha de pagamento automática), receitas e indicadores do exercício."
         acoes={
           <>
-            {prev.anos.length > 1 &&
-              prev.anos.map((a) => (
-                <LinkBotao key={a} href={`/orcamento/previsao?ano=${a}`} variante={a === prev.ano ? 'primario' : 'secundario'} className={pequeno}>
-                  {a}
-                </LinkBotao>
-              ))}
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao?ano=${a}`} />
             {podeAbrir && prev.exercicio && (
               <form action={acaoAbrirExercicio}>
                 <input type="hidden" name="ano" value={Math.max(...prev.anos) + 1} />

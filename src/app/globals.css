@@ -39,6 +39,10 @@
   --serie-2: #eb6834;
   --serie-3: #1baf7a;
   --serie-4: #6250d6;
+  /* Exercícios (anos): escala ordinal de um tom só, do mais antigo (claro) ao atual (escuro). */
+  --ano-1: #86b6ef;
+  --ano-2: #3987e5;
+  --ano-3: #184f95;
   --grade: #e7e5e4;
   --referencia: #a5281f;
 }
@@ -68,6 +72,9 @@
     --serie-2: #d95926;
     --serie-3: #199e70;
     --serie-4: #9085e9;
+    --ano-1: #1c5cab;
+    --ano-2: #3987e5;
+    --ano-3: #86b6ef;
     --grade: #2e2d2b;
     --referencia: #f0a69f;
   }

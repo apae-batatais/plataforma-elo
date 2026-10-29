@@ -28,7 +28,8 @@ function Documento({ children }: { children: React.ReactNode }) {
 
 const faixaDemonstracao = (
   <div className="border-b border-aviso/30 bg-aviso-fundo px-4 py-2 text-center text-sm font-semibold text-aviso" role="status">
-    Demonstração: todos os dados são fictícios e as alterações podem ser perdidas.
+    Demonstração<span className="hidden sm:inline">: todos os dados são fictícios e as alterações podem ser perdidas</span>
+    <span className="sm:hidden"> com dados fictícios</span>.
   </div>
 );
 

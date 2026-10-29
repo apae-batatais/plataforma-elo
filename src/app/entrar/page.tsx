@@ -80,11 +80,17 @@ export default async function Entrar() {
     <Moldura>
       <div className="w-full max-w-xl">
         <h1 className="text-2xl font-bold">Entrar na demonstração</h1>
-        <p className="mt-1.5 text-texto-suave">Escolha uma pessoa fictícia para ver a plataforma do jeito que ela vê.</p>
+        <p className="mt-1.5 text-texto-suave">Escolha um perfil fictício para ver a plataforma do jeito que ele vê.</p>
         <ul className="mt-6 grid gap-2 sm:grid-cols-2">
           {usuarios.ativos().map((u) => {
             const deles = atribuicoes.ativos().filter((a) => a.usuario_email === u.email);
             const nome = (nomeUsuario.get(u.email) ?? u.email).replace(/\s*\(fictíci[oa]\)/, '');
+            // Não repete o perfil quando ele é o próprio nome do cartão (ex.: "Financeiro · Financeiro").
+            const perfis = deles
+              .map((a) => [nomePerfil.get(a.perfil) ?? a.perfil, a.escopo ? (nomeEscopo.get(a.escopo) ?? a.escopo) : null] as const)
+              .map(([p, e]) => [p.toLowerCase() === nome.toLowerCase() ? null : p, e].filter(Boolean).join(' · '))
+              .filter(Boolean)
+              .join(', ');
             return (
               <li key={u.id}>
                 <form action={entrarNaDemonstracao} className="h-full">
@@ -96,9 +102,7 @@ export default async function Entrar() {
                     className="!h-full !w-full !flex-col !items-start !justify-start !gap-0.5 !rounded-lg !px-4 !py-3 text-left !font-normal"
                   >
                     <span className="font-semibold text-texto">{nome}</span>
-                    <span className="text-sm text-destaque">
-                      {deles.map((a) => `${nomePerfil.get(a.perfil) ?? a.perfil}${a.escopo ? ` · ${nomeEscopo.get(a.escopo) ?? a.escopo}` : ''}`).join(', ') || 'Sem perfil'}
-                    </span>
+                    {(perfis || !deles.length) && <span className="text-sm text-destaque">{perfis || 'Sem perfil'}</span>}
                     <span className="text-sm text-texto-suave">{deles.map((a) => O_QUE_VE[a.perfil]).filter(Boolean)[0] ?? ''}</span>
                   </BotaoEnviar>
                 </form>

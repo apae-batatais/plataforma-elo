@@ -12,11 +12,11 @@ export type Formato = 'moeda' | 'pct' | 'numero';
 export interface Serie {
   nome: string;
   valores: number[];
-  /** Índice da cor (1 a 4). */
-  cor: number;
+  /** Índice da cor categórica (1 a 4) ou um ano na escala de exercícios ('ano-1' mais antigo … 'ano-3' atual). */
+  cor: number | 'ano-1' | 'ano-2' | 'ano-3';
 }
 
-const cor = (n: number) => `var(--serie-${Math.min(Math.max(n, 1), 4)})`;
+const cor = (n: Serie['cor']) => (typeof n === 'string' ? `var(--${n})` : `var(--serie-${Math.min(Math.max(n, 1), 4)})`);
 
 export function formatarValor(v: number, formato: Formato, curto = false): string {
   if (formato === 'pct') return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
@@ -99,7 +99,7 @@ function Dica({ pct, children }: { pct: number; children: ReactNode }) {
   );
 }
 
-function LinhasDaDica({ titulo, itens, formato }: { titulo: string; itens: { nome: string; valor: number; cor: number }[]; formato: Formato }) {
+function LinhasDaDica({ titulo, itens, formato }: { titulo: string; itens: { nome: string; valor: number; cor: Serie['cor'] }[]; formato: Formato }) {
   return (
     <>
       <p className="mb-1 font-semibold">{titulo}</p>

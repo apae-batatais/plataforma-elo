@@ -64,7 +64,8 @@ export default async function PainelGeral() {
   const anterior: ResumoDoAno | undefined = anos.at(-2);
   const rotulos = anos.map((a) => String(a.ano));
   // Cor fixa por ano: o mais recente é sempre azul, o anterior laranja…
-  const corDoAno = (i: number) => anos.length - i;
+  // Anos numa escala de um tom só: o exercício atual é o mais forte; os anteriores, mais claros.
+  const corDoAno = (i: number) => (['ano-3', 'ano-2', 'ano-1'] as const)[Math.min(anos.length - 1 - i, 2)];
 
   const cartoes = [
     { rotulo: 'Receita prevista', valor: reais(atual.receita), var: <Variacao atual={atual.receita} anterior={anterior?.receita} anoAnterior={anterior?.ano} /> },
