@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { instituicaoAtual } from '@/plataforma/instituicao';
 import { Suspense } from 'react';
 import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ErroConfiguracao, lerConfig } from '@/nucleo/config';
@@ -12,8 +13,8 @@ import { ConfiguracaoInvalida } from './configuracao-invalida';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Plataforma Apae Batatais', template: '%s · Apae Batatais' },
-  description: 'Ferramentas de gestão da Apae Batatais',
+  title: { default: 'Elo · Apae Batatais', template: '%s · Elo' },
+  description: 'Elo: a plataforma de gestão da Apae Batatais',
 };
 
 export const dynamic = 'force-dynamic';
@@ -68,6 +69,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         usuario={{ nome: usuario.nome, email: usuario.email, perfis: usuario.perfis.map((p) => p.nome) }}
         sair={sair}
         faixa={demonstracao ? faixaDemonstracao : undefined}
+        instituicao={instituicaoAtual().nome}
       >
         <Suspense>
           <Notificacao />

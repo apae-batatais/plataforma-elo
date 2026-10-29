@@ -5,6 +5,7 @@
  * (um único lugar de navegação), área do usuário e, no celular, menu que
  * abre por cima da página.
  */
+import { MarcaElo, NOME_PLATAFORMA, textoVersao } from './marca';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
@@ -109,16 +110,10 @@ function Navegacao({ grupos, aoNavegar }: { grupos: GrupoNavegacao[]; aoNavegar?
   );
 }
 
-function Marca() {
+function Marca({ instituicao }: { instituicao: string }) {
   return (
-    <Link href="/" className="flex items-center gap-3 rounded-md px-2 py-1 text-white">
-      <span className="flex size-9 items-center justify-center rounded-lg bg-marca text-[0.95rem] font-bold text-lateral" aria-hidden="true">
-        A
-      </span>
-      <span className="leading-tight">
-        <span className="block font-bold">Apae Batatais</span>
-        <span className="block text-xs text-lateral-suave">Plataforma de gestão</span>
-      </span>
+    <Link href="/" className="block rounded-md px-1.5 py-1" aria-label={`${NOME_PLATAFORMA}, ${instituicao}: início`}>
+      <MarcaElo instituicao={instituicao} />
     </Link>
   );
 }
@@ -149,6 +144,9 @@ function AreaUsuario({ usuario, sair }: { usuario: UsuarioCasca; sair: () => Pro
           </button>
         </form>
       </div>
+      <p className="px-2 pt-1 text-[0.7rem] text-lateral-suave">
+        {NOME_PLATAFORMA} · {textoVersao()}
+      </p>
     </div>
   );
 }
@@ -158,8 +156,10 @@ export function Casca({
   usuario,
   sair,
   faixa,
+  instituicao,
   children,
 }: {
+  instituicao: string;
   grupos: GrupoNavegacao[];
   usuario: UsuarioCasca;
   sair: () => Promise<void>;
@@ -179,7 +179,7 @@ export function Casca({
       {/* Computador: barra lateral fixa */}
       <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col bg-lateral lg:flex">
         <div className="px-4 pb-2 pt-5">
-          <Marca />
+          <Marca instituicao={instituicao} />
         </div>
         <Navegacao grupos={grupos} />
         <AreaUsuario usuario={usuario} sair={sair} />
@@ -187,7 +187,7 @@ export function Casca({
 
       {/* Celular: barra superior + menu */}
       <div className="sticky top-0 z-30 flex items-center justify-between bg-lateral px-3 py-2 lg:hidden">
-        <Marca />
+        <Marca instituicao={instituicao} />
         <button
           type="button"
           onClick={() => gaveta.current?.showModal()}
@@ -204,7 +204,7 @@ export function Casca({
       >
         <div className="flex h-full flex-col">
           <div className="flex items-center justify-between px-3 pb-2 pt-4">
-            <Marca />
+            <Marca instituicao={instituicao} />
             <button type="button" onClick={() => gaveta.current?.close()} aria-label="Fechar menu" className="rounded-md p-2 text-white hover:bg-white/10">
               <IconeFechar tamanho={22} />
             </button>
