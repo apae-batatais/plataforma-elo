@@ -144,7 +144,13 @@ export const Despesas = definirTabela({
     /** Urgente e importante (ui), urgente e não importante (un), não urgente e importante (ni), não urgente e não importante (nn). */
     prioridade: z.preprocess((v) => (vazio(v) ? null : v), z.enum(['ui', 'un', 'ni', 'nn']).nullable()),
     cotacao: z.preprocess((v) => (vazio(v) ? null : v), z.enum(['ok', 'atualizar', 'pendente']).nullable()),
-    /** aceito; na Entrega 1B.2: proposta, recusada. */
+    /** Quem propôs (coordenação), quando o item veio de uma proposta. */
+    proposto_por: textoOpcional(),
+    /** Motivo da recusa (ou observação da decisão) do Financeiro. */
+    motivo_decisao: textoOpcional(),
+    /** Quem do Setor de Compras informou o valor (cotação) da proposta. */
+    cotado_por: textoOpcional(),
+    /** aceito (entra no orçamento), proposta (aguarda o Financeiro) ou recusada. */
     situacao: z.preprocess((v) => (vazio(v) ? 'aceito' : v), z.enum(['aceito', 'proposta', 'recusada'])),
     observacao: textoOpcional(),
   }),
@@ -192,6 +198,34 @@ export const CentrosCusto = definirTabela({
   }),
 });
 
+/**
+ * Remanejamentos e suplementações de um exercício aprovado. O item original não
+ * muda: o ajuste aprovado soma (ou tira) valor num mês do item.
+ * - remanejamento: tira `valor` do mês da despesa de origem e põe na despesa de destino;
+ * - suplementacao: soma `valor` (negativo = redução) no mês do item de destino (despesa ou receita).
+ */
+export const Ajustes = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'Ajustes',
+  esquema: z.object({
+    ano: numero(),
+    tipo: z.enum(['remanejamento', 'suplementacao']),
+    origem_id: textoOpcional(),
+    destino_tipo: z.enum(['despesa', 'receita']),
+    destino_id: texto(),
+    mes: numero(),
+    valor: numero(),
+    justificativa: texto(),
+    situacao: z.enum(['pendente', 'aprovado', 'recusado']),
+    solicitado_por: textoOpcional(),
+    decidido_por: textoOpcional(),
+    decidido_em: dataOpcional(),
+    motivo_decisao: textoOpcional(),
+  }),
+});
+
+export type RegAjuste = Registro<typeof Ajustes.esquema>;
+
 export type RegGrupo = Registro<typeof GruposGasto.esquema>;
 export type RegFonte = Registro<typeof Fontes.esquema>;
 export type RegDespesa = Registro<typeof Despesas.esquema>;
@@ -201,4 +235,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes] as const;

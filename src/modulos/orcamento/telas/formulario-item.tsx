@@ -33,6 +33,8 @@ export function FormularioItem({
   opcoes,
   item,
   cancelarHref,
+  proposta = false,
+  cotacao = false,
 }: {
   tipo: 'despesa' | 'receita';
   acao: Acao;
@@ -40,6 +42,10 @@ export function FormularioItem({
   opcoes: Previsao['opcoes'];
   item?: LinhaDespesa | LinhaReceita;
   cancelarHref: string;
+  /** Proposta da coordenação: valores e distribuição são opcionais (o Financeiro completa). */
+  proposta?: boolean;
+  /** Cotação do Setor de Compras: só valores, situação da cotação, observação e meses. */
+  cotacao?: boolean;
 }) {
   const [estado, enviar] = useActionState(acao, {});
   const d = tipo === 'despesa' ? (item as LinhaDespesa | undefined) : undefined;
@@ -47,7 +53,7 @@ export function FormularioItem({
 
   const [qtd, setQtd] = useState(textoNumero(d?.quantidade ?? 1));
   const [ocor, setOcor] = useState(textoNumero(d?.ocorrencias ?? 1));
-  const [unit, setUnit] = useState(textoNumero(d?.valor_unitario));
+  const [unit, setUnit] = useState(textoNumero(d?.valor_unitario || undefined));
   const [valorReceita, setValorReceita] = useState(textoNumero(r?.valor));
   const valor = tipo === 'despesa' ? arred(num(qtd) * num(ocor) * num(unit)) : arred(num(valorReceita));
 
@@ -67,7 +73,20 @@ export function FormularioItem({
         </>
       )}
 
-      {tipo === 'despesa' ? (
+      {cotacao && d && (
+        <>
+          <input type="hidden" name="modo" value="cotacao" />
+          <div className="rounded-md bg-superficie-2 px-3 py-2 text-sm">
+            <p className="font-semibold">{d.descricao}</p>
+            <p className="text-texto-suave">
+              {d.servicoNome} · {d.grupoNome}
+            </p>
+            {d.observacao && <p className="mt-1 italic text-texto-suave">“{d.observacao}”</p>}
+          </div>
+        </>
+      )}
+
+      {cotacao ? null : tipo === 'despesa' ? (
         <>
           <Campo rotulo="Serviço (centro de custo)" obrigatorio>
             <select name="servico" required defaultValue={d?.servico ?? ''} className={estiloEntrada}>
@@ -126,21 +145,27 @@ export function FormularioItem({
         </Campo>
       )}
 
-      <Campo rotulo="Descrição" obrigatorio>
-        <input name="descricao" required defaultValue={item?.descricao} className={estiloEntrada} />
-      </Campo>
+      {!cotacao && (
+        <Campo rotulo="Descrição" obrigatorio>
+          <input name="descricao" required defaultValue={item?.descricao} className={estiloEntrada} />
+        </Campo>
+      )}
 
       {tipo === 'despesa' ? (
-        <div className="grid grid-cols-3 gap-2">
-          <Campo rotulo="Quantidade" obrigatorio>
-            <input name="quantidade" required inputMode="decimal" value={qtd} onChange={(e) => setQtd(e.target.value)} className={estiloEntrada} />
-          </Campo>
-          <Campo rotulo="Vezes" obrigatorio>
-            <input name="ocorrencias" required inputMode="decimal" value={ocor} onChange={(e) => setOcor(e.target.value)} className={estiloEntrada} />
-          </Campo>
-          <Campo rotulo="Valor unit. (R$)" obrigatorio>
-            <input name="valor_unitario" required inputMode="decimal" value={unit} onChange={(e) => setUnit(e.target.value)} className={estiloEntrada} />
-          </Campo>
+        <div className="space-y-1">
+          {proposta && <p className="text-sm font-semibold">Valores (opcional)</p>}
+          {proposta && <p className="text-sm text-texto-suave">Se não souber, deixe em branco: o Setor de Compras cota e o Financeiro confere antes de aceitar.</p>}
+          <div className="grid grid-cols-3 gap-2">
+            <Campo rotulo="Quantidade" obrigatorio={!proposta}>
+              <input name="quantidade" required={!proposta} inputMode="decimal" value={qtd} onChange={(e) => setQtd(e.target.value)} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Vezes" obrigatorio={!proposta}>
+              <input name="ocorrencias" required={!proposta} inputMode="decimal" value={ocor} onChange={(e) => setOcor(e.target.value)} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Valor unit. (R$)" obrigatorio={!proposta}>
+              <input name="valor_unitario" required={!proposta} inputMode="decimal" value={unit} onChange={(e) => setUnit(e.target.value)} className={estiloEntrada} />
+            </Campo>
+          </div>
         </div>
       ) : (
         <Campo rotulo="Valor no ano (R$)" obrigatorio>
@@ -148,11 +173,23 @@ export function FormularioItem({
         </Campo>
       )}
       <p className="rounded-md bg-superficie-2 px-3 py-2 text-sm">
-        Valor do item: <strong className="tabular-nums">{reais(valor)}</strong>
+        Valor do item: <strong className="tabular-nums">{proposta && valor === 0 ? 'a definir (cotação)' : reais(valor)}</strong>
         {tipo === 'despesa' && <span className="block text-xs text-texto-suave">Quantidade × vezes × valor unitário (ex.: 60 alunos × 200 dias × R$ 7,50).</span>}
       </p>
 
-      {tipo === 'despesa' && (
+      {cotacao && (
+        <Campo rotulo="Situação da cotação" obrigatorio>
+          <select name="cotacao" required defaultValue={d?.cotacao ?? 'ok'} className={estiloEntrada}>
+            {(Object.keys(COTACAO) as (keyof typeof COTACAO)[]).map((k) => (
+              <option key={k} value={k}>
+                {COTACAO[k]}
+              </option>
+            ))}
+          </select>
+        </Campo>
+      )}
+
+      {tipo === 'despesa' && !cotacao && (
         <>
           <fieldset className="text-sm">
             <legend className="font-semibold">Categoria</legend>
@@ -218,8 +255,9 @@ export function FormularioItem({
         </fieldset>
       )}
 
+      <Opcional ativo={proposta && valor === 0} rotulo="Distribuição nos meses (opcional)">
       <fieldset className="min-w-0 space-y-2 text-sm">
-        <legend className="font-semibold">Distribuição nos meses</legend>
+        <legend className="font-semibold">Distribuição nos meses{proposta ? ' (opcional)' : ''}</legend>
         <input type="hidden" name="distribuicao" value={modo} />
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {(
@@ -278,8 +316,9 @@ export function FormularioItem({
           </>
         )}
       </fieldset>
+      </Opcional>
 
-      <Campo rotulo="Observação" dica="Opcional.">
+      <Campo rotulo="Observação" dica={cotacao ? 'Ex.: 3 orçamentos, menor preço da loja X.' : 'Opcional.'}>
         <textarea name="observacao" rows={2} defaultValue={item?.observacao ?? ''} className={estiloEntrada} />
       </Campo>
 
@@ -290,7 +329,7 @@ export function FormularioItem({
       )}
       <div className="flex gap-2">
         <BotaoEnviar enviando="Salvando…" className="flex-1" disabled={(modo === 'manual' && falta !== 0) || (modo === 'meses' && meses.length === 0)}>
-          {item ? 'Salvar alterações' : tipo === 'despesa' ? 'Lançar despesa' : 'Lançar receita'}
+          {cotacao ? 'Salvar cotação' : item ? 'Salvar alterações' : tipo === 'despesa' ? 'Lançar despesa' : 'Lançar receita'}
         </BotaoEnviar>
         {item && (
           <LinkBotao href={cancelarHref} variante="secundario">
@@ -299,5 +338,19 @@ export function FormularioItem({
         )}
       </div>
     </form>
+  );
+}
+
+/** Recolhe um trecho opcional do formulário (ex.: distribuição numa proposta sem valor). */
+function Opcional({ ativo, rotulo, children }: { ativo: boolean; rotulo: string; children: React.ReactNode }) {
+  if (!ativo) return <>{children}</>;
+  return (
+    <div className="rounded-md border border-borda px-3 py-2 text-sm">
+      <input type="hidden" name="distribuicao" value="igual" />
+      <p className="font-semibold">{rotulo}</p>
+      <p className="mt-1 text-texto-suave">
+        Sem valor, a distribuição nos meses é feita na cotação. Se a compra tem mês certo, escreva na observação (ex.: “precisa em março”).
+      </p>
+    </div>
   );
 }

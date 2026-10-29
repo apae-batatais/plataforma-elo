@@ -130,7 +130,7 @@ export class TabelaLida<E extends z.ZodObject> {
     const cabecalho = linhas[0].map((c) => String(c ?? '').trim());
     const faltando = cabecalhoDe(def).filter((c) => !cabecalho.includes(c));
     if (faltando.length > 0) {
-      throw new ErroArmazenamento(`A aba "${def.aba}" (planilha ${def.planilha}) está sem as colunas: ${faltando.join(', ')}.`);
+      throw new ErroArmazenamento(`A aba "${def.aba}" (planilha ${def.planilha}) está sem as colunas: ${faltando.join(', ')}. Rode "Preparar estrutura" (Administração › Estrutura das planilhas) para acrescentá-las.`);
     }
     const esquema = def.modo === 'somente_inclusao' ? def.esquema : esquemaControle.extend(def.esquema.shape);
     const lidas: LinhaLida<Registro<E>>[] = [];

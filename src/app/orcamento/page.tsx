@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Fragment } from 'react';
+import { manifesto } from '@/modulos/orcamento';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
+import { menuDoUsuario } from '@/nucleo/modulos/registro';
 import type { GrupoResumo } from '@/modulos/orcamento/dominio/folha';
 import { MESES, reais } from '@/modulos/orcamento/telas/formato';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -16,6 +18,11 @@ export const metadata: Metadata = { title: 'Resumo da folha' };
 export default async function ResumoDaFolha({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
+  if (!usuario.autorizador.temPermissao('orcamento.folha.ver')) {
+    // Quem não vê a folha (ex.: Compras) entra direto no primeiro item do seu menu.
+    const [app] = menuDoUsuario([manifesto], usuario.autorizador.permissoes());
+    redirect(app?.itens[0]?.href ?? '/');
+  }
   const app = await obterAplicacao();
   const r = await resumoFolha(app.planilhas, usuario.autorizador, Number((await searchParams).mes) || undefined);
   const i = r.mes - 1;

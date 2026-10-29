@@ -6,7 +6,7 @@ import { Faker, base, pt_BR } from '@faker-js/faker';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { distribuir, valorDoItem } from '../dominio/previsao';
-import { CentrosCusto, Componentes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas } from './tabelas';
+import { Ajustes, CentrosCusto, Componentes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -171,6 +171,28 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       item('comunicacao', 2, null, 'Impressão de materiais (exemplo)', 1, 2, 4500, [5, 10]),
   ];
   await inserirRegistros(p, despesas, itens2027, autor);
+  // Propostas das coordenações (uma aguardando o Financeiro, uma aguardando cotação de Compras, uma recusada).
+  await inserirRegistros(
+    p,
+    despesas,
+    [
+      { ...item('ur', 0, null, 'Jogos e materiais lúdicos (proposta, exemplo)', 10, 1, 180, [3]), situacao: 'proposta' as const, proposto_por: 'coord.ur@exemplo.local' },
+      {
+        ...item('ur', 0, null, 'Colchonetes para a sala de convivência (proposta, exemplo)', 1, 1, 0),
+        cotacao: null,
+        observacao: 'Precisamos em março; não temos referência de preço (exemplo).',
+        situacao: 'proposta' as const,
+        proposto_por: 'coord.ur@exemplo.local',
+      },
+      {
+        ...item('escola', 3, null, 'Pintura das salas (proposta, exemplo)', 1, 1, 24000, [1]),
+        situacao: 'recusada' as const,
+        proposto_por: 'coord.educacao@exemplo.local',
+        motivo_decisao: 'Fica para 2028; em 2027 a prioridade é o telhado (exemplo).',
+      },
+    ],
+    autor,
+  );
 
   const AREA_DA_FONTE = ['assistencia_social', 'educacao', 'saude', 'saude', null, null, 'rural'];
   const receita = (fonte: number, descricao: string, valor: number, captacao: 'garantida' | 'negociacao' | 'a_captar', meses?: number[]) => ({
@@ -228,7 +250,24 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
         categoria: 'operacional' as const, prioridade: null, cotacao: null, situacao: 'aceito' as const, observacao: null,
       };
     });
-    await inserirRegistros(p, despesas, [...itens, ...folha], autor);
+    const gravadas = await inserirRegistros(p, despesas, [...itens, ...folha], autor);
+    if (ano === 2026) {
+      const [ajustes] = await lerTabelas(p, [Ajustes] as const);
+      const merenda = gravadas.find((d) => d.descricao.startsWith('Merenda'))!;
+      const material = gravadas.find((d) => d.descricao.startsWith('Material pedagógico'))!;
+      await inserirRegistros(
+        p,
+        ajustes,
+        [
+          {
+            ano, tipo: 'remanejamento', origem_id: merenda.id, destino_tipo: 'despesa', destino_id: material.id, mes: 8, valor: 2000,
+            justificativa: 'Compra de jogos pedagógicos no segundo semestre (exemplo).', situacao: 'aprovado',
+            solicitado_por: 'financeiro@exemplo.local', decidido_por: 'diretoria@exemplo.local', decidido_em: '2026-07-20', motivo_decisao: null,
+          },
+        ],
+        autor,
+      );
+    }
     // A receita própria cresce menos que a pública nos anos anteriores (dependência subindo em 2027).
     const rec = receitas2027.map((r, i) => {
       const propria = r.fonte_id === F(4) || r.fonte_id === F(5) || r.fonte_id === F(6);

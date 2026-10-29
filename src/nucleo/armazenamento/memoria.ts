@@ -46,7 +46,14 @@ export class ArmazenamentoMemoria implements Armazenamento {
     const criadas: string[] = [];
     for (const { aba, cabecalho } of abas) {
       const existente = p.get(aba);
-      if (existente && existente.length > 0) continue;
+      if (existente && existente.length > 0) {
+        const faltam = cabecalho.filter((c) => !existente[0].includes(c));
+        if (faltam.length) {
+          existente[0] = [...existente[0], ...faltam];
+          criadas.push(`${aba} (colunas novas: ${faltam.join(', ')})`);
+        }
+        continue;
+      }
       p.set(aba, [[...cabecalho]]);
       criadas.push(aba);
     }

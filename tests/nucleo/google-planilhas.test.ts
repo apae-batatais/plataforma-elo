@@ -96,6 +96,17 @@ describe('armazenamento no Google Planilhas', () => {
     });
   });
 
+  it('aba que já existe sem colunas novas: acrescenta só as que faltam, no fim do cabeçalho', async () => {
+    const { fn, chamadas } = fetchFalso((c) => {
+      if (c.url.includes('fields=sheets')) return { json: { sheets: [{ properties: { title: 'Despesas' } }] } };
+      if (c.url.includes('batchGet')) return { json: { valueRanges: [{ values: [['id', 'versao', 'descricao']] }] } };
+      return { json: {} };
+    });
+    const r = await new ArmazenamentoGooglePlanilhas(token, fn).garantirAbas('PLAN1', [{ aba: 'Despesas', cabecalho: ['id', 'versao', 'descricao', 'categoria', 'motivo'] }]);
+    expect(r).toEqual(['Despesas (colunas novas: categoria, motivo)']);
+    expect(chamadas.at(-1)?.body).toEqual({ valueInputOption: 'RAW', data: [{ range: "'Despesas'!D1", values: [['categoria', 'motivo']] }] });
+  });
+
   it('sem acesso: explica que é preciso compartilhar com a conta de serviço', async () => {
     const { fn } = fetchFalso(() => ({ status: 403 }));
     await expect(new ArmazenamentoGooglePlanilhas(token, fn).lerAbas('PLAN1', ['A'])).rejects.toThrow(

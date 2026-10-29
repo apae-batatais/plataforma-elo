@@ -146,6 +146,13 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                 ),
                 cotacao: d.cotacao && d.cotacao !== 'ok' ? <Etiqueta tipo="atencao">{COTACAO_CURTA[d.cotacao]}</Etiqueta> : d.cotacao ? COTACAO_CURTA.ok : '—',
                 meses: <span className="whitespace-nowrap text-xs text-texto-suave">{resumoMeses(d)}</span>,
+                valor:
+                  d.valor !== d.valorOriginal ? (
+                    <span title="Valor com remanejamentos e suplementações aprovados">
+                      <span className="font-semibold">{reais(d.valor)}</span>
+                      <span className="block text-xs text-texto-suave">antes: {reais(d.valorOriginal)}</span>
+                    </span>
+                  ) : undefined,
                 acoes: (
                   <div className="flex justify-end gap-1">
                     <LinkBotao href={`${base}&editar=${d.id}`} scroll={false} variante="icone" aria-label={`Alterar ${d.descricao}`} title="Alterar">

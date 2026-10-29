@@ -28,6 +28,7 @@ export const USUARIOS_FICTICIOS = [
   { email: 'tecnico.cer@exemplo.local', nome: 'Técnico CER (fictício)', perfil: 'tecnico_avaliador', escopo: 'cer_reabilitacao' },
   { email: 'leitura@exemplo.local', nome: 'Conselho, somente leitura (fictício)', perfil: 'leitura', escopo: null },
   { email: 'dp@exemplo.local', nome: 'Departamento Pessoal (fictício)', perfil: 'departamento_pessoal', escopo: null },
+  { email: 'compras@exemplo.local', nome: 'Setor de Compras (fictício)', perfil: 'compras', escopo: null },
   { email: 'coord.educacao@exemplo.local', nome: 'Coordenação da Educação (fictícia)', perfil: 'coordenacao_servico', escopo: 'area:educacao' },
 ] as const;
 

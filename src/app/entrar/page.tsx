@@ -47,6 +47,7 @@ const O_QUE_VE: Record<string, string> = {
   coordenacao_servico: 'Vê atendidos e totais do seu escopo.',
   tecnico_avaliador: 'Vê atendidos do seu serviço.',
   leitura: 'Vê só totais e painéis.',
+  compras: 'Cota as propostas de despesa das coordenações.',
 };
 
 export default async function Entrar() {

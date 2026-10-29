@@ -11,6 +11,9 @@ import {
 } from '@/modulos/orcamento/aplicacao/previsao';
 import type { Captacao, Cotacao, Distribuicao, Prioridade } from '@/modulos/orcamento/dominio/previsao';
 import { salvarCentro } from '@/modulos/orcamento/aplicacao/analise-area';
+import {
+  aprovarExercicio, cotarProposta, decidirAjuste, decidirProposta, encerrarExercicio, proporDespesa, retirarProposta, solicitarAjuste,
+} from '@/modulos/orcamento/aplicacao/aprovacao';
 import type { TipoCentro } from '@/modulos/orcamento/dominio/analise-area';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -135,6 +138,24 @@ async function salvarItem(f: FormData, pagina: string, gravar: (ctx: Awaited<Ret
   redirect(`${pagina}&ok=${encodeURIComponent(id ? 'Item alterado.' : 'Item lançado.')}`);
 }
 
+function dadosDespesa(f: FormData) {
+  return {
+    ano: Number(texto(f, 'ano')),
+    servico: texto(f, 'servico'),
+    grupo_id: texto(f, 'grupo_id'),
+    fonte_id: texto(f, 'fonte_id') || null,
+    descricao: texto(f, 'descricao'),
+    quantidade: numero(f, 'quantidade'),
+    ocorrencias: numero(f, 'ocorrencias'),
+    valor_unitario: numero(f, 'valor_unitario'),
+    categoria: (texto(f, 'categoria') === 'projetos' ? 'projetos' : 'operacional') as 'projetos' | 'operacional',
+    prioridade: (texto(f, 'prioridade') || null) as Prioridade | null,
+    cotacao: (texto(f, 'cotacao') || null) as Cotacao | null,
+    observacao: texto(f, 'observacao') || null,
+    ...distribuicaoDe(f),
+  };
+}
+
 export async function acaoSalvarDespesa(_: EstadoItem, f: FormData): Promise<EstadoItem> {
   const ano = Number(texto(f, 'ano'));
   return salvarItem(f, `/orcamento/previsao/despesas?ano=${ano}`, ({ usuario, app }, existente) =>
@@ -210,5 +231,71 @@ export async function acaoSalvarCentro(f: FormData) {
       sessoes: opcional('sessoes'),
       area_m2: opcional('area_m2'),
     }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Propostas, aprovação do exercício e remanejamentos (Entrega 1B.2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Coordenação: propõe ou altera a proposta. Financeiro: ajusta a proposta antes de aceitar.
+ * Compras: informa a cotação (só valores, situação da cotação, observação e meses).
+ */
+export async function acaoSalvarProposta(_: EstadoItem, f: FormData): Promise<EstadoItem> {
+  const dados = dadosDespesa(f);
+  return salvarItem(f, `/orcamento/previsao/propostas?ano=${dados.ano}`, ({ usuario, app }, existente) => {
+    const a = usuario.autorizador;
+    if (existente && a.temPermissao('orcamento.previsao.editar')) return salvarDespesa(app.planilhas, a, dados, existente);
+    if (existente && texto(f, 'modo') === 'cotacao') return cotarProposta(app.planilhas, a, existente.id, existente.versao, dados);
+    return proporDespesa(app.planilhas, a, dados, existente);
+  });
+}
+
+export async function acaoRetirarProposta(f: FormData) {
+  await executar(`/orcamento/previsao/propostas?ano=${texto(f, 'ano')}`, 'Proposta retirada.', ({ usuario, app }) =>
+    retirarProposta(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
+}
+
+export async function acaoDecidirProposta(f: FormData) {
+  const decisao = texto(f, 'decisao') === 'recusar' ? 'recusar' : 'aceitar';
+  await executar(`/orcamento/previsao/propostas?ano=${texto(f, 'ano')}`, decisao === 'aceitar' ? 'Proposta aceita: entrou no orçamento.' : 'Proposta recusada.', ({ usuario, app }) =>
+    decidirProposta(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), decisao, texto(f, 'motivo')),
+  );
+}
+
+export async function acaoAprovarExercicio(f: FormData) {
+  const ano = Number(texto(f, 'ano'));
+  await executar(`/orcamento/previsao?ano=${ano}`, `Exercício ${ano} aprovado.`, ({ usuario, app }) => aprovarExercicio(app.planilhas, usuario.autorizador, ano));
+}
+
+export async function acaoEncerrarExercicio(f: FormData) {
+  const ano = Number(texto(f, 'ano'));
+  await executar(`/orcamento/previsao?ano=${ano}`, `Exercício ${ano} encerrado.`, ({ usuario, app }) => encerrarExercicio(app.planilhas, usuario.autorizador, ano));
+}
+
+export async function acaoSolicitarAjuste(f: FormData) {
+  const ano = Number(texto(f, 'ano'));
+  const tipo = texto(f, 'tipo') === 'suplementacao' ? 'suplementacao' : 'remanejamento';
+  const [destinoTipo, destinoId] = texto(f, 'destino').split(':');
+  await executar(`/orcamento/previsao/ajustes?ano=${ano}`, 'Pedido enviado para a Diretoria.', ({ usuario, app }) =>
+    solicitarAjuste(app.planilhas, usuario.autorizador, {
+      ano,
+      tipo,
+      origem_id: texto(f, 'origem') || null,
+      destino_tipo: destinoTipo === 'receita' ? 'receita' : 'despesa',
+      destino_id: destinoId ?? '',
+      mes: Number(texto(f, 'mes')),
+      valor: numero(f, 'valor') * (texto(f, 'sentido') === 'reduzir' ? -1 : 1),
+      justificativa: texto(f, 'justificativa'),
+    }),
+  );
+}
+
+export async function acaoDecidirAjuste(f: FormData) {
+  const aprovar = texto(f, 'decisao') === 'aprovar';
+  await executar(`/orcamento/previsao/ajustes?ano=${texto(f, 'ano')}`, aprovar ? 'Pedido aprovado: o orçamento foi atualizado.' : 'Pedido recusado.', ({ usuario, app }) =>
+    decidirAjuste(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), aprovar, texto(f, 'motivo')),
   );
 }

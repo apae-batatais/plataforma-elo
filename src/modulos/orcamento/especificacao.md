@@ -143,6 +143,16 @@ O painel mostra o quanto da receita prevista já está garantido.
 
 - A coordenação lança itens de despesa **só nos serviços do seu escopo**, como "Proposta".
 - O Financeiro **aceita** (entra no orçamento), **ajusta e aceita** ou **recusa** (com motivo).
+- Na proposta, quantidade, valor e distribuição nos meses são **opcionais**: a coordenação nem sempre
+  tem referência de preço. Proposta sem valor aparece como "a definir" / "Aguardando cotação".
+  Nenhum item sem valor entra no orçamento: o Financeiro só aceita depois que houver valor.
+- **Setor de Compras** (perfil `compras`, permissão `orcamento.previsao.cotar`): no menu "Cotações", vê as
+  propostas pendentes de todos os serviços e informa quantidade, valor unitário, situação da cotação,
+  observação e distribuição nos meses (`cotado_por` registra quem cotou). Não muda serviço, grupo, fonte
+  nem descrição, não aceita nem recusa, e não vê a folha nem a previsão. Fluxo: coordenação propõe →
+  Compras cota → Financeiro aceita (ou ajusta/recusa) → Diretoria aprova o exercício.
+- O acesso ao módulo passa a ser `orcamento.acessar` (todos os perfis do módulo); o que aparece no menu
+  depende das demais permissões.
 - A coordenação vê a situação das suas propostas; não vê salários nem outros serviços.
 - As propostas só são aceitas até a aprovação do exercício.
 
@@ -164,6 +174,7 @@ RH (folha + itens à parte) e os indicadores abaixo com os sinais de alerta.
 | `orcamento.painel.ver` | Diretoria, Financeiro, Leitura |
 | `orcamento.previsao.editar` (despesas, receitas, cadastros, aceitar propostas, pedir remanejamento) | Financeiro |
 | `orcamento.previsao.propor` (escopo: serviços da coordenação) | Coordenação de serviço |
+| `orcamento.previsao.cotar` (todas as propostas pendentes, sem decidir) | Compras |
 | `orcamento.exercicio.aprovar` (aprovar exercício, remanejamentos e suplementações) | Diretoria |
 
 ### Onde os dados ficam (planilha `orcamento`, não sigilosa)
@@ -211,6 +222,22 @@ receita, dependência de recursos públicos, recursos livres); receita × despes
 longo dos anos com as referências (65% e 70%); despesa mês a mês por ano; despesa por área e por grupo
 (todo o RH numa linha); composição da receita (pública × própria e restrita × livre); resumo em tabela.
 Cada gráfico tem "Ver os números" em tabela.
+
+### Entrega 1B.2 — decisões de construção (29/10/2026)
+
+- **Propostas** (Orçamento › Planejamento › Propostas): a coordenação propõe despesas só nos serviços do
+  seu escopo; pode alterar ou retirar enquanto a proposta aguarda. O Financeiro aceita (entra no
+  orçamento), ajusta e aceita, ou recusa com motivo (a coordenação lê o motivo). Propostas ficam na aba
+  `Despesas` com `situacao` (proposta/aceito/recusada), `proposto_por` e `motivo_decisao`.
+- **Aprovação**: quadro "Situação do exercício" na Previsão do ano (Em elaboração → Aprovado → Encerrado),
+  com as pendências e o botão da Diretoria. Só aprova sem fonte "a definir" e sem proposta pendente.
+  Encerrar só com nenhum pedido de ajuste pendente.
+- **Remanejamentos e suplementações** (aba `Ajustes`): o Financeiro pede, a Diretoria aprova ou recusa
+  (com motivo). Remanejamento tira valor de uma despesa num mês e põe em outra (o total não muda);
+  suplementação aumenta ou reduz uma despesa ou receita num mês. O item original não muda: a Previsão
+  soma os ajustes aprovados e mostra o valor "antes". Na aprovação, o saldo do mês é conferido de novo.
+- **Preparar estrutura** passa a acrescentar colunas novas em abas que já existem (no fim do cabeçalho),
+  sem mexer nos dados.
 
 ### Construção em duas partes
 
