@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { cumprimento } from '@/ui/saudacao';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
@@ -96,12 +97,11 @@ export default async function Portal() {
     }
   }
 
-  const primeiroNome = usuario.nome.replace(/\(.*?\)/g, '').trim().split(/\s+/)[0];
   const hoje = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date());
 
   return (
     <div className="space-y-10">
-      <CabecalhoPagina titulo={`${saudacao()}, ${primeiroNome}`} descricao={<span className="first-letter:uppercase">{hoje}</span>} />
+      <CabecalhoPagina titulo={cumprimento(saudacao(), usuario.nome)} descricao={<span className="first-letter:uppercase">{hoje}</span>} />
 
       <section aria-labelledby="t-atencao">
         <h2 id="t-atencao" className="text-lg font-bold">
