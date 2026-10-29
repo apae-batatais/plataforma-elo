@@ -30,6 +30,8 @@ export const esquemaManifesto = z
           /** Caminho relativo à rota base; "/" é a página inicial do app. */
           caminho: z.string().regex(/^\/[a-z0-9-/]*$/),
           permissao: z.string(),
+          /** Seção do menu (ex.: "Cadastros"); itens seguidos da mesma seção ficam juntos. */
+          secao: z.string().optional(),
         }),
       )
       .min(1),

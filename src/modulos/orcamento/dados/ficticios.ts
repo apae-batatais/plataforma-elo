@@ -154,10 +154,7 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
     situacao: 'aceito' as const,
     observacao: null,
   });
-  await inserirRegistros(
-    p,
-    despesas,
-    [
+  const itens2027 = [
       item('escola', 0, 1, 'Material pedagógico (exemplo)', 1, 2, 9800, [2, 8]),
       item('escola', 1, 1, 'Merenda escolar (exemplo)', 60, 200, 7.5),
       item('transporte', 4, 1, 'Diesel do transporte escolar (exemplo)', 1, 12, 6400),
@@ -172,9 +169,8 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       item('administracao', 6, 4, 'Provisão para rescisões (exemplo)', 1, 1, 60000, [12]),
       item('rural_viveiro', 0, 6, 'Insumos do viveiro (exemplo)', 1, 12, 1800),
       item('comunicacao', 2, null, 'Impressão de materiais (exemplo)', 1, 2, 4500, [5, 10]),
-    ],
-    autor,
-  );
+  ];
+  await inserirRegistros(p, despesas, itens2027, autor);
 
   const AREA_DA_FONTE = ['assistencia_social', 'educacao', 'saude', 'saude', null, null, 'rural'];
   const receita = (fonte: number, descricao: string, valor: number, captacao: 'garantida' | 'negociacao' | 'a_captar', meses?: number[]) => ({
@@ -188,10 +184,7 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
     ...(meses ? nosMeses(valor, meses) : igual(valor)),
     observacao: null,
   });
-  await inserirRegistros(
-    p,
-    receitas,
-    [
+  const receitas2027 = [
       receita(0, 'Termo de colaboração – Centro Dia (exemplo)', 980000, 'garantida'),
       receita(0, 'Termo de colaboração – Serviço no Domicílio (exemplo)', 420000, 'negociacao'),
       receita(1, 'Convênio da Escola (exemplo)', 1350000, 'garantida'),
@@ -200,9 +193,59 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       receita(4, 'Leilão 2027 (exemplo)', 420000, 'negociacao', [8]),
       receita(5, 'Doações mensais (exemplo)', 96000, 'garantida'),
       receita(6, 'Vendas Vem da Rural (exemplo)', 72000, 'a_captar'),
-    ],
-    autor,
-  );
+  ];
+  await inserirRegistros(p, receitas, receitas2027, autor);
+
+  // Exercícios anteriores (2025 e 2026), para o Painel geral comparar os anos.
+  // Valores inventados a partir dos de 2027; a folha desses anos entra como item de RH por serviço.
+  const [gruposAgora] = await lerTabelas(p, [GruposGasto] as const);
+  const grupoFolha = await inserirRegistros(p, gruposAgora, [{ nome: 'Folha de pagamento – anos anteriores (exemplo)', rh: true }], autor);
+  const FOLHA_POR_SERVICO: [string, number, number][] = [
+    ['administracao', 199000, 5], ['centro_dia_intergeracional', 212000, 0], ['servico_domicilio', 74000, 0], ['ur', 253000, 0],
+    ['comunicacao', 79500, 5], ['escola', 324000, 1], ['transporte', 67600, 1], ['rural_viveiro', 123000, 6], ['cer_reabilitacao', 187000, 2],
+  ];
+  const variacao = (i: number, ano: number) => 1 + (((i * 7 + ano) % 9) - 4) / 100;
+  for (const [ano, fator] of [[2025, 0.84], [2026, 0.92]] as const) {
+    await inserirRegistros(p, exercicios, [{ ano, situacao: 'encerrado', aprovado_em: `${ano - 1}-12-15`, aprovado_por: 'diretoria@exemplo.local' }], autor);
+    const itens = itens2027.map((d, i) => {
+      const vu = Math.round(d.valor_unitario * fator * variacao(i, ano) * 100) / 100;
+      const valor = valorDoItem(d.quantidade, d.ocorrencias, vu);
+      const meses = Array.from({ length: 12 }, (_, m) => Number((d as Record<string, unknown>)[`m${m + 1}`]) || 0);
+      const usados = meses.map((v, m) => (v ? m + 1 : 0)).filter(Boolean);
+      return {
+        ...d,
+        ano,
+        fonte_id: d.fonte_id ?? F(5),
+        valor_unitario: vu,
+        ...(d.distribuicao === 'igual' ? igual(valor) : nosMeses(valor, usados)),
+      };
+    });
+    const folha = FOLHA_POR_SERVICO.map(([servico, base, fonte], i) => {
+      const valor = Math.round(base * fator * variacao(i + 3, ano) * 100) / 100;
+      return {
+        ano, servico, grupo_id: grupoFolha[0].id, fonte_id: F(fonte), descricao: 'Folha de pagamento consolidada (exemplo)',
+        quantidade: 1, ocorrencias: 1, valor_unitario: valor, distribuicao: 'igual' as const, ...igual(valor),
+        categoria: 'operacional' as const, prioridade: null, cotacao: null, situacao: 'aceito' as const, observacao: null,
+      };
+    });
+    await inserirRegistros(p, despesas, [...itens, ...folha], autor);
+    // A receita própria cresce menos que a pública nos anos anteriores (dependência subindo em 2027).
+    const rec = receitas2027.map((r, i) => {
+      const propria = r.fonte_id === F(4) || r.fonte_id === F(5) || r.fonte_id === F(6);
+      const valor = Math.round(r.valor * (propria ? fator * 1.12 : fator * 0.97) * variacao(i, ano) * 100) / 100;
+      const meses = Array.from({ length: 12 }, (_, m) => Number((r as Record<string, unknown>)[`m${m + 1}`]) || 0);
+      const usados = meses.map((v, m) => (v ? m + 1 : 0)).filter(Boolean);
+      return {
+        ...r,
+        ano,
+        descricao: r.descricao.replace('2027', String(ano)),
+        valor,
+        captacao: 'garantida' as const,
+        ...(r.distribuicao === 'igual' ? igual(valor) : nosMeses(valor, usados)),
+      };
+    });
+    await inserirRegistros(p, receitas, rec, autor);
+  }
 
   await inserirRegistros(
     p,

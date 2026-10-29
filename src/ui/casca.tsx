@@ -28,7 +28,7 @@ export interface ItemNavegacao {
   rotulo: string;
   href: string;
   icone: NomeIcone;
-  filhos?: { rotulo: string; href: string }[];
+  filhos?: { rotulo: string; href: string; secao?: string }[];
 }
 
 export interface GrupoNavegacao {
@@ -75,10 +75,15 @@ function Navegacao({ grupos, aoNavegar }: { grupos: GrupoNavegacao[]; aoNavegar?
                   </Link>
                   {item.filhos && dentro && (
                     <ul className="mb-1 ml-[1.375rem] mt-0.5 space-y-0.5 border-l border-white/15 pl-3">
-                      {item.filhos.map((f) => {
-                        const filhoAtivo = ativo(caminho, f.href, f.href === item.href);
+                      {item.filhos.map((f, k) => {
+                        // Só o item mais específico fica marcado (ex.: Despesas, e não também Previsão).
+                        const candidatos = item.filhos!.filter((x) => ativo(caminho, x.href, x.href === item.href));
+                        const maisLongo = candidatos.sort((a, b) => b.href.length - a.href.length)[0];
+                        const filhoAtivo = maisLongo?.href === f.href;
+                        const novaSecao = f.secao && f.secao !== item.filhos![k - 1]?.secao;
                         return (
                           <li key={f.href}>
+                            {novaSecao && <p className="mb-0.5 mt-3 px-3 text-[0.7rem] font-semibold uppercase tracking-wider text-lateral-suave first:mt-1">{f.secao}</p>}
                             <Link
                               href={f.href}
                               onClick={aoNavegar}

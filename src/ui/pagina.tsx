@@ -44,8 +44,8 @@ export function CabecalhoPagina({
       )}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 max-w-3xl">
-          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-texto">{titulo}</h1>
-          {descricao && <div className="mt-1.5 text-texto-suave">{descricao}</div>}
+          <h1 className="text-[1.6rem] font-bold leading-tight tracking-tight text-texto">{titulo}</h1>
+          {descricao && <div className="mt-1 text-[0.95rem] text-texto-suave">{descricao}</div>}
         </div>
         {acoes && <div className="flex flex-wrap items-center gap-2">{acoes}</div>}
       </div>

@@ -151,11 +151,11 @@ export default async function Portal() {
           {apps.map((x) => (
             <CartaoApp
               key={x.id}
-              href={x.rota}
+              href={x.itens[0]?.href ?? x.rota}
               icone={<IconeOrcamento tamanho={24} />}
               nome={x.nome}
               descricao={x.descricao}
-              atalhos={x.itens.filter((i) => i.href !== x.rota).slice(0, 3)}
+              atalhos={x.itens.slice(1, 4)}
             />
           ))}
           {a.temPermissao('core.acessos.gerenciar') && (
