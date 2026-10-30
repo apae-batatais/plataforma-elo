@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { listarPropostas } from '@/modulos/orcamento/aplicacao/aprovacao';
 import { COTACAO_CURTA } from '@/modulos/orcamento/dominio/previsao';
@@ -22,7 +23,7 @@ const AGUARDANDO = 'Aguardando cotação';
 const SITUACAO = { proposta: 'Aguardando o Financeiro', aceito: 'Aceita', recusada: 'Recusada' } as const;
 const COR = { proposta: 'atencao', aceito: 'sucesso', recusada: 'erro' } as const;
 
-export default async function Propostas({ searchParams }: { searchParams: Promise<{ ano?: string; editar?: string; recusar?: string }> }) {
+export default async function Propostas({ searchParams }: { searchParams: Promise<{ ano?: string; editar?: string; recusar?: string; filtro?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
@@ -35,6 +36,9 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
   const aRecusar = sp.recusar && r.decide ? r.lista.find((x) => x.id === sp.recusar && x.situacao === 'proposta') : undefined;
   const pendentes = r.lista.filter((x) => x.situacao === 'proposta');
   const semCotacao = pendentes.filter((x) => x.valor === 0);
+  const soAguardando = sp.filtro === 'aguardando';
+  const lista = soAguardando ? semCotacao : r.lista;
+  const linkFiltro = (aguardando: boolean) => `${base}${aguardando ? '&filtro=aguardando' : ''}`;
   const emElaboracao = r.situacao === 'elaboracao';
 
   return (
@@ -75,7 +79,7 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
       )}
       {r.cota && semCotacao.length > 0 && emElaboracao && (
         <Aviso tipo="atencao" titulo={`${semCotacao.length} ${semCotacao.length === 1 ? 'proposta aguarda' : 'propostas aguardam'} cotação`}>
-          Use o lápis para informar quantidade, valor e meses. Filtre a coluna “Cotação” por “{AGUARDANDO}” para ver só essas.
+          Use o lápis para informar quantidade, valor e meses. O atalho “{AGUARDANDO}”, acima da lista, mostra só essas.
         </Aviso>
       )}
       {r.decide && pendentes.length > 0 && (
@@ -111,9 +115,27 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
         </JanelaFormulario>
       )}
 
+      {(r.cota || r.decide) && (
+        <nav aria-label="Mostrar" className="inline-flex rounded-lg border border-borda bg-superficie-2 p-0.5 text-sm">
+          {[
+            { aguardando: false, rotulo: `Todas (${r.lista.length})` },
+            { aguardando: true, rotulo: `${AGUARDANDO} (${semCotacao.length})` },
+          ].map((o) => (
+            <Link
+              key={o.rotulo}
+              href={linkFiltro(o.aguardando)}
+              aria-current={o.aguardando === soAguardando ? 'page' : undefined}
+              className={`rounded-md px-3 py-1 font-semibold ${o.aguardando === soAguardando ? 'bg-superficie text-texto shadow-[0_1px_2px_rgb(0_0_0/0.12)] ring-1 ring-borda' : 'text-texto-suave hover:text-texto'}`}
+            >
+              {o.rotulo}
+            </Link>
+          ))}
+        </nav>
+      )}
+
       <TabelaDados
         legenda={`Propostas de ${r.ano}`}
-        vazio={r.decide || r.cota ? 'Nenhuma proposta das coordenações.' : 'Você ainda não propôs nada. Use “Propor despesa”.'}
+        vazio={soAguardando ? 'Nenhuma proposta aguardando cotação.' : r.decide || r.cota ? 'Nenhuma proposta das coordenações.' : 'Você ainda não propôs nada. Use “Propor despesa”.'}
         totalRotulo="Total"
         colunas={[
           { chave: 'situacao', rotulo: 'Situação' },
@@ -125,7 +147,7 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
           { chave: 'valor', rotulo: 'Valor', tipo: 'moeda', somar: true },
           { chave: 'acoes', rotulo: '', fixa: true, largura: 'w-28' },
         ]}
-        linhas={r.lista.map((x) => ({
+        linhas={lista.map((x) => ({
           id: x.id,
           valores: {
             situacao: SITUACAO[x.situacao],

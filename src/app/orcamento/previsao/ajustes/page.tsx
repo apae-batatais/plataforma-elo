@@ -12,6 +12,7 @@ import { FormularioConfirmado } from "@/ui/confirmar";
 import { IconeCerto, IconeFechar } from "@/ui/icones";
 import { JanelaFormulario } from "@/ui/janela";
 import { CabecalhoPagina, Etiqueta } from "@/ui/pagina";
+import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from "@/ui/tabela-dados";
 import { acaoDecidirAjuste, acaoSolicitarAjuste } from "../acoes";
 
@@ -107,17 +108,7 @@ export default async function Ajustes({
         descricao="Depois de aprovado, o orçamento só muda por aqui. Remanejamento move valor entre despesas (o total não muda). Suplementação aumenta ou reduz um item. A Diretoria aprova cada pedido."
         acoes={
           <>
-            {prev.anos.length > 1 &&
-              prev.anos.map((ano) => (
-                <LinkBotao
-                  key={ano}
-                  href={`/orcamento/previsao/ajustes?ano=${ano}`}
-                  variante={ano === prev.ano ? "secundario" : "fantasma"}
-                  className={pequeno}
-                >
-                  {ano}
-                </LinkBotao>
-              ))}
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/ajustes?ano=${a}`} />
             {podeSolicitar && (
               <>
                 <JanelaFormulario

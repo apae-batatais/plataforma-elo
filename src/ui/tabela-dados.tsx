@@ -162,7 +162,10 @@ export function TabelaDados({
                     scope="col"
                     aria-sort={ativa ? (ordem!.sentido === 1 ? 'ascending' : 'descending') : undefined}
                     title={c.calculada ? 'Calculado pelo app' : undefined}
-                    className={`border-b border-borda px-3 py-2 text-[0.8rem] font-semibold ${grande ? 'whitespace-nowrap' : ''} ${alinhar} ${c.largura ?? ''} ${c.calculada ? 'bg-destaque-suave text-destaque' : ''} ${grande && ci === 0 ? 'sticky left-0 z-30 border-r bg-superficie-2' : ''}`}
+                    className={`border-b border-borda px-3 py-2 text-[0.8rem] font-semibold ${grande ? 'whitespace-nowrap' : ''} ${alinhar} ${c.largura ?? ''} ${c.calculada ? 'bg-destaque-suave text-destaque' : ''} ${grande && ci === 0 ? 'sticky left-0 z-30 border-r bg-superficie-2' : ''} ${
+                      // A primeira coluna costuma ser o nome do registro: largura mínima para não quebrar em várias linhas.
+                      ci === 0 && !grande && !c.largura && (c.tipo ?? 'texto') === 'texto' ? 'min-w-36 sm:min-w-52' : ''
+                    }`}
                   >
                     {c.fixa ? (
                       <span className={c.rotulo ? '' : 'sr-only'}>{c.rotulo || 'Ações'}</span>

@@ -39,6 +39,16 @@
   --serie-2: #eb6834;
   --serie-3: #1baf7a;
   --serie-4: #6250d6;
+  /* Exercícios (anos): escala ordinal de um tom só, do mais antigo (claro) ao atual (escuro). */
+  --ano-1: #86b6ef;
+  --ano-2: #3987e5;
+  --ano-3: #184f95;
+  --sobre-ano-1: #0d366b;
+  --sobre-ano-2: #ffffff;
+  --sobre-ano-3: #ffffff;
+  /* Polaridade (sobra × falta): azul e vermelho, validados para daltonismo. */
+  --positivo: #2a78d6;
+  --negativo: #d0473d;
   --grade: #e7e5e4;
   --referencia: #a5281f;
 }
@@ -68,6 +78,14 @@
     --serie-2: #d95926;
     --serie-3: #199e70;
     --serie-4: #9085e9;
+    --ano-1: #1c5cab;
+    --ano-2: #3987e5;
+    --ano-3: #86b6ef;
+    --sobre-ano-1: #ffffff;
+    --sobre-ano-2: #ffffff;
+    --sobre-ano-3: #0d366b;
+    --positivo: #3987e5;
+    --negativo: #dc5a4f;
     --grade: #2e2d2b;
     --referencia: #f0a69f;
   }

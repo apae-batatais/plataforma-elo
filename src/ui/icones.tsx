@@ -92,6 +92,12 @@ export const IconeSair = (p: Props) => (
     <path d="M10 8l-4 4 4 4M6 12h10" />
   </Icone>
 );
+export const IconeAjuda = (p: Props) => (
+  <Icone {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.8M12 17.2h.01" />
+  </Icone>
+);
 export const IconeCerto = (p: Props) => (
   <Icone {...p}>
     <path d="m5 12.5 4.5 4.5L19 7.5" />

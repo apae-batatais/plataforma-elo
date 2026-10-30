@@ -7,12 +7,14 @@ import { FormularioItem } from '@/modulos/orcamento/telas/formulario-item';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
-import { Botao, LinkBotao, pequeno } from '@/ui/botao';
+import { LinkBotao, pequeno } from '@/ui/botao';
 import { estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
+import { SelecaoAutomatica } from '@/ui/selecao-automatica';
+import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from '@/ui/tabela-dados';
 import { acaoCancelarItem, acaoFonteDaFolha, acaoSalvarDespesa } from '../acoes';
 
@@ -40,12 +42,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
         descricao="Itens por serviço (centro de custo), grupo de gasto e fonte de recurso. A folha de pagamento entra sozinha, no fim da página."
         acoes={
           <>
-            {prev.anos.length > 1 &&
-              prev.anos.map((a) => (
-                <LinkBotao key={a} href={`/orcamento/previsao/despesas?ano=${a}`} variante={a === prev.ano ? 'secundario' : 'fantasma'} className={pequeno}>
-                  {a}
-                </LinkBotao>
-              ))}
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/despesas?ano=${a}`} />
             {podeLancar && (
               <JanelaFormulario
                 rotulo={
@@ -203,7 +200,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                       <form action={acaoFonteDaFolha} className="flex flex-wrap items-center gap-2">
                         <input type="hidden" name="ano" value={prev.ano} />
                         <input type="hidden" name="servico" value={l.servico} />
-                        <select
+                        <SelecaoAutomatica
                           name="fonte_id"
                           defaultValue={l.fonte_id ?? ''}
                           aria-label={`Fonte da folha de ${l.nome}`}
@@ -215,10 +212,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                               {f.nome}
                             </option>
                           ))}
-                        </select>
-                        <Botao type="submit" variante="fantasma" className={pequeno}>
-                          Salvar
-                        </Botao>
+                        </SelecaoAutomatica>
                       </form>
                     ) : l.fonte_id ? (
                       l.fonteNome
