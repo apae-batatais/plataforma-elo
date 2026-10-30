@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { painelDeAcessos } from '@/nucleo/acesso/gestao';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { situacaoDaEstrutura } from '@/plataforma/estrutura';
+import { Aviso } from '@/ui/aviso';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
@@ -22,7 +24,7 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
   if (usuario.estruturaPendente) redirect('/admin/estrutura');
   if (!usuario.autorizador.temPermissao('core.acessos.gerenciar')) redirect('/');
   const app = await obterAplicacao();
-  const painel = await painelDeAcessos(app.planilhas, usuario.autorizador);
+  const [painel, est] = await Promise.all([painelDeAcessos(app.planilhas, usuario.autorizador), situacaoDaEstrutura()]);
   const dominio = app.config.modo === 'producao' ? app.config.dominio : null;
   const ativos = painel.usuarios.filter((u) => u.ativo);
   const inativos = painel.usuarios.filter((u) => !u.ativo);
@@ -116,6 +118,21 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
         <JanelaFormulario rotulo={null} abrirAoCarregar voltarPara="/admin/acessos" titulo={`Atribuir perfil a ${pessoaDoPerfil.nome}`} descricao="Define o que a pessoa vê e onde.">
           <FormPerfil email={pessoaDoPerfil.email} />
         </JanelaFormulario>
+      )}
+
+      {est?.desatualizada && (
+        <Aviso
+          tipo="atencao"
+          titulo="Perfis ou permissões novos ainda não valem"
+          acao={
+            <LinkBotao href="/admin/estrutura" variante="secundario">
+              Preparar estrutura
+            </LinkBotao>
+          }
+        >
+          A versão publicada trouxe mudanças de perfis e permissões. Enquanto ninguém rodar Preparar estrutura, quem tem esses perfis pode não ver todos os
+          itens do menu, mesmo com o perfil atribuído aqui.
+        </Aviso>
       )}
 
       <TabelaDados

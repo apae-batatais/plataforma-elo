@@ -5,6 +5,7 @@ import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { esquecerSituacaoDaEstrutura } from '@/plataforma/estrutura';
 import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
 
@@ -31,6 +32,7 @@ export async function prepararEstruturaAgora() {
     if (!(erro instanceof ErroArmazenamento)) throw erro;
     redirect(`/admin/estrutura?resultado=${encodeURIComponent(`Não foi possível preparar: ${erro.message}`)}`);
   }
+  esquecerSituacaoDaEstrutura();
   await registrarAuditoria(app.planilhas, {
     usuario: usuario.email,
     acao: 'estrutura',

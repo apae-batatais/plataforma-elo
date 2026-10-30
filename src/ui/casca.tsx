@@ -32,6 +32,8 @@ export interface ItemNavegacao {
   href: string;
   icone: NomeIcone;
   filhos?: { rotulo: string; href: string; secao?: string }[];
+  /** Marca de pendência ao lado do nome (ex.: "Atualizar"). */
+  alerta?: string;
 }
 
 export interface GrupoNavegacao {
@@ -75,6 +77,9 @@ function Navegacao({ grupos, aoNavegar }: { grupos: GrupoNavegacao[]; aoNavegar?
                     {dentro && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-marca" aria-hidden="true" />}
                     <Icone />
                     {item.rotulo}
+                    {item.alerta && (
+                      <span className="ml-auto rounded-full bg-marca px-2 py-0.5 text-[0.7rem] font-bold text-lateral">{item.alerta}</span>
+                    )}
                   </Link>
                   {item.filhos && dentro && (
                     <ul className="mb-1 ml-[1.375rem] mt-0.5 space-y-0.5 border-l border-white/15 pl-3">
