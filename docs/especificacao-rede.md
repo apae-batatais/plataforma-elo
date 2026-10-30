@@ -68,6 +68,23 @@ As credenciais (`GOOGLE_CONTA_SERVICO`, `GOOGLE_CLIENT_ID`, `SESSAO_SEGREDO`)
 são da Operadora e valem para todas. Na R2, a lista sai das variáveis e passa
 para a planilha `rede`, com a tela de cadastro.
 
+## Configuração da Operadora (R2)
+A Operadora cria a planilha da rede no próprio Drive (em branco), compartilha
+com a conta de serviço e cadastra na Netlify a variável `REDE`:
+
+```json
+{"planilha":"<id da planilha da rede>","dominio":"<domínio dos e-mails da Operadora>",
+ "enderecos":["rede.<domínio da Operadora>"],"administradores":["<e-mail>"]}
+```
+
+- `enderecos` (opcional): onde a área da rede abre (`/rede`). Vazio: em qualquer endereço do Elo.
+- `administradores`: entram sempre, para a rede nunca ficar sem quem a administre;
+  outros são incluídos na tela Administradores.
+- As abas da planilha da rede (Instituicoes, Administradores, Registros) são criadas sozinhas no primeiro acesso.
+- Enquanto a rede não tem instituições, valem as das variáveis da R1 (`DOMINIO`/`PLANILHAS` ou `INSTITUICOES`).
+  Depois de cadastrar e ativar as instituições na rede, essas variáveis podem sair.
+- Instituição "em preparação" ou "suspensa": ninguém entra pelo endereço dela; a página explica.
+
 ## Entregas
 - **R1**: descoberta da instituição pelo endereço; planilhas, login e sessão por
   instituição; nome, domínio e dados iniciais vindos do cadastro (sem Apae

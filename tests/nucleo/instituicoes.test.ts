@@ -49,6 +49,26 @@ describe('configuração das instituições', () => {
   });
 });
 
+describe('configuração da Operadora (REDE)', () => {
+  const REDE = JSON.stringify({ planilha: '1RedeXXXXXXXXXXXXXXXX', dominio: 'Operadora.org', enderecos: ['https://rede.operadora.org/'], administradores: ['Ana@operadora.org'] });
+
+  it('lê a rede; sem DOMINIO nem INSTITUICOES, as instituições vêm só da planilha da rede', () => {
+    const c = lerConfigGeral({ ...CREDENCIAIS, REDE });
+    expect(c.modo === 'producao' && c.rede).toEqual({ planilha: '1RedeXXXXXXXXXXXXXXXX', dominio: 'operadora.org', enderecos: ['rede.operadora.org'], administradores: ['ana@operadora.org'] });
+    expect(c.instituicoes).toEqual([]);
+  });
+
+  it('com a rede e as variáveis antigas, as antigas ficam de reserva enquanto a rede está vazia', () => {
+    const c = lerConfigGeral({ ...CREDENCIAIS, REDE, DOMINIO: 'apaeexemplo.org.br', PLANILHAS: JSON.stringify(plan(1)) });
+    expect(c.instituicoes.map((i) => i.dominio)).toEqual(['apaeexemplo.org.br']);
+  });
+
+  it('rede incompleta é explicada; a demonstração tem uma Operadora fictícia', () => {
+    expect(() => lerConfigGeral({ ...CREDENCIAIS, REDE: JSON.stringify({ planilha: '1RedeXXXXXXXXXXXXXXXX', dominio: 'x.org' }) })).toThrow(/REDE/);
+    expect(lerConfigGeral({}).rede).toMatchObject({ administradores: ['rede@exemplo.local'] });
+  });
+});
+
 describe('descoberta da instituição pelo endereço', () => {
   const duas = lerConfigGeral({ ...CREDENCIAIS, INSTITUICOES: DUAS });
 

@@ -23,6 +23,10 @@ export class ArmazenamentoMemoria implements Armazenamento {
     return linhas;
   }
 
+  async listarAbas(planilha: string) {
+    return [...this.planilha(planilha).keys()];
+  }
+
   async lerAbas(planilha: string, abas: readonly string[]) {
     const resultado: Record<string, Linha[]> = {};
     for (const a of abas) resultado[a] = this.aba(planilha, a).map((l) => [...l]);

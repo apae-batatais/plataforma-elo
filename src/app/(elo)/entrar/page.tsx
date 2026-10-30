@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { configGeral, instituicaoAtual } from '@/plataforma/instituicao';
+import { instituicoesDoElo } from '@/plataforma/rede';
 import { MarcaElo, NOME_PLATAFORMA, textoVersao } from '@/ui/marca';
 import { redirect } from 'next/navigation';
 import { lerTabelas } from '@/nucleo/armazenamento/tabela';
@@ -71,7 +72,7 @@ export default async function Entrar() {
     );
   }
 
-  const instituicoes = configGeral().instituicoes;
+  const instituicoes = (await instituicoesDoElo(configGeral())).filter((i) => i.situacao === 'ativa');
   const [usuarios, atribuicoes, perfis, servicos, areas] = await lerTabelas(app.planilhas, [Usuarios, Atribuicoes, Perfis, Servicos, Areas] as const);
   const nomePerfil = new Map(perfis.todos().map((p) => [p.codigo, p.nome]));
   const nomeEscopo = new Map([...servicos.todos(), ...areas.todos()].map((s) => [s.codigo, s.nome]));
@@ -132,6 +133,12 @@ export default async function Entrar() {
             );
           })}
         </ul>
+        <p className="mt-8 text-sm text-texto-suave">
+          Opera o Elo?{' '}
+          <a href="/rede" className="font-semibold text-destaque hover:underline">
+            Entrar na Administração da rede
+          </a>
+        </p>
       </div>
     </Moldura>
   );

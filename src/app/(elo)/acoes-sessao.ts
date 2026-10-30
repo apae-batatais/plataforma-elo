@@ -10,6 +10,7 @@ import { podeEntrar } from '@/nucleo/sessao/carregar';
 import { conferirLoginGoogle, ErroLogin } from '@/nucleo/sessao/google';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { COOKIE_INSTITUICAO_DEMONSTRACAO, configGeral } from '@/plataforma/instituicao';
+import { instituicoesDoElo } from '@/plataforma/rede';
 import { encerrarSessao, iniciarSessao } from '@/plataforma/sessao';
 
 /** Demonstração: entra como um usuário fictício (sem senha, só dados fictícios). */
@@ -27,7 +28,7 @@ export async function entrarNaDemonstracao(formulario: FormData) {
 export async function escolherInstituicaoDemonstracao(formulario: FormData) {
   if (configGeral().modo !== 'demonstracao') throw new Error('A escolha de instituição só existe na demonstração.');
   const codigo = String(formulario.get('instituicao') ?? '');
-  if (!configGeral().instituicoes.some((i) => i.codigo === codigo)) throw new Error('Instituição fictícia não encontrada.');
+  if (!(await instituicoesDoElo(configGeral())).some((i) => i.codigo === codigo && i.situacao === 'ativa')) throw new Error('Instituição fictícia não encontrada.');
   (await cookies()).set(COOKIE_INSTITUICAO_DEMONSTRACAO, codigo, { httpOnly: true, sameSite: 'lax', path: '/' });
   await encerrarSessao();
   redirect('/entrar');
