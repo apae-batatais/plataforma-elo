@@ -1,5 +1,6 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { lerTabela } from '@/nucleo/armazenamento/tabela';
 import { ErroArmazenamento, ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
@@ -8,6 +9,7 @@ import { Usuarios } from '@/nucleo/estrutura/tabelas';
 import { podeEntrar } from '@/nucleo/sessao/carregar';
 import { conferirLoginGoogle, ErroLogin } from '@/nucleo/sessao/google';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { COOKIE_INSTITUICAO_DEMONSTRACAO, configGeral } from '@/plataforma/instituicao';
 import { encerrarSessao, iniciarSessao } from '@/plataforma/sessao';
 
 /** Demonstração: entra como um usuário fictício (sem senha, só dados fictícios). */
@@ -19,6 +21,16 @@ export async function entrarNaDemonstracao(formulario: FormData) {
   if (!conta) throw new Error('Usuário fictício não encontrado.');
   await iniciarSessao(email, String(formulario.get('nome') ?? email));
   redirect('/');
+}
+
+/** Demonstração: troca a instituição fictícia (cada uma com os próprios dados). */
+export async function escolherInstituicaoDemonstracao(formulario: FormData) {
+  if (configGeral().modo !== 'demonstracao') throw new Error('A escolha de instituição só existe na demonstração.');
+  const codigo = String(formulario.get('instituicao') ?? '');
+  if (!configGeral().instituicoes.some((i) => i.codigo === codigo)) throw new Error('Instituição fictícia não encontrada.');
+  (await cookies()).set(COOKIE_INSTITUICAO_DEMONSTRACAO, codigo, { httpOnly: true, sameSite: 'lax', path: '/' });
+  await encerrarSessao();
+  redirect('/entrar');
 }
 
 /** Produção: confere o login do Google e verifica se o e-mail tem acesso. */

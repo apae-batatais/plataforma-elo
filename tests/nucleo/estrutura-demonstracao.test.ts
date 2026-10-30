@@ -61,6 +61,7 @@ describe('configuração', () => {
       GOOGLE_CONTA_SERVICO: '{"client_email":"sa@proj.iam.gserviceaccount.com","private_key":"-----BEGIN PRIVATE KEY-----x"}',
       PLANILHAS: '{"nucleo":"1AbCdEfGhIjK","auditoria":"1ZyXwVuTsRqP"}',
       SESSAO_SEGREDO: 'x'.repeat(40),
+      DOMINIO: 'apaeexemplo.org.br',
     };
     const c = lerConfig({ ...base, GOOGLE_CLIENT_ID: ' "123456-abc123.apps.googleusercontent.com"\n' });
     expect(c.modo === 'producao' && c.googleClientId).toBe('123456-abc123.apps.googleusercontent.com');
@@ -75,6 +76,7 @@ describe('configuração', () => {
       GOOGLE_CLIENT_ID: '123-abc.apps.googleusercontent.com',
       SESSAO_SEGREDO: 'x'.repeat(40),
       ADMINISTRADORES_INICIAIS: 'Diretoria@apaebatatais.org.br',
+      DOMINIO: 'apaebatatais.org.br',
     });
     expect(c.modo).toBe('producao');
     if (c.modo === 'producao') expect(c.administradoresIniciais).toEqual(['diretoria@apaebatatais.org.br']);

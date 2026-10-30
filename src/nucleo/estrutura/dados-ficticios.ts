@@ -7,6 +7,12 @@ import { Faker, base, pt_BR } from '@faker-js/faker';
 import { inserir, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, Papeis, Pessoas, Servicos, Usuarios, VinculosFamiliares, VinculosServico } from './tabelas';
 
+/** Unidades das instituições fictícias (demonstração e testes). */
+export const UNIDADES_FICTICIAS = [
+  { codigo: 'sede', nome: 'Sede (exemplo)' },
+  { codigo: 'rural', nome: 'Unidade Rural (Filial)' },
+];
+
 export const SERVICOS_FICTICIOS = [
   { codigo: 'ur', nome: 'Unidade Referenciada (exemplo)', unidade: 'sede', area: 'assistencia_social', vagas: null, atendidos: 12 },
   { codigo: 'centro_dia_intergeracional', nome: 'Centro Dia Intergeracional (exemplo)', unidade: 'sede', area: 'assistencia_social', vagas: 80, atendidos: 8 },

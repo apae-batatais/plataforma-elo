@@ -2,10 +2,12 @@
  * Configuração inicial (não são dados de pessoas): unidades, áreas, perfis e
  * as permissões do Núcleo. Gravada por "Preparar estrutura" só em abas vazias.
  */
-export const UNIDADES_INICIAIS = [
-  { codigo: 'sede', nome: 'Apae Batatais (Sede)' },
-  { codigo: 'rural', nome: 'Apae Rural (Filial)' },
-];
+/**
+ * Unidades de uma instituição nova quando o cadastro dela não diz quais são.
+ * Nada de uma instituição específica fica no código (ADR-012): as unidades de
+ * cada Apae vêm do cadastro dela.
+ */
+export const UNIDADES_PADRAO: readonly { codigo: string; nome: string }[] = [{ codigo: 'sede', nome: 'Sede' }];
 
 export const AREAS_INICIAIS = [
   { codigo: 'saude', nome: 'Saúde' },

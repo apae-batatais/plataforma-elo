@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { instituicaoAtual } from '@/plataforma/instituicao';
+import { configGeral, instituicaoAtual } from '@/plataforma/instituicao';
 import { MarcaElo, NOME_PLATAFORMA, textoVersao } from '@/ui/marca';
 import { redirect } from 'next/navigation';
 import { lerTabelas } from '@/nucleo/armazenamento/tabela';
@@ -8,13 +8,13 @@ import { Areas, Atribuicoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutu
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
-import { entrarNaDemonstracao } from '../acoes-sessao';
+import { entrarNaDemonstracao, escolherInstituicaoDemonstracao } from '../acoes-sessao';
 import { BotaoGoogle } from './botao-google';
 
 export const metadata: Metadata = { title: 'Entrar' };
 
-function Moldura({ children }: { children: React.ReactNode }) {
-  const instituicao = instituicaoAtual();
+async function Moldura({ children }: { children: React.ReactNode }) {
+  const instituicao = await instituicaoAtual();
   return (
     <div className="grid min-h-[calc(100vh-2.5rem)] lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
       <section className="flex flex-col justify-between bg-lateral px-8 py-10 text-lateral-texto lg:px-12 lg:py-14">
@@ -71,6 +71,7 @@ export default async function Entrar() {
     );
   }
 
+  const instituicoes = configGeral().instituicoes;
   const [usuarios, atribuicoes, perfis, servicos, areas] = await lerTabelas(app.planilhas, [Usuarios, Atribuicoes, Perfis, Servicos, Areas] as const);
   const nomePerfil = new Map(perfis.todos().map((p) => [p.codigo, p.nome]));
   const nomeEscopo = new Map([...servicos.todos(), ...areas.todos()].map((s) => [s.codigo, s.nome]));
@@ -80,7 +81,28 @@ export default async function Entrar() {
     <Moldura>
       <div className="w-full max-w-xl">
         <h1 className="text-2xl font-bold">Entrar na demonstração</h1>
-        <p className="mt-1.5 text-texto-suave">Escolha um perfil fictício para ver a plataforma do jeito que ele vê.</p>
+        <p className="mt-1.5 text-texto-suave">Escolha a instituição e um perfil fictício para ver a plataforma do jeito que ele vê.</p>
+        {instituicoes.length > 1 && (
+          <form action={escolherInstituicaoDemonstracao} className="mt-5">
+            <fieldset>
+              <legend className="text-sm font-semibold">Instituição</legend>
+              <p className="text-xs text-texto-suave">Cada uma tem os próprios dados: o que muda numa não aparece na outra.</p>
+              <div className="mt-2 inline-flex rounded-lg border border-borda bg-superficie-2 p-0.5 text-sm">
+                {instituicoes.map((i) => (
+                  <button
+                    key={i.codigo}
+                    name="instituicao"
+                    value={i.codigo}
+                    aria-pressed={i.codigo === app.instituicao.codigo}
+                    className={`rounded-md px-3 py-1 font-semibold ${i.codigo === app.instituicao.codigo ? 'bg-superficie text-texto shadow-[0_1px_2px_rgb(0_0_0/0.12)] ring-1 ring-borda' : 'text-texto-suave hover:text-texto'}`}
+                  >
+                    {i.nome}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          </form>
+        )}
         <ul className="mt-6 grid gap-2 sm:grid-cols-2">
           {usuarios.ativos().map((u) => {
             const deles = atribuicoes.ativos().filter((a) => a.usuario_email === u.email);
