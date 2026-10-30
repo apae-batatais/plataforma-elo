@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { situacaoDaEstrutura } from '@/plataforma/estrutura';
-import { instituicaoAtual } from '@/plataforma/instituicao';
+import { configGeral, ErroInstituicao, instituicaoAtual } from '@/plataforma/instituicao';
 import { Suspense } from 'react';
 import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
-import { ErroConfiguracao, lerConfig } from '@/nucleo/config';
+import { ErroConfiguracao } from '@/nucleo/config';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { navegacaoDoUsuario } from '@/plataforma/navegacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -13,10 +13,15 @@ import { sair } from './acoes-sessao';
 import { ConfiguracaoInvalida } from './configuracao-invalida';
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: { default: 'Elo · Apae Batatais', template: '%s · Elo' },
-  description: 'Elo: a plataforma de gestão da Apae Batatais',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const nome = await instituicaoAtual()
+    .then((i) => i.nome)
+    .catch(() => null);
+  return {
+    title: { default: nome ? `Elo · ${nome}` : 'Elo', template: '%s · Elo' },
+    description: nome ? `Elo: a plataforma de gestão da ${nome}` : 'Elo: plataforma de gestão',
+  };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +43,7 @@ const faixaDemonstracao = (
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   let app, usuario;
   try {
-    lerConfig();
+    configGeral();
     [app, usuario] = await Promise.all([obterAplicacao(), usuarioLogado()]);
   } catch (erro) {
     const problema = (mensagem: string, titulo?: string) => (
@@ -49,6 +54,14 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       </Documento>
     );
     if (erro instanceof ErroConfiguracao) return problema(erro.message);
+    if (erro instanceof ErroInstituicao) {
+      return problema(
+        erro.motivo === 'desconhecida'
+          ? `${erro.message} Confira o endereço digitado. Se a sua instituição está chegando ao Elo agora, o endereço é ativado pela Administração da rede.`
+          : `${erro.message} Fale com a Administração da rede.`,
+        erro.motivo === 'desconhecida' ? 'Endereço não cadastrado' : 'Acesso suspenso',
+      );
+    }
     if (erro instanceof ErroArmazenamento) return problema(erro.message, 'A plataforma não conseguiu acessar as planilhas');
     throw erro;
   }
@@ -73,7 +86,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         usuario={{ nome: usuario.nome, email: usuario.email, perfis: usuario.perfis.map((p) => p.nome) }}
         sair={sair}
         faixa={demonstracao ? faixaDemonstracao : undefined}
-        instituicao={instituicaoAtual().nome}
+        instituicao={app.instituicao.nome}
       >
         <Suspense>
           <Notificacao />

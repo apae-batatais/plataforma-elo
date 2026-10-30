@@ -1,15 +1,37 @@
 /**
- * Dados da instituição (Apae) que está usando a plataforma.
- * Hoje há uma só (Apae Batatais). Quando a plataforma atender várias Apaes,
- * este é o único ponto que passa a descobrir a Apae pelo endereço acessado.
+ * Qual instituição (Apae ou entidade) está sendo usada nesta requisição.
+ * Em produção, pelo endereço acessado; na demonstração, pela escolha feita na
+ * tela de entrada (cookie). Somente servidor.
  */
-export interface Instituicao {
-  /** Nome curto, como aparece na interface (ex.: "Apae Batatais"). */
-  nome: string;
-  /** Razão social. */
-  nomeCompleto: string;
+import 'server-only';
+import { cookies, headers } from 'next/headers';
+import { acharInstituicao, lerConfigGeral, type ConfigGeral, type Instituicao } from '@/nucleo/config';
+
+export type { Instituicao };
+export const COOKIE_INSTITUICAO_DEMONSTRACAO = 'elo_instituicao';
+
+/** O endereço acessado não pertence a nenhuma instituição, ou a instituição está suspensa. */
+export class ErroInstituicao extends Error {
+  constructor(
+    message: string,
+    readonly motivo: 'desconhecida' | 'suspensa',
+  ) {
+    super(message);
+  }
 }
 
-export function instituicaoAtual(): Instituicao {
-  return { nome: 'Apae Batatais', nomeCompleto: 'Associação de Pais e Amigos dos Excepcionais de Batatais' };
+let geral: ConfigGeral | undefined;
+export function configGeral(): ConfigGeral {
+  geral ??= lerConfigGeral();
+  return geral;
+}
+
+export async function instituicaoAtual(): Promise<Instituicao> {
+  const g = configGeral();
+  const host = (await headers()).get('x-forwarded-host') ?? (await headers()).get('host');
+  const escolha = g.modo === 'demonstracao' ? (await cookies()).get(COOKIE_INSTITUICAO_DEMONSTRACAO)?.value : undefined;
+  const inst = acharInstituicao(g, host, escolha);
+  if (!inst) throw new ErroInstituicao('Este endereço não pertence a nenhuma instituição do Elo.', 'desconhecida');
+  if (inst.situacao === 'suspensa') throw new ErroInstituicao(`O acesso da ${inst.nome} ao Elo está suspenso. Os dados continuam no Drive da instituição.`, 'suspensa');
+  return inst;
 }

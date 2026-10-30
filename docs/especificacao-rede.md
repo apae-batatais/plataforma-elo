@@ -52,6 +52,22 @@ Duas instituições fictícias ("Apae Exemplo" e "Apae Modelo") e uma Operadora
 fictícia, para conferir na prévia que uma instituição não vê a outra e que a
 Administração da rede não vê dados de nenhuma.
 
+## Configuração na hospedagem (R1)
+Até a R2, as instituições ficam nas variáveis da Netlify (contas da Operadora):
+
+- **Uma instituição** (como hoje): `DOMINIO` (obrigatório), `PLANILHAS`,
+  `ADMINISTRADORES_INICIAIS`, `INSTITUICAO_NOME` e `INSTITUICAO_RAZAO_SOCIAL`.
+  Atende qualquer endereço.
+- **Várias**: `INSTITUICOES`, uma lista em JSON. Cada item: `codigo`, `nome`,
+  `nomeCompleto`, `dominio`, `enderecos` (ex.: `["elo.apaefranca.org.br"]`),
+  `planilhas` (`nucleo`, `auditoria` e as dos módulos), `administradoresIniciais`,
+  `unidades` (opcional) e `situacao` (`ativa`, `preparacao` ou `suspensa`).
+  Endereço que não está na lista mostra "Endereço não cadastrado".
+
+As credenciais (`GOOGLE_CONTA_SERVICO`, `GOOGLE_CLIENT_ID`, `SESSAO_SEGREDO`)
+são da Operadora e valem para todas. Na R2, a lista sai das variáveis e passa
+para a planilha `rede`, com a tela de cadastro.
+
 ## Entregas
 - **R1**: descoberta da instituição pelo endereço; planilhas, login e sessão por
   instituição; nome, domínio e dados iniciais vindos do cadastro (sem Apae

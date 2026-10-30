@@ -64,7 +64,7 @@ describe('primeiro uso com planilhas em branco', () => {
     }
     const r = await prepararEstrutura(p);
     expect(r.abasCriadas).toHaveLength(12);
-    expect(r.registrosIniciais).toBe(25); // 2 unidades + 8 áreas + 6 perfis + 9 permissões
+    expect(r.registrosIniciais).toBe(24); // 1 unidade (padrão) + 8 áreas + 6 perfis + 9 permissões
     // 2 (abas, uma por planilha) + 1 (leitura) + 4 (gravações) = 7
     expect(operacoes).toBeLessThanOrEqual(7);
   });

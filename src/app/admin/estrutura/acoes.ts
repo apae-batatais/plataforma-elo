@@ -27,12 +27,12 @@ export async function prepararEstruturaAgora() {
   const estrutura = { ...ESTRUTURA_DOS_MODULOS, tabelas: (ESTRUTURA_DOS_MODULOS.tabelas ?? []).filter((t) => !faltando.has(t.planilha)) };
   let r;
   try {
-    r = await prepararEstrutura(app.planilhas, estrutura, usuario.email);
+    r = await prepararEstrutura(app.planilhas, estrutura, usuario.email, app.instituicao.unidades);
   } catch (erro) {
     if (!(erro instanceof ErroArmazenamento)) throw erro;
     redirect(`/admin/estrutura?resultado=${encodeURIComponent(`Não foi possível preparar: ${erro.message}`)}`);
   }
-  esquecerSituacaoDaEstrutura();
+  await esquecerSituacaoDaEstrutura();
   await registrarAuditoria(app.planilhas, {
     usuario: usuario.email,
     acao: 'estrutura',

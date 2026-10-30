@@ -49,7 +49,7 @@ export default async function Ajuda() {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const a = usuario.autorizador;
-  const instituicao = instituicaoAtual();
+  const instituicao = await instituicaoAtual();
   const decide = a.temPermissao('orcamento.previsao.editar');
   const pode = {
     decide,
@@ -76,8 +76,8 @@ export default async function Ajuda() {
           <Sub>Como entrar</Sub>
           <Passos
             itens={[
-              `Abra o endereço do ${NOME_PLATAFORMA} no navegador do computador ou do celular.`,
-              'Clique em Entrar com Google e use a sua conta institucional. Contas pessoais (Gmail) não entram.',
+              `Abra o endereço do ${NOME_PLATAFORMA} da ${instituicao.nome} no navegador do computador ou do celular. Cada instituição tem o próprio endereço e os próprios dados.`,
+              'Clique em Entrar com Google e use a sua conta institucional, do domínio da sua instituição. Contas pessoais (Gmail) e de outras instituições não entram.',
               'Se aparecer a mensagem de que o seu e-mail ainda não tem acesso, peça à Administração da plataforma para cadastrar o seu e-mail e o seu perfil.',
             ]}
           />
