@@ -267,7 +267,7 @@ export default async function Ajuda() {
             pode.organizacao && 'Serviços: os centros de custo, cada um numa área e numa unidade. "Cadastrar em lote" cadastra vários de uma vez; excluídos podem ser reativados em "Serviços excluídos".',
             pode.organizacao && 'Áreas: o nome é único; não há duas áreas com o mesmo nome.',
             pode.acessos && 'Acessos: "Dar acesso" cadastra o e-mail institucional e o primeiro perfil; "Atribuir perfil" acrescenta outro. Em "Vale para", escolha toda a instituição, uma unidade, uma área ou um serviço.',
-            pode.organizacao && 'Estrutura das planilhas: "Preparar estrutura" cria as abas e colunas que faltam. Rode depois de cada atualização que avise sobre abas novas. Nada é apagado.',
+            pode.organizacao && 'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial); depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
           ]}
         />
       ),
@@ -282,7 +282,7 @@ export default async function Ajuda() {
       <>
         <dl className="space-y-3">
           {[
-            ['Não vejo um item no menu.', 'O menu mostra só o que o seu perfil permite. Peça à Administração da plataforma para conferir o seu perfil.'],
+            ['Não vejo um item no menu.', 'O menu mostra só o que o seu perfil permite. Peça à Administração da plataforma para conferir o seu perfil. Logo depois de uma atualização do Elo, pode faltar rodar "Preparar estrutura": a Administração recebe esse aviso.'],
             ['Diz que o registro foi alterado por outra pessoa.', 'Outra pessoa salvou primeiro. Recarregue a tela, confira e faça a sua alteração de novo.'],
             ['Não consigo aprovar o exercício.', 'O botão só libera sem fonte "a definir" e sem proposta aguardando decisão. A Previsão do ano mostra o que falta.'],
             ['Um funcionário não aparece em nenhum serviço.', 'A lotação dele não soma 100%. Corrija em Folha de pagamento › Lotação.'],
