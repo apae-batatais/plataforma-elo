@@ -1,0 +1,60 @@
+# Especificação — Várias instituições no Elo (Rede)
+
+Decisão de arquitetura: ADR-012. Este documento descreve o que muda para quem usa.
+"Instituição" é cada Apae ou entidade que usa o Elo, inclusive a Apae Batatais.
+"Operadora" é quem mantém o Elo: hoje a Apae Batatais; no futuro, uma empresa.
+
+## Quem faz o quê
+| Quem | O que faz |
+| --- | --- |
+| Administração da rede (Operadora) | Cadastra, confere, suspende e reativa instituições; publica atualizações; dá suporte técnico. Não vê dados das instituições |
+| TI ou Diretoria da instituição | Cria o endereço `elo.<domínio>` no DNS, cria as planilhas no próprio Drive e compartilha com a conta de serviço |
+| Administração da plataforma (de cada instituição) | Roda "Preparar estrutura", cadastra unidades, áreas, serviços e acessos da sua instituição |
+
+## Telas novas
+1. **Rede › Instituições** (só Administração da rede, no endereço da Operadora):
+   lista com situação, endereço, domínio e estado das planilhas (encontradas,
+   compartilhadas, estrutura em dia). Ações: cadastrar, alterar, suspender, reativar.
+2. **Cadastro de uma instituição**: nome curto, razão social, domínio de e-mail,
+   endereços de acesso, unidades iniciais, IDs das planilhas e e-mails dos
+   administradores iniciais. Botão **Conferir** testa cada planilha e mostra o
+   que falta, em português, sem gravar nada.
+3. **Endereço não cadastrado** (pública): explica que o endereço não pertence a
+   nenhuma instituição do Elo, sem mostrar dados.
+
+## Passo a passo para uma instituição nova
+1. A Administração da rede cadastra a instituição ("em preparação").
+2. A instituição cria `elo.<domínio>` no DNS (CNAME); a Operadora inclui o
+   endereço na Netlify e no cliente OAuth do Google.
+3. A instituição cria as planilhas no próprio Drive e compartilha com a conta de serviço.
+4. A Administração da rede cola os IDs e usa **Conferir**.
+5. O administrador inicial entra, roda **Preparar estrutura** e cadastra a
+   organização e os acessos. A situação passa a "ativa".
+
+## Regras (com teste)
+1. Cada requisição usa só as planilhas da instituição do endereço acessado.
+2. Login só com e-mail do domínio da instituição do endereço; a sessão de uma não vale em outra.
+3. Instituição suspensa: ninguém entra; os dados continuam no Drive dela.
+4. A Administração da rede não vê pessoas, folha nem orçamento de nenhuma instituição, inclusive da Apae Batatais.
+5. Nada de uma instituição fica fixo no código: nome, domínio, unidades e áreas vêm do cadastro.
+6. Toda alteração no cadastro da Rede registra auditoria (colunas, nunca valores).
+7. Sem a planilha `rede`, o Elo funciona como hoje, com uma instituição só.
+
+## Manual e Ajuda
+Cada entrega atualiza o manual e a tela Ajuda no mesmo Pull Request, só com o
+que já existe:
+- R1: "Primeiros passos" explica o endereço próprio de cada instituição.
+- R2: capítulo "Administração da rede" (visível só para esse perfil).
+- R3: guia à parte "Como trazer uma instituição para o Elo" e termo de adesão.
+
+## Demonstração
+Duas instituições fictícias ("Apae Exemplo" e "Apae Modelo") e uma Operadora
+fictícia, para conferir na prévia que uma instituição não vê a outra e que a
+Administração da rede não vê dados de nenhuma.
+
+## Entregas
+- **R1**: descoberta da instituição pelo endereço; planilhas, login e sessão por
+  instituição; nome, domínio e dados iniciais vindos do cadastro (sem Apae
+  Batatais fixa no código); página de endereço não cadastrado; demonstração.
+- **R2**: planilha `rede` da Operadora, perfil Administração da rede, telas de cadastro e conferência.
+- **R3**: guia de adesão, termo de adesão (LGPD) e roteiro de transferência da Operadora.
