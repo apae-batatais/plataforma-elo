@@ -154,6 +154,14 @@ describe('cotação pelo Setor de Compras', () => {
     await expect(cotarProposta(p, c, id, (await lerTabela(p, Despesas)).porId(id)!.versao, cot)).rejects.toThrow(/aguarda/);
   });
 
+  it('entrada do módulo: Coordenação e Financeiro caem no Resumo da folha; Compras, não', async () => {
+    const { veResumoDaFolha } = await import('../aplicacao/entrada');
+    expect(veResumoDaFolha(await coordUr())).toBe(true);
+    expect(veResumoDaFolha(await como('coord.educacao@exemplo.local'))).toBe(true);
+    expect(veResumoDaFolha(await fin())).toBe(true);
+    expect(veResumoDaFolha(await compras())).toBe(false);
+  });
+
   it('o módulo aparece para Compras só com o item Cotações', async () => {
     const { menuDoUsuario } = await import('@/nucleo/modulos/registro');
     const [app] = menuDoUsuario([manifesto], (await compras()).permissoes());
