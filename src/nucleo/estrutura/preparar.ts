@@ -80,3 +80,29 @@ export async function prepararEstrutura(
 
   return { abasCriadas, registrosIniciais, ajustes };
 }
+
+export interface ConferenciaEstrutura {
+  /** Perfis que os módulos usam e ainda não estão na aba Perfis. */
+  perfisFaltando: string[];
+  /** Permissões ligadas a perfis que ainda não estão na aba PerfilPermissoes. */
+  permissoesFaltando: number;
+  /** Há algo que só "Preparar estrutura" resolve. */
+  desatualizada: boolean;
+}
+
+/**
+ * Confere, sem gravar nada, se a configuração de perfis e permissões está em dia
+ * com a versão publicada (uma leitura da planilha do Núcleo). Depois de uma
+ * atualização que traz permissões novas, elas só valem após "Preparar estrutura":
+ * até lá, itens de menu somem para os perfis afetados.
+ */
+export async function conferirEstrutura(p: Planilhas, modulos: EstruturaDosModulos = {}): Promise<ConferenciaEstrutura> {
+  const [perfis, permissoes] = await lerTabelas(p, [Perfis, PerfilPermissoes] as const);
+  const temPerfil = new Set(perfis.todos().map((x) => x.codigo));
+  const temPermissao = new Set(permissoes.todos().map((x) => `${x.perfil}|${x.permissao}`));
+  const perfisFaltando = [...PERFIS_INICIAIS, ...(modulos.perfis ?? [])].filter((x) => !temPerfil.has(x.codigo)).map((x) => x.nome);
+  const permissoesFaltando = new Set(
+    [...PERMISSOES_INICIAIS, ...(modulos.permissoes ?? [])].map((x) => `${x.perfil}|${x.permissao}`).filter((k) => !temPermissao.has(k)),
+  ).size;
+  return { perfisFaltando, permissoesFaltando, desatualizada: perfisFaltando.length > 0 || permissoesFaltando > 0 };
+}

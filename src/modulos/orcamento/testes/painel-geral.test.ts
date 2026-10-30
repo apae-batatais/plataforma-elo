@@ -46,6 +46,12 @@ describe('painel geral', () => {
       // Todo o RH numa linha só (folha automática, folha consolidada e grupos de RH).
       expect(a.porGrupo[GRUPO_RH]).toBeCloseTo(a.rh, 1);
       expect(Object.values(a.porArea).reduce((s, v) => s + v, 0)).toBeCloseTo(a.despesa, 1);
+      // Fontes: somam a receita e a despesa do ano; "A definir" (sem receita) fica por último.
+      expect(a.porFonte.reduce((s, f) => s + f.receita, 0)).toBeCloseTo(a.receita, 1);
+      expect(a.porFonte.reduce((s, f) => s + f.despesa, 0)).toBeCloseTo(a.despesa, 1);
+      const semReceita = a.porFonte.findIndex((f) => f.receita === 0 && f.despesa > 0);
+      if (semReceita >= 0) expect(a.porFonte.slice(semReceita).every((f) => f.receita === 0)).toBe(true);
+      expect(a.porCaptacao.garantida + a.porCaptacao.negociacao + a.porCaptacao.a_captar).toBeCloseTo(a.receita, 1);
     }
     expect(painel.grupos[0]).toBe(GRUPO_RH);
   });

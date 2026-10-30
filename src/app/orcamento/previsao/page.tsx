@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import { SeletorAno } from '@/ui/seletor-ano';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { arvoreMensal, lerPrevisao, type Grupamento } from '@/modulos/orcamento/aplicacao/previsao';
+import { arvoreMensal, lerPrevisao } from '@/modulos/orcamento/aplicacao/previsao';
 import { REFERENCIAS } from '@/modulos/orcamento/dominio/previsao';
 import { reais } from '@/modulos/orcamento/telas/formato';
 import { TabelaMensal } from '@/modulos/orcamento/telas/tabela-mensal';
@@ -139,38 +140,6 @@ const pequeno = '!min-h-8 !px-3 !py-1 !text-sm';
 const pct = (v: number | null) => (v === null ? '—' : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
 const SITUACAO = { elaboracao: 'Em elaboração', aprovado: 'Aprovado', encerrado: 'Encerrado' } as const;
 
-function Quebra({ titulo, linhas, total, legenda }: { titulo: string; linhas: Grupamento[]; total: number; legenda: string }) {
-  return (
-    <section className="rounded-xl border border-borda bg-superficie" aria-label={titulo}>
-      <h2 className="border-b border-borda px-5 py-3 font-bold">{titulo}</h2>
-      {linhas.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-texto-suave">Nada lançado.</p>
-      ) : (
-        <table className="w-full text-sm">
-          <caption className="sr-only">{legenda}</caption>
-          <tbody>
-            {linhas.map((l) => {
-              const parte = total > 0 ? l.anual / total : 0;
-              return (
-                <tr key={l.chave} className="border-b border-borda last:border-0">
-                  <th scope="row" className="w-1/2 px-5 py-2 text-left font-normal">
-                    {l.nome === 'A definir' ? <Etiqueta tipo="atencao">A definir</Etiqueta> : l.nome}
-                    <span className="mt-1 block h-1.5 rounded-full bg-superficie-2" aria-hidden="true">
-                      <span className="block h-1.5 rounded-full bg-destaque" style={{ width: `${Math.max(parte * 100, 1)}%` }} />
-                    </span>
-                  </th>
-                  <td className="px-3 py-2 text-right tabular-nums">{reais(l.anual)}</td>
-                  <td className="w-16 px-5 py-2 text-right tabular-nums text-texto-suave">{pct(Math.round(parte * 1000) / 10)}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-    </section>
-  );
-}
-
 export default async function PainelPrevisao({ searchParams }: { searchParams: Promise<{ ano?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
@@ -183,24 +152,11 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
   const arvore = arvoreMensal(prev);
   const vazio = prev.despesas.length === 0 && prev.receitas.length === 0 && !prev.folha?.anual;
 
-  const indicadores = [
-    {
-      nome: 'Folha sobre a receita',
-      valor: i.folhaSobreReceita,
-      ref: `Referência: até ${REFERENCIAS.folhaSobreReceita}%`,
-      alerta: i.folhaSobreReceita !== null && i.folhaSobreReceita > REFERENCIAS.folhaSobreReceita,
-      dica: `RH (folha + itens de RH): ${reais(t.rh)}`,
-    },
-    {
-      nome: 'Dependência de recursos públicos',
-      valor: i.dependenciaPublica,
-      ref: `Referência: até ${REFERENCIAS.dependenciaPublica}%`,
-      alerta: i.dependenciaPublica !== null && i.dependenciaPublica > REFERENCIAS.dependenciaPublica,
-      dica: 'Receita de fontes públicas (inclui Projeto Incentivado) ÷ receita total',
-    },
-    { nome: 'Recursos livres', valor: i.recursosLivres, ref: 'Informativo', alerta: null, dica: 'Receita de uso livre ÷ receita total' },
-    { nome: 'Receita garantida', valor: i.receitaGarantida, ref: 'Informativo', alerta: null, dica: 'Com termo ou contrato assinado' },
-  ];
+  // Indicadores fora da referência aparecem aqui como alerta; o detalhe e a comparação ficam no Painel geral.
+  const foraDaReferencia = [
+    { nome: 'Folha sobre a receita', valor: i.folhaSobreReceita, limite: REFERENCIAS.folhaSobreReceita },
+    { nome: 'Dependência de recursos públicos', valor: i.dependenciaPublica, limite: REFERENCIAS.dependenciaPublica },
+  ].filter((x) => x.valor !== null && x.valor > x.limite);
 
   return (
     <div className="space-y-6">
@@ -212,15 +168,10 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
             {prev.exercicio && <Etiqueta tipo={prev.exercicio.situacao === 'aprovado' ? 'sucesso' : 'info'}>{SITUACAO[prev.exercicio.situacao]}</Etiqueta>}
           </span>
         }
-        descricao="Despesas (itens lançados + folha de pagamento automática), receitas e indicadores do exercício."
+        descricao="Situação do exercício, totais e a tabela mês a mês. Despesas incluem a folha de pagamento automática."
         acoes={
           <>
-            {prev.anos.length > 1 &&
-              prev.anos.map((a) => (
-                <LinkBotao key={a} href={`/orcamento/previsao?ano=${a}`} variante={a === prev.ano ? 'primario' : 'secundario'} className={pequeno}>
-                  {a}
-                </LinkBotao>
-              ))}
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao?ano=${a}`} />
             {podeAbrir && prev.exercicio && (
               <form action={acaoAbrirExercicio}>
                 <input type="hidden" name="ano" value={Math.max(...prev.anos) + 1} />
@@ -297,25 +248,19 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
             </div>
           </dl>
 
-          <section aria-labelledby="t-ind" className="space-y-3">
-            <h2 id="t-ind" className="text-lg font-bold">
-              Indicadores
-            </h2>
-            <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {indicadores.map((x) => (
-                <div key={x.nome} className={`rounded-xl border px-5 py-4 ${x.alerta ? 'border-aviso bg-aviso-fundo' : 'border-borda bg-superficie'}`}>
-                  <dt className="text-sm font-semibold">{x.nome}</dt>
-                  <dd className="mt-0.5 text-2xl font-bold tabular-nums">{pct(x.valor)}</dd>
-                  <dd className="mt-1 flex flex-wrap items-center gap-2 text-xs text-texto-suave">
-                    {x.alerta === true && <Etiqueta tipo="atencao">Acima da referência</Etiqueta>}
-                    {x.alerta === false && <Etiqueta tipo="sucesso">Dentro da referência</Etiqueta>}
-                    {x.ref}
-                  </dd>
-                  <dd className="mt-1 text-xs text-texto-suave">{x.dica}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
+          <Aviso
+            tipo={foraDaReferencia.length ? 'atencao' : 'info'}
+            titulo={foraDaReferencia.length ? 'Indicador fora da referência' : undefined}
+            acao={
+              <LinkBotao href={`/orcamento/previsao/geral?ano=${prev.ano}`} variante="secundario">
+                Abrir o Painel geral
+              </LinkBotao>
+            }
+          >
+            {foraDaReferencia.length
+              ? foraDaReferencia.map((x) => `${x.nome}: ${pct(x.valor)} (referência até ${x.limite}%)`).join('; ')
+              : 'Os indicadores, os gráficos por área, grupo e fonte e a comparação com outros anos estão no Painel geral.'}
+          </Aviso>
 
           {!vazio && (
             <section aria-labelledby="t-meses" className="space-y-3">
@@ -331,12 +276,6 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
             </section>
           )}
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Quebra titulo="Despesa por área" linhas={t.porArea} total={t.despesa.anual} legenda="Despesa anual por área, com a parte do total" />
-            <Quebra titulo="Despesa por grupo de gasto" linhas={t.porGrupo} total={t.despesa.anual} legenda="Despesa anual por grupo de gasto" />
-            <Quebra titulo="Despesa por fonte" linhas={t.despesaPorFonte} total={t.despesa.anual} legenda="Despesa anual por fonte de recurso" />
-            <Quebra titulo="Receita por fonte" linhas={t.receitaPorFonte} total={t.receita.anual} legenda="Receita anual por fonte de recurso" />
-          </div>
         </>
       )}
     </div>

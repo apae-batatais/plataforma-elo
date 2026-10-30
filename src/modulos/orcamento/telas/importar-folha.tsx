@@ -111,13 +111,17 @@ export function ImportarFolha({
           No Google Drive, abra a planilha da folha e use Arquivo › Fazer download › Microsoft Excel (.xlsx). No passo seguinte você diz em qual
           aba estão os dados e qual coluna corresponde a cada campo. Nada é gravado antes da sua confirmação.
         </p>
-        <input
-          type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          aria-label="Arquivo .xlsx da folha"
-          onChange={(e) => ler(e.target.files?.[0] ?? null)}
-          className="block w-full rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm file:mr-3 file:rounded-md file:border file:border-borda-forte file:bg-superficie file:px-3 file:py-2 file:font-semibold"
-        />
+        {/* O botão nativo de arquivo mostra textos no idioma do navegador; este fica sempre em português. */}
+        <label className="flex cursor-pointer flex-wrap items-center gap-3 rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-foco hover:border-destaque/60">
+          <input
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={(e) => ler(e.target.files?.[0] ?? null)}
+            className="sr-only"
+          />
+          <span className="rounded-md border border-borda-forte bg-superficie px-3 py-2 font-semibold">{arquivo ? 'Trocar arquivo' : 'Escolher arquivo .xlsx'}</span>
+          <span className={arquivo ? 'font-semibold' : 'text-texto-suave'}>{arquivo ? arquivo.name : 'Nenhum arquivo escolhido'}</span>
+        </label>
         {lendo && <p className="flex items-center gap-2 text-sm text-texto-suave">{ocupado('Lendo as abas do arquivo…')}</p>}
         {leitura.erro && !lendo && (
           <Aviso tipo="erro" titulo="Não deu para ler o arquivo">

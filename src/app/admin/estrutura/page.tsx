@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { situacaoDaEstrutura } from '@/plataforma/estrutura';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
@@ -23,6 +24,7 @@ export default async function Estrutura({ searchParams }: { searchParams: Promis
   const app = await obterAplicacao();
   const { resultado } = await searchParams;
   const falhou = resultado?.startsWith('Não foi possível');
+  const est = usuario.estruturaPendente ? null : await situacaoDaEstrutura();
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -35,6 +37,14 @@ export default async function Estrutura({ searchParams }: { searchParams: Promis
       {usuario.estruturaPendente && (
         <Aviso tipo="atencao" titulo="Primeiro uso: as planilhas estão em branco">
           Clique em <strong>Preparar estrutura</strong>. Depois disso, o restante da plataforma fica disponível.
+        </Aviso>
+      )}
+      {!usuario.estruturaPendente && est?.desatualizada && !resultado && (
+        <Aviso tipo="atencao" titulo="Há uma atualização esperando por aqui">
+          A versão publicada trouxe {est.perfisFaltando.length > 0 && <>perfis novos ({est.perfisFaltando.join(', ')}) e </>}
+          {est.permissoesFaltando} {est.permissoesFaltando === 1 ? 'permissão nova' : 'permissões novas'}. Elas só passam a valer depois de{' '}
+          <strong>Preparar estrutura</strong>; até lá, alguns itens do menu podem não aparecer para a equipe. Depois, quem estiver usando o Elo deve sair e
+          entrar de novo.
         </Aviso>
       )}
       {resultado && (

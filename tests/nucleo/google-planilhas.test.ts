@@ -68,7 +68,7 @@ describe('armazenamento no Google Planilhas', () => {
 
   it('cria as abas que faltam e preenche as vazias em poucas chamadas; aba com conteúdo fica como está', async () => {
     const { fn, chamadas } = fetchFalso((c) => {
-      if (c.url.includes('fields=sheets.properties.title'))
+      if (c.url.includes('fields=sheets'))
         return { json: { sheets: [{ properties: { title: 'Cheia' } }, { properties: { title: 'Vazia' } }] } };
       if (c.url.includes('batchGet')) return { json: { valueRanges: [{ values: [['id']] }, {}] } };
       return { json: {} };
@@ -105,6 +105,31 @@ describe('armazenamento no Google Planilhas', () => {
     const r = await new ArmazenamentoGooglePlanilhas(token, fn).garantirAbas('PLAN1', [{ aba: 'Despesas', cabecalho: ['id', 'versao', 'descricao', 'categoria', 'motivo'] }]);
     expect(r).toEqual(['Despesas (colunas novas: categoria, motivo)']);
     expect(chamadas.at(-1)?.body).toEqual({ valueInputOption: 'RAW', data: [{ range: "'Despesas'!D1", values: [['categoria', 'motivo']] }] });
+  });
+
+  it('cabeçalho maior que a grade da aba: alarga a aba antes de escrever (erro "exceeds grid limits")', async () => {
+    const { fn, chamadas } = fetchFalso((c) => {
+      if (c.url.includes('fields=sheets'))
+        return { json: { sheets: [{ properties: { title: 'Despesas', sheetId: 7, gridProperties: { columnCount: 30 } } }] } };
+      if (c.url.includes('batchGet')) return { json: { valueRanges: [{ values: [Array.from({ length: 30 }, (_, i) => `c${i}`)] }] } };
+      return { json: {} };
+    });
+    const cabecalho = [...Array.from({ length: 30 }, (_, i) => `c${i}`), 'cotado_por'];
+    const nova = Array.from({ length: 40 }, (_, i) => `n${i}`);
+    const r = await new ArmazenamentoGooglePlanilhas(token, fn).garantirAbas('PLAN1', [
+      { aba: 'Despesas', cabecalho },
+      { aba: 'Larga', cabecalho: nova },
+    ]);
+    expect(r).toEqual(['Larga', 'Despesas (colunas novas: cotado_por)']);
+    const estrutura = chamadas.find((c) => c.url.endsWith(':batchUpdate'))?.body as { requests: unknown[] };
+    expect(estrutura.requests).toEqual([
+      { addSheet: { properties: { title: 'Larga', gridProperties: { columnCount: 40 } } } },
+      { appendDimension: { sheetId: 7, dimension: 'COLUMNS', length: 1 } },
+    ]);
+    // A grade é alargada antes de escrever o cabeçalho.
+    const ordem = chamadas.map((c) => (c.url.includes('values:batchUpdate') ? 'valores' : c.url.endsWith(':batchUpdate') ? 'estrutura' : 'leitura'));
+    expect(ordem.indexOf('estrutura')).toBeLessThan(ordem.indexOf('valores'));
+    expect(chamadas.at(-1)?.body).toEqual({ valueInputOption: 'RAW', data: [{ range: "'Despesas'!AE1", values: [['cotado_por']] }] });
   });
 
   it('sem acesso: explica que é preciso compartilhar com a conta de serviço', async () => {

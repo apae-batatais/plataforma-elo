@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { situacaoDaEstrutura } from '@/plataforma/estrutura';
+import { instituicaoAtual } from '@/plataforma/instituicao';
 import { Suspense } from 'react';
 import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ErroConfiguracao, lerConfig } from '@/nucleo/config';
@@ -12,8 +14,8 @@ import { ConfiguracaoInvalida } from './configuracao-invalida';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Plataforma Apae Batatais', template: '%s · Apae Batatais' },
-  description: 'Ferramentas de gestão da Apae Batatais',
+  title: { default: 'Elo · Apae Batatais', template: '%s · Elo' },
+  description: 'Elo: a plataforma de gestão da Apae Batatais',
 };
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +30,8 @@ function Documento({ children }: { children: React.ReactNode }) {
 
 const faixaDemonstracao = (
   <div className="border-b border-aviso/30 bg-aviso-fundo px-4 py-2 text-center text-sm font-semibold text-aviso" role="status">
-    Demonstração: todos os dados são fictícios e as alterações podem ser perdidas.
+    Demonstração<span className="hidden sm:inline">: todos os dados são fictícios e as alterações podem ser perdidas</span>
+    <span className="sm:hidden"> com dados fictícios</span>.
   </div>
 );
 
@@ -50,6 +53,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     throw erro;
   }
   const demonstracao = app.config.modo === 'demonstracao';
+  // Só quem pode preparar a estrutura recebe o aviso de atualização pendente.
+  const estruturaDesatualizada =
+    !!usuario && !usuario.estruturaPendente && usuario.autorizador.temPermissao('core.organizacao.gerenciar') && Boolean((await situacaoDaEstrutura())?.desatualizada);
 
   if (!usuario) {
     return (
@@ -63,10 +69,11 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <Documento>
       <Casca
-        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente)}
+        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente, { estruturaDesatualizada })}
         usuario={{ nome: usuario.nome, email: usuario.email, perfis: usuario.perfis.map((p) => p.nome) }}
         sair={sair}
         faixa={demonstracao ? faixaDemonstracao : undefined}
+        instituicao={instituicaoAtual().nome}
       >
         <Suspense>
           <Notificacao />

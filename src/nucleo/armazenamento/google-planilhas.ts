@@ -100,10 +100,15 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
    */
   async garantirAbas(planilha: string, abas: readonly { aba: string; cabecalho: readonly string[] }[]) {
     if (abas.length === 0) return [];
-    const meta = (await this.chamar(planilha, '?fields=sheets.properties.title')) as {
-      sheets?: { properties?: { title?: string } }[];
+    const meta = (await this.chamar(planilha, '?fields=sheets.properties(title,sheetId,gridProperties.columnCount)')) as {
+      sheets?: { properties?: { title?: string; sheetId?: number; gridProperties?: { columnCount?: number } } }[];
     };
     const existentes = new Set((meta.sheets ?? []).map((s) => s.properties?.title ?? ''));
+    // Uma aba nova no Google tem 26 colunas; o cabeçalho não pode passar do limite da grade.
+    const COLUNAS_PADRAO = 26;
+    const grade = new Map(
+      (meta.sheets ?? []).map((s) => [s.properties?.title ?? '', { id: s.properties?.sheetId, colunas: s.properties?.gridProperties?.columnCount ?? COLUNAS_PADRAO }]),
+    );
     const faltando = abas.filter((a) => !existentes.has(a.aba));
     const jaExistem = abas.filter((a) => existentes.has(a.aba));
 
@@ -122,11 +127,21 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
         if (faltam.length) completar.push({ aba: a.aba, inicio: atual.length, colunas: faltam });
       });
     }
-    if (faltando.length > 0) {
-      await this.chamar(planilha, ':batchUpdate', {
-        method: 'POST',
-        body: JSON.stringify({ requests: faltando.map((a) => ({ addSheet: { properties: { title: a.aba } } })) }),
-      });
+    // Abas novas já nascem com colunas suficientes; abas existentes com cabeçalho maior que a grade ganham colunas.
+    const alargar = [
+      ...vazias.map((a) => ({ aba: a.aba, precisa: a.cabecalho.length })),
+      ...completar.map((c) => ({ aba: c.aba, precisa: c.inicio + c.colunas.length })),
+    ]
+      .map((x) => ({ ...x, ...grade.get(x.aba)! }))
+      .filter((x) => x.id !== undefined && x.precisa > x.colunas);
+    const pedidos = [
+      ...faltando.map((a) => ({
+        addSheet: { properties: { title: a.aba, ...(a.cabecalho.length > COLUNAS_PADRAO ? { gridProperties: { columnCount: a.cabecalho.length } } : {}) } },
+      })),
+      ...alargar.map((x) => ({ appendDimension: { sheetId: x.id, dimension: 'COLUMNS', length: x.precisa - x.colunas } })),
+    ];
+    if (pedidos.length > 0) {
+      await this.chamar(planilha, ':batchUpdate', { method: 'POST', body: JSON.stringify({ requests: pedidos }) });
     }
     const preencher = [...faltando, ...vazias];
     if (preencher.length > 0) {
