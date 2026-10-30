@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { situacaoDaEstrutura } from '@/plataforma/estrutura';
 import { cumprimento } from '@/ui/saudacao';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -82,6 +83,17 @@ export default async function Portal() {
       }
     } catch {
       // Planilhas do Orçamento ainda não preparadas: a página do app explica.
+    }
+  }
+  if (a.temPermissao('core.organizacao.gerenciar')) {
+    const est = await situacaoDaEstrutura();
+    if (est?.desatualizada) {
+      pendencias.push({
+        texto: 'Há uma atualização do Elo esperando "Preparar estrutura"',
+        detalhe: 'Até lá, perfis e permissões novos não valem e alguns itens do menu podem não aparecer para a equipe.',
+        href: '/admin/estrutura',
+        acao: 'Preparar estrutura',
+      });
     }
   }
   if (a.temPermissao('core.acessos.gerenciar')) {

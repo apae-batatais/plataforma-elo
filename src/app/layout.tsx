@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { situacaoDaEstrutura } from '@/plataforma/estrutura';
 import { instituicaoAtual } from '@/plataforma/instituicao';
 import { Suspense } from 'react';
 import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
@@ -52,6 +53,9 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     throw erro;
   }
   const demonstracao = app.config.modo === 'demonstracao';
+  // Só quem pode preparar a estrutura recebe o aviso de atualização pendente.
+  const estruturaDesatualizada =
+    !!usuario && !usuario.estruturaPendente && usuario.autorizador.temPermissao('core.organizacao.gerenciar') && Boolean((await situacaoDaEstrutura())?.desatualizada);
 
   if (!usuario) {
     return (
@@ -65,7 +69,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <Documento>
       <Casca
-        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente)}
+        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente, { estruturaDesatualizada })}
         usuario={{ nome: usuario.nome, email: usuario.email, perfis: usuario.perfis.map((p) => p.nome) }}
         sair={sair}
         faixa={demonstracao ? faixaDemonstracao : undefined}
