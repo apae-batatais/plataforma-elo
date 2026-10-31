@@ -9,14 +9,16 @@ export const CATEGORIAS = ['material', 'servico'] as const;
 export type Categoria = (typeof CATEGORIAS)[number];
 
 /** Fichas disponíveis. Cada tipo de requisição usa uma. Novas entram uma por entrega. */
-export const FORMULARIOS = ['materiais', 'ti'] as const;
+export const FORMULARIOS = ['materiais', 'ti', 'mobiliario'] as const;
 export type Formulario = (typeof FORMULARIOS)[number];
 export const NOME_FORMULARIO: Record<Formulario, string> = {
   materiais: 'Materiais (itens, retirada ou entrega, evento)',
   ti: 'Chamado de TI (equipamento ou sistema, problema, urgência)',
+  mobiliario: 'Mobiliário (móveis, de onde, para onde, quando)',
 };
+export const NOME_FICHA_CURTO: Record<Formulario, string> = { materiais: 'Materiais', ti: 'Chamado de TI', mobiliario: 'Mobiliário' };
 /** Ficha de serviço: não tem itens; o atendimento é concluído com o que foi feito. */
-export const FICHA_DE_SERVICO: Record<Formulario, boolean> = { materiais: false, ti: true };
+export const FICHA_DE_SERVICO: Record<Formulario, boolean> = { materiais: false, ti: true, mobiliario: true };
 
 export const SITUACOES = ['enviada', 'devolvida', 'aprovada', 'recusada', 'em_atendimento', 'atendida', 'atendida_parcial', 'cancelada'] as const;
 export type Situacao = (typeof SITUACOES)[number];
@@ -218,8 +220,55 @@ export const esquemaDetalhesTi = z.object({
 });
 export type DetalhesTi = z.infer<typeof esquemaDetalhesTi>;
 
+// ---------------------------------------------------------------------------
+// Campos próprios da ficha de mobiliário
+// ---------------------------------------------------------------------------
+
+export const SERVICOS_MOBILIARIO = {
+  movimentacao: 'Mudar de lugar',
+  emprestimo: 'Emprestar (para evento ou por um período)',
+  recolhimento: 'Recolher (quebrado ou sem uso)',
+  montagem: 'Montar ou desmontar',
+  outro: 'Outro',
+} as const;
+export type ServicoMobiliario = keyof typeof SERVICOS_MOBILIARIO;
+const DATA = /^\d{4}-\d{2}-\d{2}$/;
+
+export const esquemaDetalhesMobiliario = z
+  .object({
+    servico: z.enum(Object.keys(SERVICOS_MOBILIARIO) as [ServicoMobiliario, ...ServicoMobiliario[]], { message: 'Escolha o que precisa ser feito.' }),
+    moveis: z
+      .array(
+        z.object({
+          quantidade: z
+            .number({ message: 'Informe a quantidade de cada móvel.' })
+            .int('A quantidade de móveis é um número inteiro.')
+            .positive('A quantidade de móveis precisa ser maior que zero.'),
+          descricao: z.string().trim().min(1, 'Descreva cada móvel (ex.: mesa de escritório, cadeira).'),
+          patrimonio: opcional,
+        }),
+      )
+      .min(1, 'Liste pelo menos um móvel.'),
+    origem: z.string({ message: 'Informe de onde.' }).trim().min(1, 'Informe de onde (sala, setor ou unidade).'),
+    destino: opcional,
+    data: z.string({ message: 'Informe para quando.' }).regex(DATA, 'Informe para quando.'),
+    horario: opcional,
+    devolucao: z.preprocess((v) => (v === '' ? null : v), z.string().regex(DATA, 'Data de devolução inválida.').nullable().optional()),
+    contato: opcional,
+  })
+  .superRefine((d, ctx) => {
+    if ((d.servico === 'movimentacao' || d.servico === 'emprestimo') && !d.destino) ctx.addIssue({ code: 'custom', message: 'Informe para onde.' });
+    if (d.servico === 'emprestimo' && !d.devolucao) ctx.addIssue({ code: 'custom', message: 'Informe quando os móveis voltam.' });
+    if (d.devolucao && d.devolucao < d.data) ctx.addIssue({ code: 'custom', message: 'A devolução não pode ser antes da data do empréstimo.' });
+  });
+export type DetalhesMobiliario = z.infer<typeof esquemaDetalhesMobiliario>;
+
 /** Campos próprios de cada ficha. */
-export const ESQUEMA_DETALHES: Record<Formulario, z.ZodType> = { materiais: esquemaDetalhesMateriais, ti: esquemaDetalhesTi };
+export const ESQUEMA_DETALHES: Record<Formulario, z.ZodType> = {
+  materiais: esquemaDetalhesMateriais,
+  ti: esquemaDetalhesTi,
+  mobiliario: esquemaDetalhesMobiliario,
+};
 
 /** Urgência guardada nos detalhes (só fichas que a têm). */
 export function urgenciaDe(detalhes: string | null): Urgencia | null {

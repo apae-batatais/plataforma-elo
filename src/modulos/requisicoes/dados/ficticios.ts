@@ -55,6 +55,15 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
         prazo_atendimento: 24,
         descricao: 'Mouse, teclado, cabos, toner e outros suprimentos de informática.',
       },
+      {
+        nome: 'Mobiliário',
+        categoria: 'servico' as const,
+        formulario: 'mobiliario' as const,
+        perfil_responsavel: 'patrimonio',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 24,
+        descricao: 'Mudar móveis de lugar, emprestar para evento, recolher ou montar.',
+      },
     ],
     { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
   );
@@ -280,4 +289,53 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
   );
   await decidirRequisicao(p, como('coord.educacao@exemplo.local'), parado.id, await versao(parado.id), 'aprovar', null, { agora: dia('2026-10-30', 8) });
   await receberRequisicao(p, como('informatica@exemplo.local'), parado.id, await versao(parado.id), { agora: dia('2026-10-30', 9) });
+
+  // 6. Mobiliário: empréstimo para evento aguardando a UR e mudança de sala em atendimento.
+  const moveis = (email: string, nome: string, area: string, servico: string, detalhes: object, quando: Date) =>
+    enviarRequisicao(
+      p,
+      como(email),
+      catalogo,
+      { nomeRequisitante: nome, tipoId: tiposTi[2].id, area, grupoId: grupo('Manutenção'), centros: [{ servico, percentual: 100 }], itens: [], detalhes },
+      { agora: quando },
+    );
+  await moveis(
+    'dp@exemplo.local',
+    'Departamento Pessoal (fictício)',
+    'assistencia_social',
+    'ur',
+    {
+      servico: 'emprestimo',
+      moveis: [
+        { quantidade: 40, descricao: 'Cadeira plástica', patrimonio: null },
+        { quantidade: 4, descricao: 'Mesa dobrável', patrimonio: null },
+      ],
+      origem: 'Depósito da Sede',
+      destino: 'Salão da UR',
+      data: '2026-11-07',
+      horario: '08:00',
+      devolucao: '2026-11-09',
+      contato: 'Ramal 214',
+    },
+    dia('2026-10-29', 15),
+  );
+  const mudanca = await moveis(
+    'financeiro@exemplo.local',
+    'Financeiro (fictício)',
+    'educacao',
+    'escola',
+    {
+      servico: 'movimentacao',
+      moveis: [{ quantidade: 1, descricao: 'Armário de aço 2 portas', patrimonio: 'PAT-0112' }],
+      origem: 'Sala 3 da Escola',
+      destino: 'Secretaria da Escola',
+      data: '2026-11-03',
+      horario: '14:00',
+      devolucao: null,
+      contato: 'Ramal 120',
+    },
+    dia('2026-10-28', 11),
+  );
+  await decidirRequisicao(p, como('coord.educacao@exemplo.local'), mudanca.id, await versao(mudanca.id), 'aprovar', null, { agora: dia('2026-10-28', 14) });
+  await receberRequisicao(p, como('patrimonio@exemplo.local'), mudanca.id, await versao(mudanca.id), { agora: dia('2026-10-29', 9) });
 }

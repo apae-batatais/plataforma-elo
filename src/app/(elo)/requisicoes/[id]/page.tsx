@@ -4,11 +4,14 @@ import type { ReactNode } from 'react';
 import { detalharRequisicao, ErroRequisicao } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import {
   CATEGORIAS_TI,
+  FICHA_DE_SERVICO,
   NOME_ACAO,
+  SERVICOS_MOBILIARIO,
   NOME_SITUACAO,
   URGENCIAS,
   type Acao,
   type DetalhesMateriais,
+  type DetalhesMobiliario,
   type DetalhesTi,
   type Situacao,
 } from '@/modulos/requisicoes/dominio/requisicao';
@@ -55,6 +58,9 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
   const r = d.requisicao;
   const det = (d.detalhes ?? {}) as DetalhesMateriais;
   const chamado = d.tipo?.formulario === 'ti' ? ((d.detalhes ?? {}) as DetalhesTi) : null;
+  const mobiliario = d.tipo?.formulario === 'mobiliario' ? ((d.detalhes ?? {}) as DetalhesMobiliario) : null;
+  const servico = Boolean(d.tipo && FICHA_DE_SERVICO[d.tipo.formulario]);
+  const dataBR = (iso: string | null | undefined) => (iso ? iso.split('-').reverse().join('/') : '');
   const pode = (a: Acao) => d.acoes.includes(a);
   const campos = { id: r.id, versao: r.versao };
   const mostrarAtendido = r.situacao === 'atendida' || r.situacao === 'atendida_parcial';
@@ -123,17 +129,17 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                 <span className="text-sm text-texto-suave">Fica registrado que você recebeu; o prazo de atendimento continua contando.</span>
               </form>
             )}
-            {pode('concluir') && chamado && (
+            {pode('concluir') && servico && (
               <form action={acaoConcluir} className="space-y-3">
                 <input type="hidden" name="id" value={r.id} />
                 <input type="hidden" name="versao" value={r.versao} />
                 <fieldset className="text-sm">
                   <legend className="font-semibold">Resultado</legend>
                   <label className="mt-2 flex items-center gap-2">
-                    <input type="radio" name="resultado" value="resolvido" required /> Resolvido
+                    <input type="radio" name="resultado" value="resolvido" required /> {mobiliario ? 'Feito' : 'Resolvido'}
                   </label>
                   <label className="mt-1 flex items-center gap-2">
-                    <input type="radio" name="resultado" value="parcial" /> Resolvido em parte ou não resolvido
+                    <input type="radio" name="resultado" value="parcial" /> {mobiliario ? 'Feito em parte ou não feito' : 'Resolvido em parte ou não resolvido'}
                   </label>
                 </fieldset>
                 <Campo rotulo="O que foi feito" dica="Quem pediu vê no histórico. Se ficou algo pendente, diga o quê e por quê.">
@@ -142,7 +148,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                 <BotaoEnviar enviando="Concluindo…">Concluir atendimento</BotaoEnviar>
               </form>
             )}
-            {pode('concluir') && !chamado && (
+            {pode('concluir') && !servico && (
               <form action={acaoConcluir} className="space-y-3">
                 <input type="hidden" name="id" value={r.id} />
                 <input type="hidden" name="versao" value={r.versao} />
@@ -283,8 +289,51 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
           </dl>
         )}
 
+        {mobiliario && (
+          <>
+            <dl className="mt-5 grid gap-4 sm:grid-cols-3">
+              <Dado rotulo="O que fazer">{SERVICOS_MOBILIARIO[mobiliario.servico]}</Dado>
+              <Dado rotulo="De onde">{mobiliario.origem}</Dado>
+              <Dado rotulo="Para onde">{mobiliario.destino}</Dado>
+              <Dado rotulo="Para quando">
+                {dataBR(mobiliario.data)}
+                {mobiliario.horario ? ` às ${mobiliario.horario}` : ''}
+              </Dado>
+              {mobiliario.devolucao && <Dado rotulo="Devolução">{dataBR(mobiliario.devolucao)}</Dado>}
+              <Dado rotulo="Contato">{mobiliario.contato}</Dado>
+            </dl>
+            <div className="mt-5 overflow-x-auto rounded-lg border border-borda">
+              <table className="w-full text-left text-sm">
+                <caption className="sr-only">Móveis</caption>
+                <thead className="bg-superficie-2 text-texto-suave">
+                  <tr>
+                    <th scope="col" className="px-3 py-2 text-right font-semibold">
+                      Qtd.
+                    </th>
+                    <th scope="col" className="px-3 py-2 font-semibold">
+                      Móvel
+                    </th>
+                    <th scope="col" className="px-3 py-2 font-semibold">
+                      Nº de patrimônio
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mobiliario.moveis.map((m, k) => (
+                    <tr key={k} className="border-t border-borda">
+                      <td className="px-3 py-2 text-right tabular-nums">{m.quantidade}</td>
+                      <td className="px-3 py-2">{m.descricao}</td>
+                      <td className="px-3 py-2">{m.patrimonio || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
         <dl className="mt-5 grid gap-4 sm:grid-cols-3">
-          {!chamado && det.entrega && (
+          {!servico && det.entrega && (
             <>
               <Dado rotulo={det.entrega.modo === 'retirada' ? 'Retirada' : 'Entrega'}>
                 {[det.entrega.horario, det.entrega.local].filter(Boolean).join(' · ') || (det.entrega.modo === 'retirada' ? 'No almoxarifado' : 'No local')}
@@ -292,7 +341,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
               <Dado rotulo={det.entrega.modo === 'retirada' ? 'Quem vai retirar' : 'Quem vai receber'}>{det.entrega.responsavel}</Dado>
             </>
           )}
-          {det.evento && (
+          {!servico && det.evento && (
             <Dado rotulo="Evento">
               {det.evento.nome} · {det.evento.data.split('-').reverse().join('/')}
               {det.evento.horario ? ` às ${det.evento.horario}` : ''}

@@ -22,6 +22,7 @@ import {
   type DadosRequisicao,
   type LinhaItemLote,
 } from '@/modulos/requisicoes/aplicacao/requisicoes';
+import type { Formulario } from '@/modulos/requisicoes/dominio/requisicao';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { catalogoOrcamento } from '@/plataforma/catalogos';
@@ -159,7 +160,7 @@ export async function acaoSalvarTipo(f: FormData) {
       {
         nome: texto(f, 'nome'),
         categoria: texto(f, 'categoria') as 'material' | 'servico',
-        formulario: (texto(f, 'formulario') || 'materiais') as 'materiais' | 'ti',
+        formulario: (texto(f, 'formulario') || 'materiais') as Formulario,
         perfilResponsavel: texto(f, 'perfil'),
         prazoAprovacao: numero(f, 'prazo_aprovacao'),
         prazoAtendimento: numero(f, 'prazo_atendimento'),

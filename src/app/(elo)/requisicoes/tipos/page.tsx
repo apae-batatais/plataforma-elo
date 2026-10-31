@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { listarTipos } from '@/modulos/requisicoes/aplicacao/requisicoes';
-import { FICHA_DE_SERVICO, NOME_FORMULARIO } from '@/modulos/requisicoes/dominio/requisicao';
+import { FICHA_DE_SERVICO, NOME_FICHA_CURTO, NOME_FORMULARIO } from '@/modulos/requisicoes/dominio/requisicao';
 import { EscolhaLista } from '@/modulos/requisicoes/telas/escolha-lista';
 import { catalogoOrcamento } from '@/plataforma/catalogos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -173,7 +173,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
               <>
                 <span className="font-semibold">{x.nome}</span>
                 <span className="block text-xs text-texto-suave">
-                  {x.formulario === 'ti' ? 'Chamado de TI' : 'Materiais'}
+                  {NOME_FICHA_CURTO[x.formulario as keyof typeof NOME_FICHA_CURTO] ?? x.formulario}
                   {x.descricao ? ` · ${x.descricao}` : ''}
                 </span>
               </>
@@ -192,7 +192,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
               </span>
             ),
             itens: FICHA_DE_SERVICO[x.formulario] ? (
-              <span className="text-sm text-texto-suave">Chamado: sem lista</span>
+              <span className="text-sm text-texto-suave">Sem lista (serviço)</span>
             ) : (
               <Link href={`/requisicoes/tipos/${x.id}`} className="font-semibold text-destaque hover:underline">
                 {x.itensAceitos ? `${x.itensAceitos} ${x.itensAceitos === 1 ? 'item' : 'itens'}` : 'Livre: cadastrar lista'}
