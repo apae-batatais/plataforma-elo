@@ -241,8 +241,10 @@ export default async function Ajuda() {
                 itens={[
                   'No Google Drive, baixe a planilha da folha em Excel (.xlsx).',
                   'Em Importar planilha, clique em Escolher arquivo .xlsx.',
+                  'Diga o que o arquivo traz: funcionários da folha, ou só a lotação (rateio) de quem já está cadastrado.',
                   'Diga em qual aba estão os dados e qual coluna corresponde a cada campo (o sistema sugere). Faça o mesmo para a lotação.',
-                  'Confira o resumo e confirme. Códigos já cadastrados são ignorados: dá para importar de novo com segurança.',
+                  'Confira o resumo e confirme. Quem já está cadastrado não é duplicado nem tem os valores alterados: dá para importar de novo com segurança.',
+                  'Se o arquivo trouxer lotação para quem já está cadastrado: quem não tem recebe a do arquivo; quem tem uma diferente é atualizado a partir da data que você escolher, se você deixar marcado. A lotação anterior fica no histórico.',
                 ]}
               />
             </>

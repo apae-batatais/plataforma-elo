@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Importação da planilha da folha em quatro passos:
@@ -6,32 +6,54 @@
  * colunas (folha e lotação); 3. conferir o relatório; 4. confirmar.
  * Nada é gravado antes do passo 4.
  */
-import { startTransition, useActionState, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Aviso } from '@/ui/aviso';
-import { Botao } from '@/ui/botao';
-import { BotaoEnviar } from '@/ui/botao-enviar';
-import { estiloEntrada } from '@/ui/campo';
-import { IconeEnviar } from '@/ui/icones';
-import type { Analise } from '../aplicacao/importacao';
 import {
-  CAMPOS_FOLHA, sugerirColunasFolha, sugerirColunasLotacao,
-  type AbaResumida, type CampoFolha, type Mapeamento, type MapeamentoLotacao,
-} from '../dominio/importacao';
-import { percentual, reais } from './formato';
+  startTransition,
+  useActionState,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { Aviso } from "@/ui/aviso";
+import { Botao } from "@/ui/botao";
+import { BotaoEnviar } from "@/ui/botao-enviar";
+import { estiloEntrada } from "@/ui/campo";
+import { IconeEnviar } from "@/ui/icones";
+import type { Analise } from "../aplicacao/importacao";
+import {
+  CAMPOS_FOLHA,
+  sugerirColunasFolha,
+  sugerirColunasLotacao,
+  type AbaResumida,
+  type CampoFolha,
+  type Mapeamento,
+  type MapeamentoLotacao,
+} from "../dominio/importacao";
+import { percentual, reais } from "./formato";
 
 type EstadoAnalise = { erro?: string; analise?: Analise };
-type EstadoArquivo = { erro?: string; abas?: AbaResumida[]; sugestao?: Mapeamento | null };
+type EstadoArquivo = {
+  erro?: string;
+  abas?: AbaResumida[];
+  sugestao?: Mapeamento | null;
+};
 type Acao<E> = (estado: E, f: FormData) => Promise<E>;
 
 const quem = (x: { ficha: string | null; colaborador: string | null }) =>
-  `${x.colaborador ?? 'Vaga prevista'}${x.ficha ? ` (ficha ${x.ficha})` : ''}`;
+  `${x.colaborador ?? "Vaga prevista"}${x.ficha ? ` (ficha ${x.ficha})` : ""}`;
 
 /** 0 → A, 25 → Z, 26 → AA. */
-const letra = (j: number): string => (j < 26 ? String.fromCharCode(65 + j) : letra(Math.floor(j / 26) - 1) + letra(j % 26));
+const letra = (j: number): string =>
+  j < 26
+    ? String.fromCharCode(65 + j)
+    : letra(Math.floor(j / 26) - 1) + letra(j % 26);
 
 const ocupado = (rotulo: string) => (
   <>
-    <span className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true" />
+    <span
+      className="size-4 animate-spin rounded-full border-2 border-current border-r-transparent"
+      aria-hidden="true"
+    />
     {rotulo}
   </>
 );
@@ -41,10 +63,13 @@ function colunasDe(aba: AbaResumida | undefined, cabecalho: number) {
   if (!aba) return [];
   const cab = aba.linhas[cabecalho - 1] ?? [];
   const ex = aba.linhas[cabecalho] ?? [];
-  return cab.map((titulo, j) => ({ j, titulo, exemplo: ex[j] ?? '' })).filter((c) => c.titulo);
+  return cab
+    .map((titulo, j) => ({ j, titulo, exemplo: ex[j] ?? "" }))
+    .filter((c) => c.titulo);
 }
 
-const resumoLinha = (l: string[]) => l.filter(Boolean).slice(0, 6).join(' · ') || '(vazia)';
+const resumoLinha = (l: string[]) =>
+  l.filter(Boolean).slice(0, 6).join(" · ") || "(vazia)";
 
 export function ImportarFolha({
   lerArquivo,
@@ -58,18 +83,27 @@ export function ImportarFolha({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const [leitura, despacharLeitura, lendo] = useActionState(lerArquivo, {});
   const [analise, despacharAnalise, analisando] = useActionState(analisar, {});
-  const [confirmacao, enviarConfirmacao, gravando] = useActionState(confirmar, {});
+  const [confirmacao, enviarConfirmacao, gravando] = useActionState(
+    confirmar,
+    {},
+  );
   const [m, setM] = useState<Mapeamento | null>(null);
   const [analisadoCom, setAnalisadoCom] = useState<string | null>(null);
   const [escolhas, setEscolhas] = useState<Record<string, string>>({});
+  const [atualizarLotacoes, setAtualizarLotacoes] = useState(true);
+  const [vigencia, setVigencia] = useState("");
 
   useEffect(() => {
     if (leitura.abas?.length) {
       const primeira = leitura.abas[0];
       setM(
         leitura.sugestao ?? {
-          folha: { aba: primeira.nome, cabecalho: primeira.cabecalhoSugerido, colunas: {} },
-          lotacao: { modo: 'nenhuma' },
+          folha: {
+            aba: primeira.nome,
+            cabecalho: primeira.cabecalhoSugerido,
+            colunas: {},
+          },
+          lotacao: { modo: "nenhuma" },
         },
       );
       setAnalisadoCom(null);
@@ -77,9 +111,14 @@ export function ImportarFolha({
     }
   }, [leitura]);
 
+  useEffect(() => {
+    setAtualizarLotacoes(true);
+    setVigencia("");
+  }, [analise]);
+
   const comArquivo = (extra: Record<string, string> = {}) => {
     const f = new FormData();
-    if (arquivo) f.set('arquivo', arquivo);
+    if (arquivo) f.set("arquivo", arquivo);
     for (const [k, v] of Object.entries(extra)) f.set(k, v);
     return f;
   };
@@ -89,27 +128,53 @@ export function ImportarFolha({
     setAnalisadoCom(null);
     if (!novo) return;
     const f = new FormData();
-    f.set('arquivo', novo);
+    f.set("arquivo", novo);
     startTransition(() => despacharLeitura(f));
   };
-  const textoM = m ? JSON.stringify(m) : '';
+  const textoM = m ? JSON.stringify(m) : "";
   const rodarAnalise = () => {
     setAnalisadoCom(textoM);
     setEscolhas({});
     startTransition(() => despacharAnalise(comArquivo({ mapeamento: textoM })));
   };
 
-  const a = analisadoCom === textoM && !analisando ? analise.analise : undefined;
-  const servicos = a ? a.proposta.servicos.map((x) => ({ ...x, servico: escolhas[x.nome] ?? x.servico })) : [];
+  const a =
+    analisadoCom === textoM && !analisando ? analise.analise : undefined;
+  const servicos = a
+    ? a.proposta.servicos.map((x) => ({
+        ...x,
+        servico: escolhas[x.nome] ?? x.servico,
+      }))
+    : [];
   const faltam = servicos.filter((x) => !x.servico).length;
+  const nIncluir = a?.relatorio.lotacoesExistentes.incluir.length ?? 0;
+  const nAtualizar = a?.relatorio.lotacoesExistentes.atualizar.length ?? 0;
+  const vigenciaUsada = vigencia || (a ? `${a.proposta.ano}-01-01` : "");
+  const nPostos = a?.proposta.postos.length ?? 0;
+  const nLotacoes = nIncluir + (atualizarLotacoes ? nAtualizar : 0);
+  const rotuloImportar = [
+    nPostos
+      ? `${nPostos} ${nPostos === 1 ? "funcionário" : "funcionários"}`
+      : "",
+    nLotacoes ? `${nLotacoes} ${nLotacoes === 1 ? "lotação" : "lotações"}` : "",
+  ]
+    .filter(Boolean)
+    .join(" e ");
 
   return (
     <div className="space-y-6">
-      <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-arquivo">
-        <h2 id="t-arquivo" className="text-lg font-bold">1. Escolher o arquivo</h2>
+      <section
+        className="space-y-3 rounded-xl border border-borda bg-superficie p-5"
+        aria-labelledby="t-arquivo"
+      >
+        <h2 id="t-arquivo" className="text-lg font-bold">
+          1. Escolher o arquivo
+        </h2>
         <p className="max-w-2xl text-sm text-texto-suave">
-          No Google Drive, abra a planilha da folha e use Arquivo › Fazer download › Microsoft Excel (.xlsx). No passo seguinte você diz em qual
-          aba estão os dados e qual coluna corresponde a cada campo. Nada é gravado antes da sua confirmação.
+          No Google Drive, abra a planilha da folha e use Arquivo › Fazer
+          download › Microsoft Excel (.xlsx). No passo seguinte você diz em qual
+          aba estão os dados e qual coluna corresponde a cada campo. Nada é
+          gravado antes da sua confirmação.
         </p>
         {/* O botão nativo de arquivo mostra textos no idioma do navegador; este fica sempre em português. */}
         <label className="flex cursor-pointer flex-wrap items-center gap-3 rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-foco hover:border-destaque/60">
@@ -119,10 +184,18 @@ export function ImportarFolha({
             onChange={(e) => ler(e.target.files?.[0] ?? null)}
             className="sr-only"
           />
-          <span className="rounded-md border border-borda-forte bg-superficie px-3 py-2 font-semibold">{arquivo ? 'Trocar arquivo' : 'Escolher arquivo .xlsx'}</span>
-          <span className={arquivo ? 'font-semibold' : 'text-texto-suave'}>{arquivo ? arquivo.name : 'Nenhum arquivo escolhido'}</span>
+          <span className="rounded-md border border-borda-forte bg-superficie px-3 py-2 font-semibold">
+            {arquivo ? "Trocar arquivo" : "Escolher arquivo .xlsx"}
+          </span>
+          <span className={arquivo ? "font-semibold" : "text-texto-suave"}>
+            {arquivo ? arquivo.name : "Nenhum arquivo escolhido"}
+          </span>
         </label>
-        {lendo && <p className="flex items-center gap-2 text-sm text-texto-suave">{ocupado('Lendo as abas do arquivo…')}</p>}
+        {lendo && (
+          <p className="flex items-center gap-2 text-sm text-texto-suave">
+            {ocupado("Lendo as abas do arquivo…")}
+          </p>
+        )}
         {leitura.erro && !lendo && (
           <Aviso tipo="erro" titulo="Não deu para ler o arquivo">
             {leitura.erro}
@@ -133,23 +206,38 @@ export function ImportarFolha({
       {m && leitura.abas && !lendo && (
         <DePara abas={leitura.abas} m={m} setM={setM}>
           <div className="space-y-3 border-t border-borda pt-4">
-            <Botao type="button" onClick={rodarAnalise} disabled={analisando || !arquivo || faltando(m).length > 0}>
-              {analisando ? ocupado('Lendo com este DE-PARA…') : (
+            <Botao
+              type="button"
+              onClick={rodarAnalise}
+              disabled={analisando || !arquivo || faltando(m).length > 0}
+            >
+              {analisando ? (
+                ocupado("Lendo com este DE-PARA…")
+              ) : (
                 <>
                   <IconeEnviar tamanho={18} />
                   Ler a planilha com este DE-PARA
                 </>
               )}
             </Botao>
-            {faltando(m).length > 0 && <p className="text-sm text-aviso">Falta: {faltando(m).join('; ')}.</p>}
+            {faltando(m).length > 0 && (
+              <p className="text-sm text-aviso">
+                Falta: {faltando(m).join("; ")}.
+              </p>
+            )}
             {analise.erro && analisadoCom === textoM && !analisando && (
               <Aviso tipo="erro" titulo="Não deu para ler com este DE-PARA">
                 {analise.erro}
               </Aviso>
             )}
-            {analise.analise && analisadoCom !== null && analisadoCom !== textoM && (
-              <p className="text-sm text-texto-suave">Você mudou o DE-PARA. Leia a planilha de novo para atualizar o resultado.</p>
-            )}
+            {analise.analise &&
+              analisadoCom !== null &&
+              analisadoCom !== textoM && (
+                <p className="text-sm text-texto-suave">
+                  Você mudou o DE-PARA. Leia a planilha de novo para atualizar o
+                  resultado.
+                </p>
+              )}
           </div>
         </DePara>
       )}
@@ -157,21 +245,32 @@ export function ImportarFolha({
       {a && <Relatorio analise={a} />}
 
       {a && (
-        <form action={enviarConfirmacao} className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+        <form
+          action={enviarConfirmacao}
+          className="space-y-4 rounded-xl border border-borda bg-superficie p-5"
+        >
           <h2 className="text-lg font-bold">4. Confirmar</h2>
           {servicos.length > 0 && (
             <fieldset className="min-w-0 space-y-2">
               <legend className="mb-2 text-sm">
-                Confira a qual <strong>Serviço</strong> corresponde cada lotação da planilha. Os que o app reconheceu já vêm preenchidos.
+                Confira a qual <strong>Serviço</strong> corresponde cada lotação
+                da planilha. Os que o app reconheceu já vêm preenchidos.
               </legend>
               {servicos.map((x) => (
-                <label key={x.nome} className="grid items-center gap-2 text-sm sm:grid-cols-[1fr_20rem]">
-                  <span className={x.servico ? '' : 'font-semibold'}>{x.nome}</span>
+                <label
+                  key={x.nome}
+                  className="grid items-center gap-2 text-sm sm:grid-cols-[1fr_20rem]"
+                >
+                  <span className={x.servico ? "" : "font-semibold"}>
+                    {x.nome}
+                  </span>
                   <select
                     required
-                    value={x.servico ?? ''}
-                    onChange={(e) => setEscolhas({ ...escolhas, [x.nome]: e.target.value })}
-                    className={`${estiloEntrada} !mt-0 ${x.servico ? '' : 'border-aviso'}`}
+                    value={x.servico ?? ""}
+                    onChange={(e) =>
+                      setEscolhas({ ...escolhas, [x.nome]: e.target.value })
+                    }
+                    className={`${estiloEntrada} !mt-0 ${x.servico ? "" : "border-aviso"}`}
                   >
                     <option value="">Escolha o serviço…</option>
                     {[...new Set(a.opcoes.map((o) => o.area))].map((area) => (
@@ -189,17 +288,71 @@ export function ImportarFolha({
                 </label>
               ))}
               {a.opcoes.length === 0 && (
-                <Aviso tipo="atencao">Nenhum serviço cadastrado. Cadastre os serviços em Administração › Serviços antes de importar.</Aviso>
+                <Aviso tipo="atencao">
+                  Nenhum serviço cadastrado. Cadastre os serviços em
+                  Administração › Serviços antes de importar.
+                </Aviso>
               )}
             </fieldset>
           )}
-          <input type="hidden" name="proposta" value={JSON.stringify({ ...a.proposta, servicos })} />
-          <BotaoEnviar pendente={gravando} disabled={a.proposta.postos.length === 0 || faltam > 0} enviando="Importando…">
-            Importar {a.proposta.postos.length} {a.proposta.postos.length === 1 ? 'funcionário' : 'funcionários'}
+          {nAtualizar > 0 && (
+            <fieldset className="min-w-0 space-y-3 rounded-lg border border-borda p-4 text-sm">
+              <legend className="px-1 font-semibold">
+                Lotações diferentes das cadastradas
+              </legend>
+              <label className="flex items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={atualizarLotacoes}
+                  onChange={(e) => setAtualizarLotacoes(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  Atualizar a lotação de {nAtualizar}{" "}
+                  {nAtualizar === 1 ? "funcionário" : "funcionários"} com a do
+                  arquivo. A lotação anterior fica no histórico.
+                </span>
+              </label>
+              {atualizarLotacoes && (
+                <label className="block max-w-xs">
+                  <span className="font-semibold">A partir de</span>
+                  <span className="block text-texto-suave">
+                    Os meses anteriores continuam com a lotação de antes.
+                  </span>
+                  <input
+                    type="date"
+                    required
+                    value={vigenciaUsada}
+                    onChange={(e) => setVigencia(e.target.value)}
+                    className={estiloEntrada}
+                  />
+                </label>
+              )}
+            </fieldset>
+          )}
+          <input
+            type="hidden"
+            name="proposta"
+            value={JSON.stringify({
+              ...a.proposta,
+              servicos,
+              atualizarLotacoes,
+              vigencia: vigenciaUsada || null,
+            })}
+          />
+          <BotaoEnviar
+            pendente={gravando}
+            disabled={!rotuloImportar || faltam > 0}
+            enviando="Importando…"
+          >
+            {rotuloImportar
+              ? `Importar ${rotuloImportar}`
+              : "Nada para importar"}
           </BotaoEnviar>
           {faltam > 0 && (
             <p className="text-sm text-aviso">
-              Falta escolher o serviço de {faltam} {faltam === 1 ? 'lotação' : 'lotações'}.
+              Falta escolher o serviço de {faltam}{" "}
+              {faltam === 1 ? "lotação" : "lotações"}.
             </p>
           )}
           {confirmacao.erro && (
@@ -216,29 +369,65 @@ export function ImportarFolha({
 /** O que falta escolher no DE-PARA para poder ler. */
 function faltando(m: Mapeamento): string[] {
   const f: string[] = [];
-  for (const c of CAMPOS_FOLHA.filter((x) => x.obrigatorio)) if (m.folha.colunas[c.chave] === undefined) f.push(`coluna de ${c.rotulo}`);
-  if (m.folha.colunas.ficha === undefined && m.folha.colunas.colaborador === undefined) f.push('coluna do Código ou do Nome');
   const l = m.lotacao;
-  if (l.modo === 'coluna' && m.folha.colunas.lotacao === undefined) f.push('coluna de Lotação na folha');
-  if ((l.modo === 'linhas' || l.modo === 'colunas') && l.funcionario < 0) f.push('coluna do funcionário na lotação');
-  if (l.modo === 'linhas' && l.servico < 0) f.push('coluna do serviço na lotação');
-  if (l.modo === 'colunas' && l.servicos.length === 0) f.push('colunas de serviço na lotação');
+  if (m.soLotacao) {
+    if (l.modo !== "linhas" && l.modo !== "colunas")
+      return ["aba com os rateios"];
+    if (l.funcionario < 0) f.push("coluna do funcionário na lotação");
+    if (l.modo === "linhas" && l.servico < 0)
+      f.push("coluna do serviço na lotação");
+    if (l.modo === "colunas" && l.servicos.length === 0)
+      f.push("colunas de serviço na lotação");
+    return f;
+  }
+  for (const c of CAMPOS_FOLHA.filter((x) => x.obrigatorio))
+    if (m.folha.colunas[c.chave] === undefined) f.push(`coluna de ${c.rotulo}`);
+  if (
+    m.folha.colunas.ficha === undefined &&
+    m.folha.colunas.colaborador === undefined
+  )
+    f.push("coluna do Código ou do Nome");
+  if (l.modo === "coluna" && m.folha.colunas.lotacao === undefined)
+    f.push("coluna de Lotação na folha");
+  if ((l.modo === "linhas" || l.modo === "colunas") && l.funcionario < 0)
+    f.push("coluna do funcionário na lotação");
+  if (l.modo === "linhas" && l.servico < 0)
+    f.push("coluna do serviço na lotação");
+  if (l.modo === "colunas" && l.servicos.length === 0)
+    f.push("colunas de serviço na lotação");
   return f;
 }
 
 const GRUPOS = [
-  { id: 'identificacao', titulo: 'Identificação' },
-  { id: 'valores', titulo: 'Valores' },
-  { id: 'conferencia', titulo: 'Conferência' },
+  { id: "identificacao", titulo: "Identificação" },
+  { id: "valores", titulo: "Valores" },
+  { id: "conferencia", titulo: "Conferência" },
 ] as const;
 
-function EscolhaCabecalho({ aba, valor, aoMudar, id }: { aba: AbaResumida | undefined; valor: number; aoMudar: (n: number) => void; id: string }) {
+function EscolhaCabecalho({
+  aba,
+  valor,
+  aoMudar,
+  id,
+}: {
+  aba: AbaResumida | undefined;
+  valor: number;
+  aoMudar: (n: number) => void;
+  id: string;
+}) {
   if (!aba) return null;
   return (
     <label className="block text-sm" htmlFor={id}>
       <span className="font-semibold">Linha do cabeçalho</span>
-      <span className="block text-texto-suave">A linha com os títulos das colunas.</span>
-      <select id={id} value={valor} onChange={(e) => aoMudar(Number(e.target.value))} className={estiloEntrada}>
+      <span className="block text-texto-suave">
+        A linha com os títulos das colunas.
+      </span>
+      <select
+        id={id}
+        value={valor}
+        onChange={(e) => aoMudar(Number(e.target.value))}
+        className={estiloEntrada}
+      >
         {aba.linhas.map((l, i) => (
           <option key={i} value={i + 1}>
             Linha {i + 1}: {resumoLinha(l).slice(0, 90)}
@@ -265,7 +454,14 @@ function SeletorColuna({
   const exemplo = colunas.find((c) => c.j === valor)?.exemplo;
   return (
     <div className="min-w-0">
-      <select id={id} value={valor ?? ''} onChange={(e) => aoMudar(e.target.value === '' ? null : Number(e.target.value))} className={`${estiloEntrada} !mt-0`}>
+      <select
+        id={id}
+        value={valor ?? ""}
+        onChange={(e) =>
+          aoMudar(e.target.value === "" ? null : Number(e.target.value))
+        }
+        className={`${estiloEntrada} !mt-0`}
+      >
         <option value="">{vazio}</option>
         {colunas.map((c) => (
           <option key={c.j} value={c.j}>
@@ -273,21 +469,54 @@ function SeletorColuna({
           </option>
         ))}
       </select>
-      {exemplo ? <span className="mt-0.5 block truncate text-xs text-texto-suave">ex.: {exemplo}</span> : null}
+      {exemplo ? (
+        <span className="mt-0.5 block truncate text-xs text-texto-suave">
+          ex.: {exemplo}
+        </span>
+      ) : null}
     </div>
   );
 }
 
-function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeamento; setM: (m: Mapeamento) => void; children: ReactNode }) {
+function DePara({
+  abas,
+  m,
+  setM,
+  children,
+}: {
+  abas: AbaResumida[];
+  m: Mapeamento;
+  setM: (m: Mapeamento) => void;
+  children: ReactNode;
+}) {
   const abaFolha = abas.find((a) => a.nome === m.folha.aba);
-  const colsFolha = useMemo(() => colunasDe(abaFolha, m.folha.cabecalho), [abaFolha, m.folha.cabecalho]);
+  const colsFolha = useMemo(
+    () => colunasDe(abaFolha, m.folha.cabecalho),
+    [abaFolha, m.folha.cabecalho],
+  );
   const l = m.lotacao;
-  const abaLot = l.modo === 'linhas' || l.modo === 'colunas' ? abas.find((a) => a.nome === l.aba) : undefined;
-  const colsLot = useMemo(() => (l.modo === 'linhas' || l.modo === 'colunas' ? colunasDe(abaLot, l.cabecalho) : []), [abaLot, l]);
+  const abaLot =
+    l.modo === "linhas" || l.modo === "colunas"
+      ? abas.find((a) => a.nome === l.aba)
+      : undefined;
+  const colsLot = useMemo(
+    () =>
+      l.modo === "linhas" || l.modo === "colunas"
+        ? colunasDe(abaLot, l.cabecalho)
+        : [],
+    [abaLot, l],
+  );
 
   const mudarFolha = (aba: string, cabecalho: number) => {
     const x = abas.find((a) => a.nome === aba);
-    setM({ ...m, folha: { aba, cabecalho, colunas: sugerirColunasFolha(x?.linhas[cabecalho - 1] ?? []) } });
+    setM({
+      ...m,
+      folha: {
+        aba,
+        cabecalho,
+        colunas: sugerirColunasFolha(x?.linhas[cabecalho - 1] ?? []),
+      },
+    });
   };
   const mudarColuna = (campo: CampoFolha, j: number | null) => {
     const colunas = { ...m.folha.colunas };
@@ -295,101 +524,254 @@ function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeament
     else colunas[campo] = j;
     setM({ ...m, folha: { ...m.folha, colunas } });
   };
-  const lotacaoDaAba = (aba: string, cabecalho: number, formato: 'linhas' | 'colunas'): MapeamentoLotacao => {
+  const lotacaoDaAba = (
+    aba: string,
+    cabecalho: number,
+    formato: "linhas" | "colunas",
+  ): MapeamentoLotacao => {
     const x = abas.find((a) => a.nome === aba);
     const s = sugerirColunasLotacao(x?.linhas[cabecalho - 1] ?? []);
-    return formato === 'linhas'
-      ? { modo: 'linhas', aba, cabecalho, funcionario: s.funcionario ?? -1, servico: s.servico ?? -1, percentual: s.percentual }
-      : { modo: 'colunas', aba, cabecalho, funcionario: s.funcionario ?? -1, servicos: s.servicos.filter((j) => j !== s.funcionario) };
+    return formato === "linhas"
+      ? {
+          modo: "linhas",
+          aba,
+          cabecalho,
+          funcionario: s.funcionario ?? -1,
+          servico: s.servico ?? -1,
+          percentual: s.percentual,
+        }
+      : {
+          modo: "colunas",
+          aba,
+          cabecalho,
+          funcionario: s.funcionario ?? -1,
+          servicos: s.servicos.filter((j) => j !== s.funcionario),
+        };
   };
   const setLot = (lotacao: MapeamentoLotacao) => setM({ ...m, lotacao });
   const outraAba = abas.find((a) => a.nome !== m.folha.aba) ?? abas[0];
 
   return (
-    <section className="space-y-6 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-depara">
+    <section
+      className="space-y-6 rounded-xl border border-borda bg-superficie p-5"
+      aria-labelledby="t-depara"
+    >
       <div>
-        <h2 id="t-depara" className="text-lg font-bold">2. Onde estão os dados (DE-PARA)</h2>
+        <h2 id="t-depara" className="text-lg font-bold">
+          2. Onde estão os dados (DE-PARA)
+        </h2>
         <p className="max-w-2xl text-sm text-texto-suave">
-          O app já sugeriu as escolhas pelos títulos das colunas. Confira e mude o que for preciso. Campos que não existem na sua planilha ficam como
+          O app já sugeriu as escolhas pelos títulos das colunas. Confira e mude
+          o que for preciso. Campos que não existem na sua planilha ficam como
           “não importar” e entram zerados.
         </p>
       </div>
 
-      <fieldset className="min-w-0 space-y-4">
-        <legend className="text-base font-bold">Folha de pagamento</legend>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm">
-            <span className="font-semibold">Aba com os funcionários</span>
-            <span className="block text-texto-suave">Uma linha por funcionário ou vaga.</span>
-            <select value={m.folha.aba} onChange={(e) => mudarFolha(e.target.value, abas.find((a) => a.nome === e.target.value)?.cabecalhoSugerido ?? 1)} className={estiloEntrada}>
-              {abas.map((a) => (
-                <option key={a.nome} value={a.nome}>
-                  {a.nome} ({a.totalLinhas} linhas)
-                </option>
-              ))}
-            </select>
-          </label>
-          <EscolhaCabecalho id="cab-folha" aba={abaFolha} valor={m.folha.cabecalho} aoMudar={(n) => mudarFolha(m.folha.aba, n)} />
-        </div>
-
-        <div className="overflow-hidden rounded-lg border border-borda">
-          <table className="w-full text-left text-sm">
-            <caption className="sr-only">DE-PARA das colunas da folha</caption>
-            <thead className="bg-superficie-2 text-texto-suave">
-              <tr>
-                <th scope="col" className="w-1/2 px-3 py-2 font-semibold">Campo do cadastro (PARA)</th>
-                <th scope="col" className="px-3 py-2 font-semibold">Coluna da planilha (DE)</th>
-              </tr>
-            </thead>
-            {GRUPOS.map((g) => (
-              <tbody key={g.id}>
-                <tr className="border-t border-borda bg-destaque-suave/60">
-                  <th scope="rowgroup" colSpan={2} className="px-3 py-1.5 font-bold">
-                    {g.titulo}
-                  </th>
-                </tr>
-                {CAMPOS_FOLHA.filter((c) => c.grupo === g.id).map((c) => {
-                  const id = `col-${c.chave}`;
-                  const falta = c.obrigatorio && m.folha.colunas[c.chave] === undefined;
-                  return (
-                    <tr key={c.chave} className="border-t border-borda align-top">
-                      <th scope="row" className="px-3 py-2 font-normal">
-                        <label htmlFor={id} className="font-semibold">
-                          {c.rotulo}
-                          {c.obrigatorio && <span className="text-erro"> *</span>}
-                        </label>
-                        {c.dica && <span className="block text-xs text-texto-suave">{c.dica}</span>}
-                      </th>
-                      <td className={`px-3 py-2 ${falta ? 'bg-aviso-fundo' : ''}`}>
-                        <SeletorColuna id={id} colunas={colsFolha} valor={m.folha.colunas[c.chave]} aoMudar={(j) => mudarColuna(c.chave, j)} vazio="— não importar —" />
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            ))}
-          </table>
-        </div>
+      <fieldset className="min-w-0 space-y-2 text-sm">
+        <legend className="mb-2 text-base font-bold">
+          O que este arquivo traz
+        </legend>
+        {(
+          [
+            [
+              false,
+              "Funcionários da folha",
+              "Com ou sem lotação. Quem já está cadastrado não é duplicado nem tem os valores alterados; a lotação dele, se vier, é incluída ou atualizada.",
+            ],
+            [
+              true,
+              "Só a lotação (rateio)",
+              "De funcionários já cadastrados, por exemplo depois de importar a folha sem rateio.",
+            ],
+          ] as const
+        ).map(([v, rotulo, dica]) => {
+          const marcado = Boolean(m.soLotacao) === v;
+          return (
+            <label
+              key={rotulo}
+              className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${marcado ? "border-destaque bg-destaque-suave" : "border-borda"}`}
+            >
+              <input
+                type="radio"
+                name="tipo-arquivo"
+                checked={marcado}
+                onChange={() =>
+                  setM({
+                    ...m,
+                    soLotacao: v || undefined,
+                    lotacao:
+                      v && l.modo !== "linhas" && l.modo !== "colunas"
+                        ? lotacaoDaAba(
+                            abas[0].nome,
+                            abas[0].cabecalhoSugerido,
+                            "linhas",
+                          )
+                        : l,
+                  })
+                }
+                className="mt-1"
+              />
+              <span>
+                <span className="font-semibold">{rotulo}</span>
+                <span className="block text-texto-suave">{dica}</span>
+              </span>
+            </label>
+          );
+        })}
       </fieldset>
 
+      {!m.soLotacao && (
+        <fieldset className="min-w-0 space-y-4">
+          <legend className="text-base font-bold">Folha de pagamento</legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm">
+              <span className="font-semibold">Aba com os funcionários</span>
+              <span className="block text-texto-suave">
+                Uma linha por funcionário ou vaga.
+              </span>
+              <select
+                value={m.folha.aba}
+                onChange={(e) =>
+                  mudarFolha(
+                    e.target.value,
+                    abas.find((a) => a.nome === e.target.value)
+                      ?.cabecalhoSugerido ?? 1,
+                  )
+                }
+                className={estiloEntrada}
+              >
+                {abas.map((a) => (
+                  <option key={a.nome} value={a.nome}>
+                    {a.nome} ({a.totalLinhas} linhas)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <EscolhaCabecalho
+              id="cab-folha"
+              aba={abaFolha}
+              valor={m.folha.cabecalho}
+              aoMudar={(n) => mudarFolha(m.folha.aba, n)}
+            />
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-borda">
+            <table className="w-full text-left text-sm">
+              <caption className="sr-only">
+                DE-PARA das colunas da folha
+              </caption>
+              <thead className="bg-superficie-2 text-texto-suave">
+                <tr>
+                  <th scope="col" className="w-1/2 px-3 py-2 font-semibold">
+                    Campo do cadastro (PARA)
+                  </th>
+                  <th scope="col" className="px-3 py-2 font-semibold">
+                    Coluna da planilha (DE)
+                  </th>
+                </tr>
+              </thead>
+              {GRUPOS.map((g) => (
+                <tbody key={g.id}>
+                  <tr className="border-t border-borda bg-destaque-suave/60">
+                    <th
+                      scope="rowgroup"
+                      colSpan={2}
+                      className="px-3 py-1.5 font-bold"
+                    >
+                      {g.titulo}
+                    </th>
+                  </tr>
+                  {CAMPOS_FOLHA.filter((c) => c.grupo === g.id).map((c) => {
+                    const id = `col-${c.chave}`;
+                    const falta =
+                      c.obrigatorio && m.folha.colunas[c.chave] === undefined;
+                    return (
+                      <tr
+                        key={c.chave}
+                        className="border-t border-borda align-top"
+                      >
+                        <th scope="row" className="px-3 py-2 font-normal">
+                          <label htmlFor={id} className="font-semibold">
+                            {c.rotulo}
+                            {c.obrigatorio && (
+                              <span className="text-erro"> *</span>
+                            )}
+                          </label>
+                          {c.dica && (
+                            <span className="block text-xs text-texto-suave">
+                              {c.dica}
+                            </span>
+                          )}
+                        </th>
+                        <td
+                          className={`px-3 py-2 ${falta ? "bg-aviso-fundo" : ""}`}
+                        >
+                          <SeletorColuna
+                            id={id}
+                            colunas={colsFolha}
+                            valor={m.folha.colunas[c.chave]}
+                            aoMudar={(j) => mudarColuna(c.chave, j)}
+                            vazio="— não importar —"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              ))}
+            </table>
+          </div>
+        </fieldset>
+      )}
+
       <fieldset className="min-w-0 space-y-4">
-        <legend className="text-base font-bold">Lotação (rateio por serviço)</legend>
-        <div className="space-y-2 text-sm">
+        <legend className="text-base font-bold">
+          Lotação (rateio por serviço)
+        </legend>
+        <div className={`space-y-2 text-sm ${m.soLotacao ? "hidden" : ""}`}>
           {(
             [
-              ['coluna', 'Coluna “Lotação” da própria folha', '100% no serviço escrito na coluna escolhida acima.'],
-              ['aba', 'Outra aba, com os rateios', 'Quando um funcionário é dividido entre serviços.'],
-              ['nenhuma', 'Não importar lotação agora', 'Você distribui depois, na tela Lotação.'],
+              [
+                "coluna",
+                "Coluna “Lotação” da própria folha",
+                "100% no serviço escrito na coluna escolhida acima.",
+              ],
+              [
+                "aba",
+                "Outra aba, com os rateios",
+                "Quando um funcionário é dividido entre serviços.",
+              ],
+              [
+                "nenhuma",
+                "Não importar lotação agora",
+                "Você distribui depois, na tela Lotação.",
+              ],
             ] as const
           ).map(([v, rotulo, dica]) => {
-            const marcado = v === 'aba' ? l.modo === 'linhas' || l.modo === 'colunas' : l.modo === v;
+            const marcado =
+              v === "aba"
+                ? l.modo === "linhas" || l.modo === "colunas"
+                : l.modo === v;
             return (
-              <label key={v} className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${marcado ? 'border-destaque bg-destaque-suave' : 'border-borda'}`}>
+              <label
+                key={v}
+                className={`flex cursor-pointer gap-3 rounded-lg border p-3 ${marcado ? "border-destaque bg-destaque-suave" : "border-borda"}`}
+              >
                 <input
                   type="radio"
                   name="modo-lotacao"
                   checked={marcado}
-                  onChange={() => setLot(v === 'aba' ? lotacaoDaAba(outraAba.nome, outraAba.cabecalhoSugerido, 'linhas') : { modo: v })}
+                  onChange={() =>
+                    setLot(
+                      v === "aba"
+                        ? lotacaoDaAba(
+                            outraAba.nome,
+                            outraAba.cabecalhoSugerido,
+                            "linhas",
+                          )
+                        : { modo: v },
+                    )
+                  }
                   className="mt-1"
                 />
                 <span>
@@ -401,14 +783,23 @@ function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeament
           })}
         </div>
 
-        {(l.modo === 'linhas' || l.modo === 'colunas') && (
+        {(l.modo === "linhas" || l.modo === "colunas") && (
           <div className="space-y-4 rounded-lg border border-borda p-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="font-semibold">Aba com os rateios</span>
                 <select
                   value={l.aba}
-                  onChange={(e) => setLot(lotacaoDaAba(e.target.value, abas.find((a) => a.nome === e.target.value)?.cabecalhoSugerido ?? 1, l.modo))}
+                  onChange={(e) =>
+                    setLot(
+                      lotacaoDaAba(
+                        e.target.value,
+                        abas.find((a) => a.nome === e.target.value)
+                          ?.cabecalhoSugerido ?? 1,
+                        l.modo,
+                      ),
+                    )
+                  }
                   className={estiloEntrada}
                 >
                   {abas.map((a) => (
@@ -418,18 +809,37 @@ function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeament
                   ))}
                 </select>
               </label>
-              <EscolhaCabecalho id="cab-lot" aba={abaLot} valor={l.cabecalho} aoMudar={(n) => setLot(lotacaoDaAba(l.aba, n, l.modo))} />
+              <EscolhaCabecalho
+                id="cab-lot"
+                aba={abaLot}
+                valor={l.cabecalho}
+                aoMudar={(n) => setLot(lotacaoDaAba(l.aba, n, l.modo))}
+              />
             </div>
 
             <div className="space-y-2 text-sm">
               <p className="font-semibold">Como os rateios estão na aba</p>
               <div className="flex flex-wrap gap-x-6 gap-y-2">
                 <label className="flex items-center gap-2">
-                  <input type="radio" name="formato-lotacao" checked={l.modo === 'linhas'} onChange={() => setLot(lotacaoDaAba(l.aba, l.cabecalho, 'linhas'))} />
+                  <input
+                    type="radio"
+                    name="formato-lotacao"
+                    checked={l.modo === "linhas"}
+                    onChange={() =>
+                      setLot(lotacaoDaAba(l.aba, l.cabecalho, "linhas"))
+                    }
+                  />
                   Uma linha por serviço (Funcionário, Serviço, Percentual)
                 </label>
                 <label className="flex items-center gap-2">
-                  <input type="radio" name="formato-lotacao" checked={l.modo === 'colunas'} onChange={() => setLot(lotacaoDaAba(l.aba, l.cabecalho, 'colunas'))} />
+                  <input
+                    type="radio"
+                    name="formato-lotacao"
+                    checked={l.modo === "colunas"}
+                    onChange={() =>
+                      setLot(lotacaoDaAba(l.aba, l.cabecalho, "colunas"))
+                    }
+                  />
                   Uma coluna para cada serviço
                 </label>
               </div>
@@ -440,31 +850,61 @@ function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeament
                 <span className="font-semibold">
                   Funcionário <span className="text-erro">*</span>
                 </span>
-                <span className="block text-texto-suave">Código (ficha) ou nome, igual à folha.</span>
-                <SeletorColuna id="lot-func" colunas={colsLot} valor={l.funcionario < 0 ? null : l.funcionario} aoMudar={(j) => setLot({ ...l, funcionario: j ?? -1 })} vazio="Escolha a coluna…" />
+                <span className="block text-texto-suave">
+                  {m.soLotacao
+                    ? "Código (ficha) ou nome, igual ao cadastro."
+                    : "Código (ficha) ou nome, igual à folha."}
+                </span>
+                <SeletorColuna
+                  id="lot-func"
+                  colunas={colsLot}
+                  valor={l.funcionario < 0 ? null : l.funcionario}
+                  aoMudar={(j) => setLot({ ...l, funcionario: j ?? -1 })}
+                  vazio="Escolha a coluna…"
+                />
               </label>
-              {l.modo === 'linhas' && (
+              {l.modo === "linhas" && (
                 <>
                   <label className="block text-sm" htmlFor="lot-serv">
                     <span className="font-semibold">
                       Serviço <span className="text-erro">*</span>
                     </span>
-                    <span className="block text-texto-suave">Nome ou código do serviço.</span>
-                    <SeletorColuna id="lot-serv" colunas={colsLot} valor={l.servico < 0 ? null : l.servico} aoMudar={(j) => setLot({ ...l, servico: j ?? -1 })} vazio="Escolha a coluna…" />
+                    <span className="block text-texto-suave">
+                      Nome ou código do serviço.
+                    </span>
+                    <SeletorColuna
+                      id="lot-serv"
+                      colunas={colsLot}
+                      valor={l.servico < 0 ? null : l.servico}
+                      aoMudar={(j) => setLot({ ...l, servico: j ?? -1 })}
+                      vazio="Escolha a coluna…"
+                    />
                   </label>
                   <label className="block text-sm" htmlFor="lot-perc">
                     <span className="font-semibold">Percentual</span>
-                    <span className="block text-texto-suave">Aceita 60, 60% ou 0,6.</span>
-                    <SeletorColuna id="lot-perc" colunas={colsLot} valor={l.percentual} aoMudar={(j) => setLot({ ...l, percentual: j })} vazio="— sem coluna: 100% —" />
+                    <span className="block text-texto-suave">
+                      Aceita 60, 60% ou 0,6.
+                    </span>
+                    <SeletorColuna
+                      id="lot-perc"
+                      colunas={colsLot}
+                      valor={l.percentual}
+                      aoMudar={(j) => setLot({ ...l, percentual: j })}
+                      vazio="— sem coluna: 100% —"
+                    />
                   </label>
                 </>
               )}
             </div>
 
-            {l.modo === 'colunas' && (
+            {l.modo === "colunas" && (
               <fieldset className="min-w-0 text-sm">
-                <legend className="font-semibold">Colunas que são serviços</legend>
-                <p className="text-texto-suave">Cada célula tem o percentual do funcionário naquele serviço.</p>
+                <legend className="font-semibold">
+                  Colunas que são serviços
+                </legend>
+                <p className="text-texto-suave">
+                  Cada célula tem o percentual do funcionário naquele serviço.
+                </p>
                 <div className="mt-2 grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
                   {colsLot
                     .filter((c) => c.j !== l.funcionario)
@@ -473,7 +913,14 @@ function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeament
                         <input
                           type="checkbox"
                           checked={l.servicos.includes(c.j)}
-                          onChange={(e) => setLot({ ...l, servicos: e.target.checked ? [...l.servicos, c.j].sort((x, y) => x - y) : l.servicos.filter((j) => j !== c.j) })}
+                          onChange={(e) =>
+                            setLot({
+                              ...l,
+                              servicos: e.target.checked
+                                ? [...l.servicos, c.j].sort((x, y) => x - y)
+                                : l.servicos.filter((j) => j !== c.j),
+                            })
+                          }
                         />
                         <span className="truncate">
                           {letra(c.j)} · {c.titulo}
@@ -495,36 +942,119 @@ function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeament
 function Relatorio({ analise }: { analise: Analise }) {
   const r = analise.relatorio;
   const problemas = r.lotacoesForaDe100.length + r.semLotacao.length;
+  const ex = r.lotacoesExistentes;
+  const lista = (l: { ficha: string | null; colaborador: string | null }[]) => (
+    <ul className="ml-5 mt-1 list-disc">
+      {l.slice(0, 30).map((x, i) => (
+        <li key={i}>{quem(x)}</li>
+      ))}
+      {l.length > 30 && <li>e mais {l.length - 30}</li>}
+    </ul>
+  );
   return (
-    <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
-      <h2 id="t-relatorio" className="text-lg font-bold">3. Conferir o que será importado</h2>
+    <section
+      className="space-y-4 rounded-xl border border-borda bg-superficie p-5"
+      aria-labelledby="t-relatorio"
+    >
+      <h2 id="t-relatorio" className="text-lg font-bold">
+        3. Conferir o que será importado
+      </h2>
 
-      <dl className="grid gap-3 text-sm sm:grid-cols-4">
-        <div>
-          <dt className="text-texto-suave">Funcionários</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{r.postos.total}</dd>
-          <dd className="text-texto-suave">{r.postos.vagas} {r.postos.vagas === 1 ? 'vaga prevista' : 'vagas previstas'}</dd>
+      {(ex.incluir.length > 0 ||
+        ex.atualizar.length > 0 ||
+        ex.iguais > 0 ||
+        r.soLotacao) && (
+        <div className="space-y-2 rounded-lg border border-borda p-4 text-sm">
+          <p className="font-semibold">
+            Lotação de funcionários já cadastrados
+          </p>
+          {ex.incluir.length + ex.atualizar.length + ex.iguais === 0 && (
+            <p className="text-texto-suave">Nenhuma lotação para gravar.</p>
+          )}
+          {ex.incluir.length > 0 && (
+            <details>
+              <summary className="cursor-pointer">
+                <strong>{ex.incluir.length}</strong>{" "}
+                {ex.incluir.length === 1
+                  ? "ainda não tem lotação e vai receber"
+                  : "ainda não têm lotação e vão receber"}{" "}
+                a do arquivo
+              </summary>
+              {lista(ex.incluir)}
+            </details>
+          )}
+          {ex.atualizar.length > 0 && (
+            <details>
+              <summary className="cursor-pointer">
+                <strong>{ex.atualizar.length}</strong>{" "}
+                {ex.atualizar.length === 1
+                  ? "tem lotação diferente da do arquivo"
+                  : "têm lotação diferente da do arquivo"}{" "}
+                (você decide no passo 4)
+              </summary>
+              {lista(ex.atualizar)}
+            </details>
+          )}
+          {ex.iguais > 0 && (
+            <p className="text-texto-suave">
+              {ex.iguais}{" "}
+              {ex.iguais === 1
+                ? "já tem a mesma lotação"
+                : "já têm a mesma lotação"}
+              : nada muda.
+            </p>
+          )}
         </div>
-        <div>
-          <dt className="text-texto-suave">Com lotação válida</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{r.postos.comLotacao}</dd>
-        </div>
-        <div>
-          <dt className="text-texto-suave">Lotações reconhecidas</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{r.servicos.reconhecidos}</dd>
-          <dd className="text-texto-suave">{r.servicos.aEscolher} para você escolher</dd>
-        </div>
-        <div>
-          <dt className="text-texto-suave">Custo mensal calculado</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{reais(r.custoMensalApp)}</dd>
-          {r.custoMensalPlanilha !== null && <dd className="text-texto-suave">Na planilha: {reais(r.custoMensalPlanilha)}</dd>}
-        </div>
-      </dl>
+      )}
+
+      {!r.soLotacao && (
+        <dl className="grid gap-3 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-texto-suave">Funcionários</dt>
+            <dd className="text-2xl font-semibold tabular-nums">
+              {r.postos.total}
+            </dd>
+            <dd className="text-texto-suave">
+              {r.postos.vagas}{" "}
+              {r.postos.vagas === 1 ? "vaga prevista" : "vagas previstas"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-texto-suave">Com lotação válida</dt>
+            <dd className="text-2xl font-semibold tabular-nums">
+              {r.postos.comLotacao}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-texto-suave">Lotações reconhecidas</dt>
+            <dd className="text-2xl font-semibold tabular-nums">
+              {r.servicos.reconhecidos}
+            </dd>
+            <dd className="text-texto-suave">
+              {r.servicos.aEscolher} para você escolher
+            </dd>
+          </div>
+          <div>
+            <dt className="text-texto-suave">Custo mensal calculado</dt>
+            <dd className="text-2xl font-semibold tabular-nums">
+              {reais(r.custoMensalApp)}
+            </dd>
+            {r.custoMensalPlanilha !== null && (
+              <dd className="text-texto-suave">
+                Na planilha: {reais(r.custoMensalPlanilha)}
+              </dd>
+            )}
+          </div>
+        </dl>
+      )}
 
       {problemas > 0 && (
         <div className="rounded-md bg-aviso-fundo p-4 text-sm text-aviso">
           <p className="font-semibold">
-            {problemas} {problemas === 1 ? 'funcionário vai' : 'funcionários vão'} entrar sem lotação e precisarão de ajuste depois, na tela Lotação.
+            {problemas}{" "}
+            {problemas === 1 ? "funcionário fica" : "funcionários ficam"} sem
+            lotação nova e {problemas === 1 ? "precisará" : "precisarão"} de
+            ajuste depois, na tela Lotação.
           </p>
           {r.lotacoesForaDe100.length > 0 && (
             <>
@@ -552,34 +1082,54 @@ function Relatorio({ analise }: { analise: Analise }) {
       )}
 
       {r.lotacaoSemFuncionario.length > 0 && (
-        <Aviso tipo="atencao" titulo="Lotação de quem não está na folha">
-          A aba de lotação cita {r.lotacaoSemFuncionario.length === 1 ? 'um funcionário que não aparece' : `${r.lotacaoSemFuncionario.length} funcionários que não aparecem`} na
-          aba da folha: {r.lotacaoSemFuncionario.slice(0, 20).join(', ')}
-          {r.lotacaoSemFuncionario.length > 20 ? '…' : ''}. Essas linhas são ignoradas. Confira se a coluna do funcionário é a certa.
+        <Aviso tipo="atencao" titulo={r.soLotacao ? 'Lotação de quem não foi encontrado' : 'Lotação de quem não está na folha'}>
+          A aba de lotação cita{" "}
+          {r.lotacaoSemFuncionario.length === 1
+            ? "um funcionário que não aparece"
+            : `${r.lotacaoSemFuncionario.length} funcionários que não aparecem`}{" "}
+          {r.soLotacao
+            ? "entre os cadastrados (ou com nome repetido no cadastro)"
+            : "na aba da folha"}
+          : {r.lotacaoSemFuncionario.slice(0, 20).join(", ")}
+          {r.lotacaoSemFuncionario.length > 20 ? "…" : ""}. Essas linhas são
+          ignoradas. Confira se a coluna do funcionário é a certa.
         </Aviso>
       )}
 
       {r.diferencasCusto.length > 0 && (
         <details className="text-sm">
           <summary className="cursor-pointer font-medium">
-            {r.diferencasCusto.length} {r.diferencasCusto.length === 1 ? 'funcionário tem' : 'funcionários têm'} custo diferente do total da planilha
+            {r.diferencasCusto.length}{" "}
+            {r.diferencasCusto.length === 1
+              ? "funcionário tem"
+              : "funcionários têm"}{" "}
+            custo diferente do total da planilha
           </summary>
           <p className="mt-2 text-texto-suave">
-            O app calcula provisões e encargos pelos parâmetros da folha. Diferenças grandes podem indicar parâmetro ou componente a conferir.
+            O app calcula provisões e encargos pelos parâmetros da folha.
+            Diferenças grandes podem indicar parâmetro ou componente a conferir.
           </p>
           <table className="mt-2 text-left">
             <thead className="text-texto-suave">
               <tr>
-                <th scope="col" className="pr-4 font-medium">Posto</th>
-                <th scope="col" className="pr-4 text-right font-medium">Planilha</th>
-                <th scope="col" className="text-right font-medium">App</th>
+                <th scope="col" className="pr-4 font-medium">
+                  Posto
+                </th>
+                <th scope="col" className="pr-4 text-right font-medium">
+                  Planilha
+                </th>
+                <th scope="col" className="text-right font-medium">
+                  App
+                </th>
               </tr>
             </thead>
             <tbody>
               {r.diferencasCusto.slice(0, 30).map((d, i) => (
                 <tr key={i}>
                   <td className="pr-4">{quem(d)}</td>
-                  <td className="pr-4 text-right tabular-nums">{reais(d.planilha)}</td>
+                  <td className="pr-4 text-right tabular-nums">
+                    {reais(d.planilha)}
+                  </td>
                   <td className="text-right tabular-nums">{reais(d.app)}</td>
                 </tr>
               ))}
@@ -589,18 +1139,45 @@ function Relatorio({ analise }: { analise: Analise }) {
       )}
 
       <details className="text-sm">
-        <summary className="cursor-pointer font-medium">Detalhes da leitura</summary>
+        <summary className="cursor-pointer font-medium">
+          Detalhes da leitura
+        </summary>
         <ul className="ml-5 mt-2 list-disc space-y-1">
           <li>
-            Aba da folha: {r.abas.estudo ?? '—'}. Lotação: {r.abas.rateio ? `aba ${r.abas.rateio}` : 'coluna da folha ou nenhuma'}.
+            Aba da folha: {r.abas.estudo ?? "—"}. Lotação:{" "}
+            {r.abas.rateio
+              ? `aba ${r.abas.rateio}`
+              : "coluna da folha ou nenhuma"}
+            .
           </li>
-          {r.fichasJaCadastradas.length > 0 && <li>Códigos já cadastrados, ignorados: {r.fichasJaCadastradas.join(', ')}.</li>}
-          {r.vagasJaCadastradas > 0 && <li>{r.vagasJaCadastradas} vagas previstas já cadastradas, ignoradas.</li>}
-          {r.semAdmissao > 0 && <li>{r.semAdmissao} funcionários sem data de admissão: entram com 1º de janeiro.</li>}
-          {r.colunasCalculadas.length > 0 && <li>Colunas calculadas pelo app, não importadas: {r.colunasCalculadas.join(', ')}.</li>}
+          {r.fichasJaCadastradas.length > 0 && (
+            <li>
+              Códigos já cadastrados (não duplicados; valores mantidos):{" "}
+              {r.fichasJaCadastradas.join(", ")}.
+            </li>
+          )}
+          {r.vagasJaCadastradas > 0 && (
+            <li>
+              {r.vagasJaCadastradas} vagas previstas já cadastradas (não
+              duplicadas; valores mantidos).
+            </li>
+          )}
+          {r.semAdmissao > 0 && (
+            <li>
+              {r.semAdmissao} funcionários sem data de admissão: entram com 1º
+              de janeiro.
+            </li>
+          )}
+          {r.colunasCalculadas.length > 0 && (
+            <li>
+              Colunas calculadas pelo app, não importadas:{" "}
+              {r.colunasCalculadas.join(", ")}.
+            </li>
+          )}
           {r.colunasIgnoradas.map((c) => (
             <li key={c.aba}>
-              Colunas da aba {c.aba} que não serão importadas: {c.colunas.join(', ')}.
+              Colunas da aba {c.aba} que não serão importadas:{" "}
+              {c.colunas.join(", ")}.
             </li>
           ))}
           {r.avisos.map((x) => (

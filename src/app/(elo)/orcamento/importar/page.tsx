@@ -17,7 +17,7 @@ export default async function Importar() {
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento' }, { rotulo: 'Importar planilha' }]}
         titulo="Importar a planilha da folha"
-        descricao="Traz os funcionários e vagas de qualquer planilha: você escolhe a aba e diz qual coluna corresponde a cada campo. Códigos já cadastrados são ignorados e nada existente é alterado, então dá para importar de novo com segurança."
+        descricao="Traz os funcionários e vagas de qualquer planilha: você escolhe a aba e diz qual coluna corresponde a cada campo. Quem já está cadastrado não é duplicado nem tem os valores alterados, então dá para importar de novo com segurança. A lotação (rateio) pode vir junto ou depois, num arquivo só com ela."
       />
       <ImportarFolha lerArquivo={acaoLerArquivo} analisar={acaoAnalisarImportacao} confirmar={acaoConfirmarImportacao} />
     </div>

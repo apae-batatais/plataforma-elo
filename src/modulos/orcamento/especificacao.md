@@ -279,6 +279,14 @@ Cada gráfico tem "Ver os números" em tabela.
      aba de lotação é achado pelo código ou pelo nome.
    - O app sugere o DE-PARA pelos títulos das colunas; a pessoa confere e muda.
    - Depois: a pessoa escolhe a qual Serviço corresponde cada nome de lotação; relatório antes de gravar.
+   - **Reimportar e lotação depois:** quem já está cadastrado (mesmo código, ou mesma vaga) não é
+     duplicado e não tem os valores alterados. Se o arquivo trouxer lotação para essa pessoa: sem
+     lotação → recebe a do arquivo (a partir da admissão ou de 1º de janeiro); com lotação diferente
+     → é atualizada a partir da data escolhida na confirmação (pode desmarcar); igual → nada muda.
+     A lotação anterior fica no histórico (nova linha com vigência; nada é apagado).
+   - **Só lotação:** o arquivo pode trazer só a aba de rateio (Funcionário, Serviço, Percentual ou uma
+     coluna por serviço). O funcionário é achado entre os cadastrados pelo código ou pelo nome (nome
+     repetido no cadastro não é usado).
 
 ## O que muda fora do módulo (precisa de aprovação)
 
