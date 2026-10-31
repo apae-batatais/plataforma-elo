@@ -4,13 +4,14 @@ import { cumprimento } from '@/ui/saudacao';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
+import { contadoresRequisicoes } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { painelDeAcessos } from '@/nucleo/acesso/gestao';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { APPS_PLANEJADOS } from '@/plataforma/apps-planejados';
 import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
-import { IconeAreas, IconeAtencao, IconeChave, IconeCerto, IconeOrcamento, IconePessoas, IconeSeta, IconeServicos } from '@/ui/icones';
+import { IconeAreas, IconeAtencao, IconeChave, IconeCerto, IconeOrcamento, IconePessoas, IconeRequisicao, IconeSeta, IconeServicos } from '@/ui/icones';
 import { CabecalhoPagina } from '@/ui/pagina';
 
 interface Pendencia {
@@ -83,6 +84,23 @@ export default async function Portal() {
       }
     } catch {
       // Planilhas do Orçamento ainda não preparadas: a página do app explica.
+    }
+  }
+  if (a.temPermissaoAlgumEscopo('requisicoes.acessar')) {
+    try {
+      const c = await contadoresRequisicoes(app.planilhas, a);
+      const n = (x: number, um: string, varios: string) => `${x} ${x === 1 ? um : varios}`;
+      if (c.aprovar > 0) {
+        pendencias.push({ texto: n(c.aprovar, 'requisição espera a sua aprovação', 'requisições esperam a sua aprovação'), detalhe: 'Aprove, devolva para ajuste ou recuse.', href: '/requisicoes/aprovar', acao: 'Ver requisições' });
+      }
+      if (c.atender > 0) {
+        pendencias.push({ texto: n(c.atender, 'requisição está na fila do seu setor', 'requisições estão na fila do seu setor'), detalhe: 'Aprovadas, esperando atendimento.', href: '/requisicoes/atender', acao: 'Atender' });
+      }
+      if (c.devolvidas > 0) {
+        pendencias.push({ texto: n(c.devolvidas, 'requisição sua foi devolvida para ajuste', 'requisições suas foram devolvidas para ajuste'), detalhe: 'Veja o que a coordenação pediu e reenvie.', href: '/requisicoes', acao: 'Ajustar' });
+      }
+    } catch {
+      // Planilha das Requisições ainda não configurada: a página do app explica.
     }
   }
   if (a.temPermissao('core.organizacao.gerenciar')) {
@@ -164,7 +182,7 @@ export default async function Portal() {
             <CartaoApp
               key={x.id}
               href={x.itens[0]?.href ?? x.rota}
-              icone={<IconeOrcamento tamanho={24} />}
+              icone={x.id === 'requisicoes' ? <IconeRequisicao tamanho={24} /> : <IconeOrcamento tamanho={24} />}
               nome={x.nome}
               descricao={x.descricao}
               atalhos={x.itens.slice(1, 4)}

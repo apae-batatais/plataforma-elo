@@ -7,9 +7,9 @@ import { menuDoUsuario } from '@/nucleo/modulos/registro';
 import type { GrupoNavegacao, NomeIcone } from '@/ui/casca';
 import { MODULOS } from './registro-modulos';
 
-const ICONE_DO_MODULO: Record<string, NomeIcone> = { calculator: 'orcamento', wallet: 'orcamento' };
+const ICONE_DO_MODULO: Record<string, NomeIcone> = { calculator: 'orcamento', wallet: 'orcamento', clipboard: 'requisicoes' };
 
-export function navegacaoDoUsuario(autorizador: Autorizador, estruturaPendente: boolean, opcoes: { estruturaDesatualizada?: boolean } = {}): GrupoNavegacao[] {
+export function navegacaoDoUsuario(autorizador: Autorizador, estruturaPendente: boolean, opcoes: { estruturaDesatualizada?: boolean; alertasApps?: Record<string, string> } = {}): GrupoNavegacao[] {
   const grupos: GrupoNavegacao[] = [];
   if (!estruturaPendente) {
     const apps = menuDoUsuario(MODULOS, autorizador.permissoes());
@@ -26,6 +26,7 @@ export function navegacaoDoUsuario(autorizador: Autorizador, estruturaPendente: 
           rotulo: a.nome,
           href: a.rota,
           icone: ICONE_DO_MODULO[a.icone] ?? 'planilhas',
+          alerta: opcoes.alertasApps?.[a.rota],
           filhos: a.itens.map((i) => ({ rotulo: i.rotulo, href: i.href, secao: i.secao })),
         })),
       });

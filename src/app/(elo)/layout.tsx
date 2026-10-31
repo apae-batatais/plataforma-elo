@@ -9,6 +9,7 @@ import { navegacaoDoUsuario } from '@/plataforma/navegacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Casca } from '@/ui/casca';
 import { Notificacao } from '@/ui/notificacao';
+import { alertasDoMenu } from '@/plataforma/alertas';
 import { sair } from './acoes-sessao';
 import { ConfiguracaoInvalida } from './configuracao-invalida';
 import '../globals.css';
@@ -84,7 +85,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <Documento>
       <Casca
-        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente, { estruturaDesatualizada })}
+        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente, { estruturaDesatualizada, alertasApps: usuario.estruturaPendente ? {} : await alertasDoMenu(usuario.autorizador) })}
         usuario={{ nome: usuario.nome, email: usuario.email, perfis: usuario.perfis.map((p) => p.nome) }}
         sair={sair}
         faixa={demonstracao ? faixaDemonstracao : undefined}
