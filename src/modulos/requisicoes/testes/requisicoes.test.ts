@@ -289,7 +289,7 @@ describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');
     const t = await listarTipos(p, adm, catalogo);
-    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'patrimonio']);
+    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'manutencao', 'patrimonio']);
     await salvarTipo(p, adm, catalogo, {
       nome: 'Higiene e limpeza',
       categoria: 'material',
@@ -466,7 +466,7 @@ describe('chamado de TI (Setor de Informática)', () => {
     });
     const t = (await lerTabela(p, TiposRequisicao)).ativos().find((x) => x.nome === 'Chamado de TI')!;
     expect([t.formulario, t.categoria]).toEqual(['ti', 'servico']);
-    expect((await listarTipos(p, adm, catalogo)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'patrimonio']);
+    expect((await listarTipos(p, adm, catalogo)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'manutencao', 'patrimonio']);
   });
 });
 
@@ -525,5 +525,66 @@ describe('mobiliário (Setor de Patrimônio)', () => {
     expect(await concluirRequisicao(p, pat, r.id, await versao(r.id), {}, 'Levadas 30 cadeiras; 10 estavam quebradas.', { resultado: 'parcial' })).toBe(
       'atendida_parcial',
     );
+  });
+});
+
+describe('manutenção (Setor de Manutenção)', () => {
+  const pedido = (x: object = {}) => ({
+    servico: 'ar_condicionado',
+    local: 'Sala 2 da Escola',
+    problema: 'Liga, mas não gela e faz barulho alto.',
+    urgencia: 'alta',
+    equipamento: 'Ar-condicionado split',
+    patrimonio: 'PAT-0390',
+    horario: 'Depois das 16h',
+    contato: '',
+    ...x,
+  });
+  async function tipoManutencao() {
+    const t = await inserir(
+      p,
+      TiposRequisicao,
+      {
+        nome: 'Manutenção',
+        categoria: 'servico',
+        formulario: 'manutencao',
+        perfil_responsavel: 'manutencao',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 40,
+        descricao: null,
+      },
+      { email: 'teste' },
+    );
+    return t.id;
+  }
+
+  it('tipo de serviço, local, problema detalhado e urgência são obrigatórios; sem itens', async () => {
+    const id = await tipoManutencao();
+    const pede = await como('financeiro@exemplo.local');
+    const enviar = (d: object) => enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: d }));
+    await expect(enviar(pedido({ servico: 'foguete', local: ' ', problema: 'quebrou', urgencia: undefined }))).rejects.toThrow(
+      /tipo de serviço.*onde é o serviço.*mais de detalhe.*urgência/,
+    );
+    const r = await enviar(pedido());
+    const d = await detalharRequisicao(p, pede, r.id);
+    expect(d.itens).toHaveLength(0);
+    expect(d.detalhes).toMatchObject({ servico: 'ar_condicionado', urgencia: 'alta', patrimonio: 'PAT-0390', contato: null });
+    expect((await listarRequisicoes(p, pede, 'minhas'))[0].urgencia).toBe('alta');
+  });
+
+  it('só o Setor de Manutenção atende, e conclui com o resultado e o que foi feito', async () => {
+    const id = await tipoManutencao();
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha({ tipoId: id, itens: [], detalhes: pedido() }));
+    // Antes da aprovação, o setor não vê o pedido.
+    expect(await listarRequisicoes(p, await como('manutencao@exemplo.local'), 'atender')).toHaveLength(0);
+    await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'aprovar', null);
+    await expect(receberRequisicao(p, await como('patrimonio@exemplo.local'), r.id, await versao(r.id))).rejects.toBeInstanceOf(ErroPermissao);
+    const man = await como('manutencao@exemplo.local');
+    expect((await contadoresRequisicoes(p, man)).atender).toBe(1);
+    await receberRequisicao(p, man, r.id, await versao(r.id));
+    await expect(concluirRequisicao(p, man, r.id, await versao(r.id), {}, 'Limpei o filtro.')).rejects.toThrow(/foi resolvido/);
+    expect(await concluirRequisicao(p, man, r.id, await versao(r.id), {}, 'Limpei o filtro e completei o gás.', { resultado: 'resolvido' })).toBe('atendida');
+    const h = (await lerTabela(p, RequisicaoHistorico)).todos().filter((x) => x.requisicao_id === r.id);
+    expect(h.at(-1)).toMatchObject({ acao: 'concluir', para: 'atendida', usuario: 'manutencao@exemplo.local' });
   });
 });

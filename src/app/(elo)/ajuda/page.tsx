@@ -139,6 +139,14 @@ export default async function Ajuda() {
               'O pedido passa pela mesma aprovação e vai para o Setor de Patrimônio, que marca o que foi feito ao concluir.',
             ]}
           />
+          <Sub>Manutenção</Sub>
+          <Passos
+            itens={[
+              'Em Nova requisição, escolha o tipo Manutenção e o tipo de serviço: elétrica, hidráulica, ar-condicionado, equipamento, portas e janelas, pintura, prédio ou outro.',
+              'Diga onde é o serviço, qual é o problema (com detalhes: o que aconteceu, desde quando, se há risco) e a urgência. Equipamento, nº de patrimônio, melhor horário e contato ajudam a equipe. Fotos ainda não podem ser anexadas.',
+              'O pedido passa pela mesma aprovação e vai para o Setor de Manutenção. Quando concluído, o histórico mostra o que foi feito.',
+            ]}
+          />
           <Sub>Quem aprova</Sub>
           <Itens
             itens={[
@@ -166,23 +174,24 @@ export default async function Ajuda() {
                   'Na ficha, clique em Receber para atender. Ao entregar, confira a quantidade entregue de cada item e clique em Concluir atendimento. Se faltou algo, explique no comentário: fica como "atendida em parte".',
                   'Chamados (TI): a lista mostra a urgência; clique no título "Urgência" para ordenar. Ao concluir, marque se resolveu e descreva o que foi feito.',
                   'Mobiliário: ao concluir, marque se foi feito (ou feito em parte) e descreva o que foi feito.',
+                  'Manutenção: a lista mostra a urgência, como nos chamados. Ao concluir, marque se resolveu e descreva o que foi feito.',
                 ]}
               />
             </>
           )}
           <Sub>Prazos (SLA)</Sub>
           <p>
-            Cada tipo tem um prazo de aprovação e um de atendimento, em horas úteis (segunda a sexta, no expediente). A ficha e as listas mostram se a etapa está no prazo
-            ou atrasada. Para imprimir ou salvar em PDF, use o botão Imprimir da ficha.
+            Cada tipo tem um prazo de aprovação e um de atendimento, em horas úteis (segunda a sexta, no expediente). A ficha e as listas mostram se a etapa
+            está no prazo ou atrasada. Para imprimir ou salvar em PDF, use o botão Imprimir da ficha.
           </p>
           {pode.tiposRequisicao && (
             <>
               <Sub>Tipos de requisição</Sub>
               <p>
-                Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfil Almoxarifado, que você atribui às
-                pessoas do setor em Acessos), os prazos e quais áreas e grupos de despesa podem usar cada tipo (sem marcação, todos podem). Em &ldquo;Itens aceitos&rdquo;,
-                monte a lista de itens do tipo, um a um ou colando da planilha: quem pede escolhe da lista e a unidade vem preenchida. Tipo sem lista aceita itens
-                digitados. No fim da tela fica o horário do expediente usado nos prazos.
+                Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfil Almoxarifado, que você
+                atribui às pessoas do setor em Acessos), os prazos e quais áreas e grupos de despesa podem usar cada tipo (sem marcação, todos podem). Em
+                &ldquo;Itens aceitos&rdquo;, monte a lista de itens do tipo, um a um ou colando da planilha: quem pede escolhe da lista e a unidade vem
+                preenchida. Tipo sem lista aceita itens digitados. No fim da tela fica o horário do expediente usado nos prazos.
               </p>
             </>
           )}
@@ -317,10 +326,7 @@ export default async function Ajuda() {
       id: 'folha',
       titulo: 'Folha de pagamento',
       resumo: pode.folhaEditar ? 'Resumo, folha completa, lotação, parâmetros e importação da planilha.' : 'Como ler o resumo da folha.',
-      atalhos: [
-        { rotulo: 'Resumo da folha', href: '/orcamento' },
-        ...(pode.folhaEditar ? [{ rotulo: 'Lotação', href: '/orcamento/lotacao' }] : []),
-      ],
+      atalhos: [{ rotulo: 'Resumo da folha', href: '/orcamento' }, ...(pode.folhaEditar ? [{ rotulo: 'Lotação', href: '/orcamento/lotacao' }] : [])],
       conteudo: (
         <>
           <Itens
@@ -363,10 +369,13 @@ export default async function Ajuda() {
       conteudo: (
         <Itens
           itens={[
-            pode.organizacao && 'Serviços: os centros de custo, cada um numa área e numa unidade. "Cadastrar em lote" cadastra vários de uma vez; excluídos podem ser reativados em "Serviços excluídos".',
+            pode.organizacao &&
+              'Serviços: os centros de custo, cada um numa área e numa unidade. "Cadastrar em lote" cadastra vários de uma vez; excluídos podem ser reativados em "Serviços excluídos".',
             pode.organizacao && 'Áreas: o nome é único; não há duas áreas com o mesmo nome.',
-            pode.acessos && 'Acessos: "Dar acesso" cadastra o e-mail institucional e o primeiro perfil; "Atribuir perfil" acrescenta outro. Em "Vale para", escolha toda a instituição, uma unidade, uma área ou um serviço.',
-            pode.organizacao && 'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial), se a Administração da rede ainda não tiver feito isso; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
+            pode.acessos &&
+              'Acessos: "Dar acesso" cadastra o e-mail institucional e o primeiro perfil; "Atribuir perfil" acrescenta outro. Em "Vale para", escolha toda a instituição, uma unidade, uma área ou um serviço.',
+            pode.organizacao &&
+              'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial), se a Administração da rede ainda não tiver feito isso; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
           ]}
         />
       ),
@@ -381,9 +390,15 @@ export default async function Ajuda() {
       <>
         <dl className="space-y-3">
           {[
-            ['Não vejo um item no menu.', 'O menu mostra só o que o seu perfil permite. Peça à Administração da plataforma para conferir o seu perfil. Logo depois de uma atualização do Elo, pode faltar rodar "Preparar estrutura": a Administração recebe esse aviso.'],
+            [
+              'Não vejo um item no menu.',
+              'O menu mostra só o que o seu perfil permite. Peça à Administração da plataforma para conferir o seu perfil. Logo depois de uma atualização do Elo, pode faltar rodar "Preparar estrutura": a Administração recebe esse aviso.',
+            ],
             ['Diz que o registro foi alterado por outra pessoa.', 'Outra pessoa salvou primeiro. Recarregue a tela, confira e faça a sua alteração de novo.'],
-            ['Não consigo aprovar o exercício.', 'O botão só libera sem fonte "a definir" e sem proposta aguardando decisão. A Previsão do ano mostra o que falta.'],
+            [
+              'Não consigo aprovar o exercício.',
+              'O botão só libera sem fonte "a definir" e sem proposta aguardando decisão. A Previsão do ano mostra o que falta.',
+            ],
             ['Um funcionário não aparece em nenhum serviço.', 'A lotação dele não soma 100%. Corrija em Folha de pagamento › Lotação.'],
           ].map(([p, r]) => (
             <div key={p}>
@@ -412,7 +427,10 @@ export default async function Ajuda() {
         titulo="Ajuda"
         descricao={`Como usar o ${NOME_PLATAFORMA} na ${instituicao.nome}. Aparecem aqui só os assuntos do seu perfil.`}
       />
-      <section aria-label="Manual completo" className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-borda bg-superficie px-5 py-4">
+      <section
+        aria-label="Manual completo"
+        className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-borda bg-superficie px-5 py-4"
+      >
         <div>
           <p className="font-bold">Manual completo do {NOME_PLATAFORMA}</p>
           <p className="text-sm text-texto-suave">Todas as telas e todos os perfis num documento só, para ler, imprimir ou compartilhar (PDF).</p>

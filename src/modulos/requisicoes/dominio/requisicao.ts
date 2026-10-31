@@ -9,16 +9,17 @@ export const CATEGORIAS = ['material', 'servico'] as const;
 export type Categoria = (typeof CATEGORIAS)[number];
 
 /** Fichas disponíveis. Cada tipo de requisição usa uma. Novas entram uma por entrega. */
-export const FORMULARIOS = ['materiais', 'ti', 'mobiliario'] as const;
+export const FORMULARIOS = ['materiais', 'ti', 'mobiliario', 'manutencao'] as const;
 export type Formulario = (typeof FORMULARIOS)[number];
 export const NOME_FORMULARIO: Record<Formulario, string> = {
   materiais: 'Materiais (itens, retirada ou entrega, evento)',
   ti: 'Chamado de TI (equipamento ou sistema, problema, urgência)',
   mobiliario: 'Mobiliário (móveis, de onde, para onde, quando)',
+  manutencao: 'Manutenção (tipo de serviço, local, problema, urgência)',
 };
-export const NOME_FICHA_CURTO: Record<Formulario, string> = { materiais: 'Materiais', ti: 'Chamado de TI', mobiliario: 'Mobiliário' };
+export const NOME_FICHA_CURTO: Record<Formulario, string> = { materiais: 'Materiais', ti: 'Chamado de TI', mobiliario: 'Mobiliário', manutencao: 'Manutenção' };
 /** Ficha de serviço: não tem itens; o atendimento é concluído com o que foi feito. */
-export const FICHA_DE_SERVICO: Record<Formulario, boolean> = { materiais: false, ti: true, mobiliario: true };
+export const FICHA_DE_SERVICO: Record<Formulario, boolean> = { materiais: false, ti: true, mobiliario: true, manutencao: true };
 
 export const SITUACOES = ['enviada', 'devolvida', 'aprovada', 'recusada', 'em_atendimento', 'atendida', 'atendida_parcial', 'cancelada'] as const;
 export type Situacao = (typeof SITUACOES)[number];
@@ -263,11 +264,40 @@ export const esquemaDetalhesMobiliario = z
   });
 export type DetalhesMobiliario = z.infer<typeof esquemaDetalhesMobiliario>;
 
+// ---------------------------------------------------------------------------
+// Campos próprios da ficha de manutenção
+// ---------------------------------------------------------------------------
+
+export const SERVICOS_MANUTENCAO = {
+  eletrica: 'Elétrica',
+  hidraulica: 'Hidráulica',
+  ar_condicionado: 'Ar-condicionado',
+  equipamento: 'Equipamento ou eletrodoméstico',
+  marcenaria: 'Portas, janelas ou móveis',
+  pintura: 'Pintura',
+  predial: 'Paredes, piso ou telhado',
+  outro: 'Outro',
+} as const;
+export type ServicoManutencao = keyof typeof SERVICOS_MANUTENCAO;
+
+export const esquemaDetalhesManutencao = z.object({
+  servico: z.enum(Object.keys(SERVICOS_MANUTENCAO) as [ServicoManutencao, ...ServicoManutencao[]], { message: 'Escolha o tipo de serviço.' }),
+  local: z.string({ message: 'Informe onde é o serviço.' }).trim().min(1, 'Informe onde é o serviço.'),
+  problema: z.string({ message: 'Descreva o problema.' }).trim().min(10, 'Descreva o problema com um pouco mais de detalhe.'),
+  urgencia: z.enum(Object.keys(URGENCIAS) as [Urgencia, ...Urgencia[]], { message: 'Escolha a urgência.' }),
+  equipamento: opcional,
+  patrimonio: opcional,
+  horario: opcional,
+  contato: opcional,
+});
+export type DetalhesManutencao = z.infer<typeof esquemaDetalhesManutencao>;
+
 /** Campos próprios de cada ficha. */
 export const ESQUEMA_DETALHES: Record<Formulario, z.ZodType> = {
   materiais: esquemaDetalhesMateriais,
   ti: esquemaDetalhesTi,
   mobiliario: esquemaDetalhesMobiliario,
+  manutencao: esquemaDetalhesManutencao,
 };
 
 /** Urgência guardada nos detalhes (só fichas que a têm). */

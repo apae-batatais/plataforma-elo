@@ -6,10 +6,12 @@ import {
   CATEGORIAS_TI,
   FICHA_DE_SERVICO,
   NOME_ACAO,
+  SERVICOS_MANUTENCAO,
   SERVICOS_MOBILIARIO,
   NOME_SITUACAO,
   URGENCIAS,
   type Acao,
+  type DetalhesManutencao,
   type DetalhesMateriais,
   type DetalhesMobiliario,
   type DetalhesTi,
@@ -59,6 +61,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
   const det = (d.detalhes ?? {}) as DetalhesMateriais;
   const chamado = d.tipo?.formulario === 'ti' ? ((d.detalhes ?? {}) as DetalhesTi) : null;
   const mobiliario = d.tipo?.formulario === 'mobiliario' ? ((d.detalhes ?? {}) as DetalhesMobiliario) : null;
+  const manutencao = d.tipo?.formulario === 'manutencao' ? ((d.detalhes ?? {}) as DetalhesManutencao) : null;
   const servico = Boolean(d.tipo && FICHA_DE_SERVICO[d.tipo.formulario]);
   const dataBR = (iso: string | null | undefined) => (iso ? iso.split('-').reverse().join('/') : '');
   const pode = (a: Acao) => d.acoes.includes(a);
@@ -285,6 +288,24 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
             <div className="sm:col-span-3">
               <dt className="text-sm text-texto-suave">O que está acontecendo</dt>
               <dd className="whitespace-pre-line font-medium">{chamado.problema}</dd>
+            </div>
+          </dl>
+        )}
+
+        {manutencao && (
+          <dl className="mt-5 grid gap-4 sm:grid-cols-3">
+            <Dado rotulo="Tipo de serviço">{SERVICOS_MANUTENCAO[manutencao.servico]}</Dado>
+            <Dado rotulo="Urgência">
+              <span className={manutencao.urgencia === 'critica' || manutencao.urgencia === 'alta' ? 'text-erro' : ''}>{URGENCIAS[manutencao.urgencia]}</span>
+            </Dado>
+            <Dado rotulo="Onde é">{manutencao.local}</Dado>
+            <Dado rotulo="Equipamento">{manutencao.equipamento}</Dado>
+            <Dado rotulo="Nº de patrimônio">{manutencao.patrimonio}</Dado>
+            <Dado rotulo="Contato">{manutencao.contato}</Dado>
+            <Dado rotulo="Melhor horário">{manutencao.horario}</Dado>
+            <div className="sm:col-span-3">
+              <dt className="text-sm text-texto-suave">Qual é o problema</dt>
+              <dd className="whitespace-pre-line font-medium">{manutencao.problema}</dd>
             </div>
           </dl>
         )}

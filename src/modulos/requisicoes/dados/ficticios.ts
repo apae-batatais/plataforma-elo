@@ -64,6 +64,15 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
         prazo_atendimento: 24,
         descricao: 'Mudar móveis de lugar, emprestar para evento, recolher ou montar.',
       },
+      {
+        nome: 'Manutenção',
+        categoria: 'servico' as const,
+        formulario: 'manutencao' as const,
+        perfil_responsavel: 'manutencao',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 40,
+        descricao: 'Elétrica, hidráulica, ar-condicionado, equipamentos, pintura e reparos no prédio.',
+      },
     ],
     { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
   );
@@ -338,4 +347,73 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
   );
   await decidirRequisicao(p, como('coord.educacao@exemplo.local'), mudanca.id, await versao(mudanca.id), 'aprovar', null, { agora: dia('2026-10-28', 14) });
   await receberRequisicao(p, como('patrimonio@exemplo.local'), mudanca.id, await versao(mudanca.id), { agora: dia('2026-10-29', 9) });
+
+  // 7. Manutenção: vazamento aguardando a coordenação, ar-condicionado em atendimento e lâmpada já resolvida.
+  const conserto = (email: string, nome: string, area: string, servico: string, detalhes: object, quando: Date) =>
+    enviarRequisicao(
+      p,
+      como(email),
+      catalogo,
+      { nomeRequisitante: nome, tipoId: tiposTi[3].id, area, grupoId: grupo('Manutenção'), centros: [{ servico, percentual: 100 }], itens: [], detalhes },
+      { agora: quando },
+    );
+  await conserto(
+    'dp@exemplo.local',
+    'Departamento Pessoal (fictício)',
+    'assistencia_social',
+    'ur',
+    {
+      servico: 'hidraulica',
+      local: 'Apae Rural, banheiro do pátio',
+      problema: 'Torneira da pia vazando sem parar desde ontem; o chão fica molhado.',
+      urgencia: 'media',
+      equipamento: null,
+      patrimonio: null,
+      horario: 'Qualquer horário',
+      contato: 'Ramal 214',
+    },
+    dia('2026-10-30', 10),
+  );
+  const ar = await conserto(
+    'financeiro@exemplo.local',
+    'Financeiro (fictício)',
+    'educacao',
+    'escola',
+    {
+      servico: 'ar_condicionado',
+      local: 'Sala 2 da Escola',
+      problema: 'O ar-condicionado liga, mas não gela e faz barulho alto.',
+      urgencia: 'alta',
+      equipamento: 'Ar-condicionado split 12.000 BTUs',
+      patrimonio: 'PAT-0390',
+      horario: 'Depois das 16h, sem alunos na sala',
+      contato: 'Ramal 120',
+    },
+    dia('2026-10-27', 9),
+  );
+  await decidirRequisicao(p, como('coord.educacao@exemplo.local'), ar.id, await versao(ar.id), 'aprovar', null, { agora: dia('2026-10-27', 11) });
+  await receberRequisicao(p, como('manutencao@exemplo.local'), ar.id, await versao(ar.id), { agora: dia('2026-10-27', 14) });
+  const lampada = await conserto(
+    'financeiro@exemplo.local',
+    'Financeiro (fictício)',
+    'educacao',
+    'escola',
+    {
+      servico: 'eletrica',
+      local: 'Corredor da Escola',
+      problema: 'Duas lâmpadas queimadas no corredor; fica escuro no fim da tarde.',
+      urgencia: 'baixa',
+      equipamento: null,
+      patrimonio: null,
+      horario: null,
+      contato: 'Ramal 120',
+    },
+    dia('2026-10-22', 9),
+  );
+  await decidirRequisicao(p, como('coord.educacao@exemplo.local'), lampada.id, await versao(lampada.id), 'aprovar', null, { agora: dia('2026-10-22', 10) });
+  await receberRequisicao(p, como('manutencao@exemplo.local'), lampada.id, await versao(lampada.id), { agora: dia('2026-10-22', 13) });
+  await concluirRequisicao(p, como('manutencao@exemplo.local'), lampada.id, await versao(lampada.id), {}, 'Trocadas as duas lâmpadas por LED.', {
+    agora: dia('2026-10-23', 10),
+    resultado: 'resolvido',
+  });
 }
