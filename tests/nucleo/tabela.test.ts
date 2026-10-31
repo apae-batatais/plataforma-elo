@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
 import {
   atualizar,
+  atualizarVarios,
   cabecalhoDe,
   definirTabela,
   ErroConflito,
@@ -102,6 +103,21 @@ describe('tabelas sobre planilhas', () => {
     const t = await lerTabela(p, Itens);
     expect(t.ativos()).toHaveLength(0);
     expect(t.todos()).toHaveLength(1);
+  });
+
+  it('altera vários de uma vez: confere todas as versões antes e grava tudo ou nada', async () => {
+    const p = await novas();
+    const a = await inserir(p, Itens, { nome: 'A', quantidade: 1, obs: null }, ana);
+    const b = await inserir(p, Itens, { nome: 'B', quantidade: 2, obs: null }, ana);
+    await expect(
+      atualizarVarios(p, Itens, [{ id: a.id, versao: 1, mudancas: { ativo: false } }, { id: b.id, versao: 9, mudancas: { ativo: false } }], bia),
+    ).rejects.toBeInstanceOf(ErroConflito);
+    expect((await lerTabela(p, Itens)).ativos()).toHaveLength(2);
+    const r = await atualizarVarios(p, Itens, [{ id: a.id, versao: 1, mudancas: { ativo: false } }, { id: b.id, versao: 1, mudancas: { quantidade: 5 } }], bia);
+    expect(r.map((x) => x.colunasAlteradas)).toEqual([['ativo'], ['quantidade']]);
+    const t = await lerTabela(p, Itens);
+    expect(t.ativos().map((x) => [x.nome, x.quantidade, x.versao, x.atualizado_por])).toEqual([['B', 5, 2, 'bia@exemplo.local']]);
+    expect(t.todos()).toHaveLength(2);
   });
 
   it('tabela somente inclusão não aceita alteração', async () => {

@@ -13,7 +13,8 @@ import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
-import { acaoExcluirFonte, acaoReativarFonte, acaoSalvarFonte } from '../acoes';
+import { CadastroEmLoteOrcamento } from '@/modulos/orcamento/telas/cadastro-em-lote';
+import { acaoExcluirFonte, acaoReativarFonte, acaoSalvarFonte, acaoCadastrarFontesEmLote, acaoConferirFontesEmLote } from '../acoes';
 
 export const metadata: Metadata = { title: 'Fontes de recurso' };
 
@@ -61,6 +62,17 @@ export default async function FontesDeRecurso({ searchParams }: { searchParams: 
         titulo="Fontes de recurso"
         descricao="De onde vem o dinheiro de cada receita e o que paga cada despesa. Natureza e uso alimentam os indicadores; Projeto Incentivado conta como pública."
         acoes={
+          <>
+            <JanelaFormulario
+              rotulo="Cadastrar em lote"
+              variante="fantasma"
+              className={pequeno}
+              larga
+              titulo="Cadastrar várias fontes de uma vez"
+              descricao="Cole uma lista copiada da planilha, confira e confirme."
+            >
+              <CadastroEmLoteOrcamento tipo="fonte" conferir={acaoConferirFontesEmLote} cadastrar={acaoCadastrarFontesEmLote} />
+            </JanelaFormulario>
           <JanelaFormulario
             rotulo={
               <>
@@ -77,6 +89,7 @@ export default async function FontesDeRecurso({ searchParams }: { searchParams: 
               </BotaoEnviar>
             </form>
           </JanelaFormulario>
+          </>
         }
       />
 

@@ -155,11 +155,13 @@ export default async function Ajuda() {
               <Sub>Lançar</Sub>
               <Itens
                 itens={[
-                  'Antes de tudo, confira em Cadastros os Grupos de gasto (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso).',
+                  'Antes de tudo, confira em Cadastros os Grupos de gasto (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
                   'Em Previsão do ano, use Abrir exercício para começar um ano novo.',
                   'Despesas › Lançar despesa: serviço, grupo, fonte (pode ficar "a definir" na elaboração), quantidade × vezes × valor unitário e os meses.',
                   'A folha de pagamento entra sozinha, por serviço. No fim da tela Despesas, escolha a fonte que paga a folha de cada serviço: ao escolher, já fica salvo.',
                   'Receitas › Lançar receita: fonte, área, valor, meses e a situação da captação (garantida, em negociação ou a captar).',
+                  'Para trazer de uma planilha: Importar despesas e receitas. Escolha o arquivo, diga se são despesas ou receitas e qual coluna corresponde a cada campo (o Elo sugere), confira e diga a qual cadastro corresponde cada nome que ele não reconheceu.',
+                  'Importar de novo o mesmo tipo substitui a importação anterior do ano: os itens importados antes vão para o histórico. O que foi lançado à mão e as propostas não mudam.',
                 ]}
               />
               <Sub>Decidir as propostas</Sub>

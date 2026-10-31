@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
+import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { ErroValidacaoFolha } from '@/modulos/orcamento/aplicacao/folha';
 import {
   abrirExercicio, cancelarItem, definirFonteDaFolha, excluirFonte, excluirGrupo, reativarFonte, reativarGrupo,
@@ -11,6 +12,11 @@ import {
 } from '@/modulos/orcamento/aplicacao/previsao';
 import type { Captacao, Cotacao, Distribuicao, Prioridade } from '@/modulos/orcamento/dominio/previsao';
 import { salvarCentro } from '@/modulos/orcamento/aplicacao/analise-area';
+import { lerXlsx } from '@/modulos/orcamento/aplicacao/importacao';
+import { analisarImportacaoItens, descreverArquivoItens, importarItens, lerMapeamentoItens, type AnaliseItens } from '@/modulos/orcamento/aplicacao/importacao-itens';
+import type { AbaResumida } from '@/modulos/orcamento/dominio/importacao';
+import type { MapeamentoItens } from '@/modulos/orcamento/dominio/importacao-itens';
+import { analisarCadastrosEmLote, cadastrarEmLote, type LinhaCadastroLote, type TipoCadastro } from '@/modulos/orcamento/aplicacao/cadastros-em-lote';
 import {
   aprovarExercicio, cotarProposta, decidirAjuste, decidirProposta, encerrarExercicio, proporDespesa, retirarProposta, solicitarAjuste,
 } from '@/modulos/orcamento/aplicacao/aprovacao';
@@ -298,4 +304,111 @@ export async function acaoDecidirAjuste(f: FormData) {
   await executar(`/orcamento/previsao/ajustes?ano=${texto(f, 'ano')}`, aprovar ? 'Pedido aprovado: o orçamento foi atualizado.' : 'Pedido recusado.', ({ usuario, app }) =>
     decidirAjuste(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), aprovar, texto(f, 'motivo')),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Grupos e fontes em lote
+// ---------------------------------------------------------------------------
+
+export interface EstadoLoteOrcamento {
+  erro?: string;
+  linhas?: LinhaCadastroLote[];
+  texto?: string;
+}
+
+async function conferirLote(tipo: TipoCadastro, f: FormData): Promise<EstadoLoteOrcamento> {
+  const { usuario, app } = await contexto();
+  const conteudo = texto(f, 'lista');
+  if (!conteudo) return { erro: 'Cole a lista no campo.' };
+  try {
+    const linhas = await analisarCadastrosEmLote(app.planilhas, usuario.autorizador, tipo, conteudo);
+    if (linhas.length === 0) return { erro: 'Não encontrei nenhuma linha com nome.', texto: conteudo };
+    return { linhas, texto: conteudo };
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message, texto: conteudo };
+    throw erro;
+  }
+}
+
+async function gravarLote(tipo: TipoCadastro, f: FormData): Promise<EstadoLoteOrcamento> {
+  const { usuario, app } = await contexto();
+  let n: number;
+  try {
+    n = await cadastrarEmLote(app.planilhas, usuario.autorizador, tipo, JSON.parse(texto(f, 'linhas') || '[]') as LinhaCadastroLote[]);
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    if (erro instanceof SyntaxError) return { erro: 'A lista veio incompleta. Confira de novo.' };
+    throw erro;
+  }
+  const pagina = tipo === 'grupo' ? '/orcamento/previsao/grupos' : '/orcamento/previsao/fontes';
+  const mensagem = tipo === 'grupo' ? (n === 1 ? '1 grupo cadastrado.' : `${n} grupos cadastrados.`) : n === 1 ? '1 fonte cadastrada.' : `${n} fontes cadastradas.`;
+  revalidatePath(pagina);
+  redirect(`${pagina}?ok=${encodeURIComponent(mensagem)}`);
+}
+
+export async function acaoConferirGruposEmLote(_: EstadoLoteOrcamento, f: FormData) {
+  return conferirLote('grupo', f);
+}
+export async function acaoCadastrarGruposEmLote(_: EstadoLoteOrcamento, f: FormData) {
+  return gravarLote('grupo', f);
+}
+export async function acaoConferirFontesEmLote(_: EstadoLoteOrcamento, f: FormData) {
+  return conferirLote('fonte', f);
+}
+export async function acaoCadastrarFontesEmLote(_: EstadoLoteOrcamento, f: FormData) {
+  return gravarLote('fonte', f);
+}
+
+// ---------------------------------------------------------------------------
+// Importar despesas e receitas
+// ---------------------------------------------------------------------------
+
+async function abasDoArquivo(f: FormData) {
+  const arquivo = f.get('arquivo');
+  if (!(arquivo instanceof File) || arquivo.size === 0) throw new ErroValidacaoFolha('Escolha o arquivo .xlsx.');
+  if (arquivo.size > 5 * 1024 * 1024) throw new ErroValidacaoFolha('O arquivo passa de 5 MB. Apague abas que não são do orçamento e tente de novo.');
+  return lerXlsx(await arquivo.arrayBuffer());
+}
+
+export async function acaoLerArquivoItens(_: { erro?: string; abas?: AbaResumida[]; sugestao?: MapeamentoItens | null }, f: FormData) {
+  const { usuario } = await contexto();
+  try {
+    return descreverArquivoItens(usuario.autorizador, await abasDoArquivo(f));
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+}
+
+export async function acaoAnalisarItens(_: { erro?: string; analise?: AnaliseItens }, f: FormData): Promise<{ erro?: string; analise?: AnaliseItens }> {
+  const { usuario, app } = await contexto();
+  try {
+    const m = lerMapeamentoItens(JSON.parse(texto(f, 'mapeamento') || 'null'));
+    return { analise: await analisarImportacaoItens(app.planilhas, usuario.autorizador, await abasDoArquivo(f), m) };
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    if (erro instanceof ErroEstruturaAusente) return { erro: 'Esta versão do Elo trouxe uma aba nova no Orçamento. Peça à Administração para rodar Preparar estrutura e tente de novo.' };
+    if (erro instanceof SyntaxError) return { erro: 'O DE-PARA das colunas veio incompleto. Confira as escolhas e tente de novo.' };
+    throw erro;
+  }
+}
+
+export async function acaoConfirmarItens(_: { erro?: string; analise?: AnaliseItens }, f: FormData): Promise<{ erro?: string; analise?: AnaliseItens }> {
+  const { usuario, app } = await contexto();
+  let r: { itens: number; substituidos: number };
+  let tipo: string;
+  try {
+    const proposta = JSON.parse(texto(f, 'proposta'));
+    tipo = proposta?.tipo === 'receita' ? 'receitas' : 'despesas';
+    r = await importarItens(app.planilhas, usuario.autorizador, proposta);
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    if (erro instanceof SyntaxError) return { erro: 'A importação veio incompleta. Envie o arquivo de novo.' };
+    throw erro;
+  }
+  revalidatePath('/orcamento', 'layout');
+  const texto2 = `${r.itens} ${tipo === 'receitas' ? (r.itens === 1 ? 'receita importada' : 'receitas importadas') : r.itens === 1 ? 'despesa importada' : 'despesas importadas'}${
+    r.substituidos ? `; ${r.substituidos} da importação anterior foram para o histórico` : ''
+  }.`;
+  redirect(`/orcamento/previsao/${tipo}?ok=${encodeURIComponent(texto2)}`);
 }

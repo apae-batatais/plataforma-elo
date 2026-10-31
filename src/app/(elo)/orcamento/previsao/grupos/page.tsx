@@ -12,7 +12,8 @@ import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
-import { acaoExcluirGrupo, acaoReativarGrupo, acaoSalvarGrupo } from '../acoes';
+import { CadastroEmLoteOrcamento } from '@/modulos/orcamento/telas/cadastro-em-lote';
+import { acaoExcluirGrupo, acaoReativarGrupo, acaoSalvarGrupo, acaoCadastrarGruposEmLote, acaoConferirGruposEmLote } from '../acoes';
 
 export const metadata: Metadata = { title: 'Grupos de gasto' };
 
@@ -51,6 +52,17 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
         titulo="Grupos de gasto"
         descricao="Classificam as despesas (ex.: Material de consumo, Serviços). Marque como Recursos Humanos os grupos que somam no indicador da folha, como RPA e rescisões."
         acoes={
+          <>
+            <JanelaFormulario
+              rotulo="Cadastrar em lote"
+              variante="fantasma"
+              className={pequeno}
+              larga
+              titulo="Cadastrar vários grupos de uma vez"
+              descricao="Cole uma lista copiada da planilha, confira e confirme."
+            >
+              <CadastroEmLoteOrcamento tipo="grupo" conferir={acaoConferirGruposEmLote} cadastrar={acaoCadastrarGruposEmLote} />
+            </JanelaFormulario>
           <JanelaFormulario
             rotulo={
               <>
@@ -67,6 +79,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
               </BotaoEnviar>
             </form>
           </JanelaFormulario>
+          </>
         }
       />
 

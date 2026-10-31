@@ -45,6 +45,13 @@ export class ArmazenamentoMemoria implements Armazenamento {
     linhas[numero - 1] = [...valores];
   }
 
+  async gravarLinhas(planilha: string, aba: string, linhas: readonly { numero: number; valores: Linha }[]) {
+    const existentes = this.aba(planilha, aba);
+    const fora = linhas.find((l) => l.numero < 2 || l.numero > existentes.length);
+    if (fora) throw new ErroArmazenamento(`Linha ${fora.numero} não existe na aba "${aba}".`);
+    for (const l of linhas) existentes[l.numero - 1] = [...l.valores];
+  }
+
   async garantirAbas(planilha: string, abas: readonly { aba: string; cabecalho: readonly string[] }[]) {
     const p = this.planilha(planilha);
     const criadas: string[] = [];

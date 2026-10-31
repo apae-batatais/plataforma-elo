@@ -1,35 +1,35 @@
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { listarAjustes } from "@/modulos/orcamento/aplicacao/aprovacao";
-import { data, MESES, reais } from "@/modulos/orcamento/telas/formato";
-import { obterAplicacao } from "@/plataforma/aplicacao";
-import { usuarioLogado } from "@/plataforma/sessao";
-import { Aviso } from "@/ui/aviso";
-import { LinkBotao, pequeno } from "@/ui/botao";
-import { BotaoEnviar } from "@/ui/botao-enviar";
-import { Campo, estiloEntrada } from "@/ui/campo";
-import { FormularioConfirmado } from "@/ui/confirmar";
-import { IconeCerto, IconeFechar } from "@/ui/icones";
-import { JanelaFormulario } from "@/ui/janela";
-import { CabecalhoPagina, Etiqueta } from "@/ui/pagina";
+import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
+import { listarAjustes } from '@/modulos/orcamento/aplicacao/aprovacao';
+import { data, MESES, reais } from '@/modulos/orcamento/telas/formato';
+import { obterAplicacao } from '@/plataforma/aplicacao';
+import { usuarioLogado } from '@/plataforma/sessao';
+import { Aviso } from '@/ui/aviso';
+import { LinkBotao, pequeno } from '@/ui/botao';
+import { BotaoEnviar } from '@/ui/botao-enviar';
+import { Campo, estiloEntrada } from '@/ui/campo';
+import { FormularioConfirmado } from '@/ui/confirmar';
+import { IconeCerto, IconeFechar } from '@/ui/icones';
+import { JanelaFormulario } from '@/ui/janela';
+import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { SeletorAno } from '@/ui/seletor-ano';
-import { TabelaDados } from "@/ui/tabela-dados";
-import { acaoDecidirAjuste, acaoSolicitarAjuste } from "../acoes";
+import { TabelaDados } from '@/ui/tabela-dados';
+import { acaoDecidirAjuste, acaoSolicitarAjuste } from '../acoes';
 
-export const metadata: Metadata = { title: "Remanejamentos" };
+export const metadata: Metadata = { title: 'Remanejamentos' };
 const SITUACAO = {
-  pendente: "Aguardando a Diretoria",
-  aprovado: "Aprovado",
-  recusado: "Recusado",
+  pendente: 'Aguardando a Diretoria',
+  aprovado: 'Aprovado',
+  recusado: 'Recusado',
 } as const;
 const COR = {
-  pendente: "atencao",
-  aprovado: "sucesso",
-  recusado: "erro",
+  pendente: 'atencao',
+  aprovado: 'sucesso',
+  recusado: 'erro',
 } as const;
 const TIPO = {
-  remanejamento: "Remanejamento",
-  suplementacao: "Suplementação",
+  remanejamento: 'Remanejamento',
+  suplementacao: 'Suplementação',
 } as const;
 
 function CamposComuns() {
@@ -49,61 +49,31 @@ function CamposComuns() {
           </select>
         </Campo>
         <Campo rotulo="Valor (R$)" obrigatorio>
-          <input
-            name="valor"
-            required
-            inputMode="decimal"
-            className={estiloEntrada}
-          />
+          <input name="valor" required inputMode="decimal" className={estiloEntrada} />
         </Campo>
       </div>
-      <Campo
-        rotulo="Justificativa"
-        obrigatorio
-        dica="A Diretoria decide a partir deste texto."
-      >
-        <textarea
-          name="justificativa"
-          required
-          rows={3}
-          className={estiloEntrada}
-        />
+      <Campo rotulo="Justificativa" obrigatorio dica="A Diretoria decide a partir deste texto.">
+        <textarea name="justificativa" required rows={3} className={estiloEntrada} />
       </Campo>
     </>
   );
 }
 
-export default async function Ajustes({
-  searchParams,
-}: {
-  searchParams: Promise<{ ano?: string; recusar?: string }>;
-}) {
+export default async function Ajustes({ searchParams }: { searchParams: Promise<{ ano?: string; recusar?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
-  if (!usuario) redirect("/entrar");
+  if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
-  const { prev, lista, podeSolicitar, podeDecidir } = await listarAjustes(
-    app.planilhas,
-    usuario.autorizador,
-    Number(sp.ano) || undefined,
-  );
+  const { prev, lista, podeSolicitar, podeDecidir } = await listarAjustes(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined);
   const base = `/orcamento/previsao/ajustes?ano=${prev.ano}`;
-  const aRecusar =
-    podeDecidir && sp.recusar
-      ? lista.find((a) => a.id === sp.recusar && a.situacao === "pendente")
-      : undefined;
-  const pendentes = lista.filter((a) => a.situacao === "pendente").length;
-  const rotuloDespesa = (d: (typeof prev.despesas)[number]) =>
-    `${d.descricao} · ${d.servicoNome} (${reais(d.valor)})`;
+  const aRecusar = podeDecidir && sp.recusar ? lista.find((a) => a.id === sp.recusar && a.situacao === 'pendente') : undefined;
+  const pendentes = lista.filter((a) => a.situacao === 'pendente').length;
+  const rotuloDespesa = (d: (typeof prev.despesas)[number]) => `${d.descricao} · ${d.servicoNome} (${reais(d.valor)})`;
 
   return (
     <div className="space-y-4">
       <CabecalhoPagina
-        trilha={[
-          { rotulo: "Início", href: "/" },
-          { rotulo: "Orçamento" },
-          { rotulo: `Remanejamentos ${prev.ano}` },
-        ]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento' }, { rotulo: `Remanejamentos ${prev.ano}` }]}
         titulo={`Remanejamentos e suplementações ${prev.ano}`}
         descricao="Depois de aprovado, o orçamento só muda por aqui. Remanejamento move valor entre despesas (o total não muda). Suplementação aumenta ou reduz um item. A Diretoria aprova cada pedido."
         acoes={
@@ -122,12 +92,7 @@ export default async function Ajustes({
                     <input type="hidden" name="ano" value={prev.ano} />
                     <input type="hidden" name="tipo" value="suplementacao" />
                     <Campo rotulo="Item" obrigatorio>
-                      <select
-                        name="destino"
-                        required
-                        defaultValue=""
-                        className={estiloEntrada}
-                      >
+                      <select name="destino" required defaultValue="" className={estiloEntrada}>
                         <option value="" disabled>
                           Escolha o item
                         </option>
@@ -151,17 +116,10 @@ export default async function Ajustes({
                       <legend className="font-semibold">Sentido</legend>
                       <div className="mt-1.5 flex gap-4">
                         <label className="flex items-center gap-1.5">
-                          <input
-                            type="radio"
-                            name="sentido"
-                            value="aumentar"
-                            defaultChecked
-                          />{" "}
-                          Aumentar
+                          <input type="radio" name="sentido" value="aumentar" defaultChecked /> Aumentar
                         </label>
                         <label className="flex items-center gap-1.5">
-                          <input type="radio" name="sentido" value="reduzir" />{" "}
-                          Reduzir
+                          <input type="radio" name="sentido" value="reduzir" /> Reduzir
                         </label>
                       </div>
                     </fieldset>
@@ -182,12 +140,7 @@ export default async function Ajustes({
                     <input type="hidden" name="ano" value={prev.ano} />
                     <input type="hidden" name="tipo" value="remanejamento" />
                     <Campo rotulo="Tirar de (origem)" obrigatorio>
-                      <select
-                        name="origem"
-                        required
-                        defaultValue=""
-                        className={estiloEntrada}
-                      >
+                      <select name="origem" required defaultValue="" className={estiloEntrada}>
                         <option value="" disabled>
                           Escolha a despesa
                         </option>
@@ -199,12 +152,7 @@ export default async function Ajustes({
                       </select>
                     </Campo>
                     <Campo rotulo="Pôr em (destino)" obrigatorio>
-                      <select
-                        name="destino"
-                        required
-                        defaultValue=""
-                        className={estiloEntrada}
-                      >
+                      <select name="destino" required defaultValue="" className={estiloEntrada}>
                         <option value="" disabled>
                           Escolha a despesa
                         </option>
@@ -227,18 +175,15 @@ export default async function Ajustes({
         }
       />
 
-      {prev.exercicio?.situacao !== "aprovado" && (
+      {prev.exercicio?.situacao !== 'aprovado' && (
         <Aviso tipo="info">
-          {prev.exercicio?.situacao === "encerrado"
+          {prev.exercicio?.situacao === 'encerrado'
             ? `O exercício ${prev.ano} está encerrado.`
             : `O exercício ${prev.ano} ainda está em elaboração: as mudanças são feitas direto em Despesas e Receitas. Remanejamentos só depois da aprovação da Diretoria.`}
         </Aviso>
       )}
       {podeDecidir && pendentes > 0 && (
-        <Aviso
-          tipo="atencao"
-          titulo={`${pendentes} ${pendentes === 1 ? "pedido aguarda" : "pedidos aguardam"} a sua decisão`}
-        >
+        <Aviso tipo="atencao" titulo={`${pendentes} ${pendentes === 1 ? 'pedido aguarda' : 'pedidos aguardam'} a sua decisão`}>
           Aprove ou recuse cada pedido na lista abaixo.
         </Aviso>
       )}
@@ -256,23 +201,10 @@ export default async function Ajustes({
             <input type="hidden" name="versao" value={aRecusar.versao} />
             <input type="hidden" name="ano" value={prev.ano} />
             <input type="hidden" name="decisao" value="recusar" />
-            <Campo
-              rotulo="Motivo"
-              obrigatorio
-              dica="O Financeiro vai ler este texto."
-            >
-              <textarea
-                name="motivo"
-                required
-                rows={3}
-                className={estiloEntrada}
-              />
+            <Campo rotulo="Motivo" obrigatorio dica="O Financeiro vai ler este texto.">
+              <textarea name="motivo" required rows={3} className={estiloEntrada} />
             </Campo>
-            <BotaoEnviar
-              variante="perigo"
-              enviando="Recusando…"
-              className="w-full"
-            >
+            <BotaoEnviar variante="perigo" enviando="Recusando…" className="w-full">
               Recusar pedido
             </BotaoEnviar>
           </form>
@@ -283,17 +215,15 @@ export default async function Ajustes({
         legenda={`Remanejamentos e suplementações de ${prev.ano}`}
         vazio="Nenhum pedido."
         colunas={[
-          { chave: "situacao", rotulo: "Situação" },
-          { chave: "tipo", rotulo: "Tipo" },
-          { chave: "movimento", rotulo: "De → para" },
-          { chave: "mes", rotulo: "Mês" },
-          { chave: "valor", rotulo: "Valor", tipo: "moeda" },
-          { chave: "justificativa", rotulo: "Justificativa" },
-          { chave: "pedido", rotulo: "Pedido por", secundaria: true },
-          { chave: "decisao", rotulo: "Decisão", secundaria: true },
-          ...(podeDecidir
-            ? [{ chave: "acoes", rotulo: "", fixa: true, largura: "w-20" }]
-            : []),
+          { chave: 'situacao', rotulo: 'Situação' },
+          { chave: 'tipo', rotulo: 'Tipo' },
+          { chave: 'movimento', rotulo: 'De → para' },
+          { chave: 'mes', rotulo: 'Mês' },
+          { chave: 'valor', rotulo: 'Valor', tipo: 'moeda' },
+          { chave: 'justificativa', rotulo: 'Justificativa' },
+          { chave: 'pedido', rotulo: 'Pedido por', secundaria: true },
+          { chave: 'decisao', rotulo: 'Decisão', secundaria: true },
+          ...(podeDecidir ? [{ chave: 'acoes', rotulo: '', fixa: true, largura: 'w-20' }] : []),
         ]}
         linhas={lista.map((a) => ({
           id: a.id,
@@ -305,21 +235,13 @@ export default async function Ajustes({
             valor: a.valor,
             justificativa: a.justificativa,
             pedido: a.solicitadoPor,
-            decisao: a.decididoPor
-              ? `${a.decididoPor} em ${data(a.decididoEm)}`
-              : null,
+            decisao: a.decididoPor ? `${a.decididoPor} em ${data(a.decididoEm)}` : null,
           },
           celulas: {
             situacao: (
               <>
-                <Etiqueta tipo={COR[a.situacao]}>
-                  {SITUACAO[a.situacao]}
-                </Etiqueta>
-                {a.motivoDecisao && (
-                  <span className="mt-1 block max-w-56 text-xs text-texto-suave">
-                    “{a.motivoDecisao}”
-                  </span>
-                )}
+                <Etiqueta tipo={COR[a.situacao]}>{SITUACAO[a.situacao]}</Etiqueta>
+                {a.motivoDecisao && <span className="mt-1 block max-w-56 text-xs text-texto-suave">“{a.motivoDecisao}”</span>}
               </>
             ),
             movimento: a.origem ? (
@@ -329,17 +251,12 @@ export default async function Ajustes({
               </span>
             ) : (
               <span className="text-sm">
-                {a.destino}{" "}
-                <span className="text-xs text-texto-suave">
-                  ({a.destinoTipo})
-                </span>
+                {a.destino} <span className="text-xs text-texto-suave">({a.destinoTipo})</span>
               </span>
             ),
-            justificativa: (
-              <span className="block max-w-72 text-sm">{a.justificativa}</span>
-            ),
+            justificativa: <span className="block max-w-72 text-sm">{a.justificativa}</span>,
             acoes:
-              podeDecidir && a.situacao === "pendente" ? (
+              podeDecidir && a.situacao === 'pendente' ? (
                 <div className="flex justify-end gap-1">
                   <FormularioConfirmado
                     acao={acaoDecidirAjuste}
@@ -347,7 +264,7 @@ export default async function Ajustes({
                       id: a.id,
                       versao: a.versao,
                       ano: prev.ano,
-                      decisao: "aprovar",
+                      decisao: 'aprovar',
                     }}
                     rotulo={<IconeCerto tamanho={16} />}
                     rotuloAcessivel="Aprovar pedido"
@@ -361,13 +278,7 @@ export default async function Ajustes({
                     }
                     confirmar="Aprovar"
                   />
-                  <LinkBotao
-                    href={`${base}&recusar=${a.id}`}
-                    scroll={false}
-                    variante="icone-perigo"
-                    aria-label="Recusar pedido"
-                    title="Recusar"
-                  >
+                  <LinkBotao href={`${base}&recusar=${a.id}`} scroll={false} variante="icone-perigo" aria-label="Recusar pedido" title="Recusar">
                     <IconeFechar tamanho={16} />
                   </LinkBotao>
                 </div>

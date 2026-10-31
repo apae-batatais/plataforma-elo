@@ -16,6 +16,8 @@ export interface Armazenamento {
   acrescentar(planilha: string, aba: string, linhas: Linha[]): Promise<void>;
   /** Regrava uma linha inteira. `numero` começa em 1 (1 = cabeçalho). */
   gravarLinha(planilha: string, aba: string, numero: number, valores: Linha): Promise<void>;
+  /** Regrava várias linhas inteiras numa só chamada (ex.: encerrar muitos registros). */
+  gravarLinhas(planilha: string, aba: string, linhas: readonly { numero: number; valores: Linha }[]): Promise<void>;
   /**
    * Cria as abas que não existem e grava o cabeçalho das que estão vazias,
    * com o mínimo de chamadas. Devolve os nomes das abas criadas ou preenchidas.

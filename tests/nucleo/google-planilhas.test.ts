@@ -66,6 +66,27 @@ describe('armazenamento no Google Planilhas', () => {
     await expect(a.gravarLinha('PLAN1', 'Pessoas', 1, ['x'])).rejects.toThrow(/cabeçalho/);
   });
 
+  it('regrava várias linhas numa chamada só', async () => {
+    const { fn, chamadas } = fetchFalso(() => ({ json: {} }));
+    const a = new ArmazenamentoGooglePlanilhas(token, fn);
+    await a.gravarLinhas('PLAN1', 'Pessoas', [
+      { numero: 3, valores: ['1', 'Ana'] },
+      { numero: 9, valores: ['2', 'Bia'] },
+    ]);
+    expect(chamadas).toHaveLength(1);
+    expect(chamadas[0].url).toContain('/values:batchUpdate');
+    expect(chamadas[0].body).toEqual({
+      valueInputOption: 'RAW',
+      data: [
+        { range: "'Pessoas'!A3", values: [['1', 'Ana']] },
+        { range: "'Pessoas'!A9", values: [['2', 'Bia']] },
+      ],
+    });
+    await a.gravarLinhas('PLAN1', 'Pessoas', []);
+    expect(chamadas).toHaveLength(1);
+    await expect(a.gravarLinhas('PLAN1', 'Pessoas', [{ numero: 1, valores: ['x'] }])).rejects.toThrow(/cabeçalho/);
+  });
+
   it('cria as abas que faltam e preenche as vazias em poucas chamadas; aba com conteúdo fica como está', async () => {
     const { fn, chamadas } = fetchFalso((c) => {
       if (c.url.includes('fields=sheets'))

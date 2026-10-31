@@ -21,6 +21,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Propostas', caminho: '/previsao/propostas', permissao: 'orcamento.previsao.propor', secao: 'Planejamento' },
     { rotulo: 'Cotações', caminho: '/previsao/propostas', permissao: 'orcamento.previsao.cotar', secao: 'Planejamento' },
     { rotulo: 'Remanejamentos', caminho: '/previsao/ajustes', permissao: 'orcamento.painel.ver', secao: 'Planejamento' },
+    { rotulo: 'Importar despesas e receitas', caminho: '/previsao/importar', permissao: 'orcamento.previsao.editar', secao: 'Planejamento' },
     { rotulo: 'Grupos de gasto', caminho: '/previsao/grupos', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Fontes de recurso', caminho: '/previsao/fontes', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Centros de custo', caminho: '/previsao/centros', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
