@@ -27,6 +27,7 @@ export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
   tabelas: TABELAS_DOS_MODULOS,
   perfis: MODULOS.flatMap((m) => m.perfis),
   permissoes: MODULOS.flatMap((m) => Object.entries(m.permissoesPorPerfil).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao })))),
+  permissoesRetiradas: MODULOS.flatMap((m) => Object.entries(m.permissoesRetiradas).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao })))),
 };
 
 /** Dados fictícios dos módulos, gravados só na demonstração (em memória). */

@@ -28,12 +28,13 @@ export const manifesto = defineModulo({
     'requisicoes.aprovar': 'Aprovar, devolver ou recusar requisições (coordenação: no seu escopo; Diretoria: todas)',
     'requisicoes.atender': 'Receber e atender as requisições dos tipos do seu setor',
     'requisicoes.ver_todas': 'Ver todas as requisições e o histórico',
-    'requisicoes.tipos.gerenciar': 'Cadastrar os tipos de requisição, o setor responsável, os prazos e o expediente',
+    'requisicoes.tipos.gerenciar':
+      'Cadastrar e alterar os tipos de requisição, os itens aceitos, o setor responsável, os prazos e o expediente (Administração da plataforma)',
   },
   perfis: [{ codigo: 'almoxarifado', nome: 'Almoxarifado', descricao: 'Recebe e atende as requisições de materiais.' }],
   permissoesPorPerfil: {
     administrador_plataforma: [...BASE, 'requisicoes.tipos.gerenciar'],
-    diretoria: [...BASE, 'requisicoes.aprovar', 'requisicoes.ver_todas', 'requisicoes.tipos.gerenciar'],
+    diretoria: [...BASE, 'requisicoes.aprovar', 'requisicoes.ver_todas'],
     financeiro: [...BASE],
     coordenacao_servico: [...BASE, 'requisicoes.aprovar'],
     tecnico_avaliador: [...BASE],
@@ -42,6 +43,8 @@ export const manifesto = defineModulo({
     compras: [...BASE],
     almoxarifado: [...BASE, 'requisicoes.atender'],
   },
+  // Tipos de requisição: só a Administração da plataforma da instituição (decisão de 31/10/2026).
+  permissoesRetiradas: { diretoria: ['requisicoes.tipos.gerenciar'] },
   eventos: { publica: [], consome: [] },
   indicadores: ['requisicoes_aprovacao_no_prazo', 'requisicoes_atendimento_no_prazo'],
 });

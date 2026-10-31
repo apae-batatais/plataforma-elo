@@ -33,7 +33,17 @@ export const TiposRequisicao = definirTabela({
     prazo_aprovacao: numero(),
     prazo_atendimento: numero(),
     descricao: textoOpcional(),
+    /** Áreas (códigos) e grupos de despesa (ids) que podem usar o tipo, separados por vírgula. Vazio = todos. */
+    areas: textoOpcional(),
+    grupos: textoOpcional(),
   }),
+});
+
+/** Itens que cada tipo aceita (a lista que quem pede escolhe). Tipo sem itens aceita texto livre. */
+export const CatalogoItens = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'CatalogoItens',
+  esquema: z.object({ tipo_id: texto(), descricao: texto(), unidade: texto() }),
 });
 
 export const Requisicoes = definirTabela({
@@ -81,6 +91,8 @@ export const RequisicaoItens = definirTabela({
     quantidade: numero(),
     unidade: texto(),
     descricao: texto(),
+    /** Item da lista do tipo (vazio quando o tipo aceita texto livre). */
+    catalogo_id: textoOpcional(),
     /** Quanto foi entregue (preenchido ao concluir). */
     atendido: numeroOpcional(),
   }),
@@ -108,9 +120,18 @@ export const ParametrosRequisicoes = definirTabela({
   esquema: z.object({ chave: texto(), valor: numero() }),
 });
 
-export const TABELAS_REQUISICOES = [TiposRequisicao, Requisicoes, RequisicaoCentros, RequisicaoItens, RequisicaoHistorico, ParametrosRequisicoes] as const;
+export const TABELAS_REQUISICOES = [
+  TiposRequisicao,
+  CatalogoItens,
+  Requisicoes,
+  RequisicaoCentros,
+  RequisicaoItens,
+  RequisicaoHistorico,
+  ParametrosRequisicoes,
+] as const;
 
 export type RegTipo = Registro<typeof TiposRequisicao.esquema>;
 export type RegRequisicao = Registro<typeof Requisicoes.esquema>;
 export type RegCentro = Registro<typeof RequisicaoCentros.esquema>;
+export type RegItemCatalogo = Registro<typeof CatalogoItens.esquema>;
 export type RegItem = Registro<typeof RequisicaoItens.esquema>;

@@ -30,7 +30,7 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
   const r = d.requisicao;
   // O tipo não muda no ajuste: se tiver sido excluído, continua aparecendo.
   if (!opcoes.tipos.some((t) => t.id === r.tipo_id) && d.tipo)
-    opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null });
+    opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null, areas: [], grupos: [], itens: [] });
   const pedido = [...d.historico].reverse().find((h) => h.acao === 'devolver');
   return (
     <div className="max-w-4xl">

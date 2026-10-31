@@ -48,6 +48,8 @@ export const esquemaManifesto = z
       .default([]),
     /** Permissões do módulo ligadas a cada perfil, criadas por "Preparar estrutura" se ainda não existirem. */
     permissoesPorPerfil: z.record(z.string(), z.array(z.string())).default({}),
+    /** Permissões que uma versão anterior ligou a um perfil e que deixaram de valer ("Preparar estrutura" desativa). */
+    permissoesRetiradas: z.record(z.string(), z.array(z.string())).default({}),
   })
   .superRefine((m, ctx) => {
     for (const permissao of Object.keys(m.permissoes)) {

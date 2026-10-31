@@ -39,6 +39,21 @@ describe('conferência da estrutura', () => {
     expect((await conferirEstrutura(p, ESTRUTURA_DOS_MODULOS)).desatualizada).toBe(false);
   });
 
+  it('permissão que deixou de valer: a conferência aponta e preparar retira (Diretoria não gerencia tipos de requisição)', async () => {
+    const p = await montar();
+    // Simula a planilha da versão anterior, em que a Diretoria gerenciava os tipos.
+    await inserir(p, PerfilPermissoes, { perfil: 'diretoria', permissao: 'requisicoes.tipos.gerenciar' }, { email: 't' });
+    expect((await autorizador(p, 'diretoria@exemplo.local')).temPermissao('requisicoes.tipos.gerenciar')).toBe(true);
+    expect((await conferirEstrutura(p, ESTRUTURA_DOS_MODULOS)).desatualizada).toBe(true);
+    const r = await prepararEstrutura(p, ESTRUTURA_DOS_MODULOS);
+    expect(r.ajustes).toEqual(['permissão retirada: diretoria › requisicoes.tipos.gerenciar']);
+    expect((await autorizador(p, 'diretoria@exemplo.local')).temPermissao('requisicoes.tipos.gerenciar')).toBe(false);
+    expect((await autorizador(p, 'admin@exemplo.local')).temPermissao('requisicoes.tipos.gerenciar')).toBe(true);
+    expect((await conferirEstrutura(p, ESTRUTURA_DOS_MODULOS)).desatualizada).toBe(false);
+    // Rodar de novo não muda nada.
+    expect((await prepararEstrutura(p, ESTRUTURA_DOS_MODULOS)).ajustes).toEqual([]);
+  });
+
   it('usuário com vários perfis vê o menu de todos', async () => {
     const p = await montar();
     for (const perfil of ['financeiro', 'administrador_plataforma', 'compras']) {
