@@ -174,6 +174,23 @@ export const Receitas = definirTabela({
   }),
 });
 
+/**
+ * Despesas e receitas que vieram de uma importação de planilha. Uma nova
+ * importação do mesmo ano e tipo cancela os itens da anterior (que ficam no
+ * histórico) e grava os do arquivo; o que foi lançado à mão não é tocado.
+ */
+export const ItensImportados = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'ItensImportados',
+  esquema: z.object({
+    ano: numero(),
+    tipo: z.enum(['despesa', 'receita']),
+    item_id: texto(),
+    /** Identifica a importação (todos os itens gravados juntos). */
+    lote: texto(),
+  }),
+});
+
 /** Qual fonte paga a folha de cada serviço, no ano. Vigente = a linha ativa mais recente. */
 export const FontesFolha = definirTabela({
   planilha: PLANILHA_ORCAMENTO,
@@ -235,4 +252,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados] as const;

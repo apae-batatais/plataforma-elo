@@ -333,3 +333,24 @@ Cada gráfico tem "Ver os números" em tabela.
 - [ ] "Preparar estrutura" cria as abas novas e cabe no limite de 10 segundos
 - [ ] `npm run verificar` e `npm run build` verdes
 - [ ] Conferido pela Diretoria na prévia, com dados fictícios
+
+## Cadastros em lote e importação de despesas e receitas (v0.8)
+
+- **Grupos de gasto e fontes de recurso em lote:** colar uma lista copiada da planilha
+  (Grupo: Nome; RH opcional. Fonte: Nome; Natureza pública/própria; Uso livre/restrito),
+  conferir a prévia e confirmar. Nomes já cadastrados (inclusive excluídos) e repetidos são ignorados.
+- **Importar despesas e receitas** (Planejamento › Importar despesas e receitas, permissão
+  `orcamento.previsao.editar`), no exercício em elaboração, com DE-PARA como o da folha:
+  - aba, linha do cabeçalho e coluna de cada campo (despesa: serviço, grupo, fonte, descrição,
+    categoria, observação; receita: fonte, descrição, área, situação da captação, observação);
+  - valores por coluna de cada mês, valor anual (igual nos 12 meses) ou, nas despesas,
+    quantidade × vezes × valor unitário;
+  - nomes reconhecidos pelo nome ou código; os outros a pessoa associa a um cadastro **existente**
+    (fonte da despesa pode ficar "a definir"; área da receita, "geral");
+  - linhas sem descrição, sem serviço/grupo/fonte obrigatórios, sem valor ou com captação
+    desconhecida não entram e aparecem no relatório.
+- **Reimportar substitui:** a aba `ItensImportados` guarda o que veio de cada importação. Uma nova
+  importação do mesmo ano e tipo grava os itens novos e depois cancela os da anterior
+  (`ativo = FALSE`, ficam no histórico). Itens lançados à mão e propostas não são tocados.
+- **Núcleo:** `gravarLinhas` (armazenamento) e `atualizarVarios` (tabela) gravam muitas linhas
+  numa só chamada ao Google, para o cancelamento caber no tempo da hospedagem.

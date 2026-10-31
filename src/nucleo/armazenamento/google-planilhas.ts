@@ -93,6 +93,15 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
     });
   }
 
+  async gravarLinhas(planilha: string, aba: string, linhas: readonly { numero: number; valores: Linha }[]) {
+    if (linhas.length === 0) return;
+    if (linhas.some((l) => l.numero < 2)) throw new ErroArmazenamento('O cabeçalho não pode ser regravado por aqui.');
+    await this.chamar(planilha, '/values:batchUpdate', {
+      method: 'POST',
+      body: JSON.stringify({ valueInputOption: 'RAW', data: linhas.map((l) => ({ range: intervalo(aba, `A${l.numero}`), values: [l.valores] })) }),
+    });
+  }
+
   /**
    * Em poucas chamadas: 1) lista as abas existentes; 2) lê a primeira linha das
    * que já existem; 3) cria de uma vez as que faltam; 4) grava de uma vez os

@@ -1,9 +1,9 @@
-"use server";
+'use server';
 
-import { redirect } from "next/navigation";
-import { ErroPermissao } from "@/nucleo/acesso/autorizador";
-import { ErroConflito } from "@/nucleo/armazenamento/tabela";
-import { conferirLoginGoogle, ErroLogin } from "@/nucleo/sessao/google";
+import { redirect } from 'next/navigation';
+import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import { ErroConflito } from '@/nucleo/armazenamento/tabela';
+import { conferirLoginGoogle, ErroLogin } from '@/nucleo/sessao/google';
 import {
   autorizadorDaRede,
   ErroRede,
@@ -14,53 +14,40 @@ import {
   retirarAdministradorRede,
   salvarInstituicao,
   type PreparacaoInstituicao,
-} from "@/nucleo/rede/rede";
-import { registrarAuditoria } from "@/nucleo/auditoria/auditoria";
-import { configGeral } from "@/plataforma/instituicao";
-import { esquecerSituacaoDaEstruturaDe } from "@/plataforma/estrutura";
-import { esquecerInstituicoes } from "@/plataforma/rede";
-import { ESTRUTURA_DOS_MODULOS } from "@/plataforma/registro-modulos";
-import {
-  administradorDaRedeLogado,
-  aplicacaoDaRedeAtual,
-  encerrarSessaoRede,
-  iniciarSessaoRede,
-} from "@/plataforma/sessao-rede";
-import { PLANILHAS_DA_INSTITUICAO } from "./planilhas";
-import { planilhasDaInstituicao } from "./planilhas-da-instituicao";
+} from '@/nucleo/rede/rede';
+import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
+import { configGeral } from '@/plataforma/instituicao';
+import { esquecerSituacaoDaEstruturaDe } from '@/plataforma/estrutura';
+import { esquecerInstituicoes } from '@/plataforma/rede';
+import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
+import { administradorDaRedeLogado, aplicacaoDaRedeAtual, encerrarSessaoRede, iniciarSessaoRede } from '@/plataforma/sessao-rede';
+import { PLANILHAS_DA_INSTITUICAO } from './planilhas';
+import { planilhasDaInstituicao } from './planilhas-da-instituicao';
 
-const texto = (f: FormData, campo: string) => String(f.get(campo) ?? "").trim();
+const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 const linhas = (t: string) =>
   t
     .split(/[\n,;]/)
     .map((x) => x.trim())
     .filter(Boolean);
-const conhecido = (e: unknown) =>
-  e instanceof ErroRede ||
-  e instanceof ErroConflito ||
-  e instanceof ErroPermissao;
+const conhecido = (e: unknown) => e instanceof ErroRede || e instanceof ErroConflito || e instanceof ErroPermissao;
 
 async function adm() {
   const a = await administradorDaRedeLogado();
-  if (!a) redirect("/rede/entrar");
+  if (!a) redirect('/rede/entrar');
   return a;
 }
 
-async function executar(
-  pagina: string,
-  sucesso: string,
-  acao: (a: Awaited<ReturnType<typeof adm>>) => Promise<unknown>,
-  mensagem?: () => string,
-) {
+async function executar(pagina: string, sucesso: string, acao: (a: Awaited<ReturnType<typeof adm>>) => Promise<unknown>, mensagem?: () => string) {
   const a = await adm();
   let destino: string;
   try {
     await acao(a);
     esquecerInstituicoes();
-    destino = `${pagina}${pagina.includes("?") ? "&" : "?"}ok=${encodeURIComponent(mensagem?.() || sucesso)}`;
+    destino = `${pagina}${pagina.includes('?') ? '&' : '?'}ok=${encodeURIComponent(mensagem?.() || sucesso)}`;
   } catch (erro) {
     if (!conhecido(erro)) throw erro;
-    destino = `${pagina}${pagina.includes("?") ? "&" : "?"}erro=${encodeURIComponent((erro as Error).message)}`;
+    destino = `${pagina}${pagina.includes('?') ? '&' : '?'}erro=${encodeURIComponent((erro as Error).message)}`;
   }
   redirect(destino);
 }
@@ -71,134 +58,91 @@ export async function acaoSalvarInstituicao(
   f: FormData,
 ): Promise<{ erro?: string; valores?: Record<string, string> }> {
   const a = await adm();
-  const id = texto(f, "id");
+  const id = texto(f, 'id');
   try {
     await salvarInstituicao(
       a.app.planilhas,
       a.autorizador,
       {
-        codigo: texto(f, "codigo"),
-        nome: texto(f, "nome"),
-        nomeCompleto: texto(f, "nomeCompleto"),
-        dominio: texto(f, "dominio").replace(/^@/, ""),
-        enderecos: linhas(texto(f, "enderecos")).map((e) =>
-          e.replace(/^https?:\/\//i, "").replace(/\/.*$/, ""),
-        ),
-        planilhas: Object.fromEntries(
-          PLANILHAS_DA_INSTITUICAO.map((p) => [
-            p.chave,
-            texto(f, `planilha_${p.chave}`),
-          ]),
-        ),
-        administradoresIniciais: linhas(texto(f, "administradoresIniciais")),
-        unidades: texto(f, "unidades")
-          .split("\n")
+        codigo: texto(f, 'codigo'),
+        nome: texto(f, 'nome'),
+        nomeCompleto: texto(f, 'nomeCompleto'),
+        dominio: texto(f, 'dominio').replace(/^@/, ''),
+        enderecos: linhas(texto(f, 'enderecos')).map((e) => e.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')),
+        planilhas: Object.fromEntries(PLANILHAS_DA_INSTITUICAO.map((p) => [p.chave, texto(f, `planilha_${p.chave}`)])),
+        administradoresIniciais: linhas(texto(f, 'administradoresIniciais')),
+        unidades: texto(f, 'unidades')
+          .split('\n')
           .map((l) => l.trim())
           .filter(Boolean)
           .map((l) => {
-            const [codigo, ...nome] = l.split("=");
+            const [codigo, ...nome] = l.split('=');
             return {
               codigo: codigo.trim().toLowerCase(),
-              nome: nome.join("=").trim(),
+              nome: nome.join('=').trim(),
             };
           }),
       },
-      id ? { id, versao: Number(texto(f, "versao")) } : undefined,
+      id ? { id, versao: Number(texto(f, 'versao')) } : undefined,
     );
   } catch (erro) {
     // Devolve o que foi digitado, para o formulário não perder nada.
     if (conhecido(erro))
       return {
         erro: (erro as Error).message,
-        valores: Object.fromEntries(
-          [...f.entries()].map(([k, v]) => [k, String(v)]),
-        ),
+        valores: Object.fromEntries([...f.entries()].map(([k, v]) => [k, String(v)])),
       };
     throw erro;
   }
   esquecerInstituicoes();
-  redirect(
-    `/rede?ok=${encodeURIComponent(id ? "Instituição atualizada." : "Instituição cadastrada, em preparação.")}`,
-  );
+  redirect(`/rede?ok=${encodeURIComponent(id ? 'Instituição atualizada.' : 'Instituição cadastrada, em preparação.')}`);
 }
 
 export async function acaoMudarSituacao(f: FormData) {
-  const situacao = texto(f, "situacao") as "ativa" | "suspensa" | "preparacao";
+  const situacao = texto(f, 'situacao') as 'ativa' | 'suspensa' | 'preparacao';
   const mensagem = {
-    ativa: "Instituição ativa: a equipe já pode entrar.",
-    suspensa: "Instituição suspensa: ninguém entra até reativar.",
-    preparacao: "Instituição em preparação.",
+    ativa: 'Instituição ativa: a equipe já pode entrar.',
+    suspensa: 'Instituição suspensa: ninguém entra até reativar.',
+    preparacao: 'Instituição em preparação.',
   }[situacao];
-  await executar("/rede", mensagem ?? "Situação alterada.", (a) =>
-    mudarSituacao(
-      a.app.planilhas,
-      a.autorizador,
-      texto(f, "id"),
-      Number(texto(f, "versao")),
-      situacao,
-    ),
+  await executar('/rede', mensagem ?? 'Situação alterada.', (a) =>
+    mudarSituacao(a.app.planilhas, a.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), situacao),
   );
 }
 
 export async function acaoIncluirAdministrador(f: FormData) {
-  await executar("/rede/administradores", "Administrador incluído.", (a) =>
-    incluirAdministradorRede(
-      a.app.planilhas,
-      a.autorizador,
-      a.app.rede.dominio,
-      { email: texto(f, "email"), nome: texto(f, "nome") },
-    ),
+  await executar('/rede/administradores', 'Administrador incluído.', (a) =>
+    incluirAdministradorRede(a.app.planilhas, a.autorizador, a.app.rede.dominio, { email: texto(f, 'email'), nome: texto(f, 'nome') }),
   );
 }
 
 export async function acaoRetirarAdministrador(f: FormData) {
-  await executar("/rede/administradores", "Administrador retirado.", (a) =>
-    retirarAdministradorRede(
-      a.app.planilhas,
-      a.autorizador,
-      texto(f, "id"),
-      Number(texto(f, "versao")),
-    ),
+  await executar('/rede/administradores', 'Administrador retirado.', (a) =>
+    retirarAdministradorRede(a.app.planilhas, a.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
   );
 }
 
 /** Demonstração: entra como a administração fictícia da rede. */
 export async function acaoEntrarRedeDemonstracao() {
-  if (configGeral().modo !== "demonstracao")
-    throw new Error("Entrada fictícia só existe na demonstração.");
-  await iniciarSessaoRede(
-    "rede@exemplo.local",
-    "Administração da rede (fictícia)",
-  );
-  redirect("/rede");
+  if (configGeral().modo !== 'demonstracao') throw new Error('Entrada fictícia só existe na demonstração.');
+  await iniciarSessaoRede('rede@exemplo.local', 'Administração da rede (fictícia)');
+  redirect('/rede');
 }
 
 /** Produção: login Google com e-mail da Operadora que administra a rede. */
-export async function acaoEntrarRedeComGoogle(
-  credencial: string,
-): Promise<{ erro?: string }> {
+export async function acaoEntrarRedeComGoogle(credencial: string): Promise<{ erro?: string }> {
   const g = configGeral();
   const app = await aplicacaoDaRedeAtual();
-  if (g.modo !== "producao" || !app)
-    return { erro: "A rede ainda não está configurada." };
+  if (g.modo !== 'producao' || !app) return { erro: 'A rede ainda não está configurada.' };
   try {
-    const id = await conferirLoginGoogle(
-      credencial,
-      g.googleClientId,
-      app.rede.dominio,
-    );
-    const autorizador = await autorizadorDaRede(
-      app.planilhas,
-      id.email,
-      app.rede.administradores,
-    );
-    if (!autorizador.temPermissao("rede.instituicoes.gerenciar"))
-      return { erro: `O e-mail ${id.email} não administra a rede.` };
+    const id = await conferirLoginGoogle(credencial, g.googleClientId, app.rede.dominio);
+    const autorizador = await autorizadorDaRede(app.planilhas, id.email, app.rede.administradores);
+    if (!autorizador.temPermissao('rede.instituicoes.gerenciar')) return { erro: `O e-mail ${id.email} não administra a rede.` };
     await iniciarSessaoRede(id.email, id.nome);
     await registrarAuditoria(app.planilhas, {
       usuario: id.email,
-      acao: "entrada",
-      entidade: "rede",
+      acao: 'entrada',
+      entidade: 'rede',
     });
     return {};
   } catch (erro) {
@@ -209,50 +153,36 @@ export async function acaoEntrarRedeComGoogle(
 
 export async function acaoSairDaRede() {
   await encerrarSessaoRede();
-  redirect("/rede/entrar");
+  redirect('/rede/entrar');
 }
 
 /** Resumo do que "Preparar estrutura" fez, em português simples. */
 function resumo(r: PreparacaoInstituicao) {
   const feito =
     r.abasCriadas.length === 0 && r.registrosIniciais === 0
-      ? "Tudo já estava preparado; nada foi alterado."
-      : `${r.abasCriadas.length} ${r.abasCriadas.length === 1 ? "aba criada" : "abas criadas"} e ${r.registrosIniciais} ${r.registrosIniciais === 1 ? "registro inicial" : "registros iniciais"}.`;
-  const pulou = r.planilhasPuladas.length
-    ? ` Sem ID no cadastro, ficaram para depois: ${r.planilhasPuladas.join(", ")}.`
-    : "";
+      ? 'Tudo já estava preparado; nada foi alterado.'
+      : `${r.abasCriadas.length} ${r.abasCriadas.length === 1 ? 'aba criada' : 'abas criadas'} e ${r.registrosIniciais} ${r.registrosIniciais === 1 ? 'registro inicial' : 'registros iniciais'}.`;
+  const pulou = r.planilhasPuladas.length ? ` Sem ID no cadastro, ficaram para depois: ${r.planilhasPuladas.join(', ')}.` : '';
   return feito + pulou;
 }
 
-async function preparar(
-  a: Awaited<ReturnType<typeof adm>>,
-  i: Awaited<ReturnType<typeof painelDaRede>>["instituicoes"][number],
-) {
+async function preparar(a: Awaited<ReturnType<typeof adm>>, i: Awaited<ReturnType<typeof painelDaRede>>['instituicoes'][number]) {
   const { armazenamento, inst } = await planilhasDaInstituicao(a, i);
-  const r = await prepararEstruturaDaInstituicao(
-    a.app.planilhas,
-    a.autorizador,
-    armazenamento,
-    inst,
-    ESTRUTURA_DOS_MODULOS,
-    i.id,
-  );
+  const r = await prepararEstruturaDaInstituicao(a.app.planilhas, a.autorizador, armazenamento, inst, ESTRUTURA_DOS_MODULOS, i.id);
   esquecerSituacaoDaEstruturaDe(i.codigo);
   return r;
 }
 
 /** Prepara a estrutura de uma instituição e volta para a conferência dela. */
 export async function acaoPrepararEstrutura(f: FormData) {
-  const id = texto(f, "id");
-  let mensagem = "";
+  const id = texto(f, 'id');
+  let mensagem = '';
   await executar(
     `/rede?conferir=${encodeURIComponent(id)}`,
-    "",
+    '',
     async (a) => {
-      const i = (
-        await painelDaRede(a.app.planilhas, a.autorizador)
-      ).instituicoes.find((x) => x.id === id);
-      if (!i) throw new ErroRede("Instituição não encontrada.");
+      const i = (await painelDaRede(a.app.planilhas, a.autorizador)).instituicoes.find((x) => x.id === id);
+      if (!i) throw new ErroRede('Instituição não encontrada.');
       mensagem = `${i.nome}: ${resumo(await preparar(a, i))}`;
     },
     () => mensagem,
@@ -265,29 +195,21 @@ export async function acaoPrepararEstrutura(f: FormData) {
  */
 export async function acaoPrepararEstruturaDeTodas() {
   const a = await adm();
-  const instituicoes = (
-    await painelDaRede(a.app.planilhas, a.autorizador)
-  ).instituicoes.filter((i) => i.situacao !== "suspensa");
+  const instituicoes = (await painelDaRede(a.app.planilhas, a.autorizador)).instituicoes.filter((i) => i.situacao !== 'suspensa');
   const certas: string[] = [];
   const falhas: string[] = [];
   for (const i of instituicoes) {
     try {
       const r = await preparar(a, i);
-      certas.push(
-        r.abasCriadas.length || r.registrosIniciais
-          ? `${i.nome} (atualizada)`
-          : `${i.nome} (já estava em dia)`,
-      );
+      certas.push(r.abasCriadas.length || r.registrosIniciais ? `${i.nome} (atualizada)` : `${i.nome} (já estava em dia)`);
     } catch (erro) {
       if (!conhecido(erro)) throw erro;
       falhas.push((erro as Error).message);
     }
   }
   const params = new URLSearchParams();
-  if (certas.length)
-    params.set("ok", `Estrutura preparada: ${certas.join("; ")}.`);
-  if (falhas.length) params.set("erro", falhas.join(" "));
-  if (!certas.length && !falhas.length)
-    params.set("ok", "Nenhuma instituição ativa ou em preparação.");
+  if (certas.length) params.set('ok', `Estrutura preparada: ${certas.join('; ')}.`);
+  if (falhas.length) params.set('erro', falhas.join(' '));
+  if (!certas.length && !falhas.length) params.set('ok', 'Nenhuma instituição ativa ou em preparação.');
   redirect(`/rede?${params}`);
 }

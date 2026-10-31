@@ -308,3 +308,46 @@ export async function atualizar<E extends z.ZodObject>(
   await p.armazenamento.gravarLinha(p.idDe(def.planilha), def.aba, numero, tabela.paraLinha(novo));
   return { registro: novo, colunasAlteradas };
 }
+
+/**
+ * Como `atualizar`, para vários registros da mesma aba com uma leitura e uma
+ * gravação só. Confere a versão de todos antes de gravar: se um mudou, nada é gravado.
+ */
+export async function atualizarVarios<E extends z.ZodObject>(
+  p: Planilhas,
+  def: DefinicaoTabela<E>,
+  lista: readonly { id: string; versao: number; mudancas: Partial<z.infer<E>> & { ativo?: boolean } }[],
+  autoria: Autoria,
+): Promise<{ id: string; colunasAlteradas: string[] }[]> {
+  if (def.modo === 'somente_inclusao') throw new Error(`A aba "${def.aba}" é somente inclusão.`);
+  if (lista.length === 0) return [];
+  const tabela = await lerTabela(p, def);
+  const agora = (autoria.agora?.() ?? new Date()).toISOString();
+  const gravar: { numero: number; valores: ReturnType<typeof tabela.paraLinha> }[] = [];
+  const resultado: { id: string; colunasAlteradas: string[] }[] = [];
+  for (const { id, versao, mudancas } of lista) {
+    const atual = tabela.porId(id);
+    const numero = tabela.numeroDaLinha(id);
+    if (!atual || !numero) throw new ErroNaoEncontrado(`Registro ${id} não encontrado em "${def.aba}".`);
+    if (atual.versao !== versao) throw new ErroConflito(id);
+    const { ativo, ...resto } = mudancas;
+    const campos = def.esquema.partial().parse(resto) as Partial<z.infer<E>>;
+    const novo = {
+      ...atual,
+      ...campos,
+      ...(ativo === undefined ? {} : { ativo }),
+      versao: atual.versao + 1,
+      atualizado_em: agora,
+      atualizado_por: autoria.email,
+    } as Registro<E>;
+    resultado.push({
+      id,
+      colunasAlteradas: Object.keys(novo).filter(
+        (c) => !['versao', 'atualizado_em', 'atualizado_por'].includes(c) && (novo as Record<string, unknown>)[c] !== (atual as Record<string, unknown>)[c],
+      ),
+    });
+    gravar.push({ numero, valores: tabela.paraLinha(novo) });
+  }
+  await p.armazenamento.gravarLinhas(p.idDe(def.planilha), def.aba, gravar);
+  return resultado;
+}
