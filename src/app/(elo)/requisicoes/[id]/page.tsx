@@ -122,9 +122,18 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                   {d.itens.map((i) => (
                     <li key={i.id} className="grid grid-cols-[1fr_8rem] items-center gap-3 text-sm">
                       <label htmlFor={`item_${i.id}`}>
-                        {i.descricao} <span className="text-texto-suave">(pedido: {numeroBR(i.quantidade)} {i.unidade})</span>
+                        {i.descricao}{' '}
+                        <span className="text-texto-suave">
+                          (pedido: {numeroBR(i.quantidade)} {i.unidade})
+                        </span>
                       </label>
-                      <input id={`item_${i.id}`} name={`item_${i.id}`} inputMode="decimal" defaultValue={String(i.quantidade).replace('.', ',')} className={`${estiloEntrada} !mt-0 text-right`} />
+                      <input
+                        id={`item_${i.id}`}
+                        name={`item_${i.id}`}
+                        inputMode="decimal"
+                        defaultValue={String(i.quantidade).replace('.', ',')}
+                        className={`${estiloEntrada} !mt-0 text-right`}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -165,7 +174,8 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
               <dt className="text-sm text-texto-suave">Prazo de {nome.toLowerCase()}</dt>
               {s ? (
                 <dd className={s.situacao === 'atrasada' ? 'font-semibold text-erro' : 'font-semibold'}>
-                  {s.situacao === 'atrasada' ? 'Atrasada' : s.encerrada ? 'Cumprido' : 'No prazo'}: {textoHoras(s.horas, d.expediente)} de {textoHoras(s.prazo, d.expediente)}
+                  {s.situacao === 'atrasada' ? 'Atrasada' : s.encerrada ? 'Cumprido' : 'No prazo'}: {textoHoras(s.horas, d.expediente)} de{' '}
+                  {textoHoras(s.prazo, d.expediente)}
                   {!s.encerrada && <span className="block text-xs font-normal text-texto-suave">contando (horas úteis)</span>}
                 </dd>
               ) : (
@@ -193,10 +203,20 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
               <caption className="sr-only">Itens solicitados</caption>
               <thead className="bg-superficie-2 text-texto-suave">
                 <tr>
-                  <th scope="col" className="px-3 py-2 text-right font-semibold">Qtd.</th>
-                  <th scope="col" className="px-3 py-2 font-semibold">Unid.</th>
-                  <th scope="col" className="px-3 py-2 font-semibold">Item</th>
-                  {mostrarAtendido && <th scope="col" className="px-3 py-2 text-right font-semibold">Entregue</th>}
+                  <th scope="col" className="px-3 py-2 text-right font-semibold">
+                    Qtd.
+                  </th>
+                  <th scope="col" className="px-3 py-2 font-semibold">
+                    Unid.
+                  </th>
+                  <th scope="col" className="px-3 py-2 font-semibold">
+                    Item
+                  </th>
+                  {mostrarAtendido && (
+                    <th scope="col" className="px-3 py-2 text-right font-semibold">
+                      Entregue
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -206,7 +226,9 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                     <td className="px-3 py-2">{i.unidade}</td>
                     <td className="px-3 py-2">{i.descricao}</td>
                     {mostrarAtendido && (
-                      <td className={`px-3 py-2 text-right tabular-nums ${i.atendido !== null && i.atendido < i.quantidade ? 'font-semibold text-aviso' : ''}`}>{i.atendido !== null ? numeroBR(i.atendido) : '—'}</td>
+                      <td className={`px-3 py-2 text-right tabular-nums ${i.atendido !== null && i.atendido < i.quantidade ? 'font-semibold text-aviso' : ''}`}>
+                        {i.atendido !== null ? numeroBR(i.atendido) : '—'}
+                      </td>
                     )}
                   </tr>
                 ))}

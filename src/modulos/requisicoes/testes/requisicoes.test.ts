@@ -10,8 +10,20 @@ import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
-  cancelarRequisicao, concluirRequisicao, contadoresRequisicoes, decidirRequisicao, detalharRequisicao, enviarRequisicao, listarRequisicoes,
-  listarTipos, receberRequisicao, reenviarRequisicao, salvarExpediente, salvarTipo, type CatalogoOrcamento, type DadosRequisicao,
+  cancelarRequisicao,
+  concluirRequisicao,
+  contadoresRequisicoes,
+  decidirRequisicao,
+  detalharRequisicao,
+  enviarRequisicao,
+  listarRequisicoes,
+  listarTipos,
+  receberRequisicao,
+  reenviarRequisicao,
+  salvarExpediente,
+  salvarTipo,
+  type CatalogoOrcamento,
+  type DadosRequisicao,
 } from '../aplicacao/requisicoes';
 import { RequisicaoHistorico, RequisicaoItens, Requisicoes, TABELAS_REQUISICOES, TiposRequisicao } from '../dados/tabelas';
 import { conferirCentros, coordenadoresDoServico, proximoNumero, rotaDeAprovacao } from '../dominio/requisicao';
@@ -19,12 +31,22 @@ import { horasUteis, prazoDaEtapa, textoHoras } from '../dominio/sla';
 import { manifesto } from '../manifesto';
 
 let p: Planilhas;
-const catalogo: CatalogoOrcamento = { gruposDeGasto: async () => [{ id: 'g1', nome: 'Material de consumo (exemplo)' }, { id: 'g2', nome: 'Alimentação (exemplo)' }] };
+const catalogo: CatalogoOrcamento = {
+  gruposDeGasto: async () => [
+    { id: 'g1', nome: 'Material de consumo (exemplo)' },
+    { id: 'g2', nome: 'Alimentação (exemplo)' },
+  ],
+};
 let tipoId: string;
 
 async function como(email: string) {
   const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
-  return new Autorizador(email, { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
+  return new Autorizador(email, {
+    usuarios: usuarios.ativos(),
+    atribuicoes: atribuicoes.ativos(),
+    perfilPermissoes: perfilPermissoes.ativos(),
+    servicos: servicos.todos(),
+  });
 }
 const versao = async (id: string) => (await lerTabela(p, Requisicoes)).porId(id)!.versao;
 const ficha = (x: Partial<DadosRequisicao> = {}): DadosRequisicao & { nomeRequisitante: string } => ({
@@ -50,7 +72,15 @@ beforeEach(async () => {
   const t = await inserir(
     p,
     TiposRequisicao,
-    { nome: 'Material pedagógico', categoria: 'material', formulario: 'materiais', perfil_responsavel: 'almoxarifado', prazo_aprovacao: 8, prazo_atendimento: 16, descricao: null },
+    {
+      nome: 'Material pedagógico',
+      categoria: 'material',
+      formulario: 'materiais',
+      perfil_responsavel: 'almoxarifado',
+      prazo_aprovacao: 8,
+      prazo_atendimento: 16,
+      descricao: null,
+    },
     { email: 'teste' },
   );
   tipoId = t.id;
@@ -58,9 +88,24 @@ beforeEach(async () => {
 
 describe('regras puras', () => {
   it('centros de custo somam exatamente 100%, sem repetir serviço', () => {
-    expect(conferirCentros([{ servico: 'escola', percentual: 60 }, { servico: 'transporte', percentual: 40 }])).toEqual([]);
-    expect(conferirCentros([{ servico: 'escola', percentual: 60 }, { servico: 'transporte', percentual: 30 }]).join(' ')).toMatch(/somam 90%/);
-    expect(conferirCentros([{ servico: 'escola', percentual: 50 }, { servico: 'escola', percentual: 50 }]).join(' ')).toMatch(/mais de uma vez/);
+    expect(
+      conferirCentros([
+        { servico: 'escola', percentual: 60 },
+        { servico: 'transporte', percentual: 40 },
+      ]),
+    ).toEqual([]);
+    expect(
+      conferirCentros([
+        { servico: 'escola', percentual: 60 },
+        { servico: 'transporte', percentual: 30 },
+      ]).join(' '),
+    ).toMatch(/somam 90%/);
+    expect(
+      conferirCentros([
+        { servico: 'escola', percentual: 50 },
+        { servico: 'escola', percentual: 50 },
+      ]).join(' '),
+    ).toMatch(/mais de uma vez/);
     expect(conferirCentros([])).toEqual(['Informe pelo menos um centro de custo.']);
   });
 
@@ -149,7 +194,13 @@ describe('caminho de uma requisição de materiais', () => {
       catalogo,
       r.id,
       await versao(r.id),
-      ficha({ centros: [{ servico: 'escola', percentual: 70 }, { servico: 'transporte', percentual: 30 }], itens: [{ quantidade: 5, unidade: 'resma', descricao: 'Papel sulfite' }] }),
+      ficha({
+        centros: [
+          { servico: 'escola', percentual: 70 },
+          { servico: 'transporte', percentual: 30 },
+        ],
+        itens: [{ quantidade: 5, unidade: 'resma', descricao: 'Papel sulfite' }],
+      }),
       { agora: segunda(14) },
     );
     const d = await detalharRequisicao(p, pede, r.id, { agora: segunda(15) });
@@ -165,11 +216,26 @@ describe('caminho de uma requisição de materiais', () => {
     await expect(decidirRequisicao(p, coord, propria.id, await versao(propria.id), 'aprovar', null)).rejects.toThrow(/própria requisição/);
     await decidirRequisicao(p, await como('diretoria@exemplo.local'), propria.id, await versao(propria.id), 'aprovar', null);
 
-    const semCoord = await enviarRequisicao(p, await como('tecnico.cer@exemplo.local'), catalogo, ficha({ area: 'saude', centros: [{ servico: 'cer_reabilitacao', percentual: 100 }] }));
+    const semCoord = await enviarRequisicao(
+      p,
+      await como('tecnico.cer@exemplo.local'),
+      catalogo,
+      ficha({ area: 'saude', centros: [{ servico: 'cer_reabilitacao', percentual: 100 }] }),
+    );
     expect(semCoord.rota).toEqual({ tipo: 'diretoria', motivo: 'sem_coordenacao' });
 
     await expect(
-      enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha({ centros: [{ servico: 'escola', percentual: 50 }, { servico: 'ur', percentual: 50 }] })),
+      enviarRequisicao(
+        p,
+        await como('financeiro@exemplo.local'),
+        catalogo,
+        ficha({
+          centros: [
+            { servico: 'escola', percentual: 50 },
+            { servico: 'ur', percentual: 50 },
+          ],
+        }),
+      ),
     ).rejects.toThrow(/coordenações diferentes/);
   });
 
@@ -193,7 +259,12 @@ describe('caminho de uma requisição de materiais', () => {
     await expect(concluirRequisicao(p, almox, b.id, await versao(b.id), parcial, null)).rejects.toThrow(/em parte/);
     await expect(concluirRequisicao(p, almox, b.id, await versao(b.id), { ...parcial, [itens[0].id]: 99 }, 'x')).rejects.toThrow(/de 0 a 10/);
     expect(await concluirRequisicao(p, almox, b.id, await versao(b.id), parcial, 'Faltou papel.')).toBe('atendida_parcial');
-    expect((await lerTabela(p, RequisicaoHistorico)).todos().filter((h) => h.requisicao_id === b.id).at(-1)?.comentario).toBe('Faltou papel.');
+    expect(
+      (await lerTabela(p, RequisicaoHistorico))
+        .todos()
+        .filter((h) => h.requisicao_id === b.id)
+        .at(-1)?.comentario,
+    ).toBe('Faltou papel.');
   });
 
   it('quem vê o quê: cada um as suas; coordenação as do escopo; Diretoria todas; setor só depois de aprovadas', async () => {
@@ -214,12 +285,33 @@ describe('tipos de requisição e expediente', () => {
     const adm = await como('admin@exemplo.local');
     const t = await listarTipos(p, adm);
     expect(t.perfis.map((x) => x.codigo)).toEqual(['almoxarifado']);
-    await salvarTipo(p, adm, { nome: 'Higiene e limpeza', categoria: 'material', formulario: 'materiais', perfilResponsavel: 'almoxarifado', prazoAprovacao: 8, prazoAtendimento: 24 });
+    await salvarTipo(p, adm, {
+      nome: 'Higiene e limpeza',
+      categoria: 'material',
+      formulario: 'materiais',
+      perfilResponsavel: 'almoxarifado',
+      prazoAprovacao: 8,
+      prazoAtendimento: 24,
+    });
     await expect(
-      salvarTipo(p, adm, { nome: 'higiene e limpeza', categoria: 'material', formulario: 'materiais', perfilResponsavel: 'almoxarifado', prazoAprovacao: 8, prazoAtendimento: 24 }),
+      salvarTipo(p, adm, {
+        nome: 'higiene e limpeza',
+        categoria: 'material',
+        formulario: 'materiais',
+        perfilResponsavel: 'almoxarifado',
+        prazoAprovacao: 8,
+        prazoAtendimento: 24,
+      }),
     ).rejects.toThrow(/Já existe/);
     await expect(
-      salvarTipo(p, adm, { nome: 'Outro', categoria: 'material', formulario: 'materiais', perfilResponsavel: 'financeiro', prazoAprovacao: 0, prazoAtendimento: 24 }),
+      salvarTipo(p, adm, {
+        nome: 'Outro',
+        categoria: 'material',
+        formulario: 'materiais',
+        perfilResponsavel: 'financeiro',
+        prazoAprovacao: 0,
+        prazoAtendimento: 24,
+      }),
     ).rejects.toThrow(/setor.*prazo de aprovação/);
     await expect(listarTipos(p, await como('financeiro@exemplo.local'))).rejects.toBeInstanceOf(ErroPermissao);
     await expect(salvarExpediente(p, adm, { inicio: 18, fim: 8 })).rejects.toThrow(/depois do início/);

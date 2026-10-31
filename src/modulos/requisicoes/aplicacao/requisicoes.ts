@@ -18,13 +18,34 @@ import { atualizar, atualizarVarios, inserir, inserirRegistros, lerTabelas, type
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Atribuicoes, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
-  ParametrosRequisicoes, RequisicaoCentros, RequisicaoHistorico, RequisicaoItens, Requisicoes, TiposRequisicao,
-  type RegCentro, type RegItem, type RegRequisicao, type RegTipo,
+  ParametrosRequisicoes,
+  RequisicaoCentros,
+  RequisicaoHistorico,
+  RequisicaoItens,
+  Requisicoes,
+  TiposRequisicao,
+  type RegCentro,
+  type RegItem,
+  type RegRequisicao,
+  type RegTipo,
 } from '../dados/tabelas';
 import {
-  conferirCentros, conferirItens, conferirTransicao, coordenadoresDoServico, ErroRequisicao, esquemaDetalhesMateriais, NOME_SITUACAO, proximoNumero,
-  rotaDeAprovacao, SITUACOES_ENCERRADAS,
-  type Acao, type AtribuicaoAprovacao, type Centro, type ItemPedido, type RotaAprovacao, type Situacao,
+  conferirCentros,
+  conferirItens,
+  conferirTransicao,
+  coordenadoresDoServico,
+  ErroRequisicao,
+  esquemaDetalhesMateriais,
+  NOME_SITUACAO,
+  proximoNumero,
+  rotaDeAprovacao,
+  SITUACOES_ENCERRADAS,
+  type Acao,
+  type AtribuicaoAprovacao,
+  type Centro,
+  type ItemPedido,
+  type RotaAprovacao,
+  type Situacao,
 } from '../dominio/requisicao';
 import { EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
 
@@ -53,7 +74,17 @@ const vigente = (r: { ativo: boolean; inicio: string | null; fim: string | null 
 
 async function ler(p: Planilhas, agora: Date) {
   const [tipos, requisicoes, centros, itens, parametros, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis] = await lerTabelas(p, [
-    TiposRequisicao, Requisicoes, RequisicaoCentros, RequisicaoItens, ParametrosRequisicoes, Usuarios, Atribuicoes, PerfilPermissoes, Servicos, Areas, Perfis,
+    TiposRequisicao,
+    Requisicoes,
+    RequisicaoCentros,
+    RequisicaoItens,
+    ParametrosRequisicoes,
+    Usuarios,
+    Atribuicoes,
+    PerfilPermissoes,
+    Servicos,
+    Areas,
+    Perfis,
   ] as const);
   const dia = hoje(agora);
   const ativos = new Set(usuarios.ativos().map((u) => u.email));
@@ -61,7 +92,13 @@ async function ler(p: Planilhas, agora: Date) {
     .ativos()
     .filter((a) => ativos.has(a.usuario_email) && vigente(a, dia))
     .map((a) => ({ email: a.usuario_email, perfil: a.perfil, escopoTipo: a.escopo_tipo, escopo: a.escopo }));
-  const perfisCom = (permissao: string) => new Set(perfilPermissoes.ativos().filter((x) => x.permissao === permissao).map((x) => x.perfil));
+  const perfisCom = (permissao: string) =>
+    new Set(
+      perfilPermissoes
+        .ativos()
+        .filter((x) => x.permissao === permissao)
+        .map((x) => x.perfil),
+    );
   const aprovam = perfisCom(PERM.aprovar);
   const servicoPorCodigo = new Map(servicos.todos().map((s) => [s.codigo, s]));
   const centrosPor = agrupar(centros.ativos(), (c) => c.requisicao_id);
@@ -75,9 +112,23 @@ async function ler(p: Planilhas, agora: Date) {
   };
   const perfisDe = (email: string) => new Set(atribs.filter((a) => a.email === email).map((a) => a.perfil));
   return {
-    tipos, requisicoes, centros, itens, parametros, servicos, areas, perfis, perfilPermissoes,
+    tipos,
+    requisicoes,
+    centros,
+    itens,
+    parametros,
+    servicos,
+    areas,
+    perfis,
+    perfilPermissoes,
     tipoPorId: new Map(tipos.todos().map((t) => [t.id, t])),
-    servicoPorCodigo, centrosPor, itensPor, expediente, coordenacao, perfisDe, perfisCom,
+    servicoPorCodigo,
+    centrosPor,
+    itensPor,
+    expediente,
+    coordenacao,
+    perfisDe,
+    perfisCom,
   };
 }
 type Dados = Awaited<ReturnType<typeof ler>>;
@@ -111,7 +162,8 @@ function podeAtender(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
 
 function podeVer(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
   if (r.requisitante === quem.email || quem.temPermissao(PERM.verTodas)) return true;
-  if (quem.temPermissaoAlgumEscopo(PERM.aprovar) && (r.aprovacao === 'coordenacao' ? coordenacaoAtual(d, r).has(quem.email) : quem.temPermissao(PERM.aprovar))) return true;
+  if (quem.temPermissaoAlgumEscopo(PERM.aprovar) && (r.aprovacao === 'coordenacao' ? coordenacaoAtual(d, r).has(quem.email) : quem.temPermissao(PERM.aprovar)))
+    return true;
   return podeAtender(quem, d, r) && !['enviada', 'devolvida', 'recusada', 'cancelada'].includes(r.situacao);
 }
 
@@ -166,7 +218,10 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, catalo
       .ativos()
       .map((t) => ({ id: t.id, nome: t.nome, formulario: t.formulario, descricao: t.descricao }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-    areas: d.areas.ativos().map((a) => ({ codigo: a.codigo, nome: a.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    areas: d.areas
+      .ativos()
+      .map((a) => ({ codigo: a.codigo, nome: a.nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     servicos: d.servicos
       .ativos()
       .map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
@@ -200,8 +255,22 @@ async function conferirFicha(d: Dados, catalogo: CatalogoOrcamento, requisitante
   return { tipo: tipo!, grupo: grupo!, detalhes, rota };
 }
 
-async function gravarHistorico(p: Planilhas, requisicaoId: string, quem: string, acao: Acao, de: Situacao | null, para: Situacao, agora: Date, comentario?: string | null) {
-  await inserir(p, RequisicaoHistorico, { requisicao_id: requisicaoId, em: agora.toISOString(), usuario: quem, acao, de, para, comentario: comentario?.trim() || null }, { email: quem, agora: () => agora });
+async function gravarHistorico(
+  p: Planilhas,
+  requisicaoId: string,
+  quem: string,
+  acao: Acao,
+  de: Situacao | null,
+  para: Situacao,
+  agora: Date,
+  comentario?: string | null,
+) {
+  await inserir(
+    p,
+    RequisicaoHistorico,
+    { requisicao_id: requisicaoId, em: agora.toISOString(), usuario: quem, acao, de, para, comentario: comentario?.trim() || null },
+    { email: quem, agora: () => agora },
+  );
 }
 
 const textoRota = (rota: RotaAprovacao) =>
@@ -223,7 +292,10 @@ export async function enviarRequisicao(
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
   const { grupo, detalhes, rota } = await conferirFicha(d, catalogo, quem.email, dados);
-  const numero = proximoNumero(agora.getUTCFullYear(), d.requisicoes.todos().map((r) => r.numero));
+  const numero = proximoNumero(
+    agora.getUTCFullYear(),
+    d.requisicoes.todos().map((r) => r.numero),
+  );
   const autoria = { email: quem.email, agora: () => agora };
   const r = await inserir(
     p,
@@ -251,13 +323,25 @@ export async function enviarRequisicao(
 }
 
 async function gravarFilhos(p: Planilhas, d: Dados, id: string, dados: DadosRequisicao, autoria: { email: string; agora: () => Date }) {
-  await inserirRegistros(p, d.centros, dados.centros.map((c) => ({ requisicao_id: id, servico: c.servico, percentual: c.percentual })), autoria);
+  await inserirRegistros(
+    p,
+    d.centros,
+    dados.centros.map((c) => ({ requisicao_id: id, servico: c.servico, percentual: c.percentual })),
+    autoria,
+  );
   const tipo = d.tipoPorId.get(dados.tipoId);
   if (tipo?.formulario === 'materiais') {
     await inserirRegistros(
       p,
       d.itens,
-      dados.itens.map((x, i) => ({ requisicao_id: id, ordem: i + 1, quantidade: x.quantidade, unidade: x.unidade.trim(), descricao: x.descricao.trim(), atendido: null })),
+      dados.itens.map((x, i) => ({
+        requisicao_id: id,
+        ordem: i + 1,
+        quantidade: x.quantidade,
+        unidade: x.unidade.trim(),
+        descricao: x.descricao.trim(),
+        atendido: null,
+      })),
       autoria,
     );
   }
@@ -313,7 +397,13 @@ export async function reenviarRequisicao(
   await atualizarVarios(p, RequisicaoItens, encerrar(d.itensPor.get(id) ?? []), autoria);
   await gravarFilhos(p, d, id, dados, autoria);
   await gravarHistorico(p, id, quem.email, 'reenviar', 'devolvida', 'enviada', agora, [opcoes.comentario, textoRota(rota)].filter(Boolean).join(' ') || null);
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: [...colunasAlteradas, 'centros', 'itens'] } });
+  await registrarAuditoria(p, {
+    usuario: quem.email,
+    acao: 'alteracao',
+    entidade: 'Requisicoes',
+    registroId: id,
+    detalhes: { colunas: [...colunasAlteradas, 'centros', 'itens'] },
+  });
 }
 
 /** Aprovar, devolver para ajuste ou recusar (coordenação ou Diretoria). */
@@ -332,18 +422,37 @@ export async function decidirRequisicao(
   conferirTransicao(acao, r.situacao);
   if (!podeAprovar(quem, d, r)) {
     throw new ErroPermissao(
-      r.requisitante === quem.email ? 'Você não pode aprovar a própria requisição.' : r.aprovacao === 'diretoria' ? 'Esta requisição é aprovada pela Diretoria.' : 'Só a coordenação destes centros de custo pode decidir.',
+      r.requisitante === quem.email
+        ? 'Você não pode aprovar a própria requisição.'
+        : r.aprovacao === 'diretoria'
+          ? 'Esta requisição é aprovada pela Diretoria.'
+          : 'Só a coordenação destes centros de custo pode decidir.',
     );
   }
-  if (acao !== 'aprovar' && !comentario?.trim()) throw new ErroRequisicao(acao === 'devolver' ? 'Escreva o que precisa ser ajustado.' : 'Escreva o motivo da recusa.');
+  if (acao !== 'aprovar' && !comentario?.trim())
+    throw new ErroRequisicao(acao === 'devolver' ? 'Escreva o que precisa ser ajustado.' : 'Escreva o motivo da recusa.');
   const para: Situacao = acao === 'aprovar' ? 'aprovada' : acao === 'devolver' ? 'devolvida' : 'recusada';
   const autoria = { email: quem.email, agora: () => agora };
-  const { colunasAlteradas } = await atualizar(p, Requisicoes, id, versao, { situacao: para, decidida_em: agora.toISOString(), decidida_por: quem.email }, autoria);
+  const { colunasAlteradas } = await atualizar(
+    p,
+    Requisicoes,
+    id,
+    versao,
+    { situacao: para, decidida_em: agora.toISOString(), decidida_por: quem.email },
+    autoria,
+  );
   await gravarHistorico(p, id, quem.email, acao, r.situacao, para, agora, comentario);
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
 }
 
-export async function cancelarRequisicao(p: Planilhas, quem: Autorizador, id: string, versao: number, comentario: string | null, opcoes: { agora?: Date } = {}) {
+export async function cancelarRequisicao(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  comentario: string | null,
+  opcoes: { agora?: Date } = {},
+) {
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
   const r = acharComVersao(d, id, versao);
@@ -361,7 +470,14 @@ export async function receberRequisicao(p: Planilhas, quem: Autorizador, id: str
   const r = acharComVersao(d, id, versao);
   conferirTransicao('receber', r.situacao);
   if (!podeAtender(quem, d, r)) throw new ErroPermissao('Só o setor responsável por este tipo de requisição pode atendê-la.');
-  const { colunasAlteradas } = await atualizar(p, Requisicoes, id, versao, { situacao: 'em_atendimento', recebida_em: agora.toISOString(), recebida_por: quem.email }, { email: quem.email, agora: () => agora });
+  const { colunasAlteradas } = await atualizar(
+    p,
+    Requisicoes,
+    id,
+    versao,
+    { situacao: 'em_atendimento', recebida_em: agora.toISOString(), recebida_por: quem.email },
+    { email: quem.email, agora: () => agora },
+  );
   await gravarHistorico(p, id, quem.email, 'receber', 'aprovada', 'em_atendimento', agora, null);
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
 }
@@ -384,16 +500,35 @@ export async function concluirRequisicao(
   const itens = (d.itensPor.get(id) ?? []).sort((a, b) => a.ordem - b.ordem);
   for (const i of itens) {
     const v = atendidos[i.id];
-    if (!Number.isFinite(v) || v < 0 || v > i.quantidade) throw new ErroRequisicao(`Informe quanto foi entregue de "${i.descricao}" (de 0 a ${i.quantidade.toLocaleString('pt-BR')}).`);
+    if (!Number.isFinite(v) || v < 0 || v > i.quantidade)
+      throw new ErroRequisicao(`Informe quanto foi entregue de "${i.descricao}" (de 0 a ${i.quantidade.toLocaleString('pt-BR')}).`);
   }
   const completa = itens.every((i) => atendidos[i.id] === i.quantidade);
   if (!completa && !comentario?.trim()) throw new ErroRequisicao('Explique por que a requisição foi atendida só em parte.');
   const para: Situacao = completa ? 'atendida' : 'atendida_parcial';
   const autoria = { email: quem.email, agora: () => agora };
-  await atualizarVarios(p, RequisicaoItens, itens.map((i) => ({ id: i.id, versao: i.versao, mudancas: { atendido: atendidos[i.id] } })), autoria);
-  const { colunasAlteradas } = await atualizar(p, Requisicoes, id, versao, { situacao: para, concluida_em: agora.toISOString(), executada_por: quem.email }, autoria);
+  await atualizarVarios(
+    p,
+    RequisicaoItens,
+    itens.map((i) => ({ id: i.id, versao: i.versao, mudancas: { atendido: atendidos[i.id] } })),
+    autoria,
+  );
+  const { colunasAlteradas } = await atualizar(
+    p,
+    Requisicoes,
+    id,
+    versao,
+    { situacao: para, concluida_em: agora.toISOString(), executada_por: quem.email },
+    autoria,
+  );
   await gravarHistorico(p, id, quem.email, 'concluir', 'em_atendimento', para, agora, comentario);
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: [...colunasAlteradas, 'itens.atendido'] } });
+  await registrarAuditoria(p, {
+    usuario: quem.email,
+    acao: 'alteracao',
+    entidade: 'Requisicoes',
+    registroId: id,
+    detalhes: { colunas: [...colunasAlteradas, 'itens.atendido'] },
+  });
   return para;
 }
 
@@ -439,7 +574,12 @@ function linha(d: Dados, r: RegRequisicao, agora: Date): LinhaRequisicao {
   const s = sla(d, r, agora);
   const emAprovacao = r.situacao === 'enviada';
   const emAtendimento = r.situacao === 'aprovada' || r.situacao === 'em_atendimento';
-  const etapa = emAprovacao && s ? { etapa: 'aprovação' as const, ...s.aprovacao } : emAtendimento && s?.atendimento ? { etapa: 'atendimento' as const, ...s.atendimento } : null;
+  const etapa =
+    emAprovacao && s
+      ? { etapa: 'aprovação' as const, ...s.aprovacao }
+      : emAtendimento && s?.atendimento
+        ? { etapa: 'atendimento' as const, ...s.atendimento }
+        : null;
   return {
     id: r.id,
     versao: r.versao,
@@ -465,12 +605,26 @@ export async function detalharRequisicao(p: Planilhas, quem: Autorizador, id: st
   const tipo = d.tipoPorId.get(r.tipo_id);
   return {
     requisicao: r,
-    tipo: tipo ? { id: tipo.id, nome: tipo.nome, formulario: tipo.formulario, perfil: d.perfis.ativos().find((x) => x.codigo === tipo.perfil_responsavel)?.nome ?? tipo.perfil_responsavel } : null,
+    tipo: tipo
+      ? {
+          id: tipo.id,
+          nome: tipo.nome,
+          formulario: tipo.formulario,
+          perfil: d.perfis.ativos().find((x) => x.codigo === tipo.perfil_responsavel)?.nome ?? tipo.perfil_responsavel,
+        }
+      : null,
     area: d.areas.todos().find((a) => a.codigo === r.area)?.nome ?? r.area,
-    centros: (d.centrosPor.get(id) ?? []).map((c: RegCentro) => ({ servico: c.servico, nome: d.servicoPorCodigo.get(c.servico)?.nome ?? c.servico, percentual: c.percentual })),
+    centros: (d.centrosPor.get(id) ?? []).map((c: RegCentro) => ({
+      servico: c.servico,
+      nome: d.servicoPorCodigo.get(c.servico)?.nome ?? c.servico,
+      percentual: c.percentual,
+    })),
     itens: (d.itensPor.get(id) ?? []).sort((a: RegItem, b: RegItem) => a.ordem - b.ordem),
     detalhes: r.detalhes ? (JSON.parse(r.detalhes) as unknown) : null,
-    historico: historico.todos().filter((h) => h.requisicao_id === id).sort((a, b) => a.em.localeCompare(b.em)),
+    historico: historico
+      .todos()
+      .filter((h) => h.requisicao_id === id)
+      .sort((a, b) => a.em.localeCompare(b.em)),
     acoes: acoesPossiveis(quem, d, r),
     sla: sla(d, r, agora),
     expediente: d.expediente,
@@ -485,7 +639,9 @@ export async function contadoresRequisicoes(p: Planilhas, quem: Autorizador, opc
   const ativas = d.requisicoes.ativos();
   return {
     aprovar: quem.temPermissaoAlgumEscopo(PERM.aprovar) ? ativas.filter((r) => r.situacao === 'enviada' && podeAprovar(quem, d, r)).length : 0,
-    atender: quem.temPermissaoAlgumEscopo(PERM.atender) ? ativas.filter((r) => (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && podeAtender(quem, d, r)).length : 0,
+    atender: quem.temPermissaoAlgumEscopo(PERM.atender)
+      ? ativas.filter((r) => (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && podeAtender(quem, d, r)).length
+      : 0,
     devolvidas: ativas.filter((r) => r.requisitante === quem.email && r.situacao === 'devolvida').length,
   };
 }
@@ -512,7 +668,11 @@ export async function listarTipos(p: Planilhas, quem: Autorizador) {
   const uso = agrupar(d.requisicoes.ativos(), (r) => r.tipo_id);
   const ordem = (l: RegTipo[]) => l.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   return {
-    ativos: ordem(d.tipos.ativos()).map((t) => ({ ...t, perfilNome: nomePerfil.get(t.perfil_responsavel) ?? t.perfil_responsavel, requisicoes: uso.get(t.id)?.length ?? 0 })),
+    ativos: ordem(d.tipos.ativos()).map((t) => ({
+      ...t,
+      perfilNome: nomePerfil.get(t.perfil_responsavel) ?? t.perfil_responsavel,
+      requisicoes: uso.get(t.id)?.length ?? 0,
+    })),
     excluidos: ordem(d.tipos.todos().filter((t) => !t.ativo)),
     perfis: d.perfis
       .ativos()
@@ -533,7 +693,10 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, dados: DadosTi
   if (!['material', 'servico'].includes(dados.categoria)) erros.push('Escolha se é material ou serviço.');
   if (dados.formulario !== 'materiais') erros.push('Escolha a ficha.');
   if (!d.perfisCom(PERM.atender).has(dados.perfilResponsavel)) erros.push('Escolha o setor (perfil) que atende.');
-  for (const [v, rotulo] of [[dados.prazoAprovacao, 'aprovação'], [dados.prazoAtendimento, 'atendimento']] as const) {
+  for (const [v, rotulo] of [
+    [dados.prazoAprovacao, 'aprovação'],
+    [dados.prazoAtendimento, 'atendimento'],
+  ] as const) {
     if (!Number.isFinite(v) || v <= 0) erros.push(`O prazo de ${rotulo} precisa ser maior que zero (em horas úteis).`);
   }
   if (erros.length) throw new ErroRequisicao(erros.join(' '));
@@ -552,7 +715,14 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, dados: DadosTi
     return;
   }
   const { colunasAlteradas } = await atualizar(p, TiposRequisicao, existente.id, existente.versao, campos, { email: quem.email });
-  if (colunasAlteradas.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'TiposRequisicao', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
+  if (colunasAlteradas.length)
+    await registrarAuditoria(p, {
+      usuario: quem.email,
+      acao: 'alteracao',
+      entidade: 'TiposRequisicao',
+      registroId: existente.id,
+      detalhes: { colunas: colunasAlteradas },
+    });
 }
 
 export async function mudarSituacaoTipo(p: Planilhas, quem: Autorizador, id: string, versao: number, ativo: boolean) {
@@ -561,7 +731,13 @@ export async function mudarSituacaoTipo(p: Planilhas, quem: Autorizador, id: str
   const t = tipos.porId(id);
   if (!t || t.ativo === ativo) throw new ErroRequisicao('Tipo não encontrado.');
   await atualizar(p, TiposRequisicao, id, versao, { ativo }, { email: quem.email });
-  await registrarAuditoria(p, { usuario: quem.email, acao: ativo ? 'alteracao' : 'encerramento', entidade: 'TiposRequisicao', registroId: id, detalhes: { colunas: ['ativo'] } });
+  await registrarAuditoria(p, {
+    usuario: quem.email,
+    acao: ativo ? 'alteracao' : 'encerramento',
+    entidade: 'TiposRequisicao',
+    registroId: id,
+    detalhes: { colunas: ['ativo'] },
+  });
 }
 
 export async function salvarExpediente(p: Planilhas, quem: Autorizador, e: Expediente) {
@@ -570,7 +746,10 @@ export async function salvarExpediente(p: Planilhas, quem: Autorizador, e: Exped
   const erros = conferirExpediente(e);
   if (erros.length) throw new ErroRequisicao(erros.join(' '));
   const [parametros] = await lerTabelas(p, [ParametrosRequisicoes] as const);
-  for (const [chave, valor] of [['expediente_inicio', e.inicio], ['expediente_fim', e.fim]] as const) {
+  for (const [chave, valor] of [
+    ['expediente_inicio', e.inicio],
+    ['expediente_fim', e.fim],
+  ] as const) {
     const atual = parametros.ativos().find((x) => x.chave === chave);
     if (!atual) await inserir(p, ParametrosRequisicoes, { chave, valor }, { email: quem.email });
     else if (atual.valor !== valor) await atualizar(p, ParametrosRequisicoes, atual.id, atual.versao, { valor }, { email: quem.email });

@@ -156,7 +156,11 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
         mensagem="O tipo volta a aparecer para quem faz requisições."
       />
 
-      <Secao titulo="Expediente para o SLA" descricao="Os prazos contam só de segunda a sexta, dentro deste horário (horário de Brasília). Feriados ainda contam como dia útil." id="t-expediente">
+      <Secao
+        titulo="Expediente para o SLA"
+        descricao="Os prazos contam só de segunda a sexta, dentro deste horário (horário de Brasília). Feriados ainda contam como dia útil."
+        id="t-expediente"
+      >
         <form action={acaoSalvarExpediente} className="flex flex-wrap items-end gap-3">
           <Campo rotulo="Início (hora)">
             <input name="inicio" type="number" min={0} max={23} defaultValue={t.expediente.inicio} className={`${estiloEntrada} w-28`} />

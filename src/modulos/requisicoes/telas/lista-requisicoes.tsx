@@ -20,13 +20,30 @@ const COR: Record<Situacao, 'neutro' | 'sucesso' | 'atencao' | 'erro' | 'info'> 
 };
 
 export const dataHora = (iso: string) =>
-  new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).format(new Date(iso));
+  new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'America/Sao_Paulo',
+  }).format(new Date(iso));
 
 export function EtiquetaSituacao({ situacao, nome }: { situacao: Situacao; nome: string }) {
   return <Etiqueta tipo={COR[situacao]}>{nome}</Etiqueta>;
 }
 
-export function ListaRequisicoes({ linhas, legenda, vazio, comRequisitante = true }: { linhas: LinhaRequisicao[]; legenda: string; vazio: string; comRequisitante?: boolean }) {
+export function ListaRequisicoes({
+  linhas,
+  legenda,
+  vazio,
+  comRequisitante = true,
+}: {
+  linhas: LinhaRequisicao[];
+  legenda: string;
+  vazio: string;
+  comRequisitante?: boolean;
+}) {
   return (
     <TabelaDados
       legenda={legenda}

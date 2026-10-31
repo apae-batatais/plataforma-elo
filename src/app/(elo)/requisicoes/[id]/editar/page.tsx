@@ -29,12 +29,18 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
   const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas));
   const r = d.requisicao;
   // O tipo não muda no ajuste: se tiver sido excluído, continua aparecendo.
-  if (!opcoes.tipos.some((t) => t.id === r.tipo_id) && d.tipo) opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null });
+  if (!opcoes.tipos.some((t) => t.id === r.tipo_id) && d.tipo)
+    opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null });
   const pedido = [...d.historico].reverse().find((h) => h.acao === 'devolver');
   return (
     <div className="max-w-4xl">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Requisições', href: '/requisicoes' }, { rotulo: r.numero, href: `/requisicoes/${id}` }, { rotulo: 'Ajustar' }]}
+        trilha={[
+          { rotulo: 'Início', href: '/' },
+          { rotulo: 'Requisições', href: '/requisicoes' },
+          { rotulo: r.numero, href: `/requisicoes/${id}` },
+          { rotulo: 'Ajustar' },
+        ]}
         titulo={`Ajustar ${r.numero}`}
         descricao="Faça o ajuste pedido e reenvie. A requisição volta para a aprovação, e o prazo recomeça."
       />

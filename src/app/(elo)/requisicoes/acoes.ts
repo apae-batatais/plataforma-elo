@@ -5,8 +5,17 @@ import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import {
-  cancelarRequisicao, concluirRequisicao, decidirRequisicao, enviarRequisicao, ErroRequisicao, mudarSituacaoTipo, receberRequisicao, reenviarRequisicao,
-  salvarExpediente, salvarTipo, type DadosRequisicao,
+  cancelarRequisicao,
+  concluirRequisicao,
+  decidirRequisicao,
+  enviarRequisicao,
+  ErroRequisicao,
+  mudarSituacaoTipo,
+  receberRequisicao,
+  reenviarRequisicao,
+  salvarExpediente,
+  salvarTipo,
+  type DadosRequisicao,
 } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
@@ -75,7 +84,9 @@ export async function acaoReenviarRequisicao(_: EstadoFicha, f: FormData): Promi
   const { usuario, app } = await contexto();
   const id = texto(f, 'id');
   try {
-    await reenviarRequisicao(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas), id, Number(texto(f, 'versao')), lerFicha(f), { comentario: texto(f, 'comentario') });
+    await reenviarRequisicao(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas), id, Number(texto(f, 'versao')), lerFicha(f), {
+      comentario: texto(f, 'comentario'),
+    });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     if (erro instanceof SyntaxError) return { erro: 'A requisição veio incompleta. Tente de novo.' };
@@ -90,7 +101,11 @@ export async function acaoReenviarRequisicao(_: EstadoFicha, f: FormData): Promi
 // Etapas
 // ---------------------------------------------------------------------------
 
-const MENSAGEM = { aprovar: 'Requisição aprovada: foi para a fila do setor.', devolver: 'Requisição devolvida para ajuste.', recusar: 'Requisição recusada.' } as const;
+const MENSAGEM = {
+  aprovar: 'Requisição aprovada: foi para a fila do setor.',
+  devolver: 'Requisição devolvida para ajuste.',
+  recusar: 'Requisição recusada.',
+} as const;
 
 export async function acaoDecidir(f: FormData) {
   const id = texto(f, 'id');
@@ -153,7 +168,9 @@ export async function acaoExcluirTipo(f: FormData) {
 }
 
 export async function acaoReativarTipo(f: FormData) {
-  await executar('/requisicoes/tipos', 'Tipo reativado.', ({ usuario, app }) => mudarSituacaoTipo(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true));
+  await executar('/requisicoes/tipos', 'Tipo reativado.', ({ usuario, app }) =>
+    mudarSituacaoTipo(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true),
+  );
 }
 
 export async function acaoSalvarExpediente(f: FormData) {

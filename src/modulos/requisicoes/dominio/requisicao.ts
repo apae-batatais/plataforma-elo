@@ -55,7 +55,9 @@ export class ErroRequisicao extends Error {}
 
 export function conferirTransicao(acao: Acao, atual: Situacao | null) {
   if (!ORIGEM[acao].includes(atual)) {
-    throw new ErroRequisicao(`Não dá para ${acao} uma requisição ${atual ? `que está "${NOME_SITUACAO[atual].toLowerCase()}"` : 'nova'}. Recarregue a página para ver a situação atual.`);
+    throw new ErroRequisicao(
+      `Não dá para ${acao} uma requisição ${atual ? `que está "${NOME_SITUACAO[atual].toLowerCase()}"` : 'nova'}. Recarregue a página para ver a situação atual.`,
+    );
   }
 }
 

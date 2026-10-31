@@ -50,8 +50,12 @@ export function FormularioRequisicao({
   const [tipoId, setTipoId] = useState(inicial?.tipoId ?? (opcoes.tipos.length === 1 ? opcoes.tipos[0].id : ''));
   const [area, setArea] = useState(inicial?.area ?? '');
   const [grupoId, setGrupoId] = useState(inicial?.grupoId ?? '');
-  const [centros, setCentros] = useState(inicial?.centros.map((c) => ({ servico: c.servico, percentual: String(c.percentual) })) ?? [{ servico: '', percentual: '100' }]);
-  const [itens, setItens] = useState(inicial?.itens.map((x) => ({ quantidade: String(x.quantidade), unidade: x.unidade, descricao: x.descricao })) ?? [vazioItem(), vazioItem()]);
+  const [centros, setCentros] = useState(
+    inicial?.centros.map((c) => ({ servico: c.servico, percentual: String(c.percentual) })) ?? [{ servico: '', percentual: '100' }],
+  );
+  const [itens, setItens] = useState(
+    inicial?.itens.map((x) => ({ quantidade: String(x.quantidade), unidade: x.unidade, descricao: x.descricao })) ?? [vazioItem(), vazioItem()],
+  );
   const [modo, setModo] = useState<'retirada' | 'entrega' | ''>(det.entrega?.modo ?? 'retirada');
   const [entrega, setEntrega] = useState({ horario: det.entrega?.horario ?? '', local: det.entrega?.local ?? '', responsavel: det.entrega?.responsavel ?? '' });
   const [temEvento, setTemEvento] = useState(Boolean(det.evento));
@@ -172,11 +176,22 @@ export function FormularioRequisicao({
               <label className="block text-sm">
                 <span className="sr-only">Percentual do serviço {i + 1}</span>
                 <span className="relative block">
-                  <input inputMode="decimal" value={c.percentual} onChange={(e) => mudarCentro(i, 'percentual', e.target.value)} className={`${estiloEntrada} !mt-0 pr-7 text-right`} />
+                  <input
+                    inputMode="decimal"
+                    value={c.percentual}
+                    onChange={(e) => mudarCentro(i, 'percentual', e.target.value)}
+                    className={`${estiloEntrada} !mt-0 pr-7 text-right`}
+                  />
                   <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-texto-suave">%</span>
                 </span>
               </label>
-              <Botao type="button" variante="icone" aria-label={`Tirar o centro ${i + 1}`} disabled={centros.length === 1} onClick={() => setCentros(centros.filter((_, k) => k !== i))}>
+              <Botao
+                type="button"
+                variante="icone"
+                aria-label={`Tirar o centro ${i + 1}`}
+                disabled={centros.length === 1}
+                onClick={() => setCentros(centros.filter((_, k) => k !== i))}
+              >
                 <IconeLixeira tamanho={16} />
               </Botao>
             </li>
@@ -214,10 +229,34 @@ export function FormularioRequisicao({
                 const mudar = (campo: keyof typeof x, v: string) => setItens(itens.map((y, k) => (k === i ? { ...y, [campo]: v } : y)));
                 return (
                   <li key={i} className="grid grid-cols-[5rem_6rem_1fr_auto] gap-2 sm:grid-cols-[6rem_8rem_1fr_auto]">
-                    <input aria-label={`Quantidade do item ${i + 1}`} inputMode="decimal" value={x.quantidade} onChange={(e) => mudar('quantidade', e.target.value)} className={`${estiloEntrada} !mt-0 text-right`} />
-                    <input aria-label={`Unidade do item ${i + 1}`} list="unidades" value={x.unidade} onChange={(e) => mudar('unidade', e.target.value)} className={`${estiloEntrada} !mt-0`} />
-                    <input aria-label={`Descrição do item ${i + 1}`} value={x.descricao} onChange={(e) => mudar('descricao', e.target.value)} placeholder="Ex.: Detergente neutro 500 ml" className={`${estiloEntrada} !mt-0`} />
-                    <Botao type="button" variante="icone" aria-label={`Tirar o item ${i + 1}`} disabled={itens.length === 1} onClick={() => setItens(itens.filter((_, k) => k !== i))}>
+                    <input
+                      aria-label={`Quantidade do item ${i + 1}`}
+                      inputMode="decimal"
+                      value={x.quantidade}
+                      onChange={(e) => mudar('quantidade', e.target.value)}
+                      className={`${estiloEntrada} !mt-0 text-right`}
+                    />
+                    <input
+                      aria-label={`Unidade do item ${i + 1}`}
+                      list="unidades"
+                      value={x.unidade}
+                      onChange={(e) => mudar('unidade', e.target.value)}
+                      className={`${estiloEntrada} !mt-0`}
+                    />
+                    <input
+                      aria-label={`Descrição do item ${i + 1}`}
+                      value={x.descricao}
+                      onChange={(e) => mudar('descricao', e.target.value)}
+                      placeholder="Ex.: Detergente neutro 500 ml"
+                      className={`${estiloEntrada} !mt-0`}
+                    />
+                    <Botao
+                      type="button"
+                      variante="icone"
+                      aria-label={`Tirar o item ${i + 1}`}
+                      disabled={itens.length === 1}
+                      onClick={() => setItens(itens.filter((_, k) => k !== i))}
+                    >
                       <IconeLixeira tamanho={16} />
                     </Botao>
                   </li>
@@ -278,7 +317,12 @@ export function FormularioRequisicao({
                   <input value={evento.local} onChange={(e) => setEvento({ ...evento, local: e.target.value })} className={estiloEntrada} />
                 </Campo>
                 <Campo rotulo="Participantes">
-                  <input inputMode="numeric" value={evento.participantes} onChange={(e) => setEvento({ ...evento, participantes: e.target.value.replace(/\D/g, '') })} className={estiloEntrada} />
+                  <input
+                    inputMode="numeric"
+                    value={evento.participantes}
+                    onChange={(e) => setEvento({ ...evento, participantes: e.target.value.replace(/\D/g, '') })}
+                    className={estiloEntrada}
+                  />
                 </Campo>
                 <Campo rotulo="Público-alvo" className="sm:col-span-3">
                   <input value={evento.publico} onChange={(e) => setEvento({ ...evento, publico: e.target.value })} className={estiloEntrada} />

@@ -8,7 +8,19 @@ import { usuarioLogado } from '@/plataforma/sessao';
 import { CabecalhoPagina } from '@/ui/pagina';
 
 /** Página de lista (minhas, para aprovar, para atender, todas). */
-export async function PaginaDeLista({ visao, titulo, descricao, vazio, acoes }: { visao: Visao; titulo: string; descricao: string; vazio: string; acoes?: ReactNode }) {
+export async function PaginaDeLista({
+  visao,
+  titulo,
+  descricao,
+  vazio,
+  acoes,
+}: {
+  visao: Visao;
+  titulo: string;
+  descricao: string;
+  vazio: string;
+  acoes?: ReactNode;
+}) {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
@@ -21,7 +33,12 @@ export async function PaginaDeLista({ visao, titulo, descricao, vazio, acoes }: 
   }
   return (
     <div>
-      <CabecalhoPagina trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Requisições', href: '/requisicoes' }, { rotulo: titulo }]} titulo={titulo} descricao={descricao} acoes={acoes} />
+      <CabecalhoPagina
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Requisições', href: '/requisicoes' }, { rotulo: titulo }]}
+        titulo={titulo}
+        descricao={descricao}
+        acoes={acoes}
+      />
       <ListaRequisicoes linhas={linhas} legenda={titulo} vazio={vazio} comRequisitante={visao !== 'minhas'} />
     </div>
   );
