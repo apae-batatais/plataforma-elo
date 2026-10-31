@@ -289,7 +289,7 @@ describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');
     const t = await listarTipos(p, adm, catalogo);
-    expect(t.perfis.map((x) => x.codigo)).toEqual(['almoxarifado']);
+    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica']);
     await salvarTipo(p, adm, catalogo, {
       nome: 'Higiene e limpeza',
       categoria: 'material',
@@ -393,5 +393,79 @@ describe('tipos: áreas, grupos e itens aceitos', () => {
     expect(giz.pedidos).toBe(1);
     await mudarSituacaoItemCatalogo(p, adm, giz.id, giz.versao, false);
     expect((await itensDoTipo(p, adm, tipoId)).excluidos.map((x) => x.descricao)).toEqual(['Giz de cera']);
+  });
+});
+
+describe('chamado de TI (Setor de Informática)', () => {
+  const chamado = (x: object = {}) => ({
+    categoria: 'impressora',
+    equipamento: 'Impressora da recepção',
+    patrimonio: 'PAT-0457',
+    local: 'Recepção',
+    problema: 'A impressora puxa duas folhas e o papel enrosca.',
+    urgencia: 'alta',
+    contato: 'Ramal 214',
+    ...x,
+  });
+  async function tipoTi() {
+    const t = await inserir(
+      p,
+      TiposRequisicao,
+      {
+        nome: 'Chamado de TI',
+        categoria: 'servico',
+        formulario: 'ti',
+        perfil_responsavel: 'informatica',
+        prazo_aprovacao: 4,
+        prazo_atendimento: 8,
+        descricao: null,
+      },
+      { email: 'teste' },
+    );
+    return t.id;
+  }
+
+  it('o chamado não tem itens; problema, local e urgência são obrigatórios', async () => {
+    const id = await tipoTi();
+    const pede = await como('financeiro@exemplo.local');
+    await expect(
+      enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: chamado({ problema: 'quebrou', local: '', urgencia: undefined }) })),
+    ).rejects.toThrow(/onde está o problema.*mais de detalhe.*urgência/);
+    const r = await enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: chamado() }));
+    const d = await detalharRequisicao(p, pede, r.id);
+    expect(d.itens).toHaveLength(0);
+    expect(d.detalhes).toMatchObject({ categoria: 'impressora', urgencia: 'alta', patrimonio: 'PAT-0457' });
+    expect((await listarRequisicoes(p, pede, 'minhas'))[0].urgencia).toBe('alta');
+  });
+
+  it('só o Setor de Informática atende; concluir pede o resultado e o que foi feito', async () => {
+    const id = await tipoTi();
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha({ tipoId: id, itens: [], detalhes: chamado() }));
+    await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'aprovar', null);
+    expect(await listarRequisicoes(p, await como('almoxarifado@exemplo.local'), 'atender')).toHaveLength(0);
+    await expect(receberRequisicao(p, await como('almoxarifado@exemplo.local'), r.id, await versao(r.id))).rejects.toBeInstanceOf(ErroPermissao);
+    const ti = await como('informatica@exemplo.local');
+    expect((await contadoresRequisicoes(p, ti)).atender).toBe(1);
+    await receberRequisicao(p, ti, r.id, await versao(r.id));
+    await expect(concluirRequisicao(p, ti, r.id, await versao(r.id), {}, 'Troquei o rolete.')).rejects.toThrow(/foi resolvido/);
+    await expect(concluirRequisicao(p, ti, r.id, await versao(r.id), {}, ' ', { resultado: 'parcial' })).rejects.toThrow(/ficou pendente/);
+    expect(await concluirRequisicao(p, ti, r.id, await versao(r.id), {}, 'Troquei o rolete de tração.', { resultado: 'resolvido' })).toBe('atendida');
+    const h = (await lerTabela(p, RequisicaoHistorico)).todos().filter((x) => x.requisicao_id === r.id);
+    expect(h.at(-1)).toMatchObject({ acao: 'concluir', para: 'atendida', comentario: 'Troquei o rolete de tração.' });
+  });
+
+  it('o tipo de TI é sempre serviço, mesmo que a tela mande material', async () => {
+    const adm = await como('admin@exemplo.local');
+    await salvarTipo(p, adm, catalogo, {
+      nome: 'Chamado de TI',
+      categoria: 'material',
+      formulario: 'ti',
+      perfilResponsavel: 'informatica',
+      prazoAprovacao: 4,
+      prazoAtendimento: 8,
+    });
+    const t = (await lerTabela(p, TiposRequisicao)).ativos().find((x) => x.nome === 'Chamado de TI')!;
+    expect([t.formulario, t.categoria]).toEqual(['ti', 'servico']);
+    expect((await listarTipos(p, adm, catalogo)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica']);
   });
 });

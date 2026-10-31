@@ -138,7 +138,9 @@ export async function acaoConcluir(f: FormData) {
   const id = texto(f, 'id');
   const atendidos = Object.fromEntries([...f.keys()].filter((k) => k.startsWith('item_')).map((k) => [k.slice(5), numero(f, k)]));
   await executar(`/requisicoes/${id}`, 'Atendimento concluído.', ({ usuario, app }) =>
-    concluirRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), atendidos, texto(f, 'comentario') || null),
+    concluirRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), atendidos, texto(f, 'comentario') || null, {
+      resultado: (texto(f, 'resultado') || undefined) as 'resolvido' | 'parcial' | undefined,
+    }),
   );
 }
 
@@ -157,7 +159,7 @@ export async function acaoSalvarTipo(f: FormData) {
       {
         nome: texto(f, 'nome'),
         categoria: texto(f, 'categoria') as 'material' | 'servico',
-        formulario: 'materiais',
+        formulario: (texto(f, 'formulario') || 'materiais') as 'materiais' | 'ti',
         perfilResponsavel: texto(f, 'perfil'),
         prazoAprovacao: numero(f, 'prazo_aprovacao'),
         prazoAtendimento: numero(f, 'prazo_atendimento'),

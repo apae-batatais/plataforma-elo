@@ -36,7 +36,12 @@ import {
   conferirTransicao,
   coordenadoresDoServico,
   ErroRequisicao,
-  esquemaDetalhesMateriais,
+  ESQUEMA_DETALHES,
+  FICHA_DE_SERVICO,
+  FORMULARIOS,
+  type Formulario,
+  urgenciaDe,
+  type Urgencia,
   itensDaLista,
   juntarLista,
   lerLista,
@@ -272,7 +277,9 @@ async function conferirFicha(d: Dados, catalogo: CatalogoOrcamento, requisitante
     const lista = itensDaLista(dados.itens, d.catalogoPor.get(tipo.id) ?? []);
     itens = lista.itens;
     erros.push(...conferirItens(itens), ...lista.erros);
-    const r = esquemaDetalhesMateriais.safeParse(dados.detalhes ?? {});
+  }
+  if (tipo) {
+    const r = ESQUEMA_DETALHES[tipo.formulario].safeParse(dados.detalhes ?? {});
     if (!r.success) erros.push(...r.error.issues.map((i) => i.message));
     else detalhes = r.data;
   }
@@ -520,13 +527,15 @@ export async function concluirRequisicao(
   versao: number,
   atendidos: Record<string, number>,
   comentario: string | null,
-  opcoes: { agora?: Date } = {},
+  opcoes: { agora?: Date; resultado?: 'resolvido' | 'parcial' } = {},
 ): Promise<Situacao> {
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
   const r = acharComVersao(d, id, versao);
   conferirTransicao('concluir', r.situacao);
   if (!podeAtender(quem, d, r)) throw new ErroPermissao('Só o setor responsável por este tipo de requisição pode atendê-la.');
+  const tipo = d.tipoPorId.get(r.tipo_id);
+  if (tipo && FICHA_DE_SERVICO[tipo.formulario]) return concluirServico(p, quem, r, comentario, opcoes.resultado, agora);
   const itens = (d.itensPor.get(id) ?? []).sort((a, b) => a.ordem - b.ordem);
   for (const i of itens) {
     const v = atendidos[i.id];
@@ -562,6 +571,32 @@ export async function concluirRequisicao(
   return para;
 }
 
+/** Chamado (TI, manutenção…): concluído com o que foi feito e se resolveu tudo. */
+async function concluirServico(
+  p: Planilhas,
+  quem: Autorizador,
+  r: RegRequisicao,
+  comentario: string | null,
+  resultado: 'resolvido' | 'parcial' | undefined,
+  agora: Date,
+): Promise<Situacao> {
+  if (resultado !== 'resolvido' && resultado !== 'parcial') throw new ErroRequisicao('Diga se o problema foi resolvido.');
+  if (!comentario?.trim())
+    throw new ErroRequisicao(resultado === 'resolvido' ? 'Descreva o que foi feito.' : 'Explique o que foi feito e o que ficou pendente.');
+  const para: Situacao = resultado === 'resolvido' ? 'atendida' : 'atendida_parcial';
+  const { colunasAlteradas } = await atualizar(
+    p,
+    Requisicoes,
+    r.id,
+    r.versao,
+    { situacao: para, concluida_em: agora.toISOString(), executada_por: quem.email },
+    { email: quem.email, agora: () => agora },
+  );
+  await gravarHistorico(p, r.id, quem.email, 'concluir', 'em_atendimento', para, agora, comentario);
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: r.id, detalhes: { colunas: colunasAlteradas } });
+  return para;
+}
+
 // ---------------------------------------------------------------------------
 // Listas, detalhe e contadores
 // ---------------------------------------------------------------------------
@@ -579,6 +614,8 @@ export interface LinhaRequisicao {
   enviadaEm: string;
   centros: string;
   aprovacao: 'coordenacao' | 'diretoria';
+  /** Chamados com urgência (TI): para ordenar a fila. */
+  urgencia: Urgencia | null;
   prazo: { etapa: 'aprovação' | 'atendimento'; situacao: SituacaoPrazo; horas: number; limite: number } | null;
 }
 
@@ -621,6 +658,7 @@ function linha(d: Dados, r: RegRequisicao, agora: Date): LinhaRequisicao {
     enviadaEm: r.enviada_em,
     centros: (d.centrosPor.get(r.id) ?? []).map((c) => d.servicoPorCodigo.get(c.servico)?.nome ?? c.servico).join(', '),
     aprovacao: r.aprovacao,
+    urgencia: urgenciaDe(r.detalhes),
     prazo: etapa ? { etapa: etapa.etapa, situacao: etapa.situacao, horas: etapa.horas, limite: etapa.prazo } : null,
   };
 }
@@ -683,7 +721,7 @@ export async function contadoresRequisicoes(p: Planilhas, quem: Autorizador, opc
 export interface DadosTipo {
   nome: string;
   categoria: 'material' | 'servico';
-  formulario: 'materiais';
+  formulario: Formulario;
   perfilResponsavel: string;
   prazoAprovacao: number;
   prazoAtendimento: number;
@@ -739,7 +777,7 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, catalogo: Cata
   const igual = d.tipos.todos().find((t) => t.id !== existente?.id && t.nome.toLowerCase() === nome.toLowerCase());
   if (igual) erros.push(igual.ativo ? `Já existe o tipo "${igual.nome}".` : `"${igual.nome}" está entre os excluídos: reative em vez de cadastrar de novo.`);
   if (!['material', 'servico'].includes(dados.categoria)) erros.push('Escolha se é material ou serviço.');
-  if (dados.formulario !== 'materiais') erros.push('Escolha a ficha.');
+  if (!FORMULARIOS.includes(dados.formulario)) erros.push('Escolha a ficha.');
   if (!d.perfisCom(PERM.atender).has(dados.perfilResponsavel)) erros.push('Escolha o setor (perfil) que atende.');
   if ((dados.areas ?? []).some((a) => !areasValidas.has(a))) erros.push('Há área marcada que não existe mais.');
   if ((dados.grupos ?? []).some((g) => !gruposValidos.has(g))) erros.push('Há grupo de despesa marcado que não existe mais.');
@@ -752,7 +790,8 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, catalogo: Cata
   if (erros.length) throw new ErroRequisicao(erros.join(' '));
   const campos = {
     nome,
-    categoria: dados.categoria,
+    // Chamados (TI, manutenção…) são sempre serviço.
+    categoria: FICHA_DE_SERVICO[dados.formulario] ? ('servico' as const) : dados.categoria,
     formulario: dados.formulario,
     perfil_responsavel: dados.perfilResponsavel,
     prazo_aprovacao: dados.prazoAprovacao,
