@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { listarTipos } from '@/modulos/requisicoes/aplicacao/requisicoes';
+import { FICHA_DE_SERVICO, NOME_FORMULARIO } from '@/modulos/requisicoes/dominio/requisicao';
 import { EscolhaLista } from '@/modulos/requisicoes/telas/escolha-lista';
 import { catalogoOrcamento } from '@/plataforma/catalogos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -27,6 +28,7 @@ type Tipo = {
   prazo_aprovacao: number;
   prazo_atendimento: number;
   descricao: string | null;
+  formulario: string;
   listaAreas: string[];
   listaGrupos: string[];
 };
@@ -42,6 +44,15 @@ function CamposTipo({ opcoes: { perfis, areas, grupos }, valor }: { opcoes: Opco
         <input name="descricao" defaultValue={valor?.descricao ?? ''} className={estiloEntrada} />
       </Campo>
       <input type="hidden" name="categoria" value="material" />
+      <Campo rotulo="Ficha" obrigatorio dica="O que quem pede preenche. Chamados não têm lista de itens.">
+        <select name="formulario" required defaultValue={valor?.formulario ?? 'materiais'} className={estiloEntrada}>
+          {Object.entries(NOME_FORMULARIO).map(([v, r]) => (
+            <option key={v} value={v}>
+              {r}
+            </option>
+          ))}
+        </select>
+      </Campo>
       <Campo rotulo="Setor que recebe e atende" obrigatorio dica="Quem tem este perfil vê a requisição na fila depois de aprovada.">
         <select name="perfil" required defaultValue={valor?.perfil_responsavel ?? perfis[0]?.codigo} className={estiloEntrada}>
           {perfis.map((p) => (
@@ -161,7 +172,10 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
             nome: (
               <>
                 <span className="font-semibold">{x.nome}</span>
-                {x.descricao && <span className="block text-xs text-texto-suave">{x.descricao}</span>}
+                <span className="block text-xs text-texto-suave">
+                  {x.formulario === 'ti' ? 'Chamado de TI' : 'Materiais'}
+                  {x.descricao ? ` · ${x.descricao}` : ''}
+                </span>
               </>
             ),
             setor: <Etiqueta tipo="info">{x.perfilNome}</Etiqueta>,
@@ -177,7 +191,9 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
                 </span>
               </span>
             ),
-            itens: (
+            itens: FICHA_DE_SERVICO[x.formulario] ? (
+              <span className="text-sm text-texto-suave">Chamado: sem lista</span>
+            ) : (
               <Link href={`/requisicoes/tipos/${x.id}`} className="font-semibold text-destaque hover:underline">
                 {x.itensAceitos ? `${x.itensAceitos} ${x.itensAceitos === 1 ? 'item' : 'itens'}` : 'Livre: cadastrar lista'}
               </Link>

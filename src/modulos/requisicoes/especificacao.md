@@ -11,7 +11,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 ## Entregas (um tipo de ficha por PR, cada um validado antes do seguinte)
 
 1. **Base do módulo + Materiais (Almoxarifado)** — esta entrega.
-2. TI (Setor de Informática).
+2. **TI (Setor de Informática)**: ficha de chamado (categoria, equipamento, patrimônio, local, problema, urgência, contato), perfil novo Setor de Informática, urgência na fila. Material de informática usa a ficha de materiais com o Setor de Informática.
 3. Mobiliário (Setor de Patrimônio).
 4. Manutenção (Setor de Manutenção).
 5. Painel de SLA (indicadores por tipo, setor e mês) e cadastro de feriados.
@@ -24,6 +24,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 | Coordenação de serviço               | Aprovar, devolver ou recusar as dos centros de custo do seu escopo                                | `requisicoes.aprovar` (escopo)                          |
 | Diretoria                            | Aprovar qualquer uma (e as da própria coordenação e de serviços sem coordenação); ver todas       | `requisicoes.aprovar` (global), `requisicoes.ver_todas` |
 | Almoxarifado (perfil novo)           | Receber e atender as dos tipos ligados a ele                                                      | `requisicoes.atender`                                   |
+| Setor de Informática (perfil novo)   | Receber e atender chamados de TI e material de informática                                        | `requisicoes.atender`                                   |
 | Administração da plataforma (só ela) | Criar e alterar tipos, áreas e grupos permitidos, itens aceitos e o expediente                    | `requisicoes.tipos.gerenciar`                           |
 
 ## Entidades (planilha `requisicoes`)
@@ -54,6 +55,7 @@ Grupos de gasto vêm do Orçamento pela plataforma (ADR-013).
 10. O tipo só aceita as áreas e os grupos de despesa marcados (sem marcação, todos).
 11. Tipo com lista de itens só aceita itens da lista (pela descrição, sem diferença de acento ou maiúscula); descrição e unidade gravadas vêm da lista. Tirar um item da lista não muda requisições já feitas.
 12. Tipos de requisição: só a Administração da plataforma da instituição cria e altera. "Preparar estrutura" retira a permissão que a Diretoria recebeu na versão 0.9.0 (`permissoesRetiradas` no manifesto).
+13. Chamado de TI: categoria, local, problema (mín. 10 letras) e urgência são obrigatórios; não tem itens; tipo com ficha de chamado é sempre "serviço". Concluir exige dizer se resolveu e o que foi feito (resolvido em parte → "atendida em parte").
 
 ## Telas
 

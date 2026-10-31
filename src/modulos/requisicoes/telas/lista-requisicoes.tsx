@@ -5,8 +5,11 @@ import Link from 'next/link';
 import { Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
 import type { LinhaRequisicao } from '../aplicacao/requisicoes';
-import type { Situacao } from '../dominio/requisicao';
+import { URGENCIA_CURTA, type Situacao, type Urgencia } from '../dominio/requisicao';
 import { textoHoras } from '../dominio/sla';
+
+const PESO_URGENCIA: Record<Urgencia, number> = { critica: 4, alta: 3, media: 2, baixa: 1 };
+const COR_URGENCIA: Record<Urgencia, 'erro' | 'atencao' | 'info' | 'neutro'> = { critica: 'erro', alta: 'atencao', media: 'info', baixa: 'neutro' };
 
 const COR: Record<Situacao, 'neutro' | 'sucesso' | 'atencao' | 'erro' | 'info'> = {
   enviada: 'info',
@@ -44,6 +47,7 @@ export function ListaRequisicoes({
   vazio: string;
   comRequisitante?: boolean;
 }) {
+  const comUrgencia = linhas.some((r) => r.urgencia);
   return (
     <TabelaDados
       legenda={legenda}
@@ -54,6 +58,7 @@ export function ListaRequisicoes({
         ...(comRequisitante ? [{ chave: 'requisitante', rotulo: 'Quem pediu' }] : []),
         { chave: 'centros', rotulo: 'Centros de custo', secundaria: true },
         { chave: 'enviada', rotulo: 'Enviada em' },
+        ...(comUrgencia ? [{ chave: 'urgencia', rotulo: 'Urgência', tipo: 'numero' as const }] : []),
         { chave: 'situacao', rotulo: 'Situação' },
         { chave: 'prazo', rotulo: 'Prazo da etapa' },
       ]}
@@ -66,6 +71,7 @@ export function ListaRequisicoes({
           centros: r.centros,
           enviada: r.enviadaEm.slice(0, 16),
           situacao: r.situacaoNome,
+          urgencia: r.urgencia ? PESO_URGENCIA[r.urgencia] : null,
           prazo: r.prazo ? (r.prazo.situacao === 'atrasada' ? 'Atrasada' : 'No prazo') : '',
         },
         celulas: {
@@ -75,6 +81,11 @@ export function ListaRequisicoes({
             </Link>
           ),
           enviada: <span className="tabular-nums">{dataHora(r.enviadaEm)}</span>,
+          urgencia: r.urgencia ? (
+            <Etiqueta tipo={COR_URGENCIA[r.urgencia]}>{URGENCIA_CURTA[r.urgencia]}</Etiqueta>
+          ) : (
+            <span className="text-texto-suave">—</span>
+          ),
           situacao: (
             <span className="flex flex-col items-start gap-1">
               <EtiquetaSituacao situacao={r.situacao} nome={r.situacaoNome} />

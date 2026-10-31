@@ -103,8 +103,8 @@ export default async function Ajuda() {
   if (pode.requisitar) {
     assuntos.push({
       id: 'requisicoes',
-      titulo: 'Requisições de materiais',
-      resumo: 'Pedir materiais ao Almoxarifado, aprovar e atender, com histórico e prazos.',
+      titulo: 'Requisições',
+      resumo: 'Pedir materiais ao Almoxarifado ou abrir chamados de TI; aprovar e atender, com histórico e prazos.',
       atalhos: [
         { rotulo: 'Nova requisição', href: '/requisicoes/nova' },
         ...(pode.aprovarRequisicao ? [{ rotulo: 'Para aprovar', href: '/requisicoes/aprovar' }] : []),
@@ -121,6 +121,14 @@ export default async function Ajuda() {
               'Liste os itens. Se o tipo tem lista de itens, comece a digitar e escolha da lista: a unidade vem preenchida. Diga se é retirada ou entrega e, se for para um evento, marque "É para um evento" e preencha os dados.',
               'Clique em Enviar requisição. Acompanhe em Minhas requisições: clique no número para ver a ficha, o histórico e os prazos.',
               'Se a requisição for devolvida, a tela inicial avisa. Abra a ficha, clique em Ajustar e reenviar, faça o ajuste pedido e reenvie. Enquanto não for aprovada, dá para cancelar.',
+            ]}
+          />
+          <Sub>Chamado de TI</Sub>
+          <Passos
+            itens={[
+              'Em Nova requisição, escolha o tipo Chamado de TI. Para pedir mouse, teclado, toner e outros suprimentos, use o tipo de material de informática.',
+              'Diga do que é o chamado (computador, sistema, internet, impressora, acesso ou outro), onde está, o que está acontecendo e a urgência. Equipamento, nº de patrimônio e um contato ajudam o técnico.',
+              'O chamado passa pela mesma aprovação e vai para o Setor de Informática. Quando concluído, o histórico mostra o que foi feito.',
             ]}
           />
           <Sub>Quem aprova</Sub>
@@ -148,6 +156,7 @@ export default async function Ajuda() {
                 itens={[
                   'Abra Requisições › Para atender: estão ali as requisições aprovadas dos tipos do seu setor.',
                   'Na ficha, clique em Receber para atender. Ao entregar, confira a quantidade entregue de cada item e clique em Concluir atendimento. Se faltou algo, explique no comentário: fica como "atendida em parte".',
+                  'Chamados (TI): a lista mostra a urgência; clique no título "Urgência" para ordenar. Ao concluir, marque se resolveu e descreva o que foi feito.',
                 ]}
               />
             </>

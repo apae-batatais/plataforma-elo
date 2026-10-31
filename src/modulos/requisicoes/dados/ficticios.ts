@@ -32,6 +32,32 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     })),
     { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
   );
+  // TI: chamado (ficha de serviço) e material de informática (ficha de materiais), atendidos pelo Setor de Informática.
+  const tiposTi = await inserirRegistros(
+    p,
+    tiposLidos,
+    [
+      {
+        nome: 'Chamado de TI',
+        categoria: 'servico' as const,
+        formulario: 'ti' as const,
+        perfil_responsavel: 'informatica',
+        prazo_aprovacao: 4,
+        prazo_atendimento: 8,
+        descricao: 'Computador, sistema, internet, impressora, acesso ou e-mail com problema.',
+      },
+      {
+        nome: 'Material de informática',
+        categoria: 'material' as const,
+        formulario: 'materiais' as const,
+        perfil_responsavel: 'informatica',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 24,
+        descricao: 'Mouse, teclado, cabos, toner e outros suprimentos de informática.',
+      },
+    ],
+    { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
+  );
   const [usuarios, atribuicoes, perfilPermissoes, servicos, catalogoLido] = await lerTabelas(p, [
     Usuarios,
     Atribuicoes,
@@ -53,10 +79,20 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     [2, 'Café em pó', 'kg'],
     [2, 'Copo descartável 200 ml', 'pacote'],
   ];
+  const listaTi: [string, string][] = [
+    ['Mouse USB', 'un'],
+    ['Teclado USB', 'un'],
+    ['Cabo de rede 3 m', 'un'],
+    ['Toner da impressora da recepção', 'un'],
+    ['Pen drive 32 GB', 'un'],
+  ];
   await inserirRegistros(
     p,
     catalogoLido,
-    lista.map(([t, descricao, unidade]) => ({ tipo_id: tipos[t].id, descricao, unidade })),
+    [
+      ...lista.map(([t, descricao, unidade]) => ({ tipo_id: tipos[t].id, descricao, unidade })),
+      ...listaTi.map(([descricao, unidade]) => ({ tipo_id: tiposTi[1].id, descricao, unidade })),
+    ],
     { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
   );
   const como = (email: string) =>
@@ -192,4 +228,56 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     'Luvas em falta no estoque: 4 caixas chegam na próxima compra.',
     { agora: dia('2026-10-21', 16) },
   );
+
+  // 5. Chamados de TI: um aguardando a coordenação da UR e um em atendimento.
+  const chamado = (email: string, nome: string, area: string, servico: string, detalhes: object, quando: Date) =>
+    enviarRequisicao(
+      p,
+      como(email),
+      catalogo,
+      {
+        nomeRequisitante: nome,
+        tipoId: tiposTi[0].id,
+        area,
+        grupoId: grupo('Serviços de terceiros'),
+        centros: [{ servico, percentual: 100 }],
+        itens: [],
+        detalhes,
+      },
+      { agora: quando },
+    );
+  await chamado(
+    'dp@exemplo.local',
+    'Departamento Pessoal (fictício)',
+    'assistencia_social',
+    'ur',
+    {
+      categoria: 'impressora',
+      equipamento: 'Impressora da sala da UR',
+      patrimonio: 'PAT-0457',
+      local: 'Sala da coordenação da UR',
+      problema: 'A impressora puxa duas folhas de uma vez e o papel enrosca.',
+      urgencia: 'media',
+      contato: 'Ramal 214',
+    },
+    dia('2026-10-29', 9),
+  );
+  const parado = await chamado(
+    'financeiro@exemplo.local',
+    'Financeiro (fictício)',
+    'educacao',
+    'escola',
+    {
+      categoria: 'rede',
+      equipamento: null,
+      patrimonio: null,
+      local: 'Sala dos professores da Escola',
+      problema: 'Sem internet desde a manhã em todos os computadores da sala.',
+      urgencia: 'critica',
+      contato: 'Ramal 120',
+    },
+    dia('2026-10-30', 8),
+  );
+  await decidirRequisicao(p, como('coord.educacao@exemplo.local'), parado.id, await versao(parado.id), 'aprovar', null, { agora: dia('2026-10-30', 8) });
+  await receberRequisicao(p, como('informatica@exemplo.local'), parado.id, await versao(parado.id), { agora: dia('2026-10-30', 9) });
 }

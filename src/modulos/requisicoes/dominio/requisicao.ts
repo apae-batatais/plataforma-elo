@@ -9,9 +9,14 @@ export const CATEGORIAS = ['material', 'servico'] as const;
 export type Categoria = (typeof CATEGORIAS)[number];
 
 /** Fichas disponíveis. Cada tipo de requisição usa uma. Novas entram uma por entrega. */
-export const FORMULARIOS = ['materiais'] as const;
+export const FORMULARIOS = ['materiais', 'ti'] as const;
 export type Formulario = (typeof FORMULARIOS)[number];
-export const NOME_FORMULARIO: Record<Formulario, string> = { materiais: 'Materiais (itens, retirada ou entrega, evento)' };
+export const NOME_FORMULARIO: Record<Formulario, string> = {
+  materiais: 'Materiais (itens, retirada ou entrega, evento)',
+  ti: 'Chamado de TI (equipamento ou sistema, problema, urgência)',
+};
+/** Ficha de serviço: não tem itens; o atendimento é concluído com o que foi feito. */
+export const FICHA_DE_SERVICO: Record<Formulario, boolean> = { materiais: false, ti: true };
 
 export const SITUACOES = ['enviada', 'devolvida', 'aprovada', 'recusada', 'em_atendimento', 'atendida', 'atendida_parcial', 'cancelada'] as const;
 export type Situacao = (typeof SITUACOES)[number];
@@ -178,6 +183,53 @@ export const esquemaDetalhesMateriais = z.object({
   utensilios: opcional,
 });
 export type DetalhesMateriais = z.infer<typeof esquemaDetalhesMateriais>;
+
+// ---------------------------------------------------------------------------
+// Campos próprios do chamado de TI
+// ---------------------------------------------------------------------------
+
+export const CATEGORIAS_TI = {
+  equipamento: 'Computador ou equipamento',
+  sistema: 'Sistema ou programa',
+  rede: 'Internet ou rede',
+  impressora: 'Impressora',
+  acesso: 'Acesso, senha ou e-mail',
+  outro: 'Outro',
+} as const;
+export type CategoriaTi = keyof typeof CATEGORIAS_TI;
+
+export const URGENCIAS = {
+  baixa: 'Baixa: dá para esperar',
+  media: 'Média: atrapalha o trabalho',
+  alta: 'Alta: impede o trabalho de uma pessoa',
+  critica: 'Crítica: impede o trabalho de um setor ou o atendimento',
+} as const;
+export type Urgencia = keyof typeof URGENCIAS;
+export const URGENCIA_CURTA: Record<Urgencia, string> = { baixa: 'Baixa', media: 'Média', alta: 'Alta', critica: 'Crítica' };
+
+export const esquemaDetalhesTi = z.object({
+  categoria: z.enum(Object.keys(CATEGORIAS_TI) as [CategoriaTi, ...CategoriaTi[]], { message: 'Escolha do que é o chamado.' }),
+  equipamento: opcional,
+  patrimonio: opcional,
+  local: z.string({ message: 'Informe onde está o problema.' }).trim().min(1, 'Informe onde está o problema.'),
+  problema: z.string({ message: 'Descreva o problema.' }).trim().min(10, 'Descreva o problema com um pouco mais de detalhe.'),
+  urgencia: z.enum(Object.keys(URGENCIAS) as [Urgencia, ...Urgencia[]], { message: 'Escolha a urgência.' }),
+  contato: opcional,
+});
+export type DetalhesTi = z.infer<typeof esquemaDetalhesTi>;
+
+/** Campos próprios de cada ficha. */
+export const ESQUEMA_DETALHES: Record<Formulario, z.ZodType> = { materiais: esquemaDetalhesMateriais, ti: esquemaDetalhesTi };
+
+/** Urgência guardada nos detalhes (só fichas que a têm). */
+export function urgenciaDe(detalhes: string | null): Urgencia | null {
+  try {
+    const u = detalhes ? (JSON.parse(detalhes) as { urgencia?: string }).urgencia : null;
+    return u && u in URGENCIAS ? (u as Urgencia) : null;
+  } catch {
+    return null;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Quem aprova
