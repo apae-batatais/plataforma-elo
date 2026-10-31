@@ -1,6 +1,6 @@
 /**
  * Manifesto do módulo Requisições — entregas 1 (base e Materiais / Almoxarifado)
- * e 2 (TI / Setor de Informática). Mobiliário e Manutenção entram uma por entrega.
+ * 2 (TI / Setor de Informática) e 3 (Mobiliário / Setor de Patrimônio). Manutenção entra na próxima.
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
 
@@ -34,6 +34,11 @@ export const manifesto = defineModulo({
   perfis: [
     { codigo: 'almoxarifado', nome: 'Almoxarifado', descricao: 'Recebe e atende as requisições de materiais.' },
     { codigo: 'informatica', nome: 'Setor de Informática', descricao: 'Recebe e atende os chamados de TI e as requisições de material de informática.' },
+    {
+      codigo: 'patrimonio',
+      nome: 'Setor de Patrimônio',
+      descricao: 'Recebe e atende as requisições de mobiliário (mudança de lugar, empréstimo, recolhimento, montagem).',
+    },
   ],
   permissoesPorPerfil: {
     administrador_plataforma: [...BASE, 'requisicoes.tipos.gerenciar'],
@@ -46,6 +51,7 @@ export const manifesto = defineModulo({
     compras: [...BASE],
     almoxarifado: [...BASE, 'requisicoes.atender'],
     informatica: [...BASE, 'requisicoes.atender'],
+    patrimonio: [...BASE, 'requisicoes.atender'],
   },
   // Tipos de requisição: só a Administração da plataforma da instituição (decisão de 31/10/2026).
   permissoesRetiradas: { diretoria: ['requisicoes.tipos.gerenciar'] },

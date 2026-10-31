@@ -38,6 +38,7 @@ export const USUARIOS_FICTICIOS = [
   { email: 'coord.educacao@exemplo.local', nome: 'Coordenação da Educação (fictícia)', perfil: 'coordenacao_servico', escopo: 'area:educacao' },
   { email: 'almoxarifado@exemplo.local', nome: 'Almoxarifado (fictício)', perfil: 'almoxarifado', escopo: null },
   { email: 'informatica@exemplo.local', nome: 'Setor de Informática (fictício)', perfil: 'informatica', escopo: null },
+  { email: 'patrimonio@exemplo.local', nome: 'Setor de Patrimônio (fictício)', perfil: 'patrimonio', escopo: null },
 ] as const;
 
 const PARENTESCOS = ['mãe', 'pai', 'avó', 'avô', 'tia', 'irmã'];

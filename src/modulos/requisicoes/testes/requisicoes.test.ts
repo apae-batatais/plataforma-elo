@@ -289,7 +289,7 @@ describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');
     const t = await listarTipos(p, adm, catalogo);
-    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica']);
+    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'patrimonio']);
     await salvarTipo(p, adm, catalogo, {
       nome: 'Higiene e limpeza',
       categoria: 'material',
@@ -466,6 +466,64 @@ describe('chamado de TI (Setor de Informática)', () => {
     });
     const t = (await lerTabela(p, TiposRequisicao)).ativos().find((x) => x.nome === 'Chamado de TI')!;
     expect([t.formulario, t.categoria]).toEqual(['ti', 'servico']);
-    expect((await listarTipos(p, adm, catalogo)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica']);
+    expect((await listarTipos(p, adm, catalogo)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'patrimonio']);
+  });
+});
+
+describe('mobiliário (Setor de Patrimônio)', () => {
+  const pedido = (x: object = {}) => ({
+    servico: 'emprestimo',
+    moveis: [{ quantidade: 40, descricao: 'Cadeira plástica', patrimonio: null }],
+    origem: 'Depósito',
+    destino: 'Quadra',
+    data: '2026-11-07',
+    horario: '08:00',
+    devolucao: '2026-11-09',
+    contato: null,
+    ...x,
+  });
+  async function tipoMobiliario() {
+    const t = await inserir(
+      p,
+      TiposRequisicao,
+      {
+        nome: 'Mobiliário',
+        categoria: 'servico',
+        formulario: 'mobiliario',
+        perfil_responsavel: 'patrimonio',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 24,
+        descricao: null,
+      },
+      { email: 'teste' },
+    );
+    return t.id;
+  }
+
+  it('lista de móveis, de onde e para quando são obrigatórios; empréstimo exige destino e devolução', async () => {
+    const id = await tipoMobiliario();
+    const pede = await como('financeiro@exemplo.local');
+    const enviar = (d: object) => enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: d }));
+    await expect(enviar(pedido({ moveis: [], origem: '' }))).rejects.toThrow(/pelo menos um móvel.*de onde/);
+    await expect(enviar(pedido({ destino: null, devolucao: null }))).rejects.toThrow(/para onde.*quando os móveis voltam/);
+    await expect(enviar(pedido({ devolucao: '2026-11-01' }))).rejects.toThrow(/não pode ser antes/);
+    await expect(enviar(pedido({ moveis: [{ quantidade: 1.5, descricao: 'Mesa', patrimonio: null }] }))).rejects.toThrow(/número inteiro/);
+    // Recolher: sem destino nem devolução.
+    const r = await enviar(pedido({ servico: 'recolhimento', destino: null, devolucao: null }));
+    expect((await detalharRequisicao(p, pede, r.id)).detalhes).toMatchObject({ servico: 'recolhimento', moveis: [{ quantidade: 40 }] });
+  });
+
+  it('só o Setor de Patrimônio atende, e conclui dizendo o que foi feito', async () => {
+    const id = await tipoMobiliario();
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha({ tipoId: id, itens: [], detalhes: pedido() }));
+    await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'aprovar', null);
+    await expect(receberRequisicao(p, await como('informatica@exemplo.local'), r.id, await versao(r.id))).rejects.toBeInstanceOf(ErroPermissao);
+    const pat = await como('patrimonio@exemplo.local');
+    expect((await contadoresRequisicoes(p, pat)).atender).toBe(1);
+    await receberRequisicao(p, pat, r.id, await versao(r.id));
+    await expect(concluirRequisicao(p, pat, r.id, await versao(r.id), {}, null, { resultado: 'parcial' })).rejects.toThrow(/pendente/);
+    expect(await concluirRequisicao(p, pat, r.id, await versao(r.id), {}, 'Levadas 30 cadeiras; 10 estavam quebradas.', { resultado: 'parcial' })).toBe(
+      'atendida_parcial',
+    );
   });
 });
