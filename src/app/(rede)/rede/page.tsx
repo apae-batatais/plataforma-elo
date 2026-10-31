@@ -1,52 +1,79 @@
-import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
-import { conferirInstituicao, painelDaRede, type ConferenciaInstituicao } from '@/nucleo/rede/rede';
-import { aplicacaoDa } from '@/plataforma/aplicacao';
-import { configGeral } from '@/plataforma/instituicao';
-import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
-import { administradorDaRedeLogado } from '@/plataforma/sessao-rede';
-import { Aviso } from '@/ui/aviso';
-import { LinkBotao, pequeno } from '@/ui/botao';
-import { FormularioConfirmado } from '@/ui/confirmar';
-import { IconeEditar, IconeMais } from '@/ui/icones';
-import { JanelaFormulario } from '@/ui/janela';
-import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
-import { TabelaDados } from '@/ui/tabela-dados';
-import { acaoMudarSituacao, acaoSalvarInstituicao } from './acoes';
-import { FormularioInstituicao } from './formulario-instituicao';
-import { PLANILHAS_DA_INSTITUICAO } from './planilhas';
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import {
+  conferirInstituicao,
+  painelDaRede,
+  type ConferenciaInstituicao,
+} from "@/nucleo/rede/rede";
+import { ESTRUTURA_DOS_MODULOS } from "@/plataforma/registro-modulos";
+import { administradorDaRedeLogado } from "@/plataforma/sessao-rede";
+import { Aviso } from "@/ui/aviso";
+import { LinkBotao, pequeno } from "@/ui/botao";
+import { BotaoEnviar } from "@/ui/botao-enviar";
+import { FormularioConfirmado } from "@/ui/confirmar";
+import { IconeEditar, IconeMais } from "@/ui/icones";
+import { JanelaFormulario } from "@/ui/janela";
+import { CabecalhoPagina, Etiqueta } from "@/ui/pagina";
+import { TabelaDados } from "@/ui/tabela-dados";
+import {
+  acaoMudarSituacao,
+  acaoPrepararEstrutura,
+  acaoPrepararEstruturaDeTodas,
+  acaoSalvarInstituicao,
+} from "./acoes";
+import { FormularioInstituicao } from "./formulario-instituicao";
+import { PLANILHAS_DA_INSTITUICAO } from "./planilhas";
+import { planilhasDaInstituicao } from "./planilhas-da-instituicao";
 
-export const metadata: Metadata = { title: 'Instituições' };
+export const metadata: Metadata = { title: "Instituições" };
 
-const SITUACAO = { preparacao: 'Em preparação', ativa: 'Ativa', suspensa: 'Suspensa' } as const;
-const COR = { preparacao: 'info', ativa: 'sucesso', suspensa: 'erro' } as const;
+const SITUACAO = {
+  preparacao: "Em preparação",
+  ativa: "Ativa",
+  suspensa: "Suspensa",
+} as const;
+const COR = { preparacao: "info", ativa: "sucesso", suspensa: "erro" } as const;
 const ESTRUTURA = {
-  em_dia: { tipo: 'sucesso', titulo: 'Tudo certo' },
-  desatualizada: { tipo: 'atencao', titulo: 'Falta rodar Preparar estrutura' },
-  nao_preparada: { tipo: 'atencao', titulo: 'Planilhas ainda em branco' },
-  sem_acesso: { tipo: 'erro', titulo: 'Sem acesso às planilhas' },
+  em_dia: { tipo: "sucesso", titulo: "Tudo certo" },
+  desatualizada: { tipo: "atencao", titulo: "Falta rodar Preparar estrutura" },
+  nao_preparada: { tipo: "atencao", titulo: "Planilhas ainda em branco" },
+  sem_acesso: { tipo: "erro", titulo: "Sem acesso às planilhas" },
 } as const;
 
-export default async function Instituicoes({ searchParams }: { searchParams: Promise<{ editar?: string; conferir?: string }> }) {
+export default async function Instituicoes({
+  searchParams,
+}: {
+  searchParams: Promise<{ editar?: string; conferir?: string }>;
+}) {
   const sp = await searchParams;
   const adm = await administradorDaRedeLogado();
-  if (!adm) redirect('/rede/entrar');
+  if (!adm) redirect("/rede/entrar");
   const painel = await painelDaRede(adm.app.planilhas, adm.autorizador);
-  const emEdicao = sp.editar ? painel.instituicoes.find((i) => i.id === sp.editar) : undefined;
-  const aConferir = sp.conferir ? painel.instituicoes.find((i) => i.id === sp.conferir) : undefined;
+  const emEdicao = sp.editar
+    ? painel.instituicoes.find((i) => i.id === sp.editar)
+    : undefined;
+  const aConferir = sp.conferir
+    ? painel.instituicoes.find((i) => i.id === sp.conferir)
+    : undefined;
   let conferencia: ConferenciaInstituicao | null = null;
   if (aConferir) {
-    if (adm.demonstracao) {
-      // Na demonstração, as planilhas de cada instituição fictícia ficam em memória, com os nomes das chaves.
-      const g = configGeral();
-      const app = await aplicacaoDa(g, { ...aConferir, planilhas: {} });
-      const chaves = Object.fromEntries(['nucleo', 'auditoria', ...new Set((ESTRUTURA_DOS_MODULOS.tabelas ?? []).map((t) => t.planilha))].map((c) => [c, c]));
-      conferencia = await conferirInstituicao(adm.autorizador, app.planilhas.armazenamento, { ...aConferir, planilhas: chaves }, ESTRUTURA_DOS_MODULOS);
-    } else {
-      conferencia = await conferirInstituicao(adm.autorizador, adm.app.armazenamentoDasInstituicoes, aConferir, ESTRUTURA_DOS_MODULOS);
-    }
+    const { armazenamento, inst } = await planilhasDaInstituicao(
+      adm,
+      aConferir,
+    );
+    conferencia = await conferirInstituicao(
+      adm.autorizador,
+      armazenamento,
+      inst,
+      ESTRUTURA_DOS_MODULOS,
+    );
   }
-  const contagem = (s: keyof typeof SITUACAO) => painel.instituicoes.filter((i) => i.situacao === s).length;
+  const podePreparar =
+    conferencia?.planilhas
+      .filter((x) => x.chave === "nucleo" || x.chave === "auditoria")
+      .every((x) => x.ok) ?? false;
+  const contagem = (s: keyof typeof SITUACAO) =>
+    painel.instituicoes.filter((i) => i.situacao === s).length;
 
   return (
     <div className="space-y-6">
@@ -54,34 +81,69 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
         titulo="Instituições"
         descricao="As Apaes e entidades que usam o Elo. Cada uma acessa pelo próprio endereço, entra só com e-mails do próprio domínio e guarda os dados no próprio Drive."
         acoes={
-          <JanelaFormulario
-            rotulo={
-              <>
-                <IconeMais tamanho={16} /> Cadastrar instituição
-              </>
-            }
-            className={pequeno}
-            larga
-            titulo="Cadastrar instituição"
-            descricao="Ela começa em preparação: ninguém entra até você ativar."
-          >
-            <FormularioInstituicao acao={acaoSalvarInstituicao} planilhas={PLANILHAS_DA_INSTITUICAO} />
-          </JanelaFormulario>
+          <div className="flex flex-wrap gap-2">
+            {painel.instituicoes.some((i) => i.situacao !== "suspensa") && (
+              <FormularioConfirmado
+                acao={acaoPrepararEstruturaDeTodas}
+                rotulo="Preparar estrutura de todas"
+                variante="secundario"
+                pequeno
+                perigoso={false}
+                titulo="Preparar a estrutura de todas as instituições?"
+                mensagem="Cria, nas planilhas de cada instituição ativa ou em preparação, as abas e os perfis que esta versão do Elo trouxe. Nada é apagado nem alterado. Use depois de cada atualização do Elo. Pode levar alguns segundos por instituição."
+                confirmar="Preparar todas"
+              />
+            )}
+            <JanelaFormulario
+              rotulo={
+                <>
+                  <IconeMais tamanho={16} /> Cadastrar instituição
+                </>
+              }
+              className={pequeno}
+              larga
+              titulo="Cadastrar instituição"
+              descricao="Ela começa em preparação: ninguém entra até você ativar."
+            >
+              <FormularioInstituicao
+                acao={acaoSalvarInstituicao}
+                planilhas={PLANILHAS_DA_INSTITUICAO}
+              />
+            </JanelaFormulario>
+          </div>
         }
       />
 
       {emEdicao && (
-        <JanelaFormulario rotulo={null} abrirAoCarregar voltarPara="/rede" larga titulo={`Alterar ${emEdicao.nome}`}>
-          <FormularioInstituicao acao={acaoSalvarInstituicao} planilhas={PLANILHAS_DA_INSTITUICAO} instituicao={emEdicao} />
+        <JanelaFormulario
+          rotulo={null}
+          abrirAoCarregar
+          voltarPara="/rede"
+          larga
+          titulo={`Alterar ${emEdicao.nome}`}
+        >
+          <FormularioInstituicao
+            acao={acaoSalvarInstituicao}
+            planilhas={PLANILHAS_DA_INSTITUICAO}
+            instituicao={emEdicao}
+          />
         </JanelaFormulario>
       )}
 
       {aConferir && conferencia && (
-        <section aria-label={`Conferência da ${aConferir.nome}`} className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+        <section
+          aria-label={`Conferência da ${aConferir.nome}`}
+          className="space-y-3 rounded-xl border border-borda bg-superficie p-5"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-lg font-bold">Conferência: {aConferir.nome}</h2>
-              <p className="text-sm text-texto-suave">Testa o acesso a cada planilha e a estrutura, sem ler dados e sem gravar nada.</p>
+              <h2 className="text-lg font-bold">
+                Conferência: {aConferir.nome}
+              </h2>
+              <p className="text-sm text-texto-suave">
+                Testa o acesso a cada planilha e a estrutura, sem ler dados e
+                sem gravar nada.
+              </p>
             </div>
             <LinkBotao href="/rede" variante="secundario" className={pequeno}>
               Fechar
@@ -90,43 +152,89 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
           <ul className="space-y-1.5 text-sm">
             {conferencia.planilhas.map((x) => (
               <li key={x.chave} className="flex gap-2">
-                <span aria-hidden="true" className={x.ok ? 'text-sucesso' : 'text-erro'}>
-                  {x.ok ? '✓' : '✕'}
+                <span
+                  aria-hidden="true"
+                  className={x.ok ? "text-sucesso" : "text-erro"}
+                >
+                  {x.ok ? "✓" : "✕"}
                 </span>
                 <span>{x.mensagem}</span>
               </li>
             ))}
           </ul>
-          <Aviso tipo={ESTRUTURA[conferencia.estrutura].tipo} titulo={ESTRUTURA[conferencia.estrutura].titulo}>
+          <Aviso
+            tipo={ESTRUTURA[conferencia.estrutura].tipo}
+            titulo={ESTRUTURA[conferencia.estrutura].titulo}
+          >
             {conferencia.mensagemEstrutura}
           </Aviso>
+          {podePreparar && (
+            <form
+              action={acaoPrepararEstrutura}
+              className="flex flex-wrap items-center gap-3"
+            >
+              <input type="hidden" name="id" value={aConferir.id} />
+              <BotaoEnviar
+                variante={
+                  conferencia.estrutura === "em_dia" ? "secundario" : "primario"
+                }
+                className={pequeno}
+                enviando="Preparando…"
+              >
+                Preparar estrutura
+              </BotaoEnviar>
+              <span className="text-sm text-texto-suave">
+                Cria as abas que faltam e a configuração inicial (unidades do
+                cadastro, áreas, perfis e permissões). Nada é apagado nem
+                alterado.
+              </span>
+            </form>
+          )}
+          {aConferir.situacao === "preparacao" &&
+            conferencia.estrutura === "em_dia" && (
+              <p className="text-sm">
+                Tudo pronto: agora é só clicar em <strong>Ativar</strong> na
+                linha da instituição.
+              </p>
+            )}
         </section>
       )}
 
       {painel.instituicoes.length === 0 ? (
         <Aviso tipo="info" titulo="Nenhuma instituição cadastrada ainda">
-          Enquanto a rede estiver vazia, o Elo continua usando a instituição das variáveis da hospedagem. Cadastre a primeira com o botão acima e ative-a
-          quando a conferência estiver em ordem.
+          Enquanto a rede estiver vazia, o Elo continua usando a instituição das
+          variáveis da hospedagem. Cadastre a primeira com o botão acima e
+          ative-a quando a conferência estiver em ordem.
         </Aviso>
       ) : (
         <>
           <dl className="grid gap-3 sm:grid-cols-3">
             {(Object.keys(SITUACAO) as (keyof typeof SITUACAO)[]).map((s) => (
-              <div key={s} className="rounded-xl border border-borda bg-superficie px-4 py-3">
+              <div
+                key={s}
+                className="rounded-xl border border-borda bg-superficie px-4 py-3"
+              >
                 <dt className="text-sm text-texto-suave">{SITUACAO[s]}</dt>
-                <dd className="text-2xl font-bold tabular-nums">{contagem(s)}</dd>
+                <dd className="text-2xl font-bold tabular-nums">
+                  {contagem(s)}
+                </dd>
               </div>
             ))}
           </dl>
           <TabelaDados
             legenda="Instituições da rede"
             colunas={[
-              { chave: 'nome', rotulo: 'Instituição' },
-              { chave: 'situacao', rotulo: 'Situação' },
-              { chave: 'dominio', rotulo: 'Domínio' },
-              { chave: 'enderecos', rotulo: 'Endereços' },
-              { chave: 'planilhas', rotulo: 'Planilhas', tipo: 'numero', secundaria: true },
-              { chave: 'acoes', rotulo: '', fixa: true, largura: 'w-72' },
+              { chave: "nome", rotulo: "Instituição" },
+              { chave: "situacao", rotulo: "Situação" },
+              { chave: "dominio", rotulo: "Domínio" },
+              { chave: "enderecos", rotulo: "Endereços" },
+              {
+                chave: "planilhas",
+                rotulo: "Planilhas",
+                tipo: "numero",
+                secundaria: true,
+              },
+              { chave: "acoes", rotulo: "", fixa: true, largura: "w-72" },
             ]}
             linhas={painel.instituicoes.map((i) => ({
               id: i.id,
@@ -135,30 +243,55 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
                 nome: i.nome,
                 situacao: SITUACAO[i.situacao],
                 dominio: i.dominio,
-                enderecos: i.enderecos.join(', ') || '—',
+                enderecos: i.enderecos.join(", ") || "—",
                 planilhas: Object.keys(i.planilhas).length,
               },
               celulas: {
                 nome: (
                   <>
                     <span className="font-semibold">{i.nome}</span>
-                    <span className="block text-xs text-texto-suave">{i.codigo}</span>
+                    <span className="block text-xs text-texto-suave">
+                      {i.codigo}
+                    </span>
                   </>
                 ),
-                situacao: <Etiqueta tipo={COR[i.situacao]}>{SITUACAO[i.situacao]}</Etiqueta>,
-                enderecos: i.enderecos.length ? <span className="text-sm">{i.enderecos.join(', ')}</span> : <span className="text-sm text-texto-suave">nenhum</span>,
+                situacao: (
+                  <Etiqueta tipo={COR[i.situacao]}>
+                    {SITUACAO[i.situacao]}
+                  </Etiqueta>
+                ),
+                enderecos: i.enderecos.length ? (
+                  <span className="text-sm">{i.enderecos.join(", ")}</span>
+                ) : (
+                  <span className="text-sm text-texto-suave">nenhum</span>
+                ),
                 acoes: (
                   <div className="flex items-center justify-end gap-1 whitespace-nowrap">
-                    <LinkBotao href={`/rede?conferir=${i.id}`} scroll={false} variante="secundario" className={pequeno}>
+                    <LinkBotao
+                      href={`/rede?conferir=${i.id}`}
+                      scroll={false}
+                      variante="secundario"
+                      className={pequeno}
+                    >
                       Conferir
                     </LinkBotao>
-                    <LinkBotao href={`/rede?editar=${i.id}`} scroll={false} variante="icone" aria-label={`Alterar ${i.nome}`} title="Alterar">
+                    <LinkBotao
+                      href={`/rede?editar=${i.id}`}
+                      scroll={false}
+                      variante="icone"
+                      aria-label={`Alterar ${i.nome}`}
+                      title="Alterar"
+                    >
                       <IconeEditar tamanho={16} />
                     </LinkBotao>
-                    {i.situacao === 'ativa' ? (
+                    {i.situacao === "ativa" ? (
                       <FormularioConfirmado
                         acao={acaoMudarSituacao}
-                        campos={{ id: i.id, versao: i.versao, situacao: 'suspensa' }}
+                        campos={{
+                          id: i.id,
+                          versao: i.versao,
+                          situacao: "suspensa",
+                        }}
                         rotulo="Suspender"
                         variante="fantasma"
                         titulo={`Suspender ${i.nome}?`}
@@ -168,15 +301,19 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
                     ) : (
                       <FormularioConfirmado
                         acao={acaoMudarSituacao}
-                        campos={{ id: i.id, versao: i.versao, situacao: 'ativa' }}
+                        campos={{
+                          id: i.id,
+                          versao: i.versao,
+                          situacao: "ativa",
+                        }}
                         rotulo="Ativar"
                         variante="fantasma"
                         perigoso={false}
                         titulo={`Ativar ${i.nome}?`}
                         mensagem={
-                          i.situacao === 'preparacao'
-                            ? 'Use Conferir antes: as planilhas precisam estar compartilhadas. Depois de ativar, a equipe entra pelo endereço da instituição.'
-                            : 'A equipe volta a entrar pelo endereço da instituição.'
+                          i.situacao === "preparacao"
+                            ? "Use Conferir e Preparar estrutura antes. Depois de ativar, a equipe entra pelo endereço da instituição."
+                            : "A equipe volta a entrar pelo endereço da instituição."
                         }
                         confirmar="Ativar"
                       />
@@ -190,13 +327,34 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
       )}
 
       <details className="rounded-xl border border-borda bg-superficie px-5 py-4 text-sm">
-        <summary className="cursor-pointer font-semibold">Como trazer uma instituição para o Elo</summary>
+        <summary className="cursor-pointer font-semibold">
+          Como trazer uma instituição para o Elo
+        </summary>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5">
           <li>Cadastre a instituição aqui (ela começa em preparação).</li>
-          <li>A TI da instituição cria o endereço (ex.: elo.apaefranca.org.br) no DNS; a Operadora inclui o endereço na Netlify e no login do Google.</li>
-          <li>A instituição cria as planilhas no próprio Drive, compartilha com a conta de serviço e envia os IDs; cole-os em Alterar.</li>
-          <li>Use Conferir até tudo estar certo e clique em Ativar.</li>
-          <li>O administrador inicial entra pelo endereço da instituição e roda Preparar estrutura.</li>
+          <li>
+            A TI da instituição cria o endereço (ex.: elo.apaefranca.org.br) no
+            DNS; a Operadora inclui o endereço na Netlify e no login do Google.
+          </li>
+          <li>
+            A instituição cria as planilhas no próprio Drive, compartilha com a
+            conta de serviço e envia os IDs; cole-os em Alterar.
+          </li>
+          <li>
+            Clique em Conferir: cada planilha precisa aparecer como encontrada e
+            compartilhada.
+          </li>
+          <li>
+            Ainda na conferência, clique em Preparar estrutura: o Elo cria as
+            abas e a configuração inicial.
+          </li>
+          <li>
+            Com a estrutura em dia, clique em Ativar. O administrador inicial já
+            entra pelo endereço da instituição com tudo pronto.
+          </li>
+          <li>
+            Depois de cada atualização do Elo, use Preparar estrutura de todas.
+          </li>
         </ol>
       </details>
     </div>

@@ -25,3 +25,8 @@ export async function esquecerSituacaoDaEstrutura() {
   const app = await obterAplicacao();
   guardadas.delete(app.instituicao.codigo);
 }
+
+/** Usado pela rede ao preparar a estrutura de uma instituição pelo código. */
+export function esquecerSituacaoDaEstruturaDe(codigo: string) {
+  guardadas.delete(codigo);
+}

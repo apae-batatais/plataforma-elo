@@ -7,9 +7,9 @@ Decisão de arquitetura: ADR-012. Este documento descreve o que muda para quem u
 ## Quem faz o quê
 | Quem | O que faz |
 | --- | --- |
-| Administração da rede (Operadora) | Cadastra, confere, suspende e reativa instituições; publica atualizações; dá suporte técnico. Não vê dados das instituições |
+| Administração da rede (Operadora) | Cadastra, confere, prepara a estrutura, suspende e reativa instituições; publica atualizações e roda "Preparar estrutura de todas" depois delas; dá suporte técnico. Não vê dados das instituições |
 | TI ou Diretoria da instituição | Cria o endereço `elo.<domínio>` no DNS, cria as planilhas no próprio Drive e compartilha com a conta de serviço |
-| Administração da plataforma (de cada instituição) | Roda "Preparar estrutura", cadastra unidades, áreas, serviços e acessos da sua instituição |
+| Administração da plataforma (de cada instituição) | Pode rodar "Preparar estrutura" da própria instituição; cadastra unidades, áreas, serviços e acessos da sua instituição |
 
 ## Telas novas
 1. **Rede › Instituições** (só Administração da rede, no endereço da Operadora):
@@ -18,7 +18,10 @@ Decisão de arquitetura: ADR-012. Este documento descreve o que muda para quem u
 2. **Cadastro de uma instituição**: nome curto, razão social, domínio de e-mail,
    endereços de acesso, unidades iniciais, IDs das planilhas e e-mails dos
    administradores iniciais. Botão **Conferir** testa cada planilha e mostra o
-   que falta, em português, sem gravar nada.
+   que falta, em português, sem gravar nada. Na conferência, **Preparar
+   estrutura** cria as abas e a configuração inicial (unidades do cadastro,
+   áreas, perfis e permissões), com auditoria na rede e na instituição.
+   **Preparar estrutura de todas** faz o mesmo nas ativas e em preparação.
 3. **Endereço não cadastrado** (pública): explica que o endereço não pertence a
    nenhuma instituição do Elo, sem mostrar dados.
 
@@ -27,9 +30,9 @@ Decisão de arquitetura: ADR-012. Este documento descreve o que muda para quem u
 2. A instituição cria `elo.<domínio>` no DNS (CNAME); a Operadora inclui o
    endereço na Netlify e no cliente OAuth do Google.
 3. A instituição cria as planilhas no próprio Drive e compartilha com a conta de serviço.
-4. A Administração da rede cola os IDs e usa **Conferir**.
-5. O administrador inicial entra, roda **Preparar estrutura** e cadastra a
-   organização e os acessos. A situação passa a "ativa".
+4. A Administração da rede cola os IDs, usa **Conferir** e, na conferência,
+   **Preparar estrutura**. Com a estrutura em dia, clica em **Ativar**.
+5. O administrador inicial entra com tudo pronto e cadastra a organização e os acessos.
 
 ## Regras (com teste)
 1. Cada requisição usa só as planilhas da instituição do endereço acessado.
