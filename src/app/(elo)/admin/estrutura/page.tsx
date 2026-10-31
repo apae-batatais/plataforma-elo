@@ -60,7 +60,7 @@ export default async function Estrutura({ searchParams }: { searchParams: Promis
       </Secao>
 
       {app.config.modo === 'producao' && (
-        <Secao titulo="Planilhas ligadas à plataforma" descricao="Configuradas na variável PLANILHAS da hospedagem.">
+        <Secao titulo="Planilhas ligadas à plataforma" descricao="Configuradas no cadastro da instituição na rede do Elo.">
           <dl className="divide-y divide-borda text-sm">
             {Object.entries(app.config.planilhas).map(([chave, id]) => (
               <div key={chave} className="grid gap-1 py-2.5 sm:grid-cols-[14rem_1fr]">

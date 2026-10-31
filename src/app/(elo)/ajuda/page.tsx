@@ -267,7 +267,7 @@ export default async function Ajuda() {
             pode.organizacao && 'Serviços: os centros de custo, cada um numa área e numa unidade. "Cadastrar em lote" cadastra vários de uma vez; excluídos podem ser reativados em "Serviços excluídos".',
             pode.organizacao && 'Áreas: o nome é único; não há duas áreas com o mesmo nome.',
             pode.acessos && 'Acessos: "Dar acesso" cadastra o e-mail institucional e o primeiro perfil; "Atribuir perfil" acrescenta outro. Em "Vale para", escolha toda a instituição, uma unidade, uma área ou um serviço.',
-            pode.organizacao && 'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial); depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
+            pode.organizacao && 'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial), se a Administração da rede ainda não tiver feito isso; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
           ]}
         />
       ),

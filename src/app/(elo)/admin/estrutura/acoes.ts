@@ -14,7 +14,7 @@ export async function prepararEstruturaAgora() {
   if (!usuario?.autorizador.temPermissao('core.organizacao.gerenciar')) redirect('/');
   const app = await obterAplicacao();
 
-  // Planilhas de módulos ainda não cadastradas em PLANILHAS ficam para depois,
+  // Planilhas de módulos ainda sem ID no cadastro da instituição ficam para depois,
   // sem impedir o preparo do Núcleo.
   const faltando = new Set<string>();
   for (const t of ESTRUTURA_DOS_MODULOS.tabelas ?? []) {
@@ -40,7 +40,7 @@ export async function prepararEstruturaAgora() {
     detalhes: { abasCriadas: r.abasCriadas, registrosIniciais: r.registrosIniciais, ajustes: r.ajustes },
   });
   const aviso = faltando.size
-    ? ` Atenção: as planilhas ${[...faltando].map((x) => `"${x}"`).join(', ')} não estão cadastradas na variável PLANILHAS da Netlify; as abas delas não foram criadas.`
+    ? ` Atenção: as planilhas ${[...faltando].map((x) => `"${x}"`).join(', ')} ainda não têm ID no cadastro da instituição na rede; as abas delas não foram criadas.`
     : '';
   const texto =
     (r.abasCriadas.length === 0 && r.registrosIniciais === 0 && r.ajustes.length === 0
