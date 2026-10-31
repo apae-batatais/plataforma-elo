@@ -15,12 +15,15 @@ import { IconeLixeira, IconeMais } from '@/ui/icones';
 import type { DadosRequisicao } from '../aplicacao/requisicoes';
 import {
   CATEGORIAS_TI,
+  SERVICOS_MANUTENCAO,
   SERVICOS_MOBILIARIO,
   URGENCIAS,
   type CategoriaTi,
+  type DetalhesManutencao,
   type DetalhesMateriais,
   type DetalhesMobiliario,
   type DetalhesTi,
+  type ServicoManutencao,
   type ServicoMobiliario,
   type Urgencia,
 } from '../dominio/requisicao';
@@ -120,6 +123,17 @@ export function FormularioRequisicao({
     urgencia: detTi.urgencia ?? '',
     contato: detTi.contato ?? '',
   });
+  const detMan = (inicial?.detalhes ?? {}) as Partial<DetalhesManutencao>;
+  const [man, setMan] = useState({
+    servico: detMan.servico ?? '',
+    local: detMan.local ?? '',
+    equipamento: detMan.equipamento ?? '',
+    patrimonio: detMan.patrimonio ?? '',
+    problema: detMan.problema ?? '',
+    urgencia: detMan.urgencia ?? '',
+    horario: detMan.horario ?? '',
+    contato: detMan.contato ?? '',
+  });
 
   const tipo = opcoes.tipos.find((t) => t.id === tipoId);
   const areasDoTipo = tipo?.areas.length ? opcoes.areas.filter((a) => tipo.areas.includes(a.codigo)) : opcoes.areas;
@@ -179,11 +193,13 @@ export function FormularioRequisicao({
                 .filter((m) => m.descricao.trim() || m.patrimonio.trim())
                 .map((m) => ({ quantidade: paraNumero(m.quantidade), descricao: m.descricao, patrimonio: m.patrimonio })),
             }
-          : {
-              entrega: modo ? { modo, ...entrega } : null,
-              evento: temEvento ? { ...evento, participantes: evento.participantes ? Number(evento.participantes) : null } : null,
-              utensilios,
-            },
+          : tipo?.formulario === 'manutencao'
+            ? { ...man, servico: man.servico || undefined, urgencia: man.urgencia || undefined }
+            : {
+                entrega: modo ? { modo, ...entrega } : null,
+                evento: temEvento ? { ...evento, participantes: evento.participantes ? Number(evento.participantes) : null } : null,
+                utensilios,
+              },
     observacao,
   };
 
@@ -608,6 +624,70 @@ export function FormularioRequisicao({
               <input value={mob.contato} onChange={(e) => setMob({ ...mob, contato: e.target.value })} className={estiloEntrada} />
             </Campo>
           </div>
+        </section>
+      )}
+
+      {tipo?.formulario === 'manutencao' && (
+        <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+          <h2 className="text-lg font-bold">Manutenção</h2>
+          <fieldset className="min-w-0 text-sm">
+            <legend className="font-semibold">
+              Tipo de serviço <span className="text-erro">*</span>
+            </legend>
+            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+              {Object.entries(SERVICOS_MANUTENCAO).map(([v, r]) => (
+                <label
+                  key={v}
+                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 ${man.servico === v ? 'border-destaque bg-destaque-suave' : 'border-borda'}`}
+                >
+                  <input
+                    type="radio"
+                    name="servico-manutencao"
+                    checked={man.servico === v}
+                    onChange={() => setMan({ ...man, servico: v as ServicoManutencao })}
+                  />
+                  {r}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Campo rotulo="Onde é o serviço" obrigatorio dica="Unidade, sala ou setor. Ex.: Apae Rural, banheiro do pátio." className="sm:col-span-2">
+              <input value={man.local} onChange={(e) => setMan({ ...man, local: e.target.value })} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Contato" dica="Ramal ou telefone.">
+              <input value={man.contato} onChange={(e) => setMan({ ...man, contato: e.target.value })} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Equipamento" dica="Se for um aparelho. Ex.: geladeira da cozinha." className="sm:col-span-2">
+              <input value={man.equipamento} onChange={(e) => setMan({ ...man, equipamento: e.target.value })} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Nº de patrimônio" dica="A etiqueta, se houver.">
+              <input value={man.patrimonio} onChange={(e) => setMan({ ...man, patrimonio: e.target.value })} className={estiloEntrada} />
+            </Campo>
+          </div>
+          <Campo
+            rotulo="Qual é o problema"
+            obrigatorio
+            dica="Descreva com detalhes: o que aconteceu, desde quando, se há risco. Fotos ainda não podem ser anexadas."
+          >
+            <textarea value={man.problema} onChange={(e) => setMan({ ...man, problema: e.target.value })} rows={4} className={estiloEntrada} />
+          </Campo>
+          <Campo rotulo="Melhor horário para o serviço" dica="Ex.: depois das 16h, quando a sala está vazia.">
+            <input value={man.horario} onChange={(e) => setMan({ ...man, horario: e.target.value })} className={estiloEntrada} />
+          </Campo>
+          <fieldset className="min-w-0 text-sm">
+            <legend className="font-semibold">
+              Urgência <span className="text-erro">*</span>
+            </legend>
+            <div className="mt-2 space-y-1.5">
+              {Object.entries(URGENCIAS).map(([v, r]) => (
+                <label key={v} className="flex items-center gap-2">
+                  <input type="radio" name="urgencia-manutencao" checked={man.urgencia === v} onChange={() => setMan({ ...man, urgencia: v as Urgencia })} />
+                  {r}
+                </label>
+              ))}
+            </div>
+          </fieldset>
         </section>
       )}
 
