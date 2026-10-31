@@ -23,6 +23,7 @@ function exemplo(parcial: Partial<Manifesto> = {}): Manifesto {
     indicadores: ['execucao_orcamentaria'],
     perfis: [],
     permissoesPorPerfil: {},
+    permissoesRetiradas: {},
     ...parcial,
   };
 }

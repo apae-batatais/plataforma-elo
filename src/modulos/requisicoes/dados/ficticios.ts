@@ -4,10 +4,10 @@
  * Almoxarifado e atendido em parte). Gravados pelos próprios casos de uso.
  */
 import { Autorizador } from '@/nucleo/acesso/autorizador';
-import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { atualizar, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { concluirRequisicao, decidirRequisicao, enviarRequisicao, receberRequisicao, type CatalogoOrcamento } from '../aplicacao/requisicoes';
-import { Requisicoes, TiposRequisicao } from './tabelas';
+import { CatalogoItens, Requisicoes, TiposRequisicao } from './tabelas';
 
 const TIPOS = [
   { nome: 'Higiene e limpeza', descricao: 'Produtos de limpeza e de higiene pessoal.' },
@@ -32,7 +32,33 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     })),
     { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
   );
-  const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
+  const [usuarios, atribuicoes, perfilPermissoes, servicos, catalogoLido] = await lerTabelas(p, [
+    Usuarios,
+    Atribuicoes,
+    PerfilPermissoes,
+    Servicos,
+    CatalogoItens,
+  ] as const);
+  // Itens aceitos: Higiene e limpeza e Alimentação e cozinha têm lista; os outros aceitam texto livre.
+  const lista: [number, string, string][] = [
+    [0, 'Detergente neutro', 'L'],
+    [0, 'Papel toalha', 'pacote'],
+    [0, 'Álcool 70%', 'L'],
+    [0, 'Luvas descartáveis', 'caixa'],
+    [0, 'Sabonete líquido', 'L'],
+    [0, 'Saco de lixo 100 L', 'pacote'],
+    [2, 'Farinha de trigo', 'kg'],
+    [2, 'Leite integral', 'L'],
+    [2, 'Açúcar refinado', 'kg'],
+    [2, 'Café em pó', 'kg'],
+    [2, 'Copo descartável 200 ml', 'pacote'],
+  ];
+  await inserirRegistros(
+    p,
+    catalogoLido,
+    lista.map(([t, descricao, unidade]) => ({ tipo_id: tipos[t].id, descricao, unidade })),
+    { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
+  );
   const como = (email: string) =>
     new Autorizador(email, {
       usuarios: usuarios.ativos(),
@@ -43,6 +69,18 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
   const grupos = await catalogo.gruposDeGasto();
   const grupo = (inicio: string) => (grupos.find((g) => g.nome.startsWith(inicio)) ?? grupos[0])?.id ?? '';
   if (!grupos.length) return;
+  // Alimentação e cozinha só aceita o grupo de despesa de alimentação.
+  const alimentacao = grupos.find((g) => g.nome.startsWith('Alimentação'));
+  if (alimentacao) {
+    await atualizar(
+      p,
+      TiposRequisicao,
+      tipos[2].id,
+      tipos[2].versao,
+      { grupos: alimentacao.id },
+      { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
+    );
+  }
 
   const dia = (d: string, h: number) => new Date(`${d}T${String(h + 3).padStart(2, '0')}:00:00Z`); // horário de Brasília
   const pedir = (

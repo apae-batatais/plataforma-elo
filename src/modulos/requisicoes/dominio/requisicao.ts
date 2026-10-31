@@ -91,6 +91,50 @@ export interface ItemPedido {
   quantidade: number;
   unidade: string;
   descricao: string;
+  /** Item escolhido da lista do tipo. */
+  catalogoId?: string | null;
+}
+
+/** Lista guardada como texto separado por vírgula (vazio = sem restrição). */
+export const lerLista = (t: string | null | undefined) =>
+  String(t ?? '')
+    .split(',')
+    .map((x) => x.trim())
+    .filter(Boolean);
+export const juntarLista = (l: readonly string[]) => (l.length ? [...new Set(l)].join(',') : null);
+/** Lista vazia libera tudo. */
+export const permitido = (lista: readonly string[], valor: string) => lista.length === 0 || lista.includes(valor);
+
+export const nomeComparavel = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/**
+ * Itens de um tipo com lista: cada item pedido precisa estar na lista (pelo
+ * id escolhido ou pela descrição, sem diferença de acento ou maiúscula). A
+ * unidade e a descrição vêm da lista. Tipo sem lista aceita o que foi digitado.
+ */
+export function itensDaLista(
+  itens: ItemPedido[],
+  catalogo: readonly { id: string; descricao: string; unidade: string }[],
+): { itens: (ItemPedido & { catalogoId: string | null })[]; erros: string[] } {
+  if (catalogo.length === 0) return { itens: itens.map((x) => ({ ...x, catalogoId: null })), erros: [] };
+  const porId = new Map(catalogo.map((c) => [c.id, c]));
+  const porNome = new Map(catalogo.map((c) => [nomeComparavel(c.descricao), c]));
+  const erros: string[] = [];
+  const r = itens.map((x, i) => {
+    const c = (x.catalogoId ? porId.get(x.catalogoId) : undefined) ?? porNome.get(nomeComparavel(x.descricao));
+    if (!c) {
+      if (x.descricao.trim()) erros.push(`Item ${i + 1}: "${x.descricao.trim()}" não está na lista deste tipo. Escolha um item da lista.`);
+      return { ...x, catalogoId: null };
+    }
+    return { ...x, descricao: c.descricao, unidade: c.unidade, catalogoId: c.id };
+  });
+  return { itens: r, erros };
 }
 
 export function conferirItens(itens: ItemPedido[]): string[] {

@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { listarTipos } from '@/modulos/requisicoes/aplicacao/requisicoes';
+import { EscolhaLista } from '@/modulos/requisicoes/telas/escolha-lista';
+import { catalogoOrcamento } from '@/plataforma/catalogos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -17,9 +20,19 @@ import { acaoExcluirTipo, acaoReativarTipo, acaoSalvarExpediente, acaoSalvarTipo
 
 export const metadata: Metadata = { title: 'Tipos de requisição' };
 
-type Tipo = { nome: string; categoria: string; perfil_responsavel: string; prazo_aprovacao: number; prazo_atendimento: number; descricao: string | null };
+type Tipo = {
+  nome: string;
+  categoria: string;
+  perfil_responsavel: string;
+  prazo_aprovacao: number;
+  prazo_atendimento: number;
+  descricao: string | null;
+  listaAreas: string[];
+  listaGrupos: string[];
+};
+type Opcoes = { perfis: { codigo: string; nome: string }[]; areas: { codigo: string; nome: string }[]; grupos: { id: string; nome: string }[] };
 
-function CamposTipo({ perfis, valor }: { perfis: { codigo: string; nome: string }[]; valor?: Tipo }) {
+function CamposTipo({ opcoes: { perfis, areas, grupos }, valor }: { opcoes: Opcoes; valor?: Tipo }) {
   return (
     <>
       <Campo rotulo="Nome" obrigatorio dica="Ex.: Higiene e limpeza, Material pedagógico.">
@@ -46,6 +59,22 @@ function CamposTipo({ perfis, valor }: { perfis: { codigo: string; nome: string 
           <input name="prazo_atendimento" inputMode="decimal" required defaultValue={valor?.prazo_atendimento ?? 16} className={estiloEntrada} />
         </Campo>
       </div>
+      <EscolhaLista
+        legenda="Áreas que podem usar"
+        nome="areas"
+        campoTodas="todas_areas"
+        rotuloTodas="Todas as áreas"
+        opcoes={areas.map((a) => ({ valor: a.codigo, rotulo: a.nome }))}
+        marcados={valor?.listaAreas ?? []}
+      />
+      <EscolhaLista
+        legenda="Grupos de despesa aceitos"
+        nome="grupos"
+        campoTodas="todos_grupos"
+        rotuloTodas="Todos os grupos do orçamento"
+        opcoes={grupos.map((g) => ({ valor: g.id, rotulo: g.nome }))}
+        marcados={valor?.listaGrupos ?? []}
+      />
     </>
   );
 }
@@ -56,7 +85,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissao('requisicoes.tipos.gerenciar')) redirect('/requisicoes');
   const app = await obterAplicacao();
-  const t = await listarTipos(app.planilhas, usuario.autorizador);
+  const t = await listarTipos(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas));
   const emEdicao = editar ? t.ativos.find((x) => x.id === editar) : undefined;
 
   return (
@@ -64,7 +93,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Requisições', href: '/requisicoes' }, { rotulo: 'Tipos de requisição' }]}
         titulo="Tipos de requisição"
-        descricao="Cada tipo diz qual setor recebe e atende, e os prazos de aprovação e de atendimento usados no SLA. Nesta etapa, os tipos usam a ficha de materiais."
+        descricao="Cada tipo diz qual setor atende, os prazos do SLA, quais áreas e grupos de despesa podem usá-lo e quais itens aceita. Só a Administração da plataforma cria e altera os tipos."
         acoes={
           <JanelaFormulario
             rotulo={
@@ -76,7 +105,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
             titulo="Adicionar tipo de requisição"
           >
             <form action={acaoSalvarTipo} className="space-y-4">
-              <CamposTipo perfis={t.perfis} />
+              <CamposTipo opcoes={t} />
               <BotaoEnviar enviando="Salvando…" className="w-full">
                 Adicionar tipo
               </BotaoEnviar>
@@ -96,7 +125,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
           <form action={acaoSalvarTipo} className="space-y-4">
             <input type="hidden" name="id" value={emEdicao.id} />
             <input type="hidden" name="versao" value={emEdicao.versao} />
-            <CamposTipo perfis={t.perfis} valor={emEdicao} />
+            <CamposTipo opcoes={t} valor={emEdicao} />
             <BotaoEnviar enviando="Salvando…" className="w-full">
               Salvar alterações
             </BotaoEnviar>
@@ -112,12 +141,22 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
           { chave: 'setor', rotulo: 'Setor que atende' },
           { chave: 'aprovacao', rotulo: 'Prazo de aprovação', tipo: 'numero' },
           { chave: 'atendimento', rotulo: 'Prazo de atendimento', tipo: 'numero' },
-          { chave: 'uso', rotulo: 'Requisições', tipo: 'numero' },
+          { chave: 'quem', rotulo: 'Áreas e grupos' },
+          { chave: 'itens', rotulo: 'Itens aceitos', tipo: 'numero' },
+          { chave: 'uso', rotulo: 'Requisições', tipo: 'numero', secundaria: true },
           { chave: 'acoes', rotulo: '', fixa: true, largura: 'w-20' },
         ]}
         linhas={t.ativos.map((x) => ({
           id: x.id,
-          valores: { nome: x.nome, setor: x.perfilNome, aprovacao: x.prazo_aprovacao, atendimento: x.prazo_atendimento, uso: x.requisicoes },
+          valores: {
+            nome: x.nome,
+            setor: x.perfilNome,
+            aprovacao: x.prazo_aprovacao,
+            atendimento: x.prazo_atendimento,
+            quem: [...x.nomesAreas, ...x.nomesGrupos].join(', ') || 'Todos',
+            itens: x.itensAceitos,
+            uso: x.requisicoes,
+          },
           celulas: {
             nome: (
               <>
@@ -128,6 +167,21 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
             setor: <Etiqueta tipo="info">{x.perfilNome}</Etiqueta>,
             aprovacao: <span className="tabular-nums">{x.prazo_aprovacao.toLocaleString('pt-BR')} h úteis</span>,
             atendimento: <span className="tabular-nums">{x.prazo_atendimento.toLocaleString('pt-BR')} h úteis</span>,
+            quem: (
+              <span className="text-sm">
+                <span className="block">
+                  <span className="text-texto-suave">Áreas:</span> {x.nomesAreas.length ? x.nomesAreas.join(', ') : 'todas'}
+                </span>
+                <span className="block">
+                  <span className="text-texto-suave">Grupos:</span> {x.nomesGrupos.length ? x.nomesGrupos.join(', ') : 'todos'}
+                </span>
+              </span>
+            ),
+            itens: (
+              <Link href={`/requisicoes/tipos/${x.id}`} className="font-semibold text-destaque hover:underline">
+                {x.itensAceitos ? `${x.itensAceitos} ${x.itensAceitos === 1 ? 'item' : 'itens'}` : 'Livre: cadastrar lista'}
+              </Link>
+            ),
             acoes: (
               <div className="flex justify-end gap-1">
                 <LinkBotao href={`/requisicoes/tipos?editar=${x.id}`} scroll={false} variante="icone" aria-label={`Alterar ${x.nome}`} title="Alterar">

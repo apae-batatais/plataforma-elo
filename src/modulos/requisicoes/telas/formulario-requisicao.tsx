@@ -18,7 +18,16 @@ import type { DetalhesMateriais } from '../dominio/requisicao';
 type Estado = { erro?: string };
 
 export interface OpcoesFicha {
-  tipos: { id: string; nome: string; formulario: string; descricao: string | null }[];
+  tipos: {
+    id: string;
+    nome: string;
+    formulario: string;
+    descricao: string | null;
+    /** Áreas e grupos permitidos (vazio = todos) e itens aceitos (vazio = texto livre). */
+    areas: string[];
+    grupos: string[];
+    itens: { id: string; descricao: string; unidade: string }[];
+  }[];
   areas: { codigo: string; nome: string }[];
   servicos: { codigo: string; nome: string; area: string | null; areaNome: string }[];
   grupos: { id: string; nome: string }[];
@@ -27,6 +36,13 @@ export interface OpcoesFicha {
 const UNIDADES = ['un', 'kg', 'g', 'L', 'ml', 'pacote', 'caixa', 'resma', 'dúzia', 'fardo', 'rolo', 'par', 'frasco', 'galão'];
 
 const vazioItem = () => ({ quantidade: '', unidade: 'un', descricao: '' });
+const comparavel = (t: string) =>
+  t
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
 const vazioCentro = () => ({ servico: '', percentual: '' });
 const paraNumero = (t: string) => (t.trim() === '' ? NaN : Number(t.replace(',', '.')));
 
@@ -71,6 +87,24 @@ export function FormularioRequisicao({
   const [observacao, setObservacao] = useState(inicial?.observacao ?? '');
 
   const tipo = opcoes.tipos.find((t) => t.id === tipoId);
+  const areasDoTipo = tipo?.areas.length ? opcoes.areas.filter((a) => tipo.areas.includes(a.codigo)) : opcoes.areas;
+  const gruposDoTipo = tipo?.grupos.length ? opcoes.grupos.filter((g) => tipo.grupos.includes(g.id)) : opcoes.grupos;
+  const lista = tipo?.itens ?? [];
+  const daLista = (descricao: string) => lista.find((c) => comparavel(c.descricao) === comparavel(descricao));
+  const mudarTipo = (id: string) => {
+    setTipoId(id);
+    const t = opcoes.tipos.find((x) => x.id === id);
+    if (!t) return;
+    // Área e grupo que o tipo não aceita saem; se só há uma opção, ela já vem marcada.
+    const areasOk = t.areas.length ? opcoes.areas.filter((a) => t.areas.includes(a.codigo)) : opcoes.areas;
+    const gruposOk = t.grupos.length ? opcoes.grupos.filter((g) => t.grupos.includes(g.id)) : opcoes.grupos;
+    if (!areasOk.some((a) => a.codigo === area)) setArea(areasOk.length === 1 ? areasOk[0].codigo : '');
+    if (!gruposOk.some((g) => g.id === grupoId)) setGrupoId(gruposOk.length === 1 ? gruposOk[0].id : '');
+    if (t.itens.length) {
+      const porNome = new Map(t.itens.map((c) => [comparavel(c.descricao), c]));
+      setItens(itens.map((x) => ({ ...x, unidade: porNome.get(comparavel(x.descricao))?.unidade ?? (x.descricao ? x.unidade : '') })));
+    }
+  };
   const soma = centros.reduce((s, c) => s + Math.round((paraNumero(c.percentual) || 0) * 100), 0) / 100;
   const areasDosServicos = [...new Set(opcoes.servicos.map((s) => s.areaNome))];
 
@@ -80,7 +114,7 @@ export function FormularioRequisicao({
     // Primeiro serviço escolhido sugere a área, se ela ainda estiver em branco.
     if (campo === 'servico' && !area) {
       const s = opcoes.servicos.find((x) => x.codigo === valor);
-      if (s?.area) setArea(s.area);
+      if (s?.area && areasDoTipo.some((a) => a.codigo === s.area)) setArea(s.area);
     }
   };
   const dividirIgual = () => {
@@ -96,7 +130,7 @@ export function FormularioRequisicao({
     centros: centros.map((c) => ({ servico: c.servico, percentual: paraNumero(c.percentual) })),
     itens: itens
       .filter((x) => x.descricao.trim() || x.quantidade.trim())
-      .map((x) => ({ quantidade: paraNumero(x.quantidade), unidade: x.unidade, descricao: x.descricao })),
+      .map((x) => ({ quantidade: paraNumero(x.quantidade), unidade: x.unidade, descricao: x.descricao, catalogoId: daLista(x.descricao)?.id ?? null })),
     detalhes: {
       entrega: modo ? { modo, ...entrega } : null,
       evento: temEvento ? { ...evento, participantes: evento.participantes ? Number(evento.participantes) : null } : null,
@@ -114,7 +148,7 @@ export function FormularioRequisicao({
         <h2 className="text-lg font-bold">Pedido</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           <Campo rotulo="Tipo de requisição" obrigatorio dica={tipo?.descricao ?? undefined}>
-            <select value={tipoId} onChange={(e) => setTipoId(e.target.value)} disabled={Boolean(inicial)} required className={estiloEntrada}>
+            <select value={tipoId} onChange={(e) => mudarTipo(e.target.value)} disabled={Boolean(inicial)} required className={estiloEntrada}>
               <option value="">Escolha…</option>
               {opcoes.tipos.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -126,7 +160,7 @@ export function FormularioRequisicao({
           <Campo rotulo="Área" obrigatorio>
             <select value={area} onChange={(e) => setArea(e.target.value)} required className={estiloEntrada}>
               <option value="">Escolha…</option>
-              {opcoes.areas.map((a) => (
+              {areasDoTipo.map((a) => (
                 <option key={a.codigo} value={a.codigo}>
                   {a.nome}
                 </option>
@@ -136,7 +170,7 @@ export function FormularioRequisicao({
           <Campo rotulo="Grupo de despesa" obrigatorio dica="Como está no orçamento.">
             <select value={grupoId} onChange={(e) => setGrupoId(e.target.value)} required className={estiloEntrada}>
               <option value="">Escolha…</option>
-              {opcoes.grupos.map((g) => (
+              {gruposDoTipo.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.nome}
                 </option>
@@ -213,6 +247,18 @@ export function FormularioRequisicao({
         <>
           <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
             <h2 className="text-lg font-bold">Itens solicitados</h2>
+            {lista.length > 0 && (
+              <p className="text-sm text-texto-suave">
+                Este tipo tem uma lista de itens: comece a digitar e escolha o item na lista. A unidade vem preenchida.
+              </p>
+            )}
+            <datalist id="itens-do-tipo">
+              {lista.map((c) => (
+                <option key={c.id} value={c.descricao}>
+                  {c.unidade}
+                </option>
+              ))}
+            </datalist>
             <datalist id="unidades">
               {UNIDADES.map((u) => (
                 <option key={u} value={u} />
@@ -226,7 +272,17 @@ export function FormularioRequisicao({
             </div>
             <ul className="space-y-2">
               {itens.map((x, i) => {
-                const mudar = (campo: keyof typeof x, v: string) => setItens(itens.map((y, k) => (k === i ? { ...y, [campo]: v } : y)));
+                const mudar = (campo: keyof typeof x, v: string) =>
+                  setItens(
+                    itens.map((y, k) => {
+                      if (k !== i) return y;
+                      const novo = { ...y, [campo]: v };
+                      // Item da lista: a unidade vem dela.
+                      if (campo === 'descricao' && lista.length) novo.unidade = daLista(v)?.unidade ?? '';
+                      return novo;
+                    }),
+                  );
+                const foraDaLista = lista.length > 0 && x.descricao.trim() !== '' && !daLista(x.descricao);
                 return (
                   <li key={i} className="grid grid-cols-[5rem_6rem_1fr_auto] gap-2 sm:grid-cols-[6rem_8rem_1fr_auto]">
                     <input
@@ -240,15 +296,20 @@ export function FormularioRequisicao({
                       aria-label={`Unidade do item ${i + 1}`}
                       list="unidades"
                       value={x.unidade}
+                      readOnly={lista.length > 0}
+                      tabIndex={lista.length > 0 ? -1 : undefined}
                       onChange={(e) => mudar('unidade', e.target.value)}
-                      className={`${estiloEntrada} !mt-0`}
+                      className={`${estiloEntrada} !mt-0 ${lista.length > 0 ? 'bg-superficie-2' : ''}`}
                     />
                     <input
                       aria-label={`Descrição do item ${i + 1}`}
                       value={x.descricao}
+                      list={lista.length ? 'itens-do-tipo' : undefined}
                       onChange={(e) => mudar('descricao', e.target.value)}
-                      placeholder="Ex.: Detergente neutro 500 ml"
-                      className={`${estiloEntrada} !mt-0`}
+                      placeholder={lista.length ? 'Digite e escolha da lista' : 'Ex.: Detergente neutro 500 ml'}
+                      aria-invalid={foraDaLista || undefined}
+                      title={foraDaLista ? 'Este item não está na lista deste tipo' : undefined}
+                      className={`${estiloEntrada} !mt-0 ${foraDaLista ? 'border-erro' : ''}`}
                     />
                     <Botao
                       type="button"

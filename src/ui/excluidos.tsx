@@ -9,11 +9,14 @@ export function Excluidos({
   itens,
   acao,
   mensagem,
+  campos,
 }: {
   titulo: string;
   itens: { id: string; versao: number; nome: string; detalhe?: string | null }[];
   acao: (f: FormData) => void | Promise<void>;
   mensagem: string;
+  /** Campos extras enviados junto (ex.: a que tipo o item pertence). */
+  campos?: Record<string, string | number>;
 }) {
   if (itens.length === 0) return null;
   return (
@@ -33,7 +36,7 @@ export function Excluidos({
             </span>
             <FormularioConfirmado
               acao={acao}
-              campos={{ id: x.id, versao: x.versao }}
+              campos={{ ...campos, id: x.id, versao: x.versao }}
               rotulo="Reativar"
               variante="fantasma"
               pequeno

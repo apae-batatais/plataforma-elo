@@ -7,7 +7,7 @@
  * caber no limite de tempo das funções da hospedagem.
  */
 import type { z } from 'zod';
-import { cabecalhoDe, inserirVarios, lerTabelas, type DefinicaoTabela, type Entrada, type Planilhas, type TabelaLida } from '@/nucleo/armazenamento/tabela';
+import { atualizarVarios, cabecalhoDe, inserirVarios, lerTabelas, type DefinicaoTabela, type Entrada, type Planilhas, type TabelaLida } from '@/nucleo/armazenamento/tabela';
 import { AREAS_INICIAIS, PERFIS_INICIAIS, PERMISSOES_INICIAIS, UNIDADES_PADRAO } from './dados-iniciais';
 import { Areas, PerfilPermissoes, Perfis, TABELAS_DO_NUCLEO, Unidades } from './tabelas';
 
@@ -24,6 +24,8 @@ export interface EstruturaDosModulos {
   tabelas?: readonly DefinicaoTabela<z.ZodObject>[];
   perfis?: readonly { codigo: string; nome: string; descricao: string }[];
   permissoes?: readonly { perfil: string; permissao: string }[];
+  /** Permissões que uma versão anterior deu e que deixaram de valer: "Preparar estrutura" desativa. */
+  permissoesRetiradas?: readonly { perfil: string; permissao: string }[];
 }
 
 export async function prepararEstrutura(
@@ -64,6 +66,12 @@ export async function prepararEstrutura(
   // Ajustes de versões antigas (renomear unidades da Apae Batatais, desativar o CER) já
   // foram aplicados em 30/10/2026 e saíram daqui: o Elo não guarda regra de uma instituição só.
   const ajustes: string[] = [];
+  const retirar = new Set((modulos.permissoesRetiradas ?? []).map((x) => `${x.perfil}|${x.permissao}`));
+  const aRetirar = (permissoes.ativos() as { id: string; versao: number; perfil: string; permissao: string }[]).filter((x) => retirar.has(`${x.perfil}|${x.permissao}`));
+  if (aRetirar.length) {
+    await atualizarVarios(p, PerfilPermissoes, aRetirar.map((x) => ({ id: x.id, versao: x.versao, mudancas: { ativo: false } })), { email: autor });
+    ajustes.push(...aRetirar.map((x) => `permissão retirada: ${x.perfil} › ${x.permissao}`));
+  }
 
   return { abasCriadas, registrosIniciais, ajustes };
 }
@@ -91,5 +99,7 @@ export async function conferirEstrutura(p: Planilhas, modulos: EstruturaDosModul
   const permissoesFaltando = new Set(
     [...PERMISSOES_INICIAIS, ...(modulos.permissoes ?? [])].map((x) => `${x.perfil}|${x.permissao}`).filter((k) => !temPermissao.has(k)),
   ).size;
-  return { perfisFaltando, permissoesFaltando, desatualizada: perfisFaltando.length > 0 || permissoesFaltando > 0 };
+  const retirar = new Set((modulos.permissoesRetiradas ?? []).map((x) => `${x.perfil}|${x.permissao}`));
+  const aRetirar = permissoes.ativos().filter((x) => retirar.has(`${x.perfil}|${x.permissao}`)).length;
+  return { perfisFaltando, permissoesFaltando, desatualizada: perfisFaltando.length > 0 || permissoesFaltando > 0 || aRetirar > 0 };
 }

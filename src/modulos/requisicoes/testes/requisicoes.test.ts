@@ -17,7 +17,12 @@ import {
   detalharRequisicao,
   enviarRequisicao,
   listarRequisicoes,
+  analisarItensEmLote,
+  cadastrarItensEmLote,
+  itensDoTipo,
   listarTipos,
+  mudarSituacaoItemCatalogo,
+  salvarItemCatalogo,
   receberRequisicao,
   reenviarRequisicao,
   salvarExpediente,
@@ -283,9 +288,9 @@ describe('caminho de uma requisição de materiais', () => {
 describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');
-    const t = await listarTipos(p, adm);
+    const t = await listarTipos(p, adm, catalogo);
     expect(t.perfis.map((x) => x.codigo)).toEqual(['almoxarifado']);
-    await salvarTipo(p, adm, {
+    await salvarTipo(p, adm, catalogo, {
       nome: 'Higiene e limpeza',
       categoria: 'material',
       formulario: 'materiais',
@@ -294,7 +299,7 @@ describe('tipos de requisição e expediente', () => {
       prazoAtendimento: 24,
     });
     await expect(
-      salvarTipo(p, adm, {
+      salvarTipo(p, adm, catalogo, {
         nome: 'higiene e limpeza',
         categoria: 'material',
         formulario: 'materiais',
@@ -304,7 +309,7 @@ describe('tipos de requisição e expediente', () => {
       }),
     ).rejects.toThrow(/Já existe/);
     await expect(
-      salvarTipo(p, adm, {
+      salvarTipo(p, adm, catalogo, {
         nome: 'Outro',
         categoria: 'material',
         formulario: 'materiais',
@@ -313,9 +318,80 @@ describe('tipos de requisição e expediente', () => {
         prazoAtendimento: 24,
       }),
     ).rejects.toThrow(/setor.*prazo de aprovação/);
-    await expect(listarTipos(p, await como('financeiro@exemplo.local'))).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(listarTipos(p, await como('financeiro@exemplo.local'), catalogo)).rejects.toBeInstanceOf(ErroPermissao);
     await expect(salvarExpediente(p, adm, { inicio: 18, fim: 8 })).rejects.toThrow(/depois do início/);
     await salvarExpediente(p, adm, { inicio: 7, fim: 16 });
-    expect((await listarTipos(p, adm)).expediente).toEqual({ inicio: 7, fim: 16 });
+    expect((await listarTipos(p, adm, catalogo)).expediente).toEqual({ inicio: 7, fim: 16 });
+  });
+});
+
+describe('tipos: áreas, grupos e itens aceitos', () => {
+  const lerTipo = async () => (await lerTabela(p, TiposRequisicao)).porId(tipoId)!;
+
+  it('só a Administração da plataforma cria e altera tipos e listas (a Diretoria não)', async () => {
+    const dir = await como('diretoria@exemplo.local');
+    await expect(listarTipos(p, dir, catalogo)).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(salvarItemCatalogo(p, dir, tipoId, { descricao: 'X', unidade: 'un' })).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(analisarItensEmLote(p, dir, tipoId, 'X;un')).rejects.toBeInstanceOf(ErroPermissao);
+  });
+
+  it('o tipo só aceita as áreas e os grupos marcados; sem marcação, aceita todos', async () => {
+    const adm = await como('admin@exemplo.local');
+    const t = await lerTipo();
+    const base = {
+      nome: t.nome,
+      categoria: 'material' as const,
+      formulario: 'materiais' as const,
+      perfilResponsavel: 'almoxarifado',
+      prazoAprovacao: 8,
+      prazoAtendimento: 16,
+    };
+    await expect(salvarTipo(p, adm, catalogo, { ...base, areas: ['nao_existe'] }, { id: t.id, versao: t.versao })).rejects.toThrow(/área marcada/);
+    await salvarTipo(p, adm, catalogo, { ...base, areas: ['educacao'], grupos: ['g2'] }, { id: t.id, versao: t.versao });
+    expect((await listarTipos(p, adm, catalogo)).ativos[0]).toMatchObject({ nomesAreas: ['Educação'], nomesGrupos: ['Alimentação (exemplo)'] });
+
+    const pede = await como('financeiro@exemplo.local');
+    await expect(enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g1' }))).rejects.toThrow(/não aceita o grupo de despesa Material de consumo/);
+    await expect(enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g2', area: 'saude' }))).rejects.toThrow(/não pode ser usado pela área Saúde/);
+    expect((await enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g2' }))).numero).toBe('REQ-2026-0001');
+
+    const t2 = await lerTipo();
+    await salvarTipo(p, adm, catalogo, { ...base, areas: [], grupos: [] }, { id: t2.id, versao: t2.versao });
+    expect((await lerTipo()).areas).toBeNull();
+    expect(
+      (await enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g1', area: 'saude', centros: [{ servico: 'cer_reabilitacao', percentual: 100 }] }))).numero,
+    ).toBe('REQ-2026-0002');
+  });
+
+  it('com lista de itens, só entram itens da lista, com a unidade da lista; sem lista, texto livre', async () => {
+    const adm = await como('admin@exemplo.local');
+    const pede = await como('financeiro@exemplo.local');
+    // Sem lista: aceita o que foi digitado.
+    expect((await enviarRequisicao(p, pede, catalogo, ficha())).numero).toBe('REQ-2026-0001');
+
+    await salvarItemCatalogo(p, adm, tipoId, { descricao: 'Papel sulfite A4', unidade: 'resma' });
+    await expect(salvarItemCatalogo(p, adm, tipoId, { descricao: 'papel sulfite a4', unidade: 'un' })).rejects.toThrow(/já está na lista/);
+    const lote = await analisarItensEmLote(p, adm, tipoId, 'Item\tUnidade\nGiz de cera\tcaixa\nPapel Sulfite A4;resma\nCola branca\nGiz de cera;cx');
+    expect(lote.map((l) => [l.descricao, l.situacao])).toEqual([
+      ['Giz de cera', 'ok'],
+      ['Papel Sulfite A4', 'ja_existe'],
+      ['Cola branca', 'erro'],
+      ['Giz de cera', 'ja_existe'],
+    ]);
+    expect(await cadastrarItensEmLote(p, adm, tipoId, lote)).toBe(1);
+
+    await expect(enviarRequisicao(p, pede, catalogo, ficha({ itens: [{ quantidade: 1, unidade: 'un', descricao: 'Tinta guache' }] }))).rejects.toThrow(
+      /"Tinta guache" não está na lista deste tipo/,
+    );
+    const r = await enviarRequisicao(p, pede, catalogo, ficha({ itens: [{ quantidade: 2, unidade: 'qualquer', descricao: 'giz DE cera' }] }));
+    const item = (await lerTabela(p, RequisicaoItens)).ativos().find((i) => i.requisicao_id === r.id)!;
+    expect([item.descricao, item.unidade, Boolean(item.catalogo_id)]).toEqual(['Giz de cera', 'caixa', true]);
+
+    // Tirar da lista não apaga e não muda requisições já feitas; contagem de pedidos por item.
+    const c = await itensDoTipo(p, adm, tipoId);
+    const giz = c.ativos.find((x) => x.descricao === 'Giz de cera')!;
+    expect(giz.pedidos).toBe(1);
+    await mudarSituacaoItemCatalogo(p, adm, giz.id, giz.versao, false);
+    expect((await itensDoTipo(p, adm, tipoId)).excluidos.map((x) => x.descricao)).toEqual(['Giz de cera']);
   });
 });

@@ -116,9 +116,9 @@ export default async function Ajuda() {
           <Passos
             itens={[
               'Abra Requisições › Nova requisição.',
-              'Escolha o tipo (ex.: Higiene e limpeza), a área e o grupo de despesa do orçamento.',
+              'Escolha o tipo (ex.: Higiene e limpeza), a área e o grupo de despesa do orçamento. Aparecem só as áreas e os grupos que o tipo aceita.',
               'Em Centros de custo, escolha um ou mais serviços da mesma coordenação, somando 100%. "Dividir igualmente" reparte para você.',
-              'Liste os itens (quantidade, unidade e descrição), diga se é retirada ou entrega e, se for para um evento, marque "É para um evento" e preencha os dados.',
+              'Liste os itens. Se o tipo tem lista de itens, comece a digitar e escolha da lista: a unidade vem preenchida. Diga se é retirada ou entrega e, se for para um evento, marque "É para um evento" e preencha os dados.',
               'Clique em Enviar requisição. Acompanhe em Minhas requisições: clique no número para ver a ficha, o histórico e os prazos.',
               'Se a requisição for devolvida, a tela inicial avisa. Abra a ficha, clique em Ajustar e reenviar, faça o ajuste pedido e reenvie. Enquanto não for aprovada, dá para cancelar.',
             ]}
@@ -161,8 +161,10 @@ export default async function Ajuda() {
             <>
               <Sub>Tipos de requisição</Sub>
               <p>
-                Em Requisições › Tipos de requisição, cadastre os tipos, o setor que atende (perfil Almoxarifado, que você atribui às pessoas do setor em Acessos) e os
-                prazos. No fim da tela fica o horário do expediente usado nos prazos.
+                Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfil Almoxarifado, que você atribui às
+                pessoas do setor em Acessos), os prazos e quais áreas e grupos de despesa podem usar cada tipo (sem marcação, todos podem). Em &ldquo;Itens aceitos&rdquo;,
+                monte a lista de itens do tipo, um a um ou colando da planilha: quem pede escolhe da lista e a unidade vem preenchida. Tipo sem lista aceita itens
+                digitados. No fim da tela fica o horário do expediente usado nos prazos.
               </p>
             </>
           )}

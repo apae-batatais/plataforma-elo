@@ -18,24 +18,25 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 
 ## Usuários e permissões
 
-| Perfil                      | Pode                                                                                               | Permissão                                                                              |
-| --------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Todos os perfis             | Abrir requisições, acompanhar as próprias, ajustar as devolvidas, cancelar enquanto não aprovadas  | `requisicoes.acessar`, `requisicoes.solicitar`                                         |
-| Coordenação de serviço      | Aprovar, devolver ou recusar as dos centros de custo do seu escopo                                 | `requisicoes.aprovar` (escopo)                                                         |
-| Diretoria                   | Aprovar qualquer uma (e as da própria coordenação e de serviços sem coordenação); ver todas; tipos | `requisicoes.aprovar` (global), `requisicoes.ver_todas`, `requisicoes.tipos.gerenciar` |
-| Almoxarifado (perfil novo)  | Receber e atender as dos tipos ligados a ele                                                       | `requisicoes.atender`                                                                  |
-| Administração da plataforma | Cadastrar tipos e o expediente                                                                     | `requisicoes.tipos.gerenciar`                                                          |
+| Perfil                               | Pode                                                                                              | Permissão                                               |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Todos os perfis                      | Abrir requisições, acompanhar as próprias, ajustar as devolvidas, cancelar enquanto não aprovadas | `requisicoes.acessar`, `requisicoes.solicitar`          |
+| Coordenação de serviço               | Aprovar, devolver ou recusar as dos centros de custo do seu escopo                                | `requisicoes.aprovar` (escopo)                          |
+| Diretoria                            | Aprovar qualquer uma (e as da própria coordenação e de serviços sem coordenação); ver todas       | `requisicoes.aprovar` (global), `requisicoes.ver_todas` |
+| Almoxarifado (perfil novo)           | Receber e atender as dos tipos ligados a ele                                                      | `requisicoes.atender`                                   |
+| Administração da plataforma (só ela) | Criar e alterar tipos, áreas e grupos permitidos, itens aceitos e o expediente                    | `requisicoes.tipos.gerenciar`                           |
 
 ## Entidades (planilha `requisicoes`)
 
-| Aba         | O que guarda                                                                                                           | Sigilo                |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| Tipos       | Nome, categoria, ficha, perfil que atende, prazos de aprovação e de atendimento (horas úteis)                          | interno               |
-| Requisicoes | Número, tipo, quem pediu, área, grupo de despesa, situação, quem aprova, detalhes da ficha (JSON), datas de cada etapa | pessoal: requisitante |
-| Centros     | Serviço e percentual de cada requisição (somam 100%)                                                                   | interno               |
-| Itens       | Quantidade, unidade, descrição e quanto foi entregue                                                                   | interno               |
-| Historico   | Cada mudança de etapa: quando, quem, de/para, comentário (só inclusões)                                                | pessoal: usuário      |
-| Parametros  | Expediente (início e fim) usado no SLA                                                                                 | interno               |
+| Aba           | O que guarda                                                                                                           | Sigilo                |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Tipos         | Nome, categoria, ficha, perfil que atende, prazos (horas úteis), áreas e grupos de despesa permitidos (vazio = todos)  | interno               |
+| CatalogoItens | Itens aceitos por tipo (descrição e unidade). Tipo sem itens aceita texto livre                                        | interno               |
+| Requisicoes   | Número, tipo, quem pediu, área, grupo de despesa, situação, quem aprova, detalhes da ficha (JSON), datas de cada etapa | pessoal: requisitante |
+| Centros       | Serviço e percentual de cada requisição (somam 100%)                                                                   | interno               |
+| Itens         | Quantidade, unidade, descrição, item da lista (quando houver) e quanto foi entregue                                    | interno               |
+| Historico     | Cada mudança de etapa: quando, quem, de/para, comentário (só inclusões)                                                | pessoal: usuário      |
+| Parametros    | Expediente (início e fim) usado no SLA                                                                                 | interno               |
 
 Grupos de gasto vêm do Orçamento pela plataforma (ADR-013).
 
@@ -50,13 +51,16 @@ Grupos de gasto vêm do Orçamento pela plataforma (ADR-013).
 7. Nada é apagado: centros e itens trocados no ajuste ficam com `ativo = FALSE`; o histórico só recebe inclusões; toda gravação registra auditoria só com colunas.
 8. SLA em horas úteis (segunda a sexta, expediente padrão 8h–17h, horário de Brasília). Aprovação: do envio (ou reenvio) à decisão. Atendimento: da aprovação à conclusão.
 9. Número sequencial no ano: REQ-AAAA-NNNN.
+10. O tipo só aceita as áreas e os grupos de despesa marcados (sem marcação, todos).
+11. Tipo com lista de itens só aceita itens da lista (pela descrição, sem diferença de acento ou maiúscula); descrição e unidade gravadas vêm da lista. Tirar um item da lista não muda requisições já feitas.
+12. Tipos de requisição: só a Administração da plataforma da instituição cria e altera. "Preparar estrutura" retira a permissão que a Diretoria recebeu na versão 0.9.0 (`permissoesRetiradas` no manifesto).
 
 ## Telas
 
 1. Minhas requisições, Para aprovar, Para atender, Todas (lista com situação e prazo da etapa).
 2. Nova requisição / Ajustar: ficha de materiais (tipo, área, grupo, centros com %, itens, retirada ou entrega, evento, utensílios, observações).
 3. Ficha da requisição: dados, prazos, ações de quem pode agir, histórico e Imprimir.
-4. Tipos de requisição (com o expediente do SLA).
+4. Tipos de requisição (setor, prazos, áreas e grupos permitidos, expediente do SLA) e Itens aceitos de cada tipo (um a um ou em lote).
 5. Avisos: tela inicial ("N esperam a sua aprovação", "N na fila do seu setor", "N devolvidas") e número no menu.
 
 ## Indicadores
