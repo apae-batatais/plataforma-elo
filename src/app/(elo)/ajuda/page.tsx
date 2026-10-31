@@ -67,6 +67,7 @@ export default async function Ajuda() {
     requisitar: a.temPermissaoAlgumEscopo('requisicoes.solicitar'),
     aprovarRequisicao: a.temPermissaoAlgumEscopo('requisicoes.aprovar'),
     atenderRequisicao: a.temPermissaoAlgumEscopo('requisicoes.atender'),
+    painelRequisicoes: a.temPermissaoAlgumEscopo('requisicoes.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
   };
 
@@ -109,6 +110,7 @@ export default async function Ajuda() {
         { rotulo: 'Nova requisição', href: '/requisicoes/nova' },
         ...(pode.aprovarRequisicao ? [{ rotulo: 'Para aprovar', href: '/requisicoes/aprovar' }] : []),
         ...(pode.atenderRequisicao ? [{ rotulo: 'Para atender', href: '/requisicoes/atender' }] : []),
+        ...(pode.painelRequisicoes ? [{ rotulo: 'Painel de prazos', href: '/requisicoes/painel' }] : []),
       ],
       conteudo: (
         <>
@@ -181,9 +183,22 @@ export default async function Ajuda() {
           )}
           <Sub>Prazos (SLA)</Sub>
           <p>
-            Cada tipo tem um prazo de aprovação e um de atendimento, em horas úteis (segunda a sexta, no expediente). A ficha e as listas mostram se a etapa
-            está no prazo ou atrasada. Para imprimir ou salvar em PDF, use o botão Imprimir da ficha.
+            Cada tipo tem um prazo de aprovação e um de atendimento, em horas úteis (segunda a sexta, no expediente, fora os feriados cadastrados). A ficha e as
+            listas mostram se a etapa está no prazo ou atrasada. Para imprimir ou salvar em PDF, use o botão Imprimir da ficha.
           </p>
+          {pode.painelRequisicoes && (
+            <>
+              <Sub>Painel de prazos</Sub>
+              <Itens
+                itens={[
+                  'Em Requisições › Painel de prazos, veja o percentual decidido e atendido dentro do prazo, o tempo médio de cada etapa e as atendidas em parte. O padrão são os últimos 6 meses; escolha outro período no topo.',
+                  'A aprovação conta no mês em que foi decidida; o atendimento, no mês em que foi concluído. As tabelas separam por mês, por setor e por tipo; clique no título de uma coluna para ordenar.',
+                  '"Atrasadas agora" lista o que está esperando decisão ou atendimento além do prazo, da mais atrasada para a menos atrasada. Clique no número para abrir a ficha.',
+                  'A Diretoria vê todas as requisições; a coordenação, as do seu escopo; cada setor, as dos seus tipos.',
+                ]}
+              />
+            </>
+          )}
           {pode.tiposRequisicao && (
             <>
               <Sub>Tipos de requisição</Sub>
@@ -191,7 +206,8 @@ export default async function Ajuda() {
                 Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfil Almoxarifado, que você
                 atribui às pessoas do setor em Acessos), os prazos e quais áreas e grupos de despesa podem usar cada tipo (sem marcação, todos podem). Em
                 &ldquo;Itens aceitos&rdquo;, monte a lista de itens do tipo, um a um ou colando da planilha: quem pede escolhe da lista e a unidade vem
-                preenchida. Tipo sem lista aceita itens digitados. No fim da tela fica o horário do expediente usado nos prazos.
+                preenchida. Tipo sem lista aceita itens digitados. No fim da tela ficam o horário do expediente e os feriados: o botão &ldquo;Incluir feriados
+                nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os municipais e os pontos facultativos você inclui um a um.
               </p>
             </>
           )}

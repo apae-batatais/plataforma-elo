@@ -19,6 +19,7 @@ import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Atribuicoes, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
   CatalogoItens,
+  FeriadosRequisicoes,
   ParametrosRequisicoes,
   RequisicaoCentros,
   RequisicaoHistorico,
@@ -58,6 +59,8 @@ import {
   type RotaAprovacao,
   type Situacao,
 } from '../dominio/requisicao';
+import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
+import { mesDe, montarPainel } from '../dominio/painel';
 import { EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
 
 /** Grupos de gasto do Orçamento, entregues pela plataforma (um módulo não lê as abas de outro). */
@@ -73,6 +76,7 @@ const PERM = {
   atender: 'requisicoes.atender',
   verTodas: 'requisicoes.ver_todas',
   tipos: 'requisicoes.tipos.gerenciar',
+  painel: 'requisicoes.painel',
 } as const;
 
 const hoje = (agora: Date) => agora.toISOString().slice(0, 10);
@@ -84,23 +88,22 @@ const vigente = (r: { ativo: boolean; inicio: string | null; fim: string | null 
 // ---------------------------------------------------------------------------
 
 async function ler(p: Planilhas, agora: Date) {
-  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis] = await lerTabelas(
-    p,
-    [
+  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, feriados, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis] =
+    await lerTabelas(p, [
       TiposRequisicao,
       CatalogoItens,
       Requisicoes,
       RequisicaoCentros,
       RequisicaoItens,
       ParametrosRequisicoes,
+      FeriadosRequisicoes,
       Usuarios,
       Atribuicoes,
       PerfilPermissoes,
       Servicos,
       Areas,
       Perfis,
-    ] as const,
-  );
+    ] as const);
   const dia = hoje(agora);
   const ativos = new Set(usuarios.ativos().map((u) => u.email));
   const atribs: AtribuicaoAprovacao[] = atribuicoes
@@ -119,7 +122,11 @@ async function ler(p: Planilhas, agora: Date) {
   const centrosPor = agrupar(centros.ativos(), (c) => c.requisicao_id);
   const itensPor = agrupar(itens.ativos(), (i) => i.requisicao_id);
   const valor = (chave: string, padrao: number) => parametros.ativos().find((x) => x.chave === chave)?.valor ?? padrao;
-  const expediente: Expediente = { inicio: valor('expediente_inicio', EXPEDIENTE_PADRAO.inicio), fim: valor('expediente_fim', EXPEDIENTE_PADRAO.fim) };
+  const expediente: Expediente = {
+    inicio: valor('expediente_inicio', EXPEDIENTE_PADRAO.inicio),
+    fim: valor('expediente_fim', EXPEDIENTE_PADRAO.fim),
+    feriados: new Set(feriados.ativos().map((f) => f.data)),
+  };
 
   const coordenacao = (codigo: string) => {
     const s = servicoPorCodigo.get(codigo);
@@ -135,6 +142,7 @@ async function ler(p: Planilhas, agora: Date) {
     centros,
     itens,
     parametros,
+    feriados,
     servicos,
     areas,
     perfis,
@@ -763,6 +771,10 @@ export async function listarTipos(p: Planilhas, quem: Autorizador, catalogo: Cat
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     grupos,
     expediente: d.expediente,
+    feriados: d.feriados
+      .ativos()
+      .map((f) => ({ id: f.id, versao: f.versao, data: f.data, nome: f.nome }))
+      .sort((a, b) => a.data.localeCompare(b.data)),
   };
 }
 
@@ -846,6 +858,104 @@ export async function salvarExpediente(p: Planilhas, quem: Autorizador, e: Exped
     else if (atual.valor !== valor) await atualizar(p, ParametrosRequisicoes, atual.id, atual.versao, { valor }, { email: quem.email });
   }
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'ParametrosRequisicoes', detalhes: { colunas: ['expediente'] } });
+}
+
+// ---------------------------------------------------------------------------
+// Feriados (não contam nas horas úteis)
+// ---------------------------------------------------------------------------
+
+export async function salvarFeriado(p: Planilhas, quem: Autorizador, dados: { data: string; nome: string }) {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  const f = conferirFeriado(dados);
+  const [feriados] = await lerTabelas(p, [FeriadosRequisicoes] as const);
+  const igual = feriados.ativos().find((x) => x.data === f.data);
+  if (igual) throw new ErroRequisicao(`Já há feriado em ${f.data.split('-').reverse().join('/')}: ${igual.nome}.`);
+  const novo = await inserir(p, FeriadosRequisicoes, f, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'FeriadosRequisicoes', registroId: novo.id });
+}
+
+/** Inclui os feriados nacionais (e o de SP) do ano que ainda não estão cadastrados. Devolve quantos entraram. */
+export async function incluirFeriadosNacionais(p: Planilhas, quem: Autorizador, ano: number): Promise<number> {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) throw new ErroRequisicao('Escolha o ano.');
+  const [feriados] = await lerTabelas(p, [FeriadosRequisicoes] as const);
+  const ja = new Set(feriados.ativos().map((f) => f.data));
+  const novos = feriadosNacionais(ano).filter((f) => !ja.has(f.data));
+  if (!novos.length) return 0;
+  await inserirRegistros(p, feriados, novos, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'FeriadosRequisicoes', detalhes: { colunas: ['data', 'nome'] } });
+  return novos.length;
+}
+
+export async function tirarFeriado(p: Planilhas, quem: Autorizador, id: string, versao: number) {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  const [feriados] = await lerTabelas(p, [FeriadosRequisicoes] as const);
+  const f = feriados.porId(id);
+  if (!f || !f.ativo) throw new ErroRequisicao('Feriado não encontrado.');
+  await atualizar(p, FeriadosRequisicoes, id, versao, { ativo: false }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: 'FeriadosRequisicoes', registroId: id, detalhes: { colunas: ['ativo'] } });
+}
+
+// ---------------------------------------------------------------------------
+// Painel de prazos (SLA)
+// ---------------------------------------------------------------------------
+
+/** Últimos 6 meses até o atual (AAAA-MM), no horário de Brasília. */
+export function periodoPadrao(agora: Date) {
+  const ate = mesDe(agora.toISOString());
+  let [a, m] = ate.split('-').map(Number);
+  m -= 5;
+  if (m < 1) {
+    m += 12;
+    a -= 1;
+  }
+  return { de: `${a}-${String(m).padStart(2, '0')}`, ate };
+}
+
+/**
+ * Painel com as requisições que a pessoa pode ver: a Diretoria vê todas; a
+ * coordenação, as do seu escopo; o setor, as dos seus tipos depois de aprovadas.
+ */
+export async function painelDePrazos(p: Planilhas, quem: Autorizador, periodo: { de?: string; ate?: string } = {}, opcoes: { agora?: Date } = {}) {
+  if (!quem.temPermissaoAlgumEscopo(PERM.painel)) throw new ErroPermissao();
+  const agora = opcoes.agora ?? new Date();
+  const padrao = periodoPadrao(agora);
+  const mes = /^\d{4}-(0[1-9]|1[0-2])$/;
+  let de = periodo.de && mes.test(periodo.de) ? periodo.de : padrao.de;
+  let ate = periodo.ate && mes.test(periodo.ate) ? periodo.ate : padrao.ate;
+  if (de > ate) [de, ate] = [ate, de];
+  const d = await ler(p, agora);
+  const nomePerfil = new Map(d.perfis.todos().map((x) => [x.codigo, x.nome]));
+  const lista = d.requisicoes
+    .ativos()
+    .filter((r) => podeVer(quem, d, r))
+    .flatMap((r) => {
+      const t = d.tipoPorId.get(r.tipo_id);
+      if (!t) return [];
+      return [
+        {
+          id: r.id,
+          numero: r.numero,
+          tipoId: t.id,
+          tipoNome: t.nome,
+          setor: nomePerfil.get(t.perfil_responsavel) ?? t.perfil_responsavel,
+          situacao: r.situacao,
+          enviadaEm: r.enviada_em,
+          decididaEm: r.decidida_em,
+          concluidaEm: r.concluida_em,
+          prazoAprovacao: t.prazo_aprovacao,
+          prazoAtendimento: t.prazo_atendimento,
+        },
+      ];
+    });
+  return {
+    de,
+    ate,
+    todas: quem.temPermissao(PERM.verTodas),
+    expediente: { inicio: d.expediente.inicio, fim: d.expediente.fim },
+    feriadosNoPeriodo: d.feriados.ativos().filter((f) => f.data.slice(0, 7) >= de && f.data.slice(0, 7) <= ate).length,
+    ...montarPainel(lista, de, ate, agora.toISOString(), d.expediente),
+  };
 }
 
 // ---------------------------------------------------------------------------
