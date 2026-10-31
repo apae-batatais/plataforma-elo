@@ -11,13 +11,14 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useRef, type ReactNode } from 'react';
 import {
   IconeAjuda,
-  IconeAreas, IconeChave, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeSair, IconeServicos,
+  IconeAreas, IconeChave, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeRequisicao, IconeSair, IconeServicos,
 } from './icones';
 
 const ICONES = {
   inicio: IconeInicio,
   pessoas: IconePessoas,
   orcamento: IconeOrcamento,
+  requisicoes: IconeRequisicao,
   acessos: IconeChave,
   servicos: IconeServicos,
   areas: IconeAreas,

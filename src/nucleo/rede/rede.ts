@@ -335,6 +335,7 @@ const NOME_DA_PLANILHA: Record<string, string> = {
   auditoria: 'Auditoria',
   orcamento: 'Orçamento',
   orcamento_folha: 'Folha de pagamento',
+  requisicoes: 'Requisições',
 };
 
 /**

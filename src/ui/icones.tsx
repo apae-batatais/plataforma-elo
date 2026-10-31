@@ -45,6 +45,12 @@ export const IconeOrcamento = (p: Props) => (
     <path d="M3 9h18M8 13h3M8 16.5h3M14.5 13h2M14.5 16.5h2" />
   </Icone>
 );
+export const IconeRequisicao = (p: Props) => (
+  <Icone {...p}>
+    <rect x="5" y="4" width="14" height="17" rx="2" />
+    <path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" />
+  </Icone>
+);
 export const IconeChave = (p: Props) => (
   <Icone {...p}>
     <circle cx="8" cy="15" r="4" />

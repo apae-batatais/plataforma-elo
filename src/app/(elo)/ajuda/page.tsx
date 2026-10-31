@@ -64,6 +64,10 @@ export default async function Ajuda() {
     parametros: a.temPermissao('orcamento.parametros.editar'),
     organizacao: a.temPermissao('core.organizacao.gerenciar'),
     acessos: a.temPermissao('core.acessos.gerenciar'),
+    requisitar: a.temPermissaoAlgumEscopo('requisicoes.solicitar'),
+    aprovarRequisicao: a.temPermissaoAlgumEscopo('requisicoes.aprovar'),
+    atenderRequisicao: a.temPermissaoAlgumEscopo('requisicoes.atender'),
+    tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
   };
 
   const assuntos: Assunto[] = [
@@ -95,6 +99,77 @@ export default async function Ajuda() {
       ),
     },
   ];
+
+  if (pode.requisitar) {
+    assuntos.push({
+      id: 'requisicoes',
+      titulo: 'Requisições de materiais',
+      resumo: 'Pedir materiais ao Almoxarifado, aprovar e atender, com histórico e prazos.',
+      atalhos: [
+        { rotulo: 'Nova requisição', href: '/requisicoes/nova' },
+        ...(pode.aprovarRequisicao ? [{ rotulo: 'Para aprovar', href: '/requisicoes/aprovar' }] : []),
+        ...(pode.atenderRequisicao ? [{ rotulo: 'Para atender', href: '/requisicoes/atender' }] : []),
+      ],
+      conteudo: (
+        <>
+          <Sub>Pedir</Sub>
+          <Passos
+            itens={[
+              'Abra Requisições › Nova requisição.',
+              'Escolha o tipo (ex.: Higiene e limpeza), a área e o grupo de despesa do orçamento.',
+              'Em Centros de custo, escolha um ou mais serviços da mesma coordenação, somando 100%. "Dividir igualmente" reparte para você.',
+              'Liste os itens (quantidade, unidade e descrição), diga se é retirada ou entrega e, se for para um evento, marque "É para um evento" e preencha os dados.',
+              'Clique em Enviar requisição. Acompanhe em Minhas requisições: clique no número para ver a ficha, o histórico e os prazos.',
+              'Se a requisição for devolvida, a tela inicial avisa. Abra a ficha, clique em Ajustar e reenviar, faça o ajuste pedido e reenvie. Enquanto não for aprovada, dá para cancelar.',
+            ]}
+          />
+          <Sub>Quem aprova</Sub>
+          <Itens
+            itens={[
+              'A coordenação dos centros de custo. Uma requisição não pode misturar serviços de coordenações diferentes: abra uma para cada.',
+              'Pedido feito pela própria coordenação, ou de serviço sem coordenação cadastrada, é aprovado pela Diretoria.',
+            ]}
+          />
+          {pode.aprovarRequisicao && (
+            <>
+              <Sub>Aprovar</Sub>
+              <Passos
+                itens={[
+                  'Abra Requisições › Para aprovar (a tela inicial e o número no menu mostram quantas esperam por você).',
+                  'Abra a ficha e clique em Aprovar. Para devolver ou recusar, escreva o motivo e clique no botão: quem pediu vê no histórico.',
+                ]}
+              />
+            </>
+          )}
+          {pode.atenderRequisicao && (
+            <>
+              <Sub>Atender</Sub>
+              <Passos
+                itens={[
+                  'Abra Requisições › Para atender: estão ali as requisições aprovadas dos tipos do seu setor.',
+                  'Na ficha, clique em Receber para atender. Ao entregar, confira a quantidade entregue de cada item e clique em Concluir atendimento. Se faltou algo, explique no comentário: fica como "atendida em parte".',
+                ]}
+              />
+            </>
+          )}
+          <Sub>Prazos (SLA)</Sub>
+          <p>
+            Cada tipo tem um prazo de aprovação e um de atendimento, em horas úteis (segunda a sexta, no expediente). A ficha e as listas mostram se a etapa está no prazo
+            ou atrasada. Para imprimir ou salvar em PDF, use o botão Imprimir da ficha.
+          </p>
+          {pode.tiposRequisicao && (
+            <>
+              <Sub>Tipos de requisição</Sub>
+              <p>
+                Em Requisições › Tipos de requisição, cadastre os tipos, o setor que atende (perfil Almoxarifado, que você atribui às pessoas do setor em Acessos) e os
+                prazos. No fim da tela fica o horário do expediente usado nos prazos.
+              </p>
+            </>
+          )}
+        </>
+      ),
+    });
+  }
 
   if (pode.propor) {
     assuntos.push({

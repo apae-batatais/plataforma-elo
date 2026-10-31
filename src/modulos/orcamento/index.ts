@@ -2,3 +2,4 @@
 export { manifesto } from './manifesto';
 export { TABELAS_ORCAMENTO } from './dados/tabelas';
 export { popularFolhaFicticia, popularPrevisaoFicticia } from './dados/ficticios';
+export { gruposDeGastoAtivos } from './aplicacao/catalogo';
