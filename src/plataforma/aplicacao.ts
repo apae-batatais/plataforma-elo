@@ -13,6 +13,7 @@ import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { ESTRUTURA_DOS_MODULOS, popularDemonstracaoDosModulos, TABELAS_DOS_MODULOS } from '@/plataforma/registro-modulos';
 import { configGeral, instituicaoAtual } from './instituicao';
+import { instituicoesDoElo } from './rede';
 
 export interface Aplicacao {
   config: Config;
@@ -27,14 +28,16 @@ const porInstituicao = new Map<string, Promise<Aplicacao>>();
 /** A aplicação da instituição desta requisição. */
 export async function obterAplicacao(): Promise<Aplicacao> {
   const inst = await instituicaoAtual();
-  return aplicacaoDa(configGeral(), inst);
+  const geral = configGeral();
+  return aplicacaoDa(geral, inst, (await instituicoesDoElo(geral)).length === 1);
 }
 
-export function aplicacaoDa(geral: ConfigGeral, inst: Instituicao): Promise<Aplicacao> {
-  const chave = `${geral.modo}:${inst.codigo}`;
+export function aplicacaoDa(geral: ConfigGeral, inst: Instituicao, unica = geral.instituicoes.length === 1): Promise<Aplicacao> {
+  // Mudou a configuração da instituição (ex.: planilhas no cadastro da rede)? Monta de novo.
+  const chave = `${geral.modo}:${inst.codigo}:${JSON.stringify(inst.planilhas)}:${unica}`;
   let p = porInstituicao.get(chave);
   if (!p) {
-    p = montar(geral, inst).catch((erro) => {
+    p = montar(geral, inst, unica).catch((erro) => {
       porInstituicao.delete(chave);
       throw erro;
     });
@@ -43,9 +46,9 @@ export function aplicacaoDa(geral: ConfigGeral, inst: Instituicao): Promise<Apli
   return p;
 }
 
-async function montar(geral: ConfigGeral, inst: Instituicao): Promise<Aplicacao> {
+async function montar(geral: ConfigGeral, inst: Instituicao, unica: boolean): Promise<Aplicacao> {
   const config = configDaInstituicao(geral, inst);
-  const base = { config, instituicao: inst, unica: geral.instituicoes.length === 1 };
+  const base = { config, instituicao: inst, unica };
 
   if (config.modo === 'demonstracao') {
     const chaves = ['nucleo', 'auditoria', ...new Set(TABELAS_DOS_MODULOS.map((t) => t.planilha))];

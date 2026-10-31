@@ -165,6 +165,11 @@ export class ArmazenamentoGooglePlanilhas implements Armazenamento {
     return [...preencher.map((a) => a.aba), ...completar.map((c) => `${c.aba} (colunas novas: ${c.colunas.join(', ')})`)];
   }
 
+  async listarAbas(planilha: string) {
+    const meta = (await this.chamar(planilha, '?fields=sheets.properties.title')) as { sheets?: { properties?: { title?: string } }[] };
+    return (meta.sheets ?? []).map((s) => s.properties?.title ?? '').filter(Boolean);
+  }
+
   /** Atalho para uma aba só. */
   async garantirAba(planilha: string, aba: string, cabecalho: readonly string[]) {
     return (await this.garantirAbas(planilha, [{ aba, cabecalho }])).length ? ('criada' as const) : ('ja_existia' as const);

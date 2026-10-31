@@ -11,7 +11,7 @@ import { Casca } from '@/ui/casca';
 import { Notificacao } from '@/ui/notificacao';
 import { sair } from './acoes-sessao';
 import { ConfiguracaoInvalida } from './configuracao-invalida';
-import './globals.css';
+import '../globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
   const nome = await instituicaoAtual()
@@ -58,8 +58,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       return problema(
         erro.motivo === 'desconhecida'
           ? `${erro.message} Confira o endereço digitado. Se a sua instituição está chegando ao Elo agora, o endereço é ativado pela Administração da rede.`
-          : `${erro.message} Fale com a Administração da rede.`,
-        erro.motivo === 'desconhecida' ? 'Endereço não cadastrado' : 'Acesso suspenso',
+          : erro.motivo === 'preparacao'
+            ? `${erro.message} A Administração da rede ativa o acesso assim que as planilhas estiverem conferidas.`
+            : `${erro.message} Fale com a Administração da rede.`,
+        { desconhecida: 'Endereço não cadastrado', preparacao: 'Instituição em preparação', suspensa: 'Acesso suspenso' }[erro.motivo],
       );
     }
     if (erro instanceof ErroArmazenamento) return problema(erro.message, 'A plataforma não conseguiu acessar as planilhas');

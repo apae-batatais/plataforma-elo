@@ -22,6 +22,8 @@ export interface Armazenamento {
    * Nunca altera aba que já tem conteúdo.
    */
   garantirAbas(planilha: string, abas: readonly { aba: string; cabecalho: readonly string[] }[]): Promise<string[]>;
+  /** Nomes das abas da planilha (confere se ela existe e está compartilhada, sem ler dados). */
+  listarAbas(planilha: string): Promise<string[]>;
 }
 
 /** Erro de armazenamento com mensagem em português para a Diretoria. */

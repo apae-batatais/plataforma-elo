@@ -68,6 +68,49 @@ As credenciais (`GOOGLE_CONTA_SERVICO`, `GOOGLE_CLIENT_ID`, `SESSAO_SEGREDO`)
 são da Operadora e valem para todas. Na R2, a lista sai das variáveis e passa
 para a planilha `rede`, com a tela de cadastro.
 
+## Configuração da Operadora (R2)
+A Operadora cria a planilha da rede no próprio Drive (em branco), compartilha
+com a conta de serviço e cadastra na Netlify a variável `REDE`:
+
+```json
+{"planilha":"<id da planilha da rede>","dominio":"<domínio dos e-mails da Operadora>",
+ "enderecos":["rede.<domínio da Operadora>"],"administradores":["<e-mail>"]}
+```
+
+- `enderecos` (opcional): onde a área da rede abre (`/rede`). Vazio: em qualquer endereço do Elo.
+- `administradores`: entram sempre, para a rede nunca ficar sem quem a administre;
+  outros são incluídos na tela Administradores.
+- As abas da planilha da rede (Instituicoes, Administradores, Registros) são criadas sozinhas no primeiro acesso.
+- Enquanto a rede não tem instituições, valem as das variáveis da R1 (`DOMINIO`/`PLANILHAS` ou `INSTITUICOES`).
+  Depois de cadastrar e ativar as instituições na rede, essas variáveis podem sair.
+- Instituição "em preparação" ou "suspensa": ninguém entra pelo endereço dela; a página explica.
+
+## Organização no Google Drive
+O Elo acha cada planilha pelo ID; os nomes servem só para as pessoas. Padrão: "Elo · dono · conteúdo".
+
+```
+Drive compartilhado "Elo · Operadora"        (da Operadora; vai para a empresa na transferência)
+└── Elo · Rede de instituições               (variável REDE)
+
+Drive compartilhado "Elo · <instituição>"    (um por instituição, no Workspace dela)
+├── Elo · <instituição> · Núcleo
+├── Elo · <instituição> · Auditoria
+├── Elo · <instituição> · Orçamento
+└── Elo · <instituição> · Folha de pagamento
+```
+
+- Drive compartilhado, não pasta pessoal: os arquivos são da instituição, não de quem os criou.
+- Em cada Drive compartilhado, a conta de serviço do Elo é membro como Administrador de conteúdo.
+- Mover uma planilha no Drive não muda o ID: nada a reconfigurar.
+
+## Migração das variáveis para a rede
+1. Com a R2 publicada, cadastrar a Apae Batatais em /rede com os mesmos dados das variáveis
+   (domínio, IDs das planilhas, administradores iniciais) e o endereço atual de acesso.
+2. Conferir e Ativar. Enquanto não há instituição ativa na rede, as variáveis continuam valendo.
+3. Retirar da Netlify `DOMINIO`, `PLANILHAS`, `ADMINISTRADORES_INICIAIS`, `INSTITUICAO_NOME`,
+   `INSTITUICAO_RAZAO_SOCIAL` (e `INSTITUICAO_CODIGO`, se existir) e publicar de novo.
+   Ficam só as da Operadora: `GOOGLE_CONTA_SERVICO`, `GOOGLE_CLIENT_ID`, `SESSAO_SEGREDO` e `REDE`.
+
 ## Entregas
 - **R1**: descoberta da instituição pelo endereço; planilhas, login e sessão por
   instituição; nome, domínio e dados iniciais vindos do cadastro (sem Apae

@@ -65,10 +65,43 @@ const esquemaGeral = z.object({
   segredoSessao: z.string().min(32, 'SESSAO_SEGREDO precisa de pelo menos 32 caracteres'),
 });
 
+/**
+ * A Operadora do Elo (ADR-012): planilha da rede (cadastro das instituições),
+ * domínio dos e-mails de quem administra a rede, endereços da área da rede e
+ * administradores iniciais. Variável REDE (JSON). Sem ela, as instituições vêm
+ * das variáveis INSTITUICOES ou DOMINIO/PLANILHAS (entrega R1).
+ */
+export interface Rede {
+  planilha: string;
+  dominio: string;
+  /** Endereços em que a área da rede pode ser aberta (vazio: qualquer um). */
+  enderecos: string[];
+  administradores: string[];
+}
+
+const esquemaRede = z.object({
+  planilha: z.string().min(10),
+  dominio: z.string().min(3),
+  enderecos: z.array(z.string().min(3)).default([]),
+  administradores: z.array(z.email()).min(1, 'informe pelo menos um administrador da rede'),
+});
+
 /** Configuração de toda a hospedagem: credenciais da Operadora e as instituições. */
 export type ConfigGeral =
-  | { modo: 'demonstracao'; segredoSessao: string; instituicoes: Instituicao[] }
-  | ({ modo: 'producao'; instituicoes: Instituicao[] } & z.infer<typeof esquemaGeral>);
+  | { modo: 'demonstracao'; segredoSessao: string; instituicoes: Instituicao[]; rede: Rede }
+  | ({ modo: 'producao'; instituicoes: Instituicao[]; rede: Rede | null } & z.infer<typeof esquemaGeral>);
+
+/** Operadora fictícia da demonstração. */
+export const REDE_DEMONSTRACAO: Rede = { planilha: 'rede', dominio: 'exemplo.local', enderecos: [], administradores: ['rede@exemplo.local'] };
+
+function lerRede(env: Record<string, string | undefined>): Rede | null {
+  const v = json('REDE', env.REDE);
+  if (v === undefined) return null;
+  const r = esquemaRede.safeParse(v);
+  if (!r.success) throw new ErroConfiguracao(`A variável REDE está incompleta ou inválida: ${faltas(r)}.`);
+  const limpar = (e: string) => e.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  return { planilha: r.data.planilha, dominio: r.data.dominio.toLowerCase(), enderecos: r.data.enderecos.map(limpar), administradores: r.data.administradores.map((e) => e.toLowerCase()) };
+}
 
 /** Configuração vista por uma instituição (o formato usado pelas telas). */
 export type Config =
@@ -184,7 +217,7 @@ function lerInstituicoes(env: Record<string, string | undefined>): Instituicao[]
 
 export function lerConfigGeral(env: Record<string, string | undefined> = process.env): ConfigGeral {
   if (env.MODO_DEMONSTRACAO === '1' || !env.GOOGLE_CONTA_SERVICO) {
-    return { modo: 'demonstracao', segredoSessao: 'demonstracao-somente-dados-ficticios-000', instituicoes: INSTITUICOES_DEMONSTRACAO };
+    return { modo: 'demonstracao', segredoSessao: 'demonstracao-somente-dados-ficticios-000', instituicoes: INSTITUICOES_DEMONSTRACAO, rede: REDE_DEMONSTRACAO };
   }
   const r = esquemaGeral.safeParse({
     contaServico: json('GOOGLE_CONTA_SERVICO', env.GOOGLE_CONTA_SERVICO),
@@ -192,7 +225,11 @@ export function lerConfigGeral(env: Record<string, string | undefined> = process
     segredoSessao: limpo(env.SESSAO_SEGREDO),
   });
   if (!r.success) throw new ErroConfiguracao(`Configuração de produção incompleta ou inválida: ${faltas(r)}.`);
-  return { modo: 'producao', ...r.data, instituicoes: lerInstituicoes(env) };
+  const rede = lerRede(env);
+  // Com a rede configurada, o cadastro das instituições vem da planilha da rede;
+  // as variáveis antigas valem só enquanto a rede ainda não tem instituições.
+  const temInstituicoesNasVariaveis = Boolean(env.INSTITUICOES || env.DOMINIO);
+  return { modo: 'producao', ...r.data, rede, instituicoes: rede && !temInstituicoesNasVariaveis ? [] : lerInstituicoes(env) };
 }
 
 /** A configuração do ponto de vista de uma instituição. */
@@ -212,6 +249,7 @@ export function configDaInstituicao(geral: ConfigGeral, inst: Instituicao): Conf
 /** Atalho: a configuração da primeira (ou única) instituição. */
 export function lerConfig(env: Record<string, string | undefined> = process.env): Config {
   const geral = lerConfigGeral(env);
+  if (!geral.instituicoes[0]) throw new ErroConfiguracao('Nenhuma instituição configurada.');
   return configDaInstituicao(geral, geral.instituicoes[0]);
 }
 
@@ -220,8 +258,12 @@ export function lerConfig(env: Record<string, string | undefined> = process.env)
  * qualquer endereço (como antes). Na demonstração, vale a escolha da pessoa.
  * Endereço desconhecido: null (a tela explica, sem mostrar dados).
  */
-export function acharInstituicao(geral: ConfigGeral, host: string | null, escolhaDemonstracao?: string): Instituicao | null {
-  if (geral.modo === 'demonstracao') return geral.instituicoes.find((i) => i.codigo === escolhaDemonstracao) ?? geral.instituicoes[0];
+export function acharInstituicao(
+  geral: { modo: ConfigGeral['modo']; instituicoes: readonly Instituicao[] },
+  host: string | null,
+  escolhaDemonstracao?: string,
+): Instituicao | null {
+  if (geral.modo === 'demonstracao') return geral.instituicoes.find((i) => i.codigo === escolhaDemonstracao) ?? geral.instituicoes[0] ?? null;
   if (geral.instituicoes.length === 1) return geral.instituicoes[0];
   const h = (host ?? '').toLowerCase().replace(/:\d+$/, '');
   return geral.instituicoes.find((i) => i.enderecos.includes(h)) ?? null;

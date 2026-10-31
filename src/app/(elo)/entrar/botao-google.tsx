@@ -15,7 +15,18 @@ interface GoogleId {
 }
 
 /** Botão "Fazer login com o Google", restrito ao domínio institucional. */
-export function BotaoGoogle({ clientId, dominio }: { clientId: string; dominio: string }) {
+export function BotaoGoogle({
+  clientId,
+  dominio,
+  acao = entrarComGoogle,
+  destino = '/',
+}: {
+  clientId: string;
+  dominio: string;
+  /** Confere o login no servidor (padrão: entrada na instituição; a Rede usa a própria). */
+  acao?: (credencial: string) => Promise<{ erro?: string }>;
+  destino?: string;
+}) {
   const lugar = useRef<HTMLDivElement>(null);
   const [erro, setErro] = useState<string>();
   const router = useRouter();
@@ -30,10 +41,10 @@ export function BotaoGoogle({ clientId, dominio }: { clientId: string; dominio: 
         callback: async ({ credential }) => {
           setErro(undefined);
           try {
-            const r = await entrarComGoogle(credential);
+            const r = await acao(credential);
             if (r.erro) setErro(r.erro);
             else {
-              router.push('/');
+              router.push(destino);
               router.refresh();
             }
           } catch {
@@ -54,7 +65,7 @@ export function BotaoGoogle({ clientId, dominio }: { clientId: string; dominio: 
     s.dataset.googleGsi = '1';
     s.onload = iniciar;
     document.head.appendChild(s);
-  }, [clientId, dominio, router]);
+  }, [clientId, dominio, router, acao, destino]);
 
   return (
     <div className="space-y-3">
