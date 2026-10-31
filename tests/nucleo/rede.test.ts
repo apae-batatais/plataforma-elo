@@ -10,7 +10,7 @@ import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import {
   autorizadorDaRede, conferirInstituicao, incluirAdministradorRede, instituicoesCadastradas, mudarSituacao, painelDaRede,
-  prepararRede, retirarAdministradorRede, salvarInstituicao, type DadosInstituicao,
+  instituicoesEmVigor, prepararRede, retirarAdministradorRede, salvarInstituicao, type DadosInstituicao,
 } from '@/nucleo/rede/rede';
 import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
 
@@ -94,6 +94,19 @@ describe('cadastro de instituições', () => {
     const auditoria = (await lerTabela(rede, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'Instituicoes');
     expect(auditoria.map((a) => a.acao)).toEqual(['inclusao', 'alteracao', 'alteracao', 'alteracao']);
     expect(auditoria.some((a) => (a.detalhes ?? '').includes('Apae de Franca'))).toBe(false);
+  });
+});
+
+describe('migração das variáveis para a rede', () => {
+  it('as variáveis valem até a rede ter uma instituição ativa; sem variáveis, vale a rede', async () => {
+    const op = await operadora();
+    const variaveis = [{ codigo: 'principal', nome: 'Apae Batatais' } as never];
+    const id = await salvarInstituicao(rede, op, franca());
+    expect(instituicoesEmVigor(await instituicoesCadastradas(rede), variaveis)).toBe(variaveis); // só em preparação: nada muda
+    expect(instituicoesEmVigor(await instituicoesCadastradas(rede), []).map((i) => i.codigo)).toEqual(['apae-franca']);
+    const v = (await painelDaRede(rede, op)).instituicoes[0].versao;
+    await mudarSituacao(rede, op, id, v, 'ativa');
+    expect(instituicoesEmVigor(await instituicoesCadastradas(rede), variaveis).map((i) => i.codigo)).toEqual(['apae-franca']);
   });
 });
 

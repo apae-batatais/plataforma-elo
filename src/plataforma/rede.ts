@@ -6,7 +6,8 @@
  * - Produção com a variável REDE: planilha da rede no Drive da Operadora.
  * - Demonstração: rede fictícia em memória, com as duas instituições fictícias.
  * - A lista fica guardada por 1 minuto; salvar no cadastro limpa o cache.
- * - Enquanto a rede não tem instituições, valem as das variáveis (R1).
+ * - Enquanto a rede não tem nenhuma instituição ATIVA, valem as das variáveis (R1):
+ *   cadastrar a primeira (em preparação) não tira ninguém do ar antes de ativar.
  */
 import 'server-only';
 import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-planilhas';
@@ -14,7 +15,7 @@ import type { Armazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
 import { inserir, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { INSTITUICOES_DEMONSTRACAO, type ConfigGeral, type Instituicao, type Rede } from '@/nucleo/config';
-import { instituicoesCadastradas, prepararRede } from '@/nucleo/rede/rede';
+import { instituicoesCadastradas, instituicoesEmVigor, prepararRede } from '@/nucleo/rede/rede';
 import { Instituicoes } from '@/nucleo/rede/tabelas';
 
 export interface AplicacaoDaRede {
@@ -91,7 +92,7 @@ export function instituicoesDoElo(geral: ConfigGeral): Promise<Instituicao[]> {
       // Instituições fictícias cadastradas na demonstração ganham planilhas em memória como as outras.
       return daRede.map((i) => ({ ...i, planilhas: {} }));
     }
-    return daRede.length ? daRede : geral.instituicoes;
+    return instituicoesEmVigor(daRede, geral.instituicoes);
   })();
   lista = { em: Date.now(), valor };
   valor.catch(() => (lista = undefined));

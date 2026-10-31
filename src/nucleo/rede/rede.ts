@@ -107,6 +107,15 @@ export async function instituicoesCadastradas(p: Planilhas): Promise<Instituicao
   return (await lerTabela(p, Instituicoes)).ativos().map((r) => instituicaoDoRegistro(r as RegInstituicao));
 }
 
+/**
+ * Quais instituições o Elo atende: as da rede, a partir da primeira ativa.
+ * Até lá, as das variáveis da hospedagem (R1), para que cadastrar a primeira
+ * instituição (em preparação) não tire ninguém do ar antes de ativar.
+ */
+export function instituicoesEmVigor(daRede: Instituicao[], dasVariaveis: Instituicao[]): Instituicao[] {
+  return daRede.some((i) => i.situacao === 'ativa') || dasVariaveis.length === 0 ? daRede : dasVariaveis;
+}
+
 // ---------------------------------------------------------------------------
 // Painel e cadastro
 // ---------------------------------------------------------------------------
