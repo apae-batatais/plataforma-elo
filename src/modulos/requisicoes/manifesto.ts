@@ -1,6 +1,7 @@
 /**
  * Manifesto do módulo Requisições — entregas 1 (base e Materiais / Almoxarifado)
- * 2 (TI / Setor de Informática) 3 (Mobiliário / Setor de Patrimônio) e 4 (Manutenção / Setor de Manutenção).
+ * 2 (TI / Setor de Informática), 3 (Mobiliário / Setor de Patrimônio), 4 (Manutenção / Setor de Manutenção)
+ * e 5 (painel de prazos e feriados).
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
 
@@ -20,6 +21,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Para aprovar', caminho: '/aprovar', permissao: 'requisicoes.aprovar', secao: 'Acompanhar' },
     { rotulo: 'Para atender', caminho: '/atender', permissao: 'requisicoes.atender', secao: 'Acompanhar' },
     { rotulo: 'Todas as requisições', caminho: '/todas', permissao: 'requisicoes.ver_todas', secao: 'Acompanhar' },
+    { rotulo: 'Painel de prazos', caminho: '/painel', permissao: 'requisicoes.painel', secao: 'Acompanhar' },
     { rotulo: 'Tipos de requisição', caminho: '/tipos', permissao: 'requisicoes.tipos.gerenciar', secao: 'Cadastros' },
   ],
   permissoes: {
@@ -28,8 +30,9 @@ export const manifesto = defineModulo({
     'requisicoes.aprovar': 'Aprovar, devolver ou recusar requisições (coordenação: no seu escopo; Diretoria: todas)',
     'requisicoes.atender': 'Receber e atender as requisições dos tipos do seu setor',
     'requisicoes.ver_todas': 'Ver todas as requisições e o histórico',
+    'requisicoes.painel': 'Ver o painel de prazos (SLA) das requisições que a pessoa já pode ver',
     'requisicoes.tipos.gerenciar':
-      'Cadastrar e alterar os tipos de requisição, os itens aceitos, o setor responsável, os prazos e o expediente (Administração da plataforma)',
+      'Cadastrar e alterar os tipos de requisição, os itens aceitos, o setor responsável, os prazos, o expediente e os feriados (Administração da plataforma)',
   },
   perfis: [
     { codigo: 'almoxarifado', nome: 'Almoxarifado', descricao: 'Recebe e atende as requisições de materiais.' },
@@ -47,17 +50,17 @@ export const manifesto = defineModulo({
   ],
   permissoesPorPerfil: {
     administrador_plataforma: [...BASE, 'requisicoes.tipos.gerenciar'],
-    diretoria: [...BASE, 'requisicoes.aprovar', 'requisicoes.ver_todas'],
+    diretoria: [...BASE, 'requisicoes.aprovar', 'requisicoes.ver_todas', 'requisicoes.painel'],
     financeiro: [...BASE],
-    coordenacao_servico: [...BASE, 'requisicoes.aprovar'],
+    coordenacao_servico: [...BASE, 'requisicoes.aprovar', 'requisicoes.painel'],
     tecnico_avaliador: [...BASE],
     leitura: [...BASE],
     departamento_pessoal: [...BASE],
     compras: [...BASE],
-    almoxarifado: [...BASE, 'requisicoes.atender'],
-    informatica: [...BASE, 'requisicoes.atender'],
-    patrimonio: [...BASE, 'requisicoes.atender'],
-    manutencao: [...BASE, 'requisicoes.atender'],
+    almoxarifado: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
+    informatica: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
+    patrimonio: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
+    manutencao: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
   },
   // Tipos de requisição: só a Administração da plataforma da instituição (decisão de 31/10/2026).
   permissoesRetiradas: { diretoria: ['requisicoes.tipos.gerenciar'] },

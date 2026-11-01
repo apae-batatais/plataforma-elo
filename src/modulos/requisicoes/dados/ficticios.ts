@@ -6,7 +6,14 @@
 import { Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizar, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
-import { concluirRequisicao, decidirRequisicao, enviarRequisicao, receberRequisicao, type CatalogoOrcamento } from '../aplicacao/requisicoes';
+import {
+  concluirRequisicao,
+  decidirRequisicao,
+  enviarRequisicao,
+  incluirFeriadosNacionais,
+  receberRequisicao,
+  type CatalogoOrcamento,
+} from '../aplicacao/requisicoes';
 import { CatalogoItens, Requisicoes, TiposRequisicao } from './tabelas';
 
 const TIPOS = [
@@ -120,6 +127,8 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
       perfilPermissoes: perfilPermissoes.ativos(),
       servicos: servicos.todos(),
     });
+  // Feriados nacionais do ano da demonstração (não contam nos prazos).
+  await incluirFeriadosNacionais(p, como('admin@exemplo.local'), 2026);
   const grupos = await catalogo.gruposDeGasto();
   const grupo = (inicio: string) => (grupos.find((g) => g.nome.startsWith(inicio)) ?? grupos[0])?.id ?? '';
   if (!grupos.length) return;

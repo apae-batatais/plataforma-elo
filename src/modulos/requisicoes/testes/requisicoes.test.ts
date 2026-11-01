@@ -16,6 +16,10 @@ import {
   decidirRequisicao,
   detalharRequisicao,
   enviarRequisicao,
+  incluirFeriadosNacionais,
+  painelDePrazos,
+  salvarFeriado,
+  tirarFeriado,
   listarRequisicoes,
   analisarItensEmLote,
   cadastrarItensEmLote,
@@ -32,7 +36,10 @@ import {
 } from '../aplicacao/requisicoes';
 import { RequisicaoHistorico, RequisicaoItens, Requisicoes, TABELAS_REQUISICOES, TiposRequisicao } from '../dados/tabelas';
 import { conferirCentros, coordenadoresDoServico, proximoNumero, rotaDeAprovacao } from '../dominio/requisicao';
+import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
+import { mesesEntre } from '../dominio/painel';
 import { horasUteis, prazoDaEtapa, textoHoras } from '../dominio/sla';
+import { FeriadosRequisicoes } from '../dados/tabelas';
 import { manifesto } from '../manifesto';
 
 let p: Planilhas;
@@ -321,7 +328,7 @@ describe('tipos de requisição e expediente', () => {
     await expect(listarTipos(p, await como('financeiro@exemplo.local'), catalogo)).rejects.toBeInstanceOf(ErroPermissao);
     await expect(salvarExpediente(p, adm, { inicio: 18, fim: 8 })).rejects.toThrow(/depois do início/);
     await salvarExpediente(p, adm, { inicio: 7, fim: 16 });
-    expect((await listarTipos(p, adm, catalogo)).expediente).toEqual({ inicio: 7, fim: 16 });
+    expect((await listarTipos(p, adm, catalogo)).expediente).toMatchObject({ inicio: 7, fim: 16 });
   });
 });
 
@@ -586,5 +593,79 @@ describe('manutenção (Setor de Manutenção)', () => {
     expect(await concluirRequisicao(p, man, r.id, await versao(r.id), {}, 'Limpei o filtro e completei o gás.', { resultado: 'resolvido' })).toBe('atendida');
     const h = (await lerTabela(p, RequisicaoHistorico)).todos().filter((x) => x.requisicao_id === r.id);
     expect(h.at(-1)).toMatchObject({ acao: 'concluir', para: 'atendida', usuario: 'manutencao@exemplo.local' });
+  });
+});
+
+describe('feriados e painel de prazos (SLA)', () => {
+  const em = (dia: string, h: number) => new Date(`${dia}T${String(h).padStart(2, '0')}:00:00-03:00`);
+
+  it('feriado não conta nas horas úteis; nacionais com a Sexta-feira Santa móvel; data inválida é recusada', () => {
+    const e = { inicio: 8, fim: 17, feriados: new Set(['2026-11-02']) };
+    // Sexta 30/10 16h → segunda 2/11 (Finados) → terça 3/11 10h: 1 h + 2 h.
+    expect(horasUteis(em('2026-10-30', 16).toISOString(), em('2026-11-03', 10).toISOString(), e)).toBe(3);
+    expect(horasUteis(em('2026-10-30', 16).toISOString(), em('2026-11-03', 10).toISOString())).toBe(12);
+    const f2026 = feriadosNacionais(2026);
+    expect(f2026).toHaveLength(11);
+    expect(f2026.find((f) => f.nome === 'Sexta-feira Santa')?.data).toBe('2026-04-03');
+    expect(feriadosNacionais(2027).find((f) => f.nome === 'Sexta-feira Santa')?.data).toBe('2027-03-26');
+    expect(() => conferirFeriado({ data: '2026-02-30', nome: 'X' })).toThrow(/data/);
+    expect(mesesEntre('2025-11', '2026-02')).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
+  });
+
+  it('só a Administração da plataforma cadastra feriados; data repetida é recusada; o feriado entra no prazo da ficha', async () => {
+    const adm = await como('admin@exemplo.local');
+    await expect(salvarFeriado(p, await como('diretoria@exemplo.local'), { data: '2026-11-02', nome: 'Finados' })).rejects.toBeInstanceOf(ErroPermissao);
+    const pede = await como('financeiro@exemplo.local');
+    const r = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: em('2026-10-30', 16) });
+    const antes = (await detalharRequisicao(p, pede, r.id, { agora: em('2026-11-03', 10) })).sla!.aprovacao.horas;
+    expect(await incluirFeriadosNacionais(p, adm, 2026)).toBe(11);
+    expect(await incluirFeriadosNacionais(p, adm, 2026)).toBe(0);
+    await expect(salvarFeriado(p, adm, { data: '2026-11-02', nome: 'Outro' })).rejects.toThrow(/Já há feriado em 02\/11\/2026: Finados/);
+    expect((await detalharRequisicao(p, pede, r.id, { agora: em('2026-11-03', 10) })).sla!.aprovacao.horas).toBe(antes - 9);
+    // Tirar o feriado: o dia volta a contar.
+    const finados = (await lerTabela(p, FeriadosRequisicoes)).ativos().find((f) => f.data === '2026-11-02')!;
+    await tirarFeriado(p, adm, finados.id, finados.versao);
+    expect((await detalharRequisicao(p, pede, r.id, { agora: em('2026-11-03', 10) })).sla!.aprovacao.horas).toBe(antes);
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'FeriadosRequisicoes');
+    expect(aud.map((a) => a.acao)).toEqual(['inclusao', 'encerramento']);
+  });
+
+  it('painel: no prazo por mês da decisão e da conclusão; atrasadas agora; cada um vê só o que acompanha', async () => {
+    const pede = await como('financeiro@exemplo.local');
+    const coord = await como('coord.educacao@exemplo.local');
+    const almox = await como('almoxarifado@exemplo.local');
+    const tudo = async (id: string) =>
+      Object.fromEntries(
+        (await lerTabela(p, RequisicaoItens))
+          .ativos()
+          .filter((i) => i.requisicao_id === id)
+          .map((i) => [i.id, i.quantidade]),
+      );
+    // A: decidida em 1 h (no prazo de 8 h); concluída em 25 h (fora do prazo de 16 h).
+    const a = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: em('2026-10-05', 9) });
+    await decidirRequisicao(p, coord, a.id, await versao(a.id), 'aprovar', null, { agora: em('2026-10-05', 10) });
+    await receberRequisicao(p, almox, a.id, await versao(a.id), { agora: em('2026-10-05', 11) });
+    await concluirRequisicao(p, almox, a.id, await versao(a.id), await tudo(a.id), null, { agora: em('2026-10-07', 17) });
+    // B: decidida em 18 h (fora do prazo) e ainda não atendida.
+    const b = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: em('2026-10-06', 9) });
+    await decidirRequisicao(p, coord, b.id, await versao(b.id), 'aprovar', null, { agora: em('2026-10-08', 9) });
+
+    const agora = em('2026-10-30', 12);
+    const dir = await painelDePrazos(p, await como('diretoria@exemplo.local'), { de: '2026-10', ate: '2026-10' }, { agora });
+    expect(dir.todas).toBe(true);
+    expect(dir.total.aprovacao).toMatchObject({ total: 2, noPrazo: 1, pct: 50 });
+    expect(dir.total.atendimento).toMatchObject({ total: 1, noPrazo: 0, pct: 0, mediaHoras: 25 });
+    expect(dir.atrasadas.map((x) => [x.numero, x.etapa])).toEqual([[b.numero, 'atendimento']]);
+    expect(dir.porSetor.map((x) => x.nome)).toEqual(['Almoxarifado']);
+    // Fora do período: nada conta, mas a atrasada continua aparecendo.
+    const set = await painelDePrazos(p, await como('diretoria@exemplo.local'), { de: '2026-09', ate: '2026-09' }, { agora });
+    expect([set.total.aprovacao.total, set.atrasadas.length]).toEqual([0, 1]);
+
+    expect((await painelDePrazos(p, coord, { de: '2026-10', ate: '2026-10' }, { agora })).total.aprovacao.total).toBe(2);
+    expect((await painelDePrazos(p, almox, { de: '2026-10', ate: '2026-10' }, { agora })).todas).toBe(false);
+    expect((await painelDePrazos(p, await como('informatica@exemplo.local'), { de: '2026-10', ate: '2026-10' }, { agora })).total.aprovacao.total).toBe(0);
+    await expect(painelDePrazos(p, pede, {}, { agora })).rejects.toBeInstanceOf(ErroPermissao);
+    // Período padrão: os últimos 6 meses.
+    expect(await painelDePrazos(p, coord, {}, { agora })).toMatchObject({ de: '2026-05', ate: '2026-10' });
   });
 });

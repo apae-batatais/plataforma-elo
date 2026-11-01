@@ -9,6 +9,7 @@
  * - RequisicaoItens: os itens pedidos (materiais) e quanto foi atendido.
  * - RequisicaoHistorico: cada mudança de etapa (só inclusões).
  * - ParametrosRequisicoes: expediente usado no cálculo do SLA.
+ * - FeriadosRequisicoes: dias que não contam como úteis no SLA.
  */
 import { z } from 'zod';
 import { definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
@@ -120,6 +121,12 @@ export const ParametrosRequisicoes = definirTabela({
   esquema: z.object({ chave: texto(), valor: numero() }),
 });
 
+export const FeriadosRequisicoes = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'Feriados',
+  esquema: z.object({ data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), nome: texto() }),
+});
+
 export const TABELAS_REQUISICOES = [
   TiposRequisicao,
   CatalogoItens,
@@ -128,6 +135,7 @@ export const TABELAS_REQUISICOES = [
   RequisicaoItens,
   RequisicaoHistorico,
   ParametrosRequisicoes,
+  FeriadosRequisicoes,
 ] as const;
 
 export type RegTipo = Registro<typeof TiposRequisicao.esquema>;

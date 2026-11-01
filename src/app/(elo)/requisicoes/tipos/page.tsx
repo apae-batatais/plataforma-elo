@@ -17,9 +17,19 @@ import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
-import { acaoExcluirTipo, acaoReativarTipo, acaoSalvarExpediente, acaoSalvarTipo } from '../acoes';
+import {
+  acaoExcluirTipo,
+  acaoIncluirFeriadosNacionais,
+  acaoReativarTipo,
+  acaoSalvarExpediente,
+  acaoSalvarFeriado,
+  acaoSalvarTipo,
+  acaoTirarFeriado,
+} from '../acoes';
 
 export const metadata: Metadata = { title: 'Tipos de requisição' };
+
+const SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
 type Tipo = {
   nome: string;
@@ -97,6 +107,8 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
   if (!usuario.autorizador.temPermissao('requisicoes.tipos.gerenciar')) redirect('/requisicoes');
   const app = await obterAplicacao();
   const t = await listarTipos(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas));
+  const hojeISO = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+  const anoAtual = Number(hojeISO.slice(0, 4));
   const emEdicao = editar ? t.ativos.find((x) => x.id === editar) : undefined;
 
   return (
@@ -228,7 +240,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
 
       <Secao
         titulo="Expediente para o SLA"
-        descricao="Os prazos contam só de segunda a sexta, dentro deste horário (horário de Brasília). Feriados ainda contam como dia útil."
+        descricao="Os prazos contam só de segunda a sexta, dentro deste horário (horário de Brasília), fora os feriados da lista abaixo."
         id="t-expediente"
       >
         <form action={acaoSalvarExpediente} className="flex flex-wrap items-end gap-3">
@@ -242,6 +254,65 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
             Salvar expediente
           </BotaoEnviar>
         </form>
+      </Secao>
+
+      <Secao
+        titulo="Feriados"
+        descricao="Dias que não contam nos prazos. Inclua de uma vez os nacionais (e o 9 de julho, de São Paulo) e cadastre um a um os municipais e os pontos facultativos."
+        id="t-feriados"
+      >
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+            <form action={acaoIncluirFeriadosNacionais} className="flex flex-wrap items-end gap-3">
+              <Campo rotulo="Ano">
+                <select name="ano" defaultValue={anoAtual} className={`${estiloEntrada} w-28`}>
+                  {[anoAtual, anoAtual + 1].map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+              <BotaoEnviar variante="secundario" enviando="Incluindo…">
+                Incluir feriados nacionais
+              </BotaoEnviar>
+            </form>
+            <form action={acaoSalvarFeriado} className="flex flex-wrap items-end gap-3">
+              <Campo rotulo="Data">
+                <input name="data" type="date" required className={`${estiloEntrada} w-44`} />
+              </Campo>
+              <Campo rotulo="Nome">
+                <input name="nome" required placeholder="Ex.: Aniversário da cidade" className={`${estiloEntrada} w-64`} />
+              </Campo>
+              <BotaoEnviar variante="secundario" enviando="Incluindo…">
+                Incluir feriado
+              </BotaoEnviar>
+            </form>
+          </div>
+          {t.feriados.length === 0 ? (
+            <p className="text-sm text-texto-suave">Nenhum feriado cadastrado: hoje todos os dias de segunda a sexta contam.</p>
+          ) : (
+            <ul className="divide-y divide-borda rounded-lg border border-borda text-sm">
+              {t.feriados.map((x) => (
+                <li key={x.id} className={`flex items-center gap-3 px-3 py-2 ${x.data < hojeISO ? 'text-texto-suave' : ''}`}>
+                  <span className="w-24 tabular-nums">{x.data.split('-').reverse().join('/')}</span>
+                  <span className="w-12 text-texto-suave">{SEMANA[new Date(`${x.data}T12:00:00Z`).getUTCDay()]}</span>
+                  <span className="flex-1">{x.nome}</span>
+                  <FormularioConfirmado
+                    acao={acaoTirarFeriado}
+                    campos={{ id: x.id, versao: x.versao }}
+                    rotulo={<IconeLixeira tamanho={16} />}
+                    rotuloAcessivel={`Tirar ${x.nome}`}
+                    variante="icone-perigo"
+                    titulo={`Tirar “${x.nome}” da lista?`}
+                    mensagem="O dia volta a contar nos prazos, inclusive nos das requisições que já passaram por ele."
+                    confirmar="Tirar feriado"
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </Secao>
     </div>
   );
