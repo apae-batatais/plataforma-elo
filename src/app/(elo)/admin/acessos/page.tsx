@@ -13,7 +13,16 @@ import { IconeChave, IconeFechar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
-import { acaoAtribuirPerfil, acaoCadastrarUsuario, acaoDesativarUsuario, acaoEncerrarAtribuicao } from '../acoes';
+import { PERFIL_PADRAO } from '@/nucleo/acesso/gestao';
+import {
+  acaoAtribuirPerfil,
+  acaoCadastrarUsuario,
+  acaoCadastrarUsuariosEmLote,
+  acaoConferirUsuariosEmLote,
+  acaoDesativarUsuario,
+  acaoEncerrarAtribuicao,
+} from '../acoes';
+import { CadastroDeUsuariosEmLote } from './cadastro-em-lote';
 
 export const metadata: Metadata = { title: 'Acessos' };
 
@@ -29,6 +38,7 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
   const ativos = painel.usuarios.filter((u) => u.ativo);
   const inativos = painel.usuarios.filter((u) => !u.ativo);
 
+  const temPadrao = painel.perfis.some((x) => x.codigo === PERFIL_PADRAO);
   const pessoaDoPerfil = perfilPara ? ativos.find((u) => u.id === perfilPara) : undefined;
 
   const FormPerfil = ({ email }: { email?: string }) => (
@@ -85,7 +95,23 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
         descricao="Quem pode entrar na plataforma e o que cada pessoa pode fazer. Um perfil vale para toda a instituição ou só para uma unidade, área ou serviço."
         acoes={
           <>
-            <JanelaFormulario rotulo="Atribuir perfil" variante="fantasma" className={pequeno} titulo="Atribuir perfil" descricao="Define o que a pessoa vê e onde.">
+            <JanelaFormulario
+              rotulo="Cadastrar em lote"
+              variante="fantasma"
+              className={pequeno}
+              larga
+              titulo="Dar acesso a várias pessoas de uma vez"
+              descricao="Cole uma lista copiada da planilha (nome, e-mail, perfil e onde vale), confira e confirme."
+            >
+              <CadastroDeUsuariosEmLote conferir={acaoConferirUsuariosEmLote} cadastrar={acaoCadastrarUsuariosEmLote} dominio={dominio} />
+            </JanelaFormulario>
+            <JanelaFormulario
+              rotulo="Atribuir perfil"
+              variante="fantasma"
+              className={pequeno}
+              titulo="Atribuir perfil"
+              descricao="Define o que a pessoa vê e onde."
+            >
               <FormPerfil />
             </JanelaFormulario>
             <JanelaFormulario
@@ -105,6 +131,16 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
                 <Campo rotulo="E-mail" obrigatorio dica={dominio ? `Precisa terminar em @${dominio}.` : undefined}>
                   <input name="email" type="email" required autoComplete="off" className={estiloEntrada} />
                 </Campo>
+                <Campo rotulo="Perfil" dica="Vale para toda a instituição. Para um perfil só de uma unidade, área ou serviço, use depois “Atribuir perfil”.">
+                  <select name="perfil" defaultValue={temPadrao ? PERFIL_PADRAO : ''} className={estiloEntrada}>
+                    <option value="">Sem perfil por enquanto</option>
+                    {painel.perfis.map((x) => (
+                      <option key={x.codigo} value={x.codigo}>
+                        {x.nome}
+                      </option>
+                    ))}
+                  </select>
+                </Campo>
                 <BotaoEnviar enviando="Cadastrando…" className="w-full">
                   Dar acesso
                 </BotaoEnviar>
@@ -115,7 +151,13 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
       />
 
       {pessoaDoPerfil && (
-        <JanelaFormulario rotulo={null} abrirAoCarregar voltarPara="/admin/acessos" titulo={`Atribuir perfil a ${pessoaDoPerfil.nome}`} descricao="Define o que a pessoa vê e onde.">
+        <JanelaFormulario
+          rotulo={null}
+          abrirAoCarregar
+          voltarPara="/admin/acessos"
+          titulo={`Atribuir perfil a ${pessoaDoPerfil.nome}`}
+          descricao="Define o que a pessoa vê e onde."
+        >
           <FormPerfil email={pessoaDoPerfil.email} />
         </JanelaFormulario>
       )}
@@ -179,7 +221,13 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
                 ),
               acoes: (
                 <div className="flex justify-end gap-1">
-                  <LinkBotao href={`/admin/acessos?perfil=${u.id}`} scroll={false} variante="icone" aria-label={`Atribuir perfil a ${u.nome}`} title="Atribuir perfil">
+                  <LinkBotao
+                    href={`/admin/acessos?perfil=${u.id}`}
+                    scroll={false}
+                    variante="icone"
+                    aria-label={`Atribuir perfil a ${u.nome}`}
+                    title="Atribuir perfil"
+                  >
                     <IconeChave tamanho={16} />
                   </LinkBotao>
                   {u.email !== usuario.email && (

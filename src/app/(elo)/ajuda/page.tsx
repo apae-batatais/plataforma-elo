@@ -203,11 +203,12 @@ export default async function Ajuda() {
             <>
               <Sub>Tipos de requisição</Sub>
               <p>
-                Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfil Almoxarifado, que você
-                atribui às pessoas do setor em Acessos), os prazos e quais áreas e grupos de despesa podem usar cada tipo (sem marcação, todos podem). Em
-                &ldquo;Itens aceitos&rdquo;, monte a lista de itens do tipo, um a um ou colando da planilha: quem pede escolhe da lista e a unidade vem
-                preenchida. Tipo sem lista aceita itens digitados. No fim da tela ficam o horário do expediente e os feriados: o botão &ldquo;Incluir feriados
-                nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os municipais e os pontos facultativos você inclui um a um.
+                Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfis Almoxarifado, Setor de
+                Informática, Setor de Patrimônio ou Setor de Manutenção, que você atribui às pessoas do setor em Acessos), os prazos e quais áreas e grupos de
+                despesa podem usar cada tipo (sem marcação, todos podem). Em &ldquo;Itens aceitos&rdquo;, monte a lista de itens do tipo, um a um ou colando da
+                planilha: quem pede escolhe da lista e a unidade vem preenchida. Tipo sem lista aceita itens digitados. No fim da tela ficam o horário do
+                expediente e os feriados: o botão &ldquo;Incluir feriados nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os
+                municipais e os pontos facultativos você inclui um a um.
               </p>
             </>
           )}
@@ -389,7 +390,9 @@ export default async function Ajuda() {
               'Serviços: os centros de custo, cada um numa área e numa unidade. "Cadastrar em lote" cadastra vários de uma vez; excluídos podem ser reativados em "Serviços excluídos".',
             pode.organizacao && 'Áreas: o nome é único; não há duas áreas com o mesmo nome.',
             pode.acessos &&
-              'Acessos: "Dar acesso" cadastra o e-mail institucional e o primeiro perfil; "Atribuir perfil" acrescenta outro. Em "Vale para", escolha toda a instituição, uma unidade, uma área ou um serviço.',
+              'Acessos: "Dar acesso" cadastra o e-mail institucional e o primeiro perfil (já vem marcado Funcionário, o perfil básico de quem trabalha na instituição: faz requisições e acompanha as suas); "Atribuir perfil" acrescenta outro. Em "Vale para", escolha toda a instituição, uma unidade, uma área ou um serviço.',
+            pode.acessos &&
+              'Acessos em lote: "Cadastrar em lote" recebe uma lista copiada da planilha com Nome, E-mail, Perfil (opcional, padrão Funcionário) e Vale para (opcional: unidade, área ou serviço). Confira a prévia: quem já tem acesso só ganha o perfil, acesso desativado é reativado e as linhas com problema ficam de fora.',
             pode.organizacao &&
               'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial), se a Administração da rede ainda não tiver feito isso; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
           ]}

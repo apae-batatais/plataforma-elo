@@ -55,6 +55,8 @@ export const manifesto = defineModulo({
     coordenacao_servico: [...BASE, 'requisicoes.aprovar', 'requisicoes.painel'],
     tecnico_avaliador: [...BASE],
     leitura: [...BASE],
+    // Perfil básico do Núcleo: qualquer funcionário pede e acompanha as próprias requisições.
+    funcionario: [...BASE],
     departamento_pessoal: [...BASE],
     compras: [...BASE],
     almoxarifado: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],

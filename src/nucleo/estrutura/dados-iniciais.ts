@@ -27,6 +27,7 @@ export const PERFIS_INICIAIS = [
   { codigo: 'coordenacao_servico', nome: 'Coordenação de serviço', descricao: 'Gerencia atendidos do seu escopo.' },
   { codigo: 'tecnico_avaliador', nome: 'Técnico avaliador', descricao: 'Vê atendidos do seu escopo e aplica avaliações.' },
   { codigo: 'leitura', nome: 'Leitura', descricao: 'Vê apenas painéis agregados.' },
+  { codigo: 'funcionario', nome: 'Funcionário', descricao: 'Perfil básico de quem trabalha na instituição: faz requisições e acompanha as suas.' },
 ];
 
 export const PERMISSOES_INICIAIS: { perfil: string; permissao: string }[] = [

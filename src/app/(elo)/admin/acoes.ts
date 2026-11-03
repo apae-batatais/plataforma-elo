@@ -3,8 +3,25 @@
 import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import {
-  analisarServicosEmLote, atribuirPerfil, cadastrarArea, cadastrarServico, cadastrarServicosEmLote, cadastrarUsuario, desativarUsuario, editarArea, editarServico, encerrarAtribuicao,
-  ErroValidacao, excluirArea, excluirServico, reativarArea, reativarServico, type LinhaServicoLote,
+  analisarServicosEmLote,
+  atribuirPerfil,
+  cadastrarArea,
+  cadastrarServico,
+  cadastrarServicosEmLote,
+  cadastrarUsuario,
+  desativarUsuario,
+  editarArea,
+  editarServico,
+  encerrarAtribuicao,
+  analisarUsuariosEmLote,
+  cadastrarUsuariosEmLote,
+  ErroValidacao,
+  excluirArea,
+  excluirServico,
+  reativarArea,
+  reativarServico,
+  type LinhaServicoLote,
+  type LinhaUsuarioLote,
 } from '@/nucleo/acesso/gestao';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { ESCOPOS, type EscopoTipo } from '@/nucleo/estrutura/tabelas';
@@ -39,7 +56,7 @@ const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 
 export async function acaoCadastrarUsuario(f: FormData) {
   await executar('/admin/acessos', 'Usuário cadastrado.', ({ usuario, app, dominio }) =>
-    cadastrarUsuario(app.planilhas, usuario.autorizador, { email: texto(f, 'email'), nome: texto(f, 'nome') }, dominio),
+    cadastrarUsuario(app.planilhas, usuario.autorizador, { email: texto(f, 'email'), nome: texto(f, 'nome'), perfil: texto(f, 'perfil') || null }, dominio),
   );
 }
 
@@ -143,6 +160,51 @@ export async function acaoCadastrarServicosEmLote(estado: EstadoLote, f: FormDat
     throw erro;
   }
   redirect(`/admin/servicos?ok=${encodeURIComponent(`${n} ${n === 1 ? 'serviço cadastrado' : 'serviços cadastrados'}.`)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Usuários em lote
+// ---------------------------------------------------------------------------
+
+export interface EstadoLoteUsuarios {
+  erro?: string;
+  linhas?: LinhaUsuarioLote[];
+  texto?: string;
+}
+
+export async function acaoConferirUsuariosEmLote(_: EstadoLoteUsuarios, f: FormData): Promise<EstadoLoteUsuarios> {
+  const { usuario, app, dominio } = await contexto();
+  const conteudo = texto(f, 'lista');
+  if (!conteudo) return { erro: 'Cole a lista de pessoas no campo.' };
+  try {
+    const linhas = await analisarUsuariosEmLote(app.planilhas, usuario.autorizador, conteudo, dominio);
+    if (linhas.length === 0) return { erro: 'Não encontrei nenhuma linha com nome e e-mail.', texto: conteudo };
+    return { linhas, texto: conteudo };
+  } catch (erro) {
+    if (erro instanceof ErroPermissao) return { erro: erro.message };
+    throw erro;
+  }
+}
+
+export async function acaoCadastrarUsuariosEmLote(estado: EstadoLoteUsuarios, f: FormData): Promise<EstadoLoteUsuarios> {
+  const { usuario, app, dominio } = await contexto();
+  let r: { novos: number; reativados: number; perfis: number };
+  try {
+    const linhas = (JSON.parse(texto(f, 'linhas')) as LinhaUsuarioLote[])
+      .filter((l) => (l.situacao === 'novo' || l.situacao === 'perfil' || l.situacao === 'reativar') && l.perfil)
+      .map((l) => ({ nome: l.nome, email: l.email, perfil: l.perfil!, escopoTipo: l.escopoTipo, escopo: l.escopo }));
+    r = await cadastrarUsuariosEmLote(app.planilhas, usuario.autorizador, linhas, dominio);
+  } catch (erro) {
+    if (erro instanceof ErroValidacao || erro instanceof ErroPermissao || erro instanceof ErroConflito) return { ...estado, erro: erro.message };
+    if (erro instanceof SyntaxError) return { ...estado, erro: 'A lista veio incompleta. Confira de novo.' };
+    throw erro;
+  }
+  const partes = [
+    r.novos ? `${r.novos} ${r.novos === 1 ? 'acesso novo' : 'acessos novos'}` : '',
+    r.reativados ? `${r.reativados} ${r.reativados === 1 ? 'reativado' : 'reativados'}` : '',
+    r.perfis ? `${r.perfis} ${r.perfis === 1 ? 'perfil atribuído' : 'perfis atribuídos'}` : '',
+  ].filter(Boolean);
+  redirect(`/admin/acessos?ok=${encodeURIComponent(`${partes.join(', ')}.`)}`);
 }
 
 // ---------------------------------------------------------------------------
