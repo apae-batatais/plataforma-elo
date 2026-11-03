@@ -91,10 +91,19 @@ export async function painelDeAcessos(p: Planilhas, quem: Autorizador): Promise<
 export async function cadastrarUsuario(
   p: Planilhas,
   quem: Autorizador,
-  dados: { email: string; nome: string },
+  dados: { email: string; nome: string; perfil?: string | null },
   dominio: string | null,
 ): Promise<void> {
   exigir(quem, 'core.acessos.gerenciar');
+  if (dados.perfil) {
+    // Com perfil: mesmo caminho do lote (cadastra ou reativa e dá o perfil para toda a instituição).
+    const [linha] = await analisarUsuariosEmLote(p, quem, [dados.nome, dados.email, dados.perfil].join('\t'), dominio);
+    if (!linha) throw new ErroValidacao('Informe o nome completo e o e-mail.');
+    if (linha.situacao === 'erro') throw new ErroValidacao(linha.problema ?? 'Confira os dados.');
+    if (linha.situacao === 'ja_existe' || linha.situacao === 'perfil') throw new ErroValidacao('Este e-mail já tem acesso. Use “Atribuir perfil” na linha da pessoa.');
+    await cadastrarUsuariosEmLote(p, quem, [{ nome: linha.nome, email: linha.email, perfil: linha.perfil!, escopoTipo: 'global', escopo: null }], dominio);
+    return;
+  }
   const email = dados.email.trim().toLowerCase();
   const nome = dados.nome.trim();
   if (nome.length < 2) throw new ErroValidacao('Informe o nome completo.');
@@ -485,4 +494,155 @@ export async function reativarArea(p: Planilhas, quem: Autorizador, id: string, 
   }
   await atualizar(p, Areas, id, versao, { ativo: true }, { email: quem.email });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Areas', registroId: id, detalhes: { colunas: ['ativo'] } });
+}
+
+// ---------------------------------------------------------------------------
+// Usuários em lote (lista colada de uma planilha): nome, e-mail, perfil, onde vale
+// ---------------------------------------------------------------------------
+
+/** Perfil usado quando a linha não diz qual: o básico de quem trabalha na instituição. */
+export const PERFIL_PADRAO = 'funcionario';
+
+export interface LinhaUsuarioLote {
+  linha: number;
+  nome: string;
+  email: string;
+  perfil: string | null;
+  perfilNome: string | null;
+  escopoTipo: EscopoTipo;
+  escopo: string | null;
+  escopoNome: string;
+  /**
+   * novo: cadastra o acesso e dá o perfil; perfil: já tem acesso, só ganha o perfil;
+   * reativar: acesso desativado volta com o perfil; ja_existe: nada a fazer; erro: corrigir.
+   */
+  situacao: 'novo' | 'perfil' | 'reativar' | 'ja_existe' | 'erro';
+  problema: string | null;
+}
+
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/**
+ * Lê a lista colada (tabulação ou ponto e vírgula): Nome; E-mail; Perfil
+ * (opcional, padrão Funcionário); Vale para (opcional: unidade, área ou
+ * serviço; vazio = toda a instituição). Não grava nada.
+ */
+export async function analisarUsuariosEmLote(p: Planilhas, quem: Autorizador, texto: string, dominio: string | null): Promise<LinhaUsuarioLote[]> {
+  exigir(quem, 'core.acessos.gerenciar');
+  const [usuarios, atribuicoes, perfis, servicos, unidades, areas] = await lerTabelas(p, [Usuarios, Atribuicoes, Perfis, Servicos, Unidades, Areas] as const);
+  const h = hoje();
+  const padrao = perfis.ativos().find((x) => x.codigo === PERFIL_PADRAO);
+  const escopos = [
+    ...unidades.ativos().map((x) => ({ tipo: 'unidade' as const, codigo: x.codigo, nome: x.nome })),
+    ...areas.ativos().map((x) => ({ tipo: 'area' as const, codigo: x.codigo, nome: x.nome })),
+    ...servicos.ativos().map((x) => ({ tipo: 'servico' as const, codigo: x.codigo, nome: x.nome })),
+  ];
+  const noLote = new Set<string>();
+  const resultado: LinhaUsuarioLote[] = [];
+
+  texto.split(/\r?\n/).forEach((bruta, i) => {
+    const [nomeBruto = '', emailBruto = '', perfilTexto = '', escopoTexto = ''] = bruta.split(/\t|;/).map((x) => x.trim());
+    const nome = nomeBruto.replace(/\s+/g, ' ');
+    const email = emailBruto.toLowerCase();
+    if (!nome && !email) return;
+    // Linha de cabeçalho copiada junto.
+    if (semAcento(nome) === 'nome' && !email.includes('@')) return;
+
+    const perfil = perfilTexto ? acharPorNome(perfis.ativos(), perfilTexto) : padrao;
+    // "Vale para": nome exato primeiro (unidade, área ou serviço), depois parecido.
+    const t = semAcento(escopoTexto);
+    const exato = /^(unidade|area|servico):(.+)$/.exec(escopoTexto);
+    const escopo = !escopoTexto
+      ? null
+      : exato
+        ? escopos.find((e) => e.tipo === exato[1] && e.codigo === exato[2])
+        : (escopos.find((e) => semAcento(e.codigo) === t || semAcento(e.nome) === t) ?? acharPorNome(escopos, escopoTexto));
+    const existente = usuarios.todos().find((u) => u.email === email);
+    const linha: LinhaUsuarioLote = {
+      linha: i + 1,
+      nome,
+      email,
+      perfil: perfil?.codigo ?? null,
+      perfilNome: perfil?.nome ?? null,
+      escopoTipo: escopo ? escopo.tipo : 'global',
+      escopo: escopo ? escopo.codigo : null,
+      escopoNome: escopo ? `${{ unidade: 'Unidade', area: 'Área', servico: 'Serviço' }[escopo.tipo]} ${escopo.nome}` : 'Toda a instituição',
+      situacao: 'novo',
+      problema: null,
+    };
+    const erro = (problema: string) => Object.assign(linha, { situacao: 'erro', problema });
+    if (nome.length < 2) erro('Falta o nome completo.');
+    else if (!EMAIL.test(email)) erro(email ? `E-mail "${emailBruto}" inválido.` : 'Falta o e-mail.');
+    else if (dominio && !email.endsWith(`@${dominio}`)) erro(`Use um e-mail institucional @${dominio}.`);
+    else if (noLote.has(email)) Object.assign(linha, { situacao: 'ja_existe', problema: 'Repetido na lista: será ignorado.' });
+    else if (!perfil) erro(perfilTexto ? `Perfil "${perfilTexto}" não encontrado.` : 'Informe o perfil (o Funcionário ainda não existe: rode Preparar estrutura).');
+    else if (escopo === undefined) erro(`"${escopoTexto}" não é unidade, área nem serviço cadastrado.`);
+    else if (existente) {
+      const jaTem = atribuicoes
+        .ativos()
+        .some((a) => a.usuario_email === email && a.perfil === perfil.codigo && a.escopo_tipo === linha.escopoTipo && a.escopo === linha.escopo && (!a.fim || a.fim >= h));
+      if (!existente.ativo) Object.assign(linha, { situacao: 'reativar', problema: jaTem ? 'Acesso desativado: volta a valer.' : 'Acesso desativado: volta a valer, com o perfil.' });
+      else if (jaTem) Object.assign(linha, { situacao: 'ja_existe', problema: 'Já tem acesso com este perfil: será ignorado.' });
+      else Object.assign(linha, { situacao: 'perfil', problema: 'Já tem acesso: só ganha o perfil.' });
+    }
+    if (EMAIL.test(email)) noLote.add(email);
+    resultado.push(linha);
+  });
+  return resultado;
+}
+
+/**
+ * Grava as linhas conferidas: acessos novos, reativações e perfis, cada aba
+ * numa gravação só, com a auditoria por aba (quantidade, sem valores pessoais).
+ * Confere tudo de novo antes: se algo mudou desde a prévia, nada é gravado.
+ */
+export async function cadastrarUsuariosEmLote(
+  p: Planilhas,
+  quem: Autorizador,
+  linhas: { nome: string; email: string; perfil: string; escopoTipo: EscopoTipo; escopo: string | null }[],
+  dominio: string | null,
+): Promise<{ novos: number; reativados: number; perfis: number }> {
+  exigir(quem, 'core.acessos.gerenciar');
+  if (linhas.length === 0) throw new ErroValidacao('Não há ninguém para cadastrar.');
+  const texto = linhas.map((l) => [l.nome, l.email, l.perfil, l.escopo ? `${l.escopoTipo}:${l.escopo}` : ''].join('\t')).join('\n');
+  const conferidas = await analisarUsuariosEmLote(p, quem, texto, dominio);
+  const mudou = conferidas.some(
+    (c, i) => c.situacao === 'erro' || c.situacao === 'ja_existe' || c.perfil !== linhas[i].perfil || c.escopoTipo !== linhas[i].escopoTipo || c.escopo !== linhas[i].escopo,
+  );
+  if (mudou || conferidas.length !== linhas.length) throw new ErroValidacao('A lista mudou ou já foi cadastrada. Confira de novo antes de cadastrar.');
+
+  const [usuarios, pessoas, papeis, atribuicoes] = await lerTabelas(p, [Usuarios, Pessoas, Papeis, Atribuicoes] as const);
+  const autoria = { email: quem.email };
+  const h = hoje();
+  const novas = conferidas.filter((c) => c.situacao === 'novo');
+  const reativar = conferidas.filter((c) => c.situacao === 'reativar');
+
+  if (novas.length) {
+    const gravadas = await inserirRegistros(p, pessoas, novas.map((c) => ({ nome: c.nome, email: c.email })), autoria);
+    await inserirRegistros(p, papeis, gravadas.map((x) => ({ pessoa_id: x.id, papel: 'colaborador' as const, inicio: h })), autoria);
+    await inserirRegistros(p, usuarios, novas.map((c, i) => ({ email: c.email, pessoa_id: gravadas[i].id })), autoria);
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Usuarios', detalhes: { lote: novas.length } });
+  }
+  for (const c of reativar) {
+    const u = usuarios.todos().find((x) => x.email === c.email)!;
+    await atualizar(p, Usuarios, u.id, u.versao, { ativo: true }, autoria);
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Usuarios', registroId: u.id, detalhes: { colunas: ['ativo'] } });
+  }
+  // Perfil para todos, menos quem já o tinha (reativado com o mesmo perfil).
+  const comPerfil = conferidas.filter(
+    (c) =>
+      !atribuicoes
+        .ativos()
+        .some((a) => a.usuario_email === c.email && a.perfil === c.perfil && a.escopo_tipo === c.escopoTipo && a.escopo === c.escopo && (!a.fim || a.fim >= h)),
+  );
+  if (comPerfil.length) {
+    await inserirRegistros(
+      p,
+      atribuicoes,
+      comPerfil.map((c) => ({ usuario_email: c.email, perfil: c.perfil!, escopo_tipo: c.escopoTipo, escopo: c.escopo, inicio: h })),
+      autoria,
+    );
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Atribuicoes', detalhes: { lote: comPerfil.length } });
+  }
+  return { novos: novas.length, reativados: reativar.length, perfis: comPerfil.length };
 }

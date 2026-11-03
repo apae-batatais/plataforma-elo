@@ -292,6 +292,17 @@ describe('caminho de uma requisição de materiais', () => {
   });
 });
 
+describe('perfil Funcionário', () => {
+  it('pede e acompanha as próprias requisições, e nada mais', async () => {
+    expect(manifesto.permissoesPorPerfil.funcionario).toEqual(['requisicoes.acessar', 'requisicoes.solicitar']);
+    const f = await como('funcionario@exemplo.local');
+    const r = await enviarRequisicao(p, f, catalogo, ficha());
+    expect((await listarRequisicoes(p, f, 'minhas')).map((x) => x.id)).toEqual([r.id]);
+    await expect(listarRequisicoes(p, f, 'todas')).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(painelDePrazos(p, f)).rejects.toBeInstanceOf(ErroPermissao);
+  });
+});
+
 describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');

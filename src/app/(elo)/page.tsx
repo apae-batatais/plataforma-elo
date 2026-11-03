@@ -26,7 +26,19 @@ function saudacao() {
   return hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 }
 
-function CartaoApp({ href, icone, nome, descricao, atalhos }: { href: string; icone: ReactNode; nome: string; descricao: string; atalhos?: { rotulo: string; href: string }[] }) {
+function CartaoApp({
+  href,
+  icone,
+  nome,
+  descricao,
+  atalhos,
+}: {
+  href: string;
+  icone: ReactNode;
+  nome: string;
+  descricao: string;
+  atalhos?: { rotulo: string; href: string }[];
+}) {
   return (
     <li className="flex flex-col rounded-xl border border-borda bg-superficie transition-colors hover:border-destaque/60">
       <Link href={href} className="group flex flex-1 gap-4 rounded-t-xl p-5">
@@ -68,7 +80,12 @@ export default async function Portal() {
   // O que precisa da atenção desta pessoa, conforme o perfil dela.
   const pendencias: Pendencia[] = [];
   if (usuario.perfis.length === 0) {
-    pendencias.push({ texto: 'Você ainda não tem perfil de acesso.', detalhe: 'Peça à administração da plataforma para atribuir o seu perfil.', href: '/', acao: '' });
+    pendencias.push({
+      texto: 'Você ainda não tem perfil de acesso.',
+      detalhe: 'Peça à administração da plataforma para atribuir o seu perfil.',
+      href: '/',
+      acao: '',
+    });
   }
   if (a.temPermissao('orcamento.folha.editar')) {
     try {
@@ -91,13 +108,28 @@ export default async function Portal() {
       const c = await contadoresRequisicoes(app.planilhas, a);
       const n = (x: number, um: string, varios: string) => `${x} ${x === 1 ? um : varios}`;
       if (c.aprovar > 0) {
-        pendencias.push({ texto: n(c.aprovar, 'requisição espera a sua aprovação', 'requisições esperam a sua aprovação'), detalhe: 'Aprove, devolva para ajuste ou recuse.', href: '/requisicoes/aprovar', acao: 'Ver requisições' });
+        pendencias.push({
+          texto: n(c.aprovar, 'requisição espera a sua aprovação', 'requisições esperam a sua aprovação'),
+          detalhe: 'Aprove, devolva para ajuste ou recuse.',
+          href: '/requisicoes/aprovar',
+          acao: 'Ver requisições',
+        });
       }
       if (c.atender > 0) {
-        pendencias.push({ texto: n(c.atender, 'requisição está na fila do seu setor', 'requisições estão na fila do seu setor'), detalhe: 'Aprovadas, esperando atendimento.', href: '/requisicoes/atender', acao: 'Atender' });
+        pendencias.push({
+          texto: n(c.atender, 'requisição está na fila do seu setor', 'requisições estão na fila do seu setor'),
+          detalhe: 'Aprovadas, esperando atendimento.',
+          href: '/requisicoes/atender',
+          acao: 'Atender',
+        });
       }
       if (c.devolvidas > 0) {
-        pendencias.push({ texto: n(c.devolvidas, 'requisição sua foi devolvida para ajuste', 'requisições suas foram devolvidas para ajuste'), detalhe: 'Veja o que a coordenação pediu e reenvie.', href: '/requisicoes', acao: 'Ajustar' });
+        pendencias.push({
+          texto: n(c.devolvidas, 'requisição sua foi devolvida para ajuste', 'requisições suas foram devolvidas para ajuste'),
+          detalhe: 'Veja o que a coordenação pediu e reenvie.',
+          href: '/requisicoes',
+          acao: 'Ajustar',
+        });
       }
     } catch {
       // Planilha das Requisições ainda não configurada: a página do app explica.
@@ -156,7 +188,10 @@ export default async function Portal() {
                   <p className="text-sm text-texto-suave">{p.detalhe}</p>
                 </div>
                 {p.acao && (
-                  <Link href={p.href} className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-semibold text-destaque hover:bg-destaque-suave">
+                  <Link
+                    href={p.href}
+                    className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-semibold text-destaque hover:bg-destaque-suave"
+                  >
                     {p.acao}
                     <IconeSeta tamanho={16} />
                   </Link>
@@ -172,12 +207,14 @@ export default async function Portal() {
           Seus apps
         </h2>
         <ul className="mt-3 grid gap-4 md:grid-cols-2">
-          <CartaoApp
-            href="/nucleo/pessoas"
-            icone={<IconePessoas tamanho={24} />}
-            nome="Pessoas"
-            descricao="Cadastro único: atendidos, familiares e equipe que você pode ver."
-          />
+          {usuario.autorizador.temPermissaoAlgumEscopo('core.pessoas.ver') && (
+            <CartaoApp
+              href="/nucleo/pessoas"
+              icone={<IconePessoas tamanho={24} />}
+              nome="Pessoas"
+              descricao="Cadastro único: atendidos, familiares e equipe que você pode ver."
+            />
+          )}
           {apps.map((x) => (
             <CartaoApp
               key={x.id}

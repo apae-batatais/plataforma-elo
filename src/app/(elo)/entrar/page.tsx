@@ -21,9 +21,7 @@ async function Moldura({ children }: { children: React.ReactNode }) {
       <section className="flex flex-col justify-between bg-lateral px-8 py-10 text-lateral-texto lg:px-12 lg:py-14">
         <MarcaElo instituicao={instituicao.nome} grande />
         <div className="mt-10 max-w-md lg:mt-0">
-          <p className="text-[1.75rem] font-bold leading-tight text-white lg:text-[2.1rem]">
-            O elo entre os setores da {instituicao.nome}.
-          </p>
+          <p className="text-[1.75rem] font-bold leading-tight text-white lg:text-[2.1rem]">O elo entre os setores da {instituicao.nome}.</p>
           <p className="mt-3 text-lateral-suave">
             Orçamento, folha de pagamento, cadastro de pessoas e, em breve, a avaliação diagnóstica. Cada pessoa vê só o que o seu perfil permite.
           </p>
@@ -49,6 +47,11 @@ const O_QUE_VE: Record<string, string> = {
   tecnico_avaliador: 'Vê atendidos do seu serviço.',
   leitura: 'Vê só totais e painéis.',
   compras: 'Cota as propostas de despesa das coordenações.',
+  funcionario: 'Faz requisições e acompanha as suas.',
+  almoxarifado: 'Atende as requisições de materiais.',
+  informatica: 'Atende os chamados de TI.',
+  patrimonio: 'Atende os pedidos de mobiliário.',
+  manutencao: 'Atende os pedidos de manutenção.',
 };
 
 export default async function Entrar() {
@@ -64,9 +67,7 @@ export default async function Entrar() {
             <p className="mt-1.5 text-texto-suave">Use a sua conta institucional do Google, terminada em @{app.config.dominio}.</p>
           </div>
           <BotaoGoogle clientId={app.config.googleClientId} dominio={app.config.dominio} />
-          <p className="text-sm text-texto-suave">
-            Sem acesso? Peça à administração da plataforma para cadastrar o seu e-mail e o seu perfil.
-          </p>
+          <p className="text-sm text-texto-suave">Sem acesso? Peça à administração da plataforma para cadastrar o seu e-mail e o seu perfil.</p>
         </div>
       </Moldura>
     );
