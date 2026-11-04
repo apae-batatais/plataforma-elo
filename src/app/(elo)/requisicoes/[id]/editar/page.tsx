@@ -4,7 +4,6 @@ import { detalharRequisicao, ErroRequisicao, opcoesDoFormulario } from '@/modulo
 import { FormularioRequisicao } from '@/modulos/requisicoes/telas/formulario-requisicao';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { obterAplicacao } from '@/plataforma/aplicacao';
-import { catalogoOrcamento } from '@/plataforma/catalogos';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { CabecalhoPagina } from '@/ui/pagina';
@@ -26,11 +25,11 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
     throw erro;
   }
   if (!d.acoes.includes('reenviar')) redirect(`/requisicoes/${id}`);
-  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas));
+  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador);
   const r = d.requisicao;
   // O tipo não muda no ajuste: se tiver sido excluído, continua aparecendo.
   if (!opcoes.tipos.some((t) => t.id === r.tipo_id) && d.tipo)
-    opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null, areas: [], grupos: [], itens: [] });
+    opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null, areas: [], itens: [] });
   const pedido = [...d.historico].reverse().find((h) => h.acao === 'devolver');
   return (
     <div className="max-w-4xl">
@@ -60,7 +59,6 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
         inicial={{
           tipoId: r.tipo_id,
           area: r.area,
-          grupoId: r.grupo_id,
           centros: d.centros.map((c) => ({ servico: c.servico, percentual: c.percentual })),
           itens: d.itens.map((i) => ({ quantidade: i.quantidade, unidade: i.unidade, descricao: i.descricao })),
           detalhes: d.detalhes,

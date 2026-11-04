@@ -34,7 +34,7 @@ export const TiposRequisicao = definirTabela({
     prazo_aprovacao: numero(),
     prazo_atendimento: numero(),
     descricao: textoOpcional(),
-    /** Áreas (códigos) e grupos de despesa (ids) que podem usar o tipo, separados por vírgula. Vazio = todos. */
+    /** Áreas (códigos) que podem usar o tipo, separadas por vírgula. Vazio = todas. Grupos: não usado desde 04/11/2026. */
     areas: textoOpcional(),
     grupos: textoOpcional(),
   }),
@@ -56,10 +56,10 @@ export const Requisicoes = definirTabela({
     tipo_id: texto(),
     requisitante: texto(),
     requisitante_nome: texto(),
-    /** Área (código do Núcleo) e grupo de despesa do orçamento (id e nome no momento do pedido). */
+    /** Área (código do Núcleo). Grupo de despesa: só nos pedidos feitos até 04/11/2026 (saiu da ficha). */
     area: texto(),
-    grupo_id: texto(),
-    grupo_nome: texto(),
+    grupo_id: textoOpcional(),
+    grupo_nome: textoOpcional(),
     situacao: z.enum(SITUACOES),
     /** Quem aprova: a coordenação dos centros de custo ou a Diretoria. */
     aprovacao: z.enum(['coordenacao', 'diretoria']),

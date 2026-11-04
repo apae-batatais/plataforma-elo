@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { listarTipos } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { FICHA_DE_SERVICO, NOME_FICHA_CURTO, NOME_FORMULARIO } from '@/modulos/requisicoes/dominio/requisicao';
 import { EscolhaLista } from '@/modulos/requisicoes/telas/escolha-lista';
-import { catalogoOrcamento } from '@/plataforma/catalogos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -40,11 +39,10 @@ type Tipo = {
   descricao: string | null;
   formulario: string;
   listaAreas: string[];
-  listaGrupos: string[];
 };
-type Opcoes = { perfis: { codigo: string; nome: string }[]; areas: { codigo: string; nome: string }[]; grupos: { id: string; nome: string }[] };
+type Opcoes = { perfis: { codigo: string; nome: string }[]; areas: { codigo: string; nome: string }[] };
 
-function CamposTipo({ opcoes: { perfis, areas, grupos }, valor }: { opcoes: Opcoes; valor?: Tipo }) {
+function CamposTipo({ opcoes: { perfis, areas }, valor }: { opcoes: Opcoes; valor?: Tipo }) {
   return (
     <>
       <Campo rotulo="Nome" obrigatorio dica="Ex.: Higiene e limpeza, Material pedagógico.">
@@ -88,14 +86,6 @@ function CamposTipo({ opcoes: { perfis, areas, grupos }, valor }: { opcoes: Opco
         opcoes={areas.map((a) => ({ valor: a.codigo, rotulo: a.nome }))}
         marcados={valor?.listaAreas ?? []}
       />
-      <EscolhaLista
-        legenda="Grupos de despesa aceitos"
-        nome="grupos"
-        campoTodas="todos_grupos"
-        rotuloTodas="Todos os grupos do orçamento"
-        opcoes={grupos.map((g) => ({ valor: g.id, rotulo: g.nome }))}
-        marcados={valor?.listaGrupos ?? []}
-      />
     </>
   );
 }
@@ -106,7 +96,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissao('requisicoes.tipos.gerenciar')) redirect('/requisicoes');
   const app = await obterAplicacao();
-  const t = await listarTipos(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas));
+  const t = await listarTipos(app.planilhas, usuario.autorizador);
   const hojeISO = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
   const anoAtual = Number(hojeISO.slice(0, 4));
   const emEdicao = editar ? t.ativos.find((x) => x.id === editar) : undefined;
@@ -116,7 +106,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Requisições', href: '/requisicoes' }, { rotulo: 'Tipos de requisição' }]}
         titulo="Tipos de requisição"
-        descricao="Cada tipo diz qual setor atende, os prazos do SLA, quais áreas e grupos de despesa podem usá-lo e quais itens aceita. Só a Administração da plataforma cria e altera os tipos."
+        descricao="Cada tipo diz qual setor atende, os prazos do SLA, quais áreas podem usá-lo e quais itens aceita. Só a Administração da plataforma cria e altera os tipos."
         acoes={
           <JanelaFormulario
             rotulo={
@@ -164,7 +154,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
           { chave: 'setor', rotulo: 'Setor que atende' },
           { chave: 'aprovacao', rotulo: 'Prazo de aprovação', tipo: 'numero' },
           { chave: 'atendimento', rotulo: 'Prazo de atendimento', tipo: 'numero' },
-          { chave: 'quem', rotulo: 'Áreas e grupos' },
+          { chave: 'quem', rotulo: 'Áreas' },
           { chave: 'itens', rotulo: 'Itens aceitos', tipo: 'numero' },
           { chave: 'uso', rotulo: 'Requisições', tipo: 'numero', secundaria: true },
           { chave: 'acoes', rotulo: '', fixa: true, largura: 'w-20' },
@@ -176,7 +166,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
             setor: x.perfilNome,
             aprovacao: x.prazo_aprovacao,
             atendimento: x.prazo_atendimento,
-            quem: [...x.nomesAreas, ...x.nomesGrupos].join(', ') || 'Todos',
+            quem: x.nomesAreas.join(', ') || 'Todas',
             itens: x.itensAceitos,
             uso: x.requisicoes,
           },
@@ -193,16 +183,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
             setor: <Etiqueta tipo="info">{x.perfilNome}</Etiqueta>,
             aprovacao: <span className="tabular-nums">{x.prazo_aprovacao.toLocaleString('pt-BR')} h úteis</span>,
             atendimento: <span className="tabular-nums">{x.prazo_atendimento.toLocaleString('pt-BR')} h úteis</span>,
-            quem: (
-              <span className="text-sm">
-                <span className="block">
-                  <span className="text-texto-suave">Áreas:</span> {x.nomesAreas.length ? x.nomesAreas.join(', ') : 'todas'}
-                </span>
-                <span className="block">
-                  <span className="text-texto-suave">Grupos:</span> {x.nomesGrupos.length ? x.nomesGrupos.join(', ') : 'todos'}
-                </span>
-              </span>
-            ),
+            quem: <span className="text-sm">{x.nomesAreas.length ? x.nomesAreas.join(', ') : 'Todas'}</span>,
             itens: FICHA_DE_SERVICO[x.formulario] ? (
               <span className="text-sm text-texto-suave">Sem lista (serviço)</span>
             ) : (

@@ -27,23 +27,23 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 | Setor de Informática (perfil novo)   | Receber e atender chamados de TI e material de informática                                        | `requisicoes.atender`                                   |
 | Setor de Patrimônio (perfil novo)    | Receber e atender as requisições de mobiliário                                                    | `requisicoes.atender`                                   |
 | Setor de Manutenção (perfil novo)    | Receber e atender os pedidos de manutenção                                                        | `requisicoes.atender`                                   |
-| Administração da plataforma (só ela) | Criar e alterar tipos, áreas e grupos permitidos, itens aceitos, expediente e feriados            | `requisicoes.tipos.gerenciar`                           |
+| Administração da plataforma (só ela) | Criar e alterar tipos, áreas permitidas, itens aceitos, expediente e feriados                     | `requisicoes.tipos.gerenciar`                           |
 | Diretoria, coordenação e setores     | Ver o painel de prazos (só das requisições que já podem ver)                                      | `requisicoes.painel`                                    |
 
 ## Entidades (planilha `requisicoes`)
 
-| Aba           | O que guarda                                                                                                           | Sigilo                |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| Tipos         | Nome, categoria, ficha, perfil que atende, prazos (horas úteis), áreas e grupos de despesa permitidos (vazio = todos)  | interno               |
-| CatalogoItens | Itens aceitos por tipo (descrição e unidade). Tipo sem itens aceita texto livre                                        | interno               |
-| Requisicoes   | Número, tipo, quem pediu, área, grupo de despesa, situação, quem aprova, detalhes da ficha (JSON), datas de cada etapa | pessoal: requisitante |
-| Centros       | Serviço e percentual de cada requisição (somam 100%)                                                                   | interno               |
-| Itens         | Quantidade, unidade, descrição, item da lista (quando houver) e quanto foi entregue                                    | interno               |
-| Historico     | Cada mudança de etapa: quando, quem, de/para, comentário (só inclusões)                                                | pessoal: usuário      |
-| Parametros    | Expediente (início e fim) usado no SLA                                                                                 | interno               |
-| Feriados      | Data e nome dos dias que não contam nas horas úteis                                                                    | interno               |
+| Aba           | O que guarda                                                                                                                                       | Sigilo                |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Tipos         | Nome, categoria, ficha, perfil que atende, prazos (horas úteis), áreas permitidas (vazio = todas); coluna de grupos não é mais usada               | interno               |
+| CatalogoItens | Itens aceitos por tipo (descrição e unidade). Tipo sem itens aceita texto livre                                                                    | interno               |
+| Requisicoes   | Número, tipo, quem pediu, área, grupo de despesa (só pedidos até 04/11/2026), situação, quem aprova, detalhes da ficha (JSON), datas de cada etapa | pessoal: requisitante |
+| Centros       | Serviço e percentual de cada requisição (somam 100%)                                                                                               | interno               |
+| Itens         | Quantidade, unidade, descrição, item da lista (quando houver) e quanto foi entregue                                                                | interno               |
+| Historico     | Cada mudança de etapa: quando, quem, de/para, comentário (só inclusões)                                                                            | pessoal: usuário      |
+| Parametros    | Expediente (início e fim) usado no SLA                                                                                                             | interno               |
+| Feriados      | Data e nome dos dias que não contam nas horas úteis                                                                                                | interno               |
 
-Grupos de gasto vêm do Orçamento pela plataforma (ADR-013).
+O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão da Diretoria); a ligação com o Orçamento foi removida (ADR-013, Atualização).
 
 ## Regras de negócio (com teste)
 
@@ -56,7 +56,7 @@ Grupos de gasto vêm do Orçamento pela plataforma (ADR-013).
 7. Nada é apagado: centros e itens trocados no ajuste ficam com `ativo = FALSE`; o histórico só recebe inclusões; toda gravação registra auditoria só com colunas.
 8. SLA em horas úteis (segunda a sexta, expediente padrão 8h–17h, horário de Brasília). Aprovação: do envio (ou reenvio) à decisão. Atendimento: da aprovação à conclusão.
 9. Número sequencial no ano: REQ-AAAA-NNNN.
-10. O tipo só aceita as áreas e os grupos de despesa marcados (sem marcação, todos).
+10. O tipo só aceita as áreas marcadas (sem marcação, todas). A ficha não pede grupo de despesa (desde 04/11/2026).
 11. Tipo com lista de itens só aceita itens da lista (pela descrição, sem diferença de acento ou maiúscula); descrição e unidade gravadas vêm da lista. Tirar um item da lista não muda requisições já feitas.
 12. Tipos de requisição: só a Administração da plataforma da instituição cria e altera. "Preparar estrutura" retira a permissão que a Diretoria recebeu na versão 0.9.0 (`permissoesRetiradas` no manifesto).
 13. Chamado de TI: categoria, local, problema (mín. 10 letras) e urgência são obrigatórios; não tem itens; tipo com ficha de chamado é sempre "serviço". Concluir exige dizer se resolveu e o que foi feito (resolvido em parte → "atendida em parte").
@@ -68,9 +68,9 @@ Grupos de gasto vêm do Orçamento pela plataforma (ADR-013).
 ## Telas
 
 1. Minhas requisições, Para aprovar, Para atender, Todas (lista com situação e prazo da etapa).
-2. Nova requisição / Ajustar: ficha de materiais (tipo, área, grupo, centros com %, itens, retirada ou entrega, evento, utensílios, observações).
+2. Nova requisição / Ajustar: ficha de materiais (tipo, área, centros com %, itens, retirada ou entrega, evento, utensílios, observações).
 3. Ficha da requisição: dados, prazos, ações de quem pode agir, histórico e Imprimir.
-4. Tipos de requisição (setor, prazos, áreas e grupos permitidos, expediente e feriados do SLA) e Itens aceitos de cada tipo (um a um ou em lote).
+4. Tipos de requisição (setor, prazos, áreas permitidas, expediente e feriados do SLA) e Itens aceitos de cada tipo (um a um ou em lote).
 5. Painel de prazos: cartões, gráfico mês a mês, tabelas por mês, setor e tipo, atrasadas agora.
 6. Avisos: tela inicial ("N esperam a sua aprovação", "N na fila do seu setor", "N devolvidas") e número no menu.
 
