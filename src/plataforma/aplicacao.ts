@@ -6,6 +6,7 @@
 import 'server-only';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
+import { ArquivosGoogleDrive, ArquivosMemoria, type ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
 import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-planilhas';
 import { configDaInstituicao, type Config, type ConfigGeral, type Instituicao } from '@/nucleo/config';
@@ -21,6 +22,8 @@ export interface Aplicacao {
   /** O Elo atende uma instituição só (sessões antigas, sem instituição, continuam valendo). */
   unica: boolean;
   planilhas: Planilhas;
+  /** Fotos e vídeos (ADR-014). Nulo enquanto a instituição não informar a pasta de anexos. */
+  arquivos: ArmazenamentoArquivos | null;
 }
 
 const porInstituicao = new Map<string, Promise<Aplicacao>>();
@@ -56,23 +59,27 @@ async function montar(geral: ConfigGeral, inst: Instituicao, unica: boolean): Pr
     await prepararEstrutura(planilhas, ESTRUTURA_DOS_MODULOS, 'sistema', inst.unidades);
     await popularDadosFicticios(planilhas);
     await popularDemonstracaoDosModulos(planilhas);
-    return { ...base, planilhas };
+    return { ...base, planilhas, arquivos: new ArquivosMemoria((codigo) => `/arquivos/envio/${codigo}`) };
   }
 
   const { JWT } = await import('google-auth-library');
   const cliente = new JWT({
     email: config.contaServico.client_email,
     key: config.contaServico.private_key,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    // Drive: só para a pasta de anexos (unidade compartilhada) que a instituição compartilhou com a conta de serviço.
+    scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive'],
   });
-  const armazenamento = new ArmazenamentoGooglePlanilhas(async () => {
+  const token = async () => {
     const { token } = await cliente.getAccessToken();
     if (!token) throw new Error('Não foi possível obter acesso às planilhas com a conta de serviço.');
     return token;
-  });
+  };
+  const armazenamento = new ArmazenamentoGooglePlanilhas(token);
   const ids = config.planilhas;
   return {
     ...base,
+    // A pasta de anexos fica no mesmo cadastro das planilhas, com a chave "anexos".
+    arquivos: ids.anexos ? new ArquivosGoogleDrive(token, ids.anexos) : null,
     planilhas: {
       armazenamento,
       idDe: (chave) => {

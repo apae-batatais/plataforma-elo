@@ -18,7 +18,8 @@ export default async function LayoutRequisicoes({ children }: { children: React.
     const { planilhas } = await obterAplicacao();
     await lerTabelas(planilhas, [TiposRequisicao] as const);
   } catch (erro) {
-    if (erro instanceof ErroEstruturaAusente) {
+    // Aba ou coluna nova de uma versão publicada: falta rodar Preparar estrutura.
+    if (erro instanceof ErroEstruturaAusente || (erro instanceof ErroArmazenamento && /sem as colunas/.test(erro.message))) {
       return (
         <ConfiguracaoInvalida
           titulo="Falta preparar as abas das Requisições"

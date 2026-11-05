@@ -69,7 +69,11 @@ export async function acaoSalvarInstituicao(
         nomeCompleto: texto(f, 'nomeCompleto'),
         dominio: texto(f, 'dominio').replace(/^@/, ''),
         enderecos: linhas(texto(f, 'enderecos')).map((e) => e.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')),
-        planilhas: Object.fromEntries(PLANILHAS_DA_INSTITUICAO.map((p) => [p.chave, texto(f, `planilha_${p.chave}`)])),
+        planilhas: {
+          ...Object.fromEntries(PLANILHAS_DA_INSTITUICAO.map((p) => [p.chave, texto(f, `planilha_${p.chave}`)])),
+          // Pasta de anexos (ADR-014): fica no mesmo cadastro, com a chave "anexos".
+          anexos: texto(f, 'pasta_anexos'),
+        },
         administradoresIniciais: linhas(texto(f, 'administradoresIniciais')),
         unidades: texto(f, 'unidades')
           .split('\n')

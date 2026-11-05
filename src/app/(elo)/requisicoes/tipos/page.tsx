@@ -39,6 +39,7 @@ type Tipo = {
   descricao: string | null;
   formulario: string;
   listaAreas: string[];
+  aceitaAnexos: boolean;
 };
 type Opcoes = { perfis: { codigo: string; nome: string }[]; areas: { codigo: string; nome: string }[] };
 
@@ -78,6 +79,13 @@ function CamposTipo({ opcoes: { perfis, areas }, valor }: { opcoes: Opcoes; valo
           <input name="prazo_atendimento" inputMode="decimal" required defaultValue={valor?.prazo_atendimento ?? 16} className={estiloEntrada} />
         </Campo>
       </div>
+      <label className="flex items-start gap-2 rounded-lg border border-borda px-3 py-2.5 text-sm">
+        <input type="checkbox" name="anexos" value="sim" defaultChecked={valor?.aceitaAnexos ?? false} className="mt-0.5" />
+        <span>
+          <span className="font-semibold">Aceita foto e vídeo</span>
+          <span className="block text-texto-suave">Quem pede pode tirar até 3 fotos e gravar 1 vídeo de 30 s. Indicado para manutenção, TI e mobiliário.</span>
+        </span>
+      </label>
       <EscolhaLista
         legenda="Áreas que podem usar"
         nome="areas"
@@ -177,6 +185,7 @@ export default async function TiposDeRequisicao({ searchParams }: { searchParams
                 <span className="block text-xs text-texto-suave">
                   {NOME_FICHA_CURTO[x.formulario as keyof typeof NOME_FICHA_CURTO] ?? x.formulario}
                   {x.descricao ? ` · ${x.descricao}` : ''}
+                  {x.aceitaAnexos ? ' · aceita foto e vídeo' : ''}
                 </span>
               </>
             ),

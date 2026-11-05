@@ -145,8 +145,16 @@ export default async function Ajuda() {
           <Passos
             itens={[
               'Em Nova requisição, escolha o tipo Manutenção e o tipo de serviço: elétrica, hidráulica, ar-condicionado, equipamento, portas e janelas, pintura, prédio ou outro.',
-              'Diga onde é o serviço, qual é o problema (com detalhes: o que aconteceu, desde quando, se há risco) e a urgência. Equipamento, nº de patrimônio, melhor horário e contato ajudam a equipe. Fotos ainda não podem ser anexadas.',
+              'Diga onde é o serviço, qual é o problema (com detalhes: o que aconteceu, desde quando, se há risco) e a urgência. Equipamento, nº de patrimônio, melhor horário e contato ajudam a equipe.',
               'O pedido passa pela mesma aprovação e vai para o Setor de Manutenção. Quando concluído, o histórico mostra o que foi feito.',
+            ]}
+          />
+          <Sub>Fotos e vídeo</Sub>
+          <Itens
+            itens={[
+              'Nos tipos que aceitam (como Manutenção, TI e Mobiliário), a ficha tem o bloco "Fotos e vídeo". No celular, "Tirar foto" e "Gravar vídeo" abrem a câmera direto; "Escolher arquivo" usa a galeria.',
+              'Até 3 fotos e 1 vídeo de até 30 segundos (25 MB). A foto é reduzida automaticamente antes do envio. Espere o envio terminar ("Enviado") para mandar a requisição.',
+              'Mostre o problema e evite o rosto de atendidos. Só quem vê a requisição vê as fotos e o vídeo, e cada abertura fica registrada.',
             ]}
           />
           <Sub>Quem aprova</Sub>
@@ -206,9 +214,9 @@ export default async function Ajuda() {
                 Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfis Almoxarifado, Setor de
                 Informática, Setor de Patrimônio ou Setor de Manutenção, que você atribui às pessoas do setor em Acessos), os prazos e quais áreas podem usar
                 cada tipo (sem marcação, todas podem). Em &ldquo;Itens aceitos&rdquo;, monte a lista de itens do tipo, um a um ou colando da planilha: quem pede
-                escolhe da lista e a unidade vem preenchida. Tipo sem lista aceita itens digitados. No fim da tela ficam o horário do expediente e os feriados:
-                o botão &ldquo;Incluir feriados nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os municipais e os pontos
-                facultativos você inclui um a um.
+                escolhe da lista e a unidade vem preenchida. Tipo sem lista aceita itens digitados. Marque &ldquo;Aceita foto e vídeo&rdquo; nos tipos em que
+                uma foto ajuda (manutenção, TI, mobiliário). No fim da tela ficam o horário do expediente e os feriados: o botão &ldquo;Incluir feriados
+                nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os municipais e os pontos facultativos você inclui um a um.
               </p>
             </>
           )}
@@ -395,6 +403,8 @@ export default async function Ajuda() {
               'Acessos em lote: "Cadastrar em lote" recebe uma lista copiada da planilha com Nome, E-mail, Perfil (opcional, padrão Funcionário) e Vale para (opcional: unidade, área ou serviço). Confira a prévia: quem já tem acesso só ganha o perfil, acesso desativado é reativado e as linhas com problema ficam de fora.',
             pode.organizacao &&
               'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial), se a Administração da rede ainda não tiver feito isso; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
+            pode.organizacao &&
+              'Fotos e vídeos das requisições: ficam numa pasta de uma unidade compartilhada do Drive da instituição, com a conta de serviço do Elo como Gerente de conteúdo. A Administração da rede informa o ID da pasta no cadastro; a tela Estrutura das planilhas mostra se a pasta está funcionando.',
           ]}
         />
       ),

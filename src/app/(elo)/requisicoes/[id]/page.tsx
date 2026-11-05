@@ -376,6 +376,43 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
         </dl>
       </Secao>
 
+      {d.anexos.length > 0 && (
+        <Secao titulo="Fotos e vídeo" descricao="Clique na foto para ver em tamanho grande." id="t-anexos">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {d.anexos.map((a) => (
+              <li key={a.id} className="overflow-hidden rounded-lg border border-borda bg-superficie-2">
+                {a.tipo === 'foto' ? (
+                  <a
+                    href={`/requisicoes/anexos/${a.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--foco)]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/requisicoes/anexos/${a.id}`}
+                      alt={`Foto anexada à ${r.numero}`}
+                      loading="lazy"
+                      className="aspect-[4/3] w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+                    />
+                  </a>
+                ) : (
+                  <video src={`/requisicoes/anexos/${a.id}`} controls playsInline preload="metadata" className="aspect-[4/3] w-full bg-black object-contain">
+                    Seu navegador não mostra este vídeo.
+                  </video>
+                )}
+                <p className="px-3 py-1.5 text-xs text-texto-suave">
+                  {a.tipo === 'foto' ? 'Foto' : `Vídeo${a.duracao ? ` · ${Math.round(a.duracao)} s` : ''}`} ·{' '}
+                  {a.tamanho < 1024 * 1024
+                    ? `${Math.max(1, Math.round(a.tamanho / 1024))} KB`
+                    : `${(a.tamanho / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </Secao>
+      )}
+
       <Secao titulo="Histórico" id="t-historico">
         <ol className="space-y-3">
           {d.historico.map((h, k) => (

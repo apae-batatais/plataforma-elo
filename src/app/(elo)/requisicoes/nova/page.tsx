@@ -6,7 +6,7 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { CabecalhoPagina } from '@/ui/pagina';
-import { acaoEnviarRequisicao } from '../acoes';
+import { acaoEnviarRequisicao, acaoIniciarEnvioAnexo } from '../acoes';
 
 export const metadata: Metadata = { title: 'Nova requisição' };
 
@@ -15,7 +15,7 @@ export default async function NovaRequisicao() {
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissaoAlgumEscopo('requisicoes.solicitar')) redirect('/requisicoes');
   const app = await obterAplicacao();
-  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador);
+  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador, { anexosAtivos: app.arquivos !== null });
   return (
     <div className="max-w-4xl">
       <CabecalhoPagina
@@ -28,7 +28,7 @@ export default async function NovaRequisicao() {
           A administração cadastra os tipos em Requisições › Tipos de requisição.
         </Aviso>
       ) : (
-        <FormularioRequisicao opcoes={opcoes} acao={acaoEnviarRequisicao} />
+        <FormularioRequisicao opcoes={opcoes} acao={acaoEnviarRequisicao} iniciarEnvio={acaoIniciarEnvioAnexo} />
       )}
     </div>
   );

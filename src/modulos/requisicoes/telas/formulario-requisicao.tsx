@@ -13,6 +13,8 @@ import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { IconeLixeira, IconeMais } from '@/ui/icones';
 import type { DadosRequisicao } from '../aplicacao/requisicoes';
+import type { TipoAnexo } from '../dominio/anexos';
+import { AnexosDaRequisicao, type AnexoNaFicha } from './anexos';
 import {
   CATEGORIAS_TI,
   SERVICOS_MANUTENCAO,
@@ -38,10 +40,14 @@ export interface OpcoesFicha {
     descricao: string | null;
     /** Áreas permitidas (vazio = todas) e itens aceitos (vazio = texto livre). */
     areas: string[];
+    /** Aceita foto e vídeo. */
+    anexos: boolean;
     itens: { id: string; descricao: string; unidade: string }[];
   }[];
   areas: { codigo: string; nome: string }[];
   servicos: { codigo: string; nome: string; area: string | null; areaNome: string }[];
+  /** A instituição ativou a pasta de anexos (fotos e vídeo). */
+  anexosAtivos: boolean;
 }
 
 const UNIDADES = ['un', 'kg', 'g', 'L', 'ml', 'pacote', 'caixa', 'resma', 'dúzia', 'fardo', 'rolo', 'par', 'frasco', 'galão'];
@@ -64,6 +70,8 @@ export function FormularioRequisicao({
   oculto,
   rotuloEnviar = 'Enviar requisição',
   comComentario,
+  iniciarEnvio,
+  anexosIniciais = [],
 }: {
   opcoes: OpcoesFicha;
   acao: (estado: Estado, f: FormData) => Promise<Estado>;
@@ -71,11 +79,16 @@ export function FormularioRequisicao({
   oculto?: Record<string, string | number>;
   rotuloEnviar?: string;
   comComentario?: boolean;
+  /** Abre o envio de uma foto ou vídeo (ação do servidor). */
+  iniciarEnvio?: (a: { tipoId: string; tipo: TipoAnexo; mime: string; tamanho: number; duracao: number | null }) => Promise<{ url?: string; erro?: string }>;
+  /** Anexos já guardados (ao ajustar uma requisição devolvida). */
+  anexosIniciais?: AnexoNaFicha[];
 }) {
   const [estado, enviar, enviando] = useActionState(acao, {});
   const det = (inicial?.detalhes ?? {}) as DetalhesMateriais;
   const [tipoId, setTipoId] = useState(inicial?.tipoId ?? (opcoes.tipos.length === 1 ? opcoes.tipos[0].id : ''));
   const [area, setArea] = useState(inicial?.area ?? '');
+  const [anexos, setAnexos] = useState<AnexoNaFicha[]>(anexosIniciais);
   const [centros, setCentros] = useState(
     inicial?.centros.map((c) => ({ servico: c.servico, percentual: String(c.percentual) })) ?? [{ servico: '', percentual: '100' }],
   );
@@ -194,7 +207,14 @@ export function FormularioRequisicao({
                 utensilios,
               },
     observacao,
+    // Sem anexos neste tipo (ou desligados na instituição), não mexe nos que já existem.
+    anexos:
+      tipo?.anexos && opcoes.anexosAtivos
+        ? anexos.filter((a) => a.arquivoId).map((a) => ({ arquivoId: a.arquivoId!, tipo: a.tipo, nome: a.nome, duracao: a.duracao }))
+        : undefined,
   };
+  const mostraAnexos = Boolean(tipo?.anexos && opcoes.anexosAtivos && iniciarEnvio);
+  const enviandoArquivo = mostraAnexos && anexos.some((a) => !a.arquivoId && !a.erro);
 
   // Envio sem "action" no formulário: o React não limpa os campos, e um erro não apaga nada da tela.
   const enviarSemLimpar = (e: FormEvent<HTMLFormElement>) => {
@@ -673,6 +693,8 @@ export function FormularioRequisicao({
         </section>
       )}
 
+      {mostraAnexos && <AnexosDaRequisicao tipoId={tipoId} anexos={anexos} mudar={setAnexos} iniciar={iniciarEnvio!} />}
+
       <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
         <Campo rotulo="Observações">
           <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} className={estiloEntrada} />
@@ -689,8 +711,8 @@ export function FormularioRequisicao({
           {estado.erro}
         </Aviso>
       )}
-      <BotaoEnviar pendente={enviando} enviando="Enviando…">
-        {rotuloEnviar}
+      <BotaoEnviar pendente={enviando} disabled={enviandoArquivo} enviando="Enviando…">
+        {enviandoArquivo ? 'Aguarde o envio das fotos e do vídeo…' : rotuloEnviar}
       </BotaoEnviar>
     </form>
   );
