@@ -12,7 +12,7 @@ import { CatalogoItens, Requisicoes, TiposRequisicao } from './tabelas';
 const TIPOS = [
   { nome: 'Higiene e limpeza', descricao: 'Produtos de limpeza e de higiene pessoal.' },
   { nome: 'Material pedagógico', descricao: 'Papel, tintas, jogos e material escolar.' },
-  { nome: 'Requisição Cozinha', descricao: 'Gêneros alimentícios e itens de cozinha, inclusive para eventos.' },
+  { nome: 'Requisição Cozinha', descricao: 'Gêneros alimentícios e itens de cozinha, inclusive para eventos.', setor: 'cozinha' },
   { nome: 'Material de escritório', descricao: 'Papelaria e suprimentos de escritório.' },
 ] as const;
 
@@ -25,7 +25,8 @@ export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
       nome: t.nome,
       categoria: 'material' as const,
       formulario: 'materiais' as const,
-      perfil_responsavel: 'almoxarifado',
+      // Requisição Cozinha é atendida pelo Setor Cozinha; as outras, pelo Almoxarifado.
+      perfil_responsavel: 'setor' in t ? t.setor : 'almoxarifado',
       prazo_aprovacao: 8,
       prazo_atendimento: 16,
       descricao: t.descricao,
@@ -177,7 +178,7 @@ export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
     dia('2026-10-27', 14),
   );
 
-  // 3. Lanche de evento, dividido entre dois serviços: aprovado, na fila do Almoxarifado.
+  // 3. Lanche de evento, dividido entre dois serviços: aprovado, na fila do Setor Cozinha.
   const evento = await pedir(
     'dp@exemplo.local',
     'Departamento Pessoal (fictício)',

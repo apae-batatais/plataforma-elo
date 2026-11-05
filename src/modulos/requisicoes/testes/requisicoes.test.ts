@@ -300,7 +300,7 @@ describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');
     const t = await listarTipos(p, adm);
-    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'manutencao', 'patrimonio']);
+    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'cozinha', 'informatica', 'manutencao', 'patrimonio']);
     await salvarTipo(p, adm, {
       nome: 'Higiene e limpeza',
       categoria: 'material',
@@ -479,7 +479,7 @@ describe('chamado de TI (Setor de Informática)', () => {
     });
     const t = (await lerTabela(p, TiposRequisicao)).ativos().find((x) => x.nome === 'Chamado de TI')!;
     expect([t.formulario, t.categoria]).toEqual(['ti', 'servico']);
-    expect((await listarTipos(p, adm)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'manutencao', 'patrimonio']);
+    expect((await listarTipos(p, adm)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'cozinha', 'informatica', 'manutencao', 'patrimonio']);
   });
 });
 
@@ -822,5 +822,31 @@ describe('fotos e vídeo (ADR-014)', () => {
     await salvarTipo(p, adm, { ...base, anexos: true }, { id: t.id, versao: t.versao });
     expect((await lerTabela(p, TiposRequisicao)).porId(tipoId)!.anexos).toBe('sim');
     expect((await listarTipos(p, adm)).ativos[0].aceitaAnexos).toBe(true);
+  });
+});
+
+describe('Setor Cozinha', () => {
+  it('atende a Requisição Cozinha; o Almoxarifado não', async () => {
+    const t = await inserir(
+      p,
+      TiposRequisicao,
+      {
+        nome: 'Requisição Cozinha',
+        categoria: 'material',
+        formulario: 'materiais',
+        perfil_responsavel: 'cozinha',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 16,
+        descricao: null,
+      },
+      { email: 'teste' },
+    );
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), ficha({ tipoId: t.id }));
+    await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'aprovar', null);
+    await expect(receberRequisicao(p, await como('almoxarifado@exemplo.local'), r.id, await versao(r.id))).rejects.toBeInstanceOf(ErroPermissao);
+    const coz = await como('cozinha@exemplo.local');
+    expect((await contadoresRequisicoes(p, coz)).atender).toBe(1);
+    await receberRequisicao(p, coz, r.id, await versao(r.id));
+    expect((await listarRequisicoes(p, coz, 'atender'))[0].situacao).toBe('em_atendimento');
   });
 });

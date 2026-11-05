@@ -13,7 +13,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 1. **Base do módulo + Materiais (Almoxarifado)** — esta entrega.
 2. **TI (Setor de Informática)**: ficha de chamado (categoria, equipamento, patrimônio, local, problema, urgência, contato), perfil novo Setor de Informática, urgência na fila. Material de informática usa a ficha de materiais com o Setor de Informática.
 3. **Mobiliário (Setor de Patrimônio)**: ficha com o que fazer (mudar de lugar, emprestar, recolher, montar/desmontar, outro), lista de móveis (quantidade, descrição, patrimônio), de onde, para onde, para quando e devolução (empréstimo); perfil novo Setor de Patrimônio.
-4. **Manutenção (Setor de Manutenção)**: ficha com tipo de serviço (elétrica, hidráulica, ar-condicionado, equipamento, portas/janelas/móveis, pintura, paredes/piso/telhado, outro), local, problema, urgência, equipamento, patrimônio, melhor horário e contato; perfil novo Setor de Manutenção; urgência na fila. Foto do problema fica para depois (precisa de pasta no Drive com envio de arquivos).
+4. **Manutenção (Setor de Manutenção)**: ficha com tipo de serviço (elétrica, hidráulica, ar-condicionado, equipamento, portas/janelas/móveis, pintura, paredes/piso/telhado, outro), local, problema, urgência, equipamento, patrimônio, melhor horário e contato; perfil novo Setor de Manutenção; urgência na fila. Fotos e vídeo: entrega 6.
 5. **Painel de prazos e feriados**: painel com % de aprovação e de atendimento no prazo, tempo médio, atendidas em parte e atrasadas agora, por mês, setor e tipo; feriados (nacionais de uma vez, municipais um a um) fora das horas úteis.
 6. **Fotos e vídeo (ADR-014)**: até 3 fotos (reduzidas no celular) e 1 vídeo de até 30 s / 25 MB, gravados direto na abertura; arquivos numa pasta de unidade compartilhada do Drive da instituição; o tipo diz se aceita.
 
@@ -28,6 +28,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 | Setor de Informática (perfil novo)   | Receber e atender chamados de TI e material de informática                                        | `requisicoes.atender`                                   |
 | Setor de Patrimônio (perfil novo)    | Receber e atender as requisições de mobiliário                                                    | `requisicoes.atender`                                   |
 | Setor de Manutenção (perfil novo)    | Receber e atender os pedidos de manutenção                                                        | `requisicoes.atender`                                   |
+| Setor Cozinha (perfil novo)          | Receber e atender as requisições da cozinha (tipo Requisição Cozinha)                             | `requisicoes.atender`, `requisicoes.painel`             |
 | Administração da plataforma (só ela) | Criar e alterar tipos, áreas permitidas, itens aceitos, expediente e feriados                     | `requisicoes.tipos.gerenciar`                           |
 | Diretoria, coordenação e setores     | Ver o painel de prazos (só das requisições que já podem ver)                                      | `requisicoes.painel`                                    |
 

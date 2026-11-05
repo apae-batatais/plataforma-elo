@@ -43,6 +43,11 @@ export const manifesto = defineModulo({
       descricao: 'Recebe e atende as requisições de mobiliário (mudança de lugar, empréstimo, recolhimento, montagem).',
     },
     {
+      codigo: 'cozinha',
+      nome: 'Setor Cozinha',
+      descricao: 'Recebe e atende as requisições da cozinha (refeições, lanches e itens de cozinha, inclusive para eventos).',
+    },
+    {
       codigo: 'manutencao',
       nome: 'Setor de Manutenção',
       descricao: 'Recebe e atende os pedidos de manutenção (elétrica, hidráulica, ar-condicionado, equipamentos, predial).',
@@ -63,6 +68,7 @@ export const manifesto = defineModulo({
     informatica: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
     patrimonio: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
     manutencao: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
+    cozinha: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
   },
   // Tipos de requisição: só a Administração da plataforma da instituição (decisão de 31/10/2026).
   permissoesRetiradas: { diretoria: ['requisicoes.tipos.gerenciar'] },

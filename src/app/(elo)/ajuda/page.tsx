@@ -212,11 +212,12 @@ export default async function Ajuda() {
               <Sub>Tipos de requisição</Sub>
               <p>
                 Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfis Almoxarifado, Setor de
-                Informática, Setor de Patrimônio ou Setor de Manutenção, que você atribui às pessoas do setor em Acessos), os prazos e quais áreas podem usar
-                cada tipo (sem marcação, todas podem). Em &ldquo;Itens aceitos&rdquo;, monte a lista de itens do tipo, um a um ou colando da planilha: quem pede
-                escolhe da lista e a unidade vem preenchida. Tipo sem lista aceita itens digitados. Marque &ldquo;Aceita foto e vídeo&rdquo; nos tipos em que
-                uma foto ajuda (manutenção, TI, mobiliário). No fim da tela ficam o horário do expediente e os feriados: o botão &ldquo;Incluir feriados
-                nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os municipais e os pontos facultativos você inclui um a um.
+                Informática, Setor de Patrimônio, Setor de Manutenção ou Setor Cozinha, que você atribui às pessoas do setor em Acessos), os prazos e quais
+                áreas podem usar cada tipo (sem marcação, todas podem). Em &ldquo;Itens aceitos&rdquo;, monte a lista de itens do tipo, um a um ou colando da
+                planilha: quem pede escolhe da lista e a unidade vem preenchida. Tipo sem lista aceita itens digitados. Marque &ldquo;Aceita foto e vídeo&rdquo;
+                nos tipos em que uma foto ajuda (manutenção, TI, mobiliário). No fim da tela ficam o horário do expediente e os feriados: o botão &ldquo;Incluir
+                feriados nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os municipais e os pontos facultativos você inclui um
+                a um.
               </p>
             </>
           )}
