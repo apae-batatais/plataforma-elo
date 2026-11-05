@@ -40,6 +40,7 @@ export const USUARIOS_FICTICIOS = [
   { email: 'informatica@exemplo.local', nome: 'Setor de Informática (fictício)', perfil: 'informatica', escopo: null },
   { email: 'patrimonio@exemplo.local', nome: 'Setor de Patrimônio (fictício)', perfil: 'patrimonio', escopo: null },
   { email: 'manutencao@exemplo.local', nome: 'Setor de Manutenção (fictício)', perfil: 'manutencao', escopo: null },
+  { email: 'cozinha@exemplo.local', nome: 'Setor Cozinha (fictício)', perfil: 'cozinha', escopo: null },
   { email: 'funcionario@exemplo.local', nome: 'Funcionário (fictício)', perfil: 'funcionario', escopo: null },
 ] as const;
 
