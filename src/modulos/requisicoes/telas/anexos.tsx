@@ -88,7 +88,7 @@ function enviarArquivo(url: string, corpo: Blob, mime: string, progresso: (p: nu
 }
 
 const botao =
-  'inline-flex items-center gap-2 rounded-lg border border-borda-forte bg-superficie px-3 py-2 text-sm font-semibold text-texto transition-colors duration-150 ease-out hover:border-destaque hover:bg-destaque-suave focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foco)] disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex items-center gap-2 rounded-lg border border-borda-forte bg-superficie px-3 py-2 text-sm font-semibold text-texto transition-colors duration-150 ease-out hover:border-destaque hover:bg-destaque-suave focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--destaque)] disabled:cursor-not-allowed disabled:opacity-50';
 
 export function AnexosDaRequisicao({
   tipoId,
@@ -166,7 +166,7 @@ export function AnexosDaRequisicao({
   };
 
   return (
-    <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-anexos">
+    <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5" aria-labelledby="t-anexos">
       <div>
         <h2 id="t-anexos" className="text-lg font-bold">
           Fotos e vídeo
@@ -237,7 +237,7 @@ export function AnexosDaRequisicao({
                 type="button"
                 onClick={() => mudar((l) => l.filter((x) => x.chave !== a.chave))}
                 aria-label={`Tirar ${a.tipo === 'foto' ? 'a foto' : 'o vídeo'}`}
-                className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white opacity-90 transition-opacity duration-150 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--foco)]"
+                className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white opacity-90 transition-opacity duration-150 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--destaque)]"
               >
                 <IconeFechar tamanho={14} />
               </button>

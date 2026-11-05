@@ -81,7 +81,7 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
 
           <dl className="grid gap-3 sm:grid-cols-3">
             {(Object.keys(CAPTACAO) as Captacao[]).map((c) => (
-              <div key={c} className="rounded-xl border border-borda bg-superficie px-4 py-3">
+              <div key={c} className="rounded-cartao border border-borda bg-superficie px-4 py-3">
                 <dt>
                   <Etiqueta tipo={TIPO_CAPTACAO[c]}>{CAPTACAO[c]}</Etiqueta>
                 </dt>

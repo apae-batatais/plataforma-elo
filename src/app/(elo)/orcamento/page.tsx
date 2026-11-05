@@ -175,7 +175,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
                 dica: 'Total geral menos o Total CEBAS: o que a Apae efetivamente desembolsa.',
               },
             ].map((q) => (
-              <div key={q.rotulo} className={`rounded-xl border px-5 py-4 ${q.destaque ? 'border-lateral bg-lateral text-white' : 'border-borda bg-superficie'}`}>
+              <div key={q.rotulo} className={`rounded-cartao border px-5 py-4 ${q.destaque ? 'border-lateral bg-lateral text-white' : 'border-borda bg-superficie'}`}>
                 <p className={`text-sm ${q.destaque ? 'text-lateral-texto' : 'text-texto-suave'}`}>
                   {q.rotulo} · {MESES[i].toLowerCase()}
                 </p>

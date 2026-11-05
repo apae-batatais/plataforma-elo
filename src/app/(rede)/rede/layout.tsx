@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ScriptTema } from '@/ui/tema-script';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { ErroConfiguracao } from '@/nucleo/config';
@@ -21,8 +22,11 @@ export const dynamic = 'force-dynamic';
  */
 export default async function LayoutRede({ children }: { children: React.ReactNode }) {
   const corpo = (conteudo: React.ReactNode) => (
-    <html lang="pt-BR">
-      <body className="min-h-screen antialiased">{conteudo}</body>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="min-h-screen antialiased">
+        <ScriptTema />
+        {conteudo}
+      </body>
     </html>
   );
   let demonstracao = false;

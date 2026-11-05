@@ -89,7 +89,7 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
       )}
 
       {aConferir && conferencia && (
-        <section aria-label={`Conferência da ${aConferir.nome}`} className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+        <section aria-label={`Conferência da ${aConferir.nome}`} className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold">Conferência: {aConferir.nome}</h2>
@@ -140,7 +140,7 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
         <>
           <dl className="grid gap-3 sm:grid-cols-3">
             {(Object.keys(SITUACAO) as (keyof typeof SITUACAO)[]).map((s) => (
-              <div key={s} className="rounded-xl border border-borda bg-superficie px-4 py-3">
+              <div key={s} className="rounded-cartao border border-borda bg-superficie px-4 py-3">
                 <dt className="text-sm text-texto-suave">{SITUACAO[s]}</dt>
                 <dd className="text-2xl font-bold tabular-nums">{contagem(s)}</dd>
               </div>
@@ -234,7 +234,7 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
         </>
       )}
 
-      <details className="rounded-xl border border-borda bg-superficie px-5 py-4 text-sm">
+      <details className="rounded-cartao border border-borda bg-superficie px-5 py-4 text-sm">
         <summary className="cursor-pointer font-semibold">Como trazer uma instituição para o Elo</summary>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5">
           <li>Cadastre a instituição aqui (ela começa em preparação).</li>

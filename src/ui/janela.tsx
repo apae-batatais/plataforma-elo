@@ -54,7 +54,7 @@ export function JanelaFormulario({
         ref={janela}
         onClose={() => voltarPara && router.replace(voltarPara, { scroll: false })}
         aria-labelledby={idTitulo}
-        className={`m-auto max-h-[calc(100dvh-2rem)] ${larga ? 'w-[min(44rem,calc(100vw-2rem))]' : 'w-[min(30rem,calc(100vw-2rem))]'} whitespace-normal rounded-xl border border-borda bg-superficie p-0 text-left font-normal text-texto shadow-2xl backdrop:bg-black/40`}
+        className={`m-auto max-h-[calc(100dvh-2rem)] ${larga ? 'w-[min(44rem,calc(100vw-2rem))]' : 'w-[min(30rem,calc(100vw-2rem))]'} whitespace-normal rounded-cartao border border-borda bg-superficie p-0 text-left font-normal text-texto shadow-2xl backdrop:bg-black/40`}
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-borda bg-superficie px-5 py-4">
           <div className="min-w-0">

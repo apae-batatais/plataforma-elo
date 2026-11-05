@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ScriptTema } from '@/ui/tema-script';
 import { situacaoDaEstrutura } from '@/plataforma/estrutura';
 import { configGeral, ErroInstituicao, instituicaoAtual } from '@/plataforma/instituicao';
 import { Suspense } from 'react';
@@ -28,8 +29,11 @@ export const dynamic = 'force-dynamic';
 
 function Documento({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
-      <body className="min-h-screen antialiased">{children}</body>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="min-h-screen antialiased">
+        <ScriptTema />
+        {children}
+      </body>
     </html>
   );
 }

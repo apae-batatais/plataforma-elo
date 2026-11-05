@@ -87,7 +87,7 @@ export function TabelaMensal({ ano, receita, despesa, resultado }: { ano: number
           </button>
         </div>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-borda bg-superficie">
+      <div className="overflow-x-auto rounded-cartao border border-borda bg-superficie">
         <table className="w-full border-collapse text-left text-sm">
           <caption className="sr-only">Receita, despesa e resultado por mês em {ano}, com abertura por fonte, grupo e item</caption>
           <thead className="border-b border-borda bg-superficie-2 text-texto-suave">

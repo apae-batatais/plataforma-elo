@@ -48,7 +48,7 @@ function SituacaoDoExercicio(props: {
   ].filter(Boolean) as { texto: string; href: string; acao: string }[];
 
   return (
-    <section aria-label="Situação do exercício" className="rounded-xl border border-borda bg-superficie p-5">
+    <section aria-label="Situação do exercício" className="rounded-cartao border border-borda bg-superficie p-5">
       <ol className="grid gap-3 sm:grid-cols-3">
         {ETAPAS.map((e, i) => (
           <li key={e.chave} className={`flex items-start gap-3 ${i > atual ? 'opacity-50' : ''}`} aria-current={i === atual ? 'step' : undefined}>
@@ -215,7 +215,7 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
           {prev.avisoFolha && <Aviso tipo="info">{prev.avisoFolha}</Aviso>}
 
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-xl border border-borda bg-superficie px-5 py-4">
+            <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
               <dt className="text-sm text-texto-suave">Despesa prevista</dt>
               <dd className="mt-0.5 text-2xl font-bold tabular-nums">{reais(t.despesa.anual)}</dd>
               <dd className="text-sm text-texto-suave">
@@ -225,7 +225,7 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
                 + folha {reais(prev.folha?.anual ?? 0)}
               </dd>
             </div>
-            <div className="rounded-xl border border-borda bg-superficie px-5 py-4">
+            <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
               <dt className="text-sm text-texto-suave">Receita prevista</dt>
               <dd className="mt-0.5 text-2xl font-bold tabular-nums">{reais(t.receita.anual)}</dd>
               <dd className="text-sm text-texto-suave">
@@ -234,14 +234,14 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
                 </Link>
               </dd>
             </div>
-            <div className={`rounded-xl border px-5 py-4 ${i.resultado < 0 ? 'border-erro bg-erro-fundo' : 'border-borda bg-superficie'}`}>
+            <div className={`rounded-cartao border px-5 py-4 ${i.resultado < 0 ? 'border-erro bg-erro-fundo' : 'border-borda bg-superficie'}`}>
               <dt className="text-sm text-texto-suave">Resultado previsto</dt>
               <dd className={`mt-0.5 text-2xl font-bold tabular-nums ${i.resultado < 0 ? 'text-erro' : ''}`}>{reais(i.resultado)}</dd>
               <dd className="mt-1">
                 {i.resultado < 0 ? <Etiqueta tipo="erro">Déficit: despesa maior que a receita</Etiqueta> : <Etiqueta tipo="sucesso">Receita cobre a despesa</Etiqueta>}
               </dd>
             </div>
-            <div className="rounded-xl border border-borda bg-superficie px-5 py-4">
+            <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
               <dt className="text-sm text-texto-suave">Recursos Humanos</dt>
               <dd className="mt-0.5 text-2xl font-bold tabular-nums">{reais(t.rh)}</dd>
               <dd className="text-sm text-texto-suave">{t.despesa.anual > 0 ? `${pct(Math.round((t.rh / t.despesa.anual) * 1000) / 10)} da despesa` : '—'}</dd>

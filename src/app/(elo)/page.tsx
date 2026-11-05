@@ -12,6 +12,7 @@ import { APPS_PLANEJADOS } from '@/plataforma/apps-planejados';
 import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { IconeAreas, IconeAtencao, IconeChave, IconeCerto, IconeOrcamento, IconePessoas, IconeRequisicao, IconeSeta, IconeServicos } from '@/ui/icones';
+import { appDoCaminho } from '@/ui/cor-do-app';
 import { CabecalhoPagina } from '@/ui/pagina';
 
 interface Pendencia {
@@ -40,8 +41,8 @@ function CartaoApp({
   atalhos?: { rotulo: string; href: string }[];
 }) {
   return (
-    <li className="flex flex-col rounded-xl border border-borda bg-superficie transition-colors hover:border-destaque/60">
-      <Link href={href} className="group flex flex-1 gap-4 rounded-t-xl p-5">
+    <li data-app={appDoCaminho(href)} className="flex flex-col rounded-cartao border border-borda bg-superficie transition-[border-color,box-shadow] hover:border-destaque/60 hover:shadow-[0_0_0_3px_var(--destaque-suave)]">
+      <Link href={href} className="group flex flex-1 gap-4 rounded-t-cartao p-5">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-destaque-suave text-destaque">{icone}</span>
         <span className="min-w-0">
           <span className="flex items-center gap-1 text-lg font-bold text-texto group-hover:text-destaque">
@@ -170,14 +171,14 @@ export default async function Portal() {
           Precisa da sua atenção
         </h2>
         {pendencias.length === 0 ? (
-          <p className="mt-3 flex items-center gap-3 rounded-xl border border-borda bg-superficie px-5 py-4 text-texto-suave">
+          <p className="mt-3 flex items-center gap-3 rounded-cartao border border-borda bg-superficie px-5 py-4 text-texto-suave">
             <span className="flex size-8 items-center justify-center rounded-full bg-sucesso-fundo text-sucesso">
               <IconeCerto tamanho={18} />
             </span>
             Nada pendente por aqui.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-borda overflow-hidden rounded-xl border border-borda bg-superficie">
+          <ul className="mt-3 divide-y divide-borda overflow-hidden rounded-cartao border border-borda bg-superficie">
             {pendencias.map((p) => (
               <li key={String(p.texto)} className="flex flex-wrap items-center gap-4 px-5 py-4">
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-aviso-fundo text-aviso">
@@ -244,7 +245,7 @@ export default async function Portal() {
           </h2>
           <ul className="mt-3 grid gap-4 md:grid-cols-2">
             {planejados.map((x) => (
-              <li key={x.nome} className="rounded-xl border border-dashed border-borda-forte p-5">
+              <li key={x.nome} className="rounded-cartao border border-dashed border-borda-forte p-5">
                 <p className="font-bold">
                   {x.nome} <span className="ml-1 text-sm font-normal text-texto-suave">{x.fase}</span>
                 </p>

@@ -208,7 +208,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
               ['Atendimento', d.sla.atendimento],
             ] as const
           ).map(([nome, s]) => (
-            <div key={nome} className="rounded-xl border border-borda bg-superficie px-4 py-3">
+            <div key={nome} className="rounded-cartao border border-borda bg-superficie px-4 py-3">
               <dt className="text-sm text-texto-suave">Prazo de {nome.toLowerCase()}</dt>
               {s ? (
                 <dd className={s.situacao === 'atrasada' ? 'font-semibold text-erro' : 'font-semibold'}>
@@ -386,7 +386,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                     href={`/requisicoes/anexos/${a.id}`}
                     target="_blank"
                     rel="noopener"
-                    className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--foco)]"
+                    className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--destaque)]"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img

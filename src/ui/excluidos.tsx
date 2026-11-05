@@ -20,7 +20,7 @@ export function Excluidos({
 }) {
   if (itens.length === 0) return null;
   return (
-    <details className="mt-6 rounded-xl border border-borda bg-superficie">
+    <details className="mt-6 rounded-cartao border border-borda bg-superficie">
       <summary className="cursor-pointer select-none px-5 py-3 text-sm">
         <span className="font-semibold">
           {titulo} ({itens.length})

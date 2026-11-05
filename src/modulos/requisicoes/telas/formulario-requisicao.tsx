@@ -228,7 +228,7 @@ export function FormularioRequisicao({
       {oculto && Object.entries(oculto).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
       <input type="hidden" name="dados" value={JSON.stringify(dados)} />
 
-      <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+      <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
         <h2 className="text-lg font-bold">Pedido</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <Campo rotulo="Tipo de requisição" obrigatorio dica={tipo?.descricao ?? undefined}>
@@ -254,7 +254,7 @@ export function FormularioRequisicao({
         </div>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+      <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-bold">Centros de custo</h2>
           <span className={`text-sm font-semibold tabular-nums ${soma === 100 ? 'text-sucesso' : 'text-aviso'}`}>Soma: {soma.toLocaleString('pt-BR')}%</span>
@@ -318,7 +318,7 @@ export function FormularioRequisicao({
 
       {(!tipo || tipo.formulario === 'materiais') && (
         <>
-          <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+          <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
             <h2 className="text-lg font-bold">Itens solicitados</h2>
             {lista.length > 0 && (
               <p className="text-sm text-texto-suave">
@@ -405,7 +405,7 @@ export function FormularioRequisicao({
             </Campo>
           </section>
 
-          <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+          <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
             <h2 className="text-lg font-bold">Retirada ou entrega</h2>
             <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
               {(
@@ -432,7 +432,7 @@ export function FormularioRequisicao({
             </div>
           </section>
 
-          <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+          <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
             <label className="flex items-center gap-2 text-sm font-semibold">
               <input type="checkbox" checked={temEvento} onChange={(e) => setTemEvento(e.target.checked)} />É para um evento
             </label>
@@ -468,7 +468,7 @@ export function FormularioRequisicao({
       )}
 
       {tipo?.formulario === 'ti' && (
-        <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
           <h2 className="text-lg font-bold">Chamado de TI</h2>
           <fieldset className="min-w-0 text-sm">
             <legend className="font-semibold">
@@ -520,7 +520,7 @@ export function FormularioRequisicao({
       )}
 
       {tipo?.formulario === 'mobiliario' && (
-        <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
           <h2 className="text-lg font-bold">Mobiliário</h2>
           <fieldset className="min-w-0 text-sm">
             <legend className="font-semibold">
@@ -630,7 +630,7 @@ export function FormularioRequisicao({
       )}
 
       {tipo?.formulario === 'manutencao' && (
-        <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
           <h2 className="text-lg font-bold">Manutenção</h2>
           <fieldset className="min-w-0 text-sm">
             <legend className="font-semibold">
@@ -695,7 +695,7 @@ export function FormularioRequisicao({
 
       {mostraAnexos && <AnexosDaRequisicao tipoId={tipoId} anexos={anexos} mudar={setAnexos} iniciar={iniciarEnvio!} />}
 
-      <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
+      <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
         <Campo rotulo="Observações">
           <textarea value={observacao} onChange={(e) => setObservacao(e.target.value)} rows={3} className={estiloEntrada} />
         </Campo>

@@ -52,7 +52,7 @@ export function FormularioConfirmado({
       <dialog
         ref={janela}
         aria-labelledby={idTitulo}
-        className="m-auto w-[min(32rem,calc(100vw-2rem))] whitespace-normal rounded-xl border border-borda bg-superficie p-0 text-left font-normal text-texto shadow-2xl backdrop:bg-black/40"
+        className="m-auto w-[min(32rem,calc(100vw-2rem))] whitespace-normal rounded-cartao border border-borda bg-superficie p-0 text-left font-normal text-texto shadow-2xl backdrop:bg-black/40"
       >
         <form action={acao} className="space-y-4 p-6">
           {Object.entries(campos ?? {}).map(([k, v]) => (

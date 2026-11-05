@@ -4,6 +4,7 @@
  * Gráficos simples em SVG, sem biblioteca: barras agrupadas, barras
  * horizontais, linhas e barras 100%. Regras: um eixo só, cores fixas por
  * série (var(--serie-N)), legenda sempre que houver mais de uma série,
+ * gráfico de uma série só na cor do app aberto (var(--destaque)),
  * valores ao passar o mouse (ou tocar) e "Ver os números" em tabela.
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
@@ -12,8 +13,16 @@ export type Formato = 'moeda' | 'pct' | 'numero';
 export interface Serie {
   nome: string;
   valores: number[];
-  /** Índice da cor categórica (1 a 4) ou um ano na escala de exercícios ('ano-1' mais antigo … 'ano-3' atual). */
-  cor: number | 'ano-1' | 'ano-2' | 'ano-3';
+  /**
+   * Índice da cor categórica (1 a 4), um ano na escala de exercícios ('ano-1' mais antigo … 'ano-3' atual)
+   * ou 'destaque' (a cor do app). Gráfico com uma série só de cor categórica passa a usar a cor do app.
+   */
+  cor: number | 'ano-1' | 'ano-2' | 'ano-3' | 'destaque';
+}
+
+/** Uma série só não precisa diferenciar cores: usa a cor do app aberto (identidade visual). */
+export function naCorDoApp(series: Serie[]): Serie[] {
+  return series.length === 1 && typeof series[0].cor === 'number' ? [{ ...series[0], cor: 'destaque' }] : series;
 }
 
 const cor = (n: Serie['cor']) => (typeof n === 'string' ? `var(--${n})` : `var(--serie-${Math.min(Math.max(n, 1), 4)})`);
@@ -139,6 +148,7 @@ const MARGEM = { topo: 12, dir: 12, base: 28, esq: 64 };
 export function BarrasAgrupadas({ categorias, series, formato, altura = 240, rotuloCategoria = 'Ano', descricao }: {
   categorias: string[]; series: Serie[]; formato: Formato; altura?: number; rotuloCategoria?: string; descricao: string;
 }) {
+  series = naCorDoApp(series);
   const [foco, setFoco] = useState<number | null>(null);
   const id = useId();
   const [quadro, L] = useLargura();
@@ -196,6 +206,7 @@ export function Linhas({ categorias, series, formato, altura = 240, referencias 
   categorias: string[]; series: Serie[]; formato: Formato; altura?: number; referencias?: { valor: number; rotulo: string }[];
   rotuloCategoria?: string; descricao: string; minimo?: number; maximo?: number;
 }) {
+  series = naCorDoApp(series);
   const [foco, setFoco] = useState<number | null>(null);
   const id = useId();
   const [quadro, L] = useLargura();
@@ -274,6 +285,7 @@ export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria
   /** Observação curta embaixo do nome de cada categoria (opcional). */
   notas?: (ReactNode | null)[];
 }) {
+  series = naCorDoApp(series);
   const maximo = Math.max(...series.flatMap((s) => s.valores), 1);
   return (
     <figure className="space-y-3" aria-label={descricao}>
@@ -311,6 +323,7 @@ export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria
 
 /** Barras 100%: a composição de cada categoria (ex.: receita pública × própria por ano). */
 export function Barras100({ categorias, series, rotuloCategoria, descricao }: { categorias: string[]; series: Serie[]; rotuloCategoria: string; descricao: string }) {
+  series = naCorDoApp(series);
   return (
     <figure className="space-y-3" aria-label={descricao}>
       <Legenda series={series} />
@@ -374,7 +387,7 @@ export function Indicadores({ itens }: { itens: Indicador[] }) {
             </div>
             <div className="relative h-3 rounded-full bg-superficie-2 ring-1 ring-inset ring-borda" role="img" aria-label={`${i.nome}: ${v === null ? 'sem dado' : formatarValor(v, 'pct')}${i.referencia ? `; referência ${i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} ${i.referencia.valor}%` : ''}`}>
               {v !== null && (
-                <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${limite(v)}%`, background: fora ? 'var(--negativo)' : 'var(--serie-1)' }} />
+                <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${limite(v)}%`, background: fora ? 'var(--negativo)' : 'var(--destaque)' }} />
               )}
               {anteriores.map((a) => (
                 <span

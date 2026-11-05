@@ -70,7 +70,7 @@ export function Secao({
   id?: string;
 }) {
   return (
-    <section aria-labelledby={titulo && id ? id : undefined} className={`rounded-xl border border-borda bg-superficie ${className}`}>
+    <section aria-labelledby={titulo && id ? id : undefined} className={`rounded-cartao border border-borda bg-superficie ${className}`}>
       {(titulo || acoes) && (
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-borda px-5 py-4">
           <div className="min-w-0">
@@ -92,7 +92,7 @@ export function Secao({
 /** Tela vazia: diz o que falta e oferece o próximo passo. */
 export function EstadoVazio({ titulo, children, acao }: { titulo: ReactNode; children?: ReactNode; acao?: ReactNode }) {
   return (
-    <div className="rounded-xl border border-dashed border-borda-forte bg-superficie-2 px-6 py-10 text-center">
+    <div className="rounded-cartao border border-dashed border-borda-forte bg-superficie-2 px-6 py-10 text-center">
       <p className="text-lg font-semibold">{titulo}</p>
       {children && <div className="mx-auto mt-1 max-w-prose text-texto-suave">{children}</div>}
       {acao && <div className="mt-4 flex justify-center">{acao}</div>}
@@ -114,7 +114,7 @@ export function Etiqueta({ tipo = 'neutro', children }: { tipo?: 'neutro' | 'suc
 
 /** Classes de tabela de dados, para manter todas iguais. */
 export const tabela = {
-  moldura: 'overflow-x-auto rounded-xl border border-borda bg-superficie',
+  moldura: 'overflow-x-auto rounded-cartao border border-borda bg-superficie',
   tabela: 'w-full border-collapse text-left text-sm',
   cabeca: 'border-b border-borda bg-superficie-2 text-texto-suave',
   th: 'px-4 py-3 text-[0.8rem] font-semibold',

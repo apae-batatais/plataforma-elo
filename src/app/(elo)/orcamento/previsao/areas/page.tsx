@@ -76,7 +76,7 @@ export default async function AnalisePorArea({
         descricao="Custo direto de cada centro, rateio do custo indireto da área e das despesas administrativas, custo per capita e resultado da área."
       />
 
-      <form className="flex flex-wrap items-end gap-4 rounded-xl border border-borda bg-superficie px-4 py-3" action="/orcamento/previsao/areas">
+      <form className="flex flex-wrap items-end gap-4 rounded-cartao border border-borda bg-superficie px-4 py-3" action="/orcamento/previsao/areas">
         <input type="hidden" name="ano" value={painel.ano} />
         <label className="block text-sm">
           <span className="font-semibold">Área</span>
@@ -139,7 +139,7 @@ export default async function AnalisePorArea({
 
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {cards.map((c) => (
-              <div key={c.rotulo} className={`rounded-xl border px-4 py-3 ${c.forte && c.valor < 0 ? 'border-erro bg-erro-fundo' : 'border-borda bg-superficie'}`}>
+              <div key={c.rotulo} className={`rounded-cartao border px-4 py-3 ${c.forte && c.valor < 0 ? 'border-erro bg-erro-fundo' : 'border-borda bg-superficie'}`}>
                 <dt className="text-sm text-texto-suave">{c.rotulo}</dt>
                 <dd className={`mt-0.5 text-xl font-bold tabular-nums ${c.forte && c.valor < 0 ? 'text-erro' : ''}`}>{reais(c.valor)}</dd>
                 <dd className="text-xs text-texto-suave">{c.nota}</dd>
@@ -237,7 +237,7 @@ export default async function AnalisePorArea({
               ['Total geral de despesas', reais(a.totais.despesaGeral)],
               [`${painel.area?.nome} sobre o orçamento`, pct(a.totais.percentualOrcamento)],
             ].map(([r, v]) => (
-              <div key={r} className="rounded-xl border border-borda bg-superficie px-4 py-3">
+              <div key={r} className="rounded-cartao border border-borda bg-superficie px-4 py-3">
                 <dt className="text-texto-suave">{r}</dt>
                 <dd className="text-lg font-bold tabular-nums">{v}</dd>
               </div>
