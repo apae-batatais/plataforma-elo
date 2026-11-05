@@ -12,7 +12,7 @@ import { CatalogoItens, Requisicoes, TiposRequisicao } from './tabelas';
 const TIPOS = [
   { nome: 'Higiene e limpeza', descricao: 'Produtos de limpeza e de higiene pessoal.' },
   { nome: 'Material pedagógico', descricao: 'Papel, tintas, jogos e material escolar.' },
-  { nome: 'Alimentação e cozinha', descricao: 'Gêneros alimentícios e itens de cozinha, inclusive para eventos.' },
+  { nome: 'Requisição Cozinha', descricao: 'Gêneros alimentícios e itens de cozinha, inclusive para eventos.' },
   { nome: 'Material de escritório', descricao: 'Papelaria e suprimentos de escritório.' },
 ] as const;
 
@@ -83,7 +83,7 @@ export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
     Servicos,
     CatalogoItens,
   ] as const);
-  // Itens aceitos: Higiene e limpeza e Alimentação e cozinha têm lista; os outros aceitam texto livre.
+  // Itens aceitos: Higiene e limpeza e Requisição Cozinha têm lista; os outros aceitam texto livre.
   const lista: [number, string, string][] = [
     [0, 'Detergente neutro', 'L'],
     [0, 'Papel toalha', 'pacote'],
