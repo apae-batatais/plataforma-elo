@@ -42,6 +42,31 @@ export interface ArmazenamentoArquivos {
 
 export class ErroArquivo extends Error {}
 
+/**
+ * Traduz a resposta de erro do Google para o que a Administração precisa fazer.
+ * Mantém o texto original do Google no fim, para o suporte.
+ */
+export async function motivoDoDrive(r: Response): Promise<string> {
+  let razao = '';
+  let texto = '';
+  try {
+    const corpo = (await r.json()) as { error?: { message?: string; errors?: { reason?: string }[]; details?: { reason?: string }[] } };
+    razao = corpo.error?.errors?.[0]?.reason ?? corpo.error?.details?.[0]?.reason ?? '';
+    texto = corpo.error?.message ?? '';
+  } catch {
+    // Resposta sem JSON: fica só o código.
+  }
+  const original = texto ? ` (Google: ${texto.slice(0, 300)})` : '';
+  if (/accessNotConfigured|SERVICE_DISABLED/i.test(razao) || /has not been used|is disabled/i.test(texto))
+    return `A Google Drive API não está ativada no projeto do Google Cloud da conta de serviço. Ative em console.cloud.google.com › APIs e serviços › Biblioteca › Google Drive API › Ativar, espere alguns minutos e confira de novo.${original}`;
+  if (/insufficientPermissions|ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficientScopes/i.test(razao))
+    return `A credencial do Elo não tem permissão de usar o Drive. Publique a versão mais recente do Elo e confira de novo.${original}`;
+  if (/domainPolicy|sharingRateLimitExceeded|teamDrive/i.test(razao))
+    return `Uma regra do Google Workspace da instituição bloqueou o acesso da conta de serviço à unidade compartilhada. Confira se a unidade aceita membros de fora do domínio.${original}`;
+  if (r.status === 403) return `O Drive negou o acesso (403). Confira se a conta de serviço é Gerente de conteúdo da unidade compartilhada.${original}`;
+  return `O Drive respondeu ${r.status}.${original}`;
+}
+
 // ---------------------------------------------------------------------------
 // Google Drive (unidade compartilhada)
 // ---------------------------------------------------------------------------
@@ -74,8 +99,7 @@ export class ArquivosGoogleDrive implements ArmazenamentoArquivos {
       body: JSON.stringify({ name: a.nome, parents: [this.pasta], mimeType: a.tipo }),
     });
     const local = r.headers.get('location');
-    if (!r.ok || !local)
-      throw new ErroArquivo(`Não foi possível abrir o envio do arquivo (Drive respondeu ${r.status}). Confira a pasta de anexos da instituição.`);
+    if (!r.ok || !local) throw new ErroArquivo(`Não foi possível abrir o envio do arquivo. ${await motivoDoDrive(r)}`);
     return { url: local };
   }
 
@@ -83,7 +107,7 @@ export class ArquivosGoogleDrive implements ArmazenamentoArquivos {
     if (!/^[\w-]{10,}$/.test(id)) return null;
     const r = await this.buscar(`${DRIVE}/${id}?supportsAllDrives=true&fields=id,name,mimeType,size,parents,trashed`, { headers: await this.cabecalhos() });
     if (r.status === 404) return null;
-    if (!r.ok) throw new ErroArquivo(`Não foi possível conferir o arquivo (Drive respondeu ${r.status}).`);
+    if (!r.ok) throw new ErroArquivo(`Não foi possível conferir o arquivo. ${await motivoDoDrive(r)}`);
     const f = (await r.json()) as { id: string; name: string; mimeType: string; size?: string; parents?: string[]; trashed?: boolean };
     if (f.trashed || !f.parents?.includes(this.pasta)) return null;
     return { id: f.id, nome: f.name, tipo: f.mimeType, tamanho: Number(f.size ?? 0) };
@@ -93,7 +117,7 @@ export class ArquivosGoogleDrive implements ArmazenamentoArquivos {
     const r = await this.buscar(`${DRIVE}/${id}?alt=media&supportsAllDrives=true`, {
       headers: await this.cabecalhos({ Range: `bytes=${trecho.inicio}-${trecho.fim}` }),
     });
-    if (!r.ok) throw new ErroArquivo(`Não foi possível ler o arquivo (Drive respondeu ${r.status}).`);
+    if (!r.ok) throw new ErroArquivo(`Não foi possível ler o arquivo. ${await motivoDoDrive(r)}`);
     const dados = new Uint8Array(await r.arrayBuffer());
     const faixa = /bytes (\d+)-(\d+)\/(\d+)/.exec(r.headers.get('content-range') ?? '');
     const total = faixa ? Number(faixa[3]) : dados.length;
@@ -106,7 +130,7 @@ export class ArquivosGoogleDrive implements ArmazenamentoArquivos {
       headers: await this.cabecalhos(),
     });
     if (r.status === 404) return { ok: false as const, motivo: 'A pasta não foi encontrada ou não foi compartilhada com a conta de serviço.' };
-    if (!r.ok) return { ok: false as const, motivo: `O Drive respondeu ${r.status}.` };
+    if (!r.ok) return { ok: false as const, motivo: await motivoDoDrive(r) };
     const f = (await r.json()) as { name: string; mimeType: string; driveId?: string; capabilities?: { canAddChildren?: boolean } };
     if (f.mimeType !== 'application/vnd.google-apps.folder') return { ok: false as const, motivo: 'O ID informado não é de uma pasta.' };
     if (!f.driveId)
