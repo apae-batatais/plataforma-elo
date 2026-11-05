@@ -10,6 +10,7 @@
  * - RequisicaoHistorico: cada mudança de etapa (só inclusões).
  * - ParametrosRequisicoes: expediente usado no cálculo do SLA.
  * - FeriadosRequisicoes: dias que não contam como úteis no SLA.
+ * - RequisicaoAnexos: fotos e vídeo da requisição (referência ao arquivo na pasta de anexos).
  */
 import { z } from 'zod';
 import { definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
@@ -37,6 +38,8 @@ export const TiposRequisicao = definirTabela({
     /** Áreas (códigos) que podem usar o tipo, separadas por vírgula. Vazio = todas. Grupos: não usado desde 04/11/2026. */
     areas: textoOpcional(),
     grupos: textoOpcional(),
+    /** Aceita foto e vídeo: "sim", "nao" ou vazio (vazio = as fichas de serviço aceitam). */
+    anexos: textoOpcional(),
   }),
 });
 
@@ -121,6 +124,23 @@ export const ParametrosRequisicoes = definirTabela({
   esquema: z.object({ chave: texto(), valor: numero() }),
 });
 
+/** Fotos e vídeo de cada requisição: o arquivo fica na pasta de anexos (Drive); aqui, só a referência. */
+export const RequisicaoAnexos = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'Anexos',
+  esquema: z.object({
+    requisicao_id: texto(),
+    tipo: z.enum(['foto', 'video']),
+    arquivo_id: texto(),
+    nome: texto(),
+    mime: texto(),
+    tamanho: numero(),
+    duracao: numeroOpcional(),
+  }),
+  // A foto ou o vídeo pode mostrar pessoas: leitura só pelo Elo, com auditoria.
+  sigilo: { arquivo_id: 'sensivel', nome: 'pessoal' },
+});
+
 export const FeriadosRequisicoes = definirTabela({
   planilha: PLANILHA_REQUISICOES,
   aba: 'Feriados',
@@ -136,6 +156,7 @@ export const TABELAS_REQUISICOES = [
   RequisicaoHistorico,
   ParametrosRequisicoes,
   FeriadosRequisicoes,
+  RequisicaoAnexos,
 ] as const;
 
 export type RegTipo = Registro<typeof TiposRequisicao.esquema>;

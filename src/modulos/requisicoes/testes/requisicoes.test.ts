@@ -17,6 +17,8 @@ import {
   detalharRequisicao,
   enviarRequisicao,
   incluirFeriadosNacionais,
+  iniciarEnvioAnexo,
+  lerAnexo,
   painelDePrazos,
   salvarFeriado,
   tirarFeriado,
@@ -35,10 +37,12 @@ import {
 } from '../aplicacao/requisicoes';
 import { RequisicaoHistorico, RequisicaoItens, Requisicoes, TABELAS_REQUISICOES, TiposRequisicao } from '../dados/tabelas';
 import { conferirCentros, coordenadoresDoServico, proximoNumero, rotaDeAprovacao } from '../dominio/requisicao';
+import { aceitaAnexos, conferirArquivo, conferirQuantidade, tipoDoArquivo } from '../dominio/anexos';
 import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
 import { mesesEntre } from '../dominio/painel';
 import { horasUteis, prazoDaEtapa, textoHoras } from '../dominio/sla';
-import { FeriadosRequisicoes } from '../dados/tabelas';
+import { FeriadosRequisicoes, RequisicaoAnexos } from '../dados/tabelas';
+import { ArquivosMemoria } from '@/nucleo/armazenamento/arquivos';
 import { manifesto } from '../manifesto';
 
 let p: Planilhas;
@@ -669,5 +673,154 @@ describe('feriados e painel de prazos (SLA)', () => {
     await expect(painelDePrazos(p, pede, {}, { agora })).rejects.toBeInstanceOf(ErroPermissao);
     // Período padrão: os últimos 6 meses.
     expect(await painelDePrazos(p, coord, {}, { agora })).toMatchObject({ de: '2026-05', ate: '2026-10' });
+  });
+});
+
+describe('fotos e vídeo (ADR-014)', () => {
+  const MB = 1024 * 1024;
+  async function tipoManutencao(anexos: string | null = null) {
+    const t = await inserir(
+      p,
+      TiposRequisicao,
+      {
+        nome: 'Manutenção',
+        categoria: 'servico',
+        formulario: 'manutencao',
+        perfil_responsavel: 'manutencao',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 40,
+        descricao: null,
+        anexos,
+      },
+      { email: 'teste' },
+    );
+    return t.id;
+  }
+  const detalhes = { servico: 'eletrica', local: 'Sala 4', problema: 'Tomada soltando faísca perto da mesa.', urgencia: 'alta' };
+  /** Abre o envio e "manda" o arquivo, como o navegador faria. */
+  async function enviarArquivo(
+    arquivos: ArquivosMemoria,
+    quem: Autorizador,
+    tipoId: string,
+    tipo: 'foto' | 'video',
+    tamanho: number,
+    duracao: number | null = null,
+  ) {
+    const mime = tipo === 'foto' ? 'image/jpeg' : 'video/mp4';
+    const { url } = await iniciarEnvioAnexo(p, quem, arquivos, { tipoId, tipo, mime, tamanho, duracao, origem: 'https://elo.exemplo' });
+    const f = arquivos.receber(url.split('/').pop()!, new Uint8Array(tamanho).fill(7));
+    return { arquivoId: f.id, tipo, nome: `${tipo}.bin`, duracao };
+  }
+
+  it('regras: só foto e vídeo, limites de tamanho e duração, quantidade e quem aceita por padrão', () => {
+    expect(tipoDoArquivo('image/jpeg')).toBe('foto');
+    expect(tipoDoArquivo('video/quicktime')).toBe('video');
+    expect(tipoDoArquivo('application/pdf')).toBeNull();
+    expect(conferirArquivo({ tipo: 'foto', mime: 'image/jpeg', tamanho: 2 * MB })).toEqual([expect.stringMatching(/passa de 1,4 MB/)]);
+    expect(conferirArquivo({ tipo: 'video', mime: 'video/mp4', tamanho: 30 * MB, duracao: 45 })).toEqual([
+      expect.stringMatching(/30 MB; o limite é 25 MB/),
+      expect.stringMatching(/45 segundos; grave até 30/),
+    ]);
+    expect(conferirArquivo({ tipo: 'video', mime: 'video/mp4', tamanho: 10 * MB, duracao: 30.6 })).toEqual([]);
+    expect(conferirQuantidade([{ tipo: 'foto' }, { tipo: 'foto' }, { tipo: 'foto' }, { tipo: 'foto' }, { tipo: 'video' }, { tipo: 'video' }])).toHaveLength(2);
+    expect(aceitaAnexos({ anexos: null, formulario: 'manutencao' })).toBe(true);
+    expect(aceitaAnexos({ anexos: null, formulario: 'materiais' })).toBe(false);
+    expect(aceitaAnexos({ anexos: 'sim', formulario: 'materiais' })).toBe(true);
+    expect(aceitaAnexos({ anexos: 'nao', formulario: 'ti' })).toBe(false);
+  });
+
+  it('envia com 2 fotos e 1 vídeo; a ficha mostra; quem vê lê aos poucos, com auditoria; quem não vê, não', async () => {
+    const arquivos = new ArquivosMemoria();
+    const id = await tipoManutencao();
+    const pede = await como('financeiro@exemplo.local');
+    const anexos = [
+      await enviarArquivo(arquivos, pede, id, 'foto', 300_000),
+      await enviarArquivo(arquivos, pede, id, 'foto', 400_000),
+      await enviarArquivo(arquivos, pede, id, 'video', 3 * MB, 12),
+    ];
+    const r = await enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes, anexos }), { arquivos });
+    const d = await detalharRequisicao(p, pede, r.id);
+    expect(d.anexos.map((a) => [a.tipo, a.tamanho])).toEqual([
+      ['foto', 300_000],
+      ['foto', 400_000],
+      ['video', 3 * MB],
+    ]);
+    const video = d.anexos[2];
+    const t = await lerAnexo(p, pede, arquivos, video.id, { inicio: 0, fim: null });
+    expect([t.inicio, t.fim, t.total, t.tipo]).toEqual([0, 3 * MB - 1, 3 * MB, 'video/mp4']);
+    const parte = await lerAnexo(p, pede, arquivos, video.id, { inicio: MB, fim: MB + 99 });
+    expect(parte.dados.length).toBe(100);
+    // Só a primeira leitura (início do arquivo) vai para a auditoria.
+    const leituras = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'RequisicaoAnexos' && a.acao === 'leitura');
+    expect(leituras).toHaveLength(1);
+    // O setor só vê depois de aprovada; outra pessoa, nunca.
+    await expect(lerAnexo(p, await como('manutencao@exemplo.local'), arquivos, video.id, { inicio: 0, fim: null })).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(lerAnexo(p, await como('dp@exemplo.local'), arquivos, video.id, { inicio: 0, fim: null })).rejects.toBeInstanceOf(ErroPermissao);
+    expect((await lerAnexo(p, await como('coord.educacao@exemplo.local'), arquivos, d.anexos[0].id, { inicio: 0, fim: null })).total).toBe(300_000);
+  });
+
+  it('recusa: tipo que não aceita, instituição sem pasta, arquivo que não chegou, limites e arquivo de outra requisição', async () => {
+    const arquivos = new ArquivosMemoria();
+    const pede = await como('financeiro@exemplo.local');
+    // Tipo de materiais (padrão: sem anexos) e tipo marcado "nao".
+    await expect(iniciarEnvioAnexo(p, pede, arquivos, { tipoId, tipo: 'foto', mime: 'image/jpeg', tamanho: 1000, origem: 'x' })).rejects.toThrow(
+      /não aceita foto nem vídeo/,
+    );
+    const id = await tipoManutencao();
+    await expect(iniciarEnvioAnexo(p, pede, null, { tipoId: id, tipo: 'foto', mime: 'image/jpeg', tamanho: 1000, origem: 'x' })).rejects.toThrow(
+      /ainda não estão ativos/,
+    );
+    await expect(
+      iniciarEnvioAnexo(p, pede, arquivos, { tipoId: id, tipo: 'video', mime: 'video/mp4', tamanho: 3 * MB, duracao: 50, origem: 'x' }),
+    ).rejects.toThrow(/grave até 30/);
+    await expect(iniciarEnvioAnexo(p, pede, arquivos, { tipoId: id, tipo: 'foto', mime: 'application/pdf', tamanho: 1000, origem: 'x' })).rejects.toThrow(
+      /JPG, PNG ou WebP/,
+    );
+    const naoChegou = { arquivoId: 'arquivo-inventado', tipo: 'foto' as const, nome: 'x.jpg' };
+    await expect(enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes, anexos: [naoChegou] }), { arquivos })).rejects.toThrow(
+      /não chegou à pasta/,
+    );
+    const fotos = [];
+    for (let i = 0; i < 4; i++) fotos.push(await enviarArquivo(arquivos, pede, id, 'foto', 1000));
+    await expect(enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes, anexos: fotos }), { arquivos })).rejects.toThrow(/No máximo 3 fotos/);
+    await enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes, anexos: fotos.slice(0, 1) }), { arquivos });
+    await expect(enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes, anexos: fotos.slice(0, 1) }), { arquivos })).rejects.toThrow(
+      /já pertence a outra requisição/,
+    );
+    // Sem pasta na instituição, a requisição com anexo é recusada; sem anexo, segue normal.
+    await expect(enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes, anexos: fotos.slice(1, 2) }))).rejects.toThrow(/ainda não estão ativos/);
+    expect((await enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes }))).numero).toMatch(/^REQ-/);
+  });
+
+  it('ao ajustar uma devolvida: o anexo tirado é encerrado e o novo entra', async () => {
+    const arquivos = new ArquivosMemoria();
+    const id = await tipoManutencao('sim');
+    const pede = await como('financeiro@exemplo.local');
+    const a1 = await enviarArquivo(arquivos, pede, id, 'foto', 1000);
+    const a2 = await enviarArquivo(arquivos, pede, id, 'foto', 2000);
+    const r = await enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes, anexos: [a1, a2] }), { arquivos });
+    await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'devolver', 'Mande uma foto de longe.');
+    const a3 = await enviarArquivo(arquivos, pede, id, 'foto', 3000);
+    await reenviarRequisicao(p, pede, r.id, await versao(r.id), ficha({ tipoId: id, itens: [], detalhes, anexos: [a2, a3] }), { arquivos });
+    expect((await detalharRequisicao(p, pede, r.id)).anexos.map((a) => a.tamanho)).toEqual([2000, 3000]);
+    const todos = (await lerTabela(p, RequisicaoAnexos)).todos().filter((x) => x.requisicao_id === r.id);
+    expect(todos.filter((x) => !x.ativo).map((x) => x.tamanho)).toEqual([1000]);
+  });
+
+  it('a Administração marca no tipo se aceita foto e vídeo', async () => {
+    const adm = await como('admin@exemplo.local');
+    const t = (await lerTabela(p, TiposRequisicao)).porId(tipoId)!;
+    const base = {
+      nome: t.nome,
+      categoria: 'material' as const,
+      formulario: 'materiais' as const,
+      perfilResponsavel: 'almoxarifado',
+      prazoAprovacao: 8,
+      prazoAtendimento: 16,
+    };
+    expect((await listarTipos(p, adm)).ativos[0].aceitaAnexos).toBe(false);
+    await salvarTipo(p, adm, { ...base, anexos: true }, { id: t.id, versao: t.versao });
+    expect((await lerTabela(p, TiposRequisicao)).porId(tipoId)!.anexos).toBe('sim');
+    expect((await listarTipos(p, adm)).ativos[0].aceitaAnexos).toBe(true);
   });
 });

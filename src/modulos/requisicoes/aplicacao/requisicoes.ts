@@ -14,6 +14,8 @@
  */
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
+import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { atualizar, atualizarVarios, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Atribuicoes, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
@@ -21,6 +23,7 @@ import {
   CatalogoItens,
   FeriadosRequisicoes,
   ParametrosRequisicoes,
+  RequisicaoAnexos,
   RequisicaoCentros,
   RequisicaoHistorico,
   RequisicaoItens,
@@ -59,6 +62,7 @@ import {
   type RotaAprovacao,
   type Situacao,
 } from '../dominio/requisicao';
+import { aceitaAnexos, conferirArquivo, conferirQuantidade, type TipoAnexo } from '../dominio/anexos';
 import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
 import { mesDe, montarPainel } from '../dominio/painel';
 import { EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
@@ -227,9 +231,18 @@ export interface DadosRequisicao {
   /** Campos próprios da ficha (entrega, evento, utensílios). */
   detalhes: unknown;
   observacao?: string | null;
+  /** Fotos e vídeo já enviados à pasta de anexos (ADR-014). */
+  anexos?: AnexoPedido[];
 }
 
-export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador) {
+export interface AnexoPedido {
+  arquivoId: string;
+  tipo: TipoAnexo;
+  nome: string;
+  duracao?: number | null;
+}
+
+export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, opcoes: { anexosAtivos?: boolean } = {}) {
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   const d = await ler(p, new Date());
   const nomeArea = new Map(d.areas.ativos().map((a) => [a.codigo, a.nome]));
@@ -242,6 +255,7 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador) {
         formulario: t.formulario,
         descricao: t.descricao,
         areas: lerLista(t.areas),
+        anexos: aceitaAnexos(t),
         itens: (d.catalogoPor.get(t.id) ?? [])
           .map((c) => ({ id: c.id, descricao: c.descricao, unidade: c.unidade }))
           .sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')),
@@ -255,6 +269,7 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador) {
       .ativos()
       .map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
       .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
+    anexosAtivos: Boolean(opcoes.anexosAtivos),
   };
 }
 
@@ -317,13 +332,14 @@ export async function enviarRequisicao(
   p: Planilhas,
   quem: Autorizador,
   dados: DadosRequisicao & { nomeRequisitante: string },
-  opcoes: { agora?: Date } = {},
+  opcoes: { agora?: Date; arquivos?: ArmazenamentoArquivos | null } = {},
 ): Promise<{ id: string; numero: string; rota: RotaAprovacao }> {
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   conferirTransicao('enviar', null);
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
-  const { detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
+  const { tipo, detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
+  const anexos = await conferirAnexosDaFicha(p, opcoes.arquivos ?? null, tipo, dados.anexos ?? [], null);
   const numero = proximoNumero(
     agora.getUTCFullYear(),
     d.requisicoes.todos().map((r) => r.numero),
@@ -350,6 +366,13 @@ export async function enviarRequisicao(
     autoria,
   );
   await gravarFilhos(p, d, r.id, { ...dados, itens }, autoria);
+  if (anexos.linhas.length && anexos.tabela)
+    await inserirRegistros(
+      p,
+      anexos.tabela,
+      anexos.linhas.map((l) => ({ ...l, requisicao_id: r.id })),
+      autoria,
+    );
   await gravarHistorico(p, r.id, quem.email, 'enviar', null, 'enviada', agora, textoRota(rota));
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Requisicoes', registroId: r.id });
   return { id: r.id, numero, rota };
@@ -395,7 +418,7 @@ export async function reenviarRequisicao(
   id: string,
   versao: number,
   dados: DadosRequisicao,
-  opcoes: { agora?: Date; comentario?: string } = {},
+  opcoes: { agora?: Date; comentario?: string; arquivos?: ArmazenamentoArquivos | null } = {},
 ) {
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
@@ -403,7 +426,9 @@ export async function reenviarRequisicao(
   if (r.requisitante !== quem.email) throw new ErroPermissao('Só quem fez a requisição pode ajustá-la.');
   conferirTransicao('reenviar', r.situacao);
   if (dados.tipoId !== r.tipo_id) throw new ErroRequisicao('O tipo da requisição não pode mudar. Cancele e abra outra.');
-  const { detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
+  const { tipo, detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
+  // Anexos: os que continuam ficam; os tirados são encerrados; os novos entram.
+  const anexos = dados.anexos ? await conferirAnexosDaFicha(p, opcoes.arquivos ?? null, tipo, dados.anexos, id) : null;
   const autoria = { email: quem.email, agora: () => agora };
   const { colunasAlteradas } = await atualizar(
     p,
@@ -427,6 +452,20 @@ export async function reenviarRequisicao(
   await atualizarVarios(p, RequisicaoCentros, encerrar(d.centrosPor.get(id) ?? []), autoria);
   await atualizarVarios(p, RequisicaoItens, encerrar(d.itensPor.get(id) ?? []), autoria);
   await gravarFilhos(p, d, id, { ...dados, itens }, autoria);
+  if (anexos?.tabela) {
+    const atuais = anexos.tabela.ativos().filter((a) => a.requisicao_id === id);
+    const ficam = new Set(anexos.linhas.map((l) => l.arquivo_id));
+    await atualizarVarios(p, RequisicaoAnexos, encerrar(atuais.filter((a) => !ficam.has(a.arquivo_id))), autoria);
+    const ja = new Set(atuais.map((a) => a.arquivo_id));
+    const novos = anexos.linhas.filter((l) => !ja.has(l.arquivo_id));
+    if (novos.length)
+      await inserirRegistros(
+        p,
+        anexos.tabela,
+        novos.map((l) => ({ ...l, requisicao_id: id })),
+        autoria,
+      );
+  }
   await gravarHistorico(p, id, quem.email, 'reenviar', 'devolvida', 'enviada', agora, [opcoes.comentario, textoRota(rota)].filter(Boolean).join(' ') || null);
   await registrarAuditoria(p, {
     usuario: quem.email,
@@ -687,6 +726,9 @@ export async function detalharRequisicao(p: Planilhas, quem: Autorizador, id: st
       .todos()
       .filter((h) => h.requisicao_id === id)
       .sort((a, b) => a.em.localeCompare(b.em)),
+    anexos: ((await lerAnexos(p))?.ativos() ?? [])
+      .filter((a) => a.requisicao_id === id)
+      .map((a) => ({ id: a.id, tipo: a.tipo, nome: a.nome, tamanho: a.tamanho, duracao: a.duracao, arquivoId: a.arquivo_id })),
     acoes: acoesPossiveis(quem, d, r),
     sla: sla(d, r, agora),
     expediente: d.expediente,
@@ -722,6 +764,8 @@ export interface DadosTipo {
   descricao?: string | null;
   /** Áreas (códigos) que podem usar o tipo. Vazio = todas. */
   areas?: string[];
+  /** Aceita foto e vídeo (sem informar, mantém o que estava). */
+  anexos?: boolean;
 }
 
 export async function listarTipos(p: Planilhas, quem: Autorizador) {
@@ -738,6 +782,7 @@ export async function listarTipos(p: Planilhas, quem: Autorizador) {
       perfilNome: nomePerfil.get(t.perfil_responsavel) ?? t.perfil_responsavel,
       requisicoes: uso.get(t.id)?.length ?? 0,
       listaAreas: lerLista(t.areas),
+      aceitaAnexos: aceitaAnexos(t),
       nomesAreas: lerLista(t.areas).map((c) => nomeArea.get(c) ?? c),
       itensAceitos: d.catalogoPor.get(t.id)?.length ?? 0,
     })),
@@ -790,6 +835,7 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, dados: DadosTi
     areas: juntarLista(dados.areas ?? []),
     // Grupos de despesa não são mais usados nas requisições: limpa a marcação antiga.
     grupos: null,
+    ...(dados.anexos === undefined ? {} : { anexos: dados.anexos ? 'sim' : 'nao' }),
   };
   if (!existente) {
     const t = await inserir(p, TiposRequisicao, campos, { email: quem.email });
@@ -837,6 +883,104 @@ export async function salvarExpediente(p: Planilhas, quem: Autorizador, e: Exped
     else if (atual.valor !== valor) await atualizar(p, ParametrosRequisicoes, atual.id, atual.versao, { valor }, { email: quem.email });
   }
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'ParametrosRequisicoes', detalhes: { colunas: ['expediente'] } });
+}
+
+// ---------------------------------------------------------------------------
+// Fotos e vídeo (ADR-014)
+// ---------------------------------------------------------------------------
+
+/** Maior trecho entregue de uma vez (o servidor da hospedagem limita o tamanho da resposta). */
+export const TRECHO_MAXIMO = 4 * 1024 * 1024;
+
+async function lerAnexos(p: Planilhas) {
+  try {
+    const [tabela] = await lerTabelas(p, [RequisicaoAnexos] as const);
+    return tabela;
+  } catch (erro) {
+    // Antes de "Preparar estrutura" criar a aba, a requisição funciona sem anexos.
+    if (erro instanceof ErroEstruturaAusente) return null;
+    throw erro;
+  }
+}
+
+/** Confere os arquivos que vão ficar ligados à requisição (já enviados à pasta). */
+async function conferirAnexosDaFicha(p: Planilhas, arquivos: ArmazenamentoArquivos | null, tipo: RegTipo, anexos: AnexoPedido[], requisicaoId: string | null) {
+  const tabela = await lerAnexos(p);
+  if (!anexos.length) return { tabela, linhas: [] };
+  if (!aceitaAnexos(tipo)) throw new ErroRequisicao(`O tipo "${tipo.nome}" não aceita foto nem vídeo.`);
+  if (!arquivos || !tabela) throw new ErroRequisicao('Fotos e vídeos ainda não estão ativos nesta instituição. Envie sem anexo e descreva o problema.');
+  const erros = conferirQuantidade(anexos);
+  const usados = new Set(
+    tabela
+      .ativos()
+      .filter((a) => a.requisicao_id !== requisicaoId)
+      .map((a) => a.arquivo_id),
+  );
+  const linhas: { tipo: TipoAnexo; arquivo_id: string; nome: string; mime: string; tamanho: number; duracao: number | null }[] = [];
+  for (const a of anexos) {
+    if (usados.has(a.arquivoId)) {
+      erros.push('Um dos arquivos já pertence a outra requisição.');
+      continue;
+    }
+    const f = await arquivos.conferir(a.arquivoId);
+    if (!f) {
+      erros.push(`O arquivo "${a.nome}" não chegou à pasta de anexos. Envie de novo.`);
+      continue;
+    }
+    erros.push(...conferirArquivo({ tipo: a.tipo, mime: f.tipo, tamanho: f.tamanho, duracao: a.duracao }));
+    linhas.push({ tipo: a.tipo, arquivo_id: f.id, nome: (a.nome || f.nome).slice(0, 120), mime: f.tipo, tamanho: f.tamanho, duracao: a.duracao ?? null });
+  }
+  if (erros.length) throw new ErroRequisicao([...new Set(erros)].join(' '));
+  return { tabela, linhas };
+}
+
+/**
+ * Abre o envio de uma foto ou vídeo para a pasta de anexos. O navegador manda
+ * o arquivo direto para lá; o vínculo com a requisição só nasce no envio da ficha.
+ */
+export async function iniciarEnvioAnexo(
+  p: Planilhas,
+  quem: Autorizador,
+  arquivos: ArmazenamentoArquivos | null,
+  a: { tipoId: string; tipo: TipoAnexo; mime: string; tamanho: number; duracao?: number | null; origem: string },
+): Promise<{ url: string }> {
+  if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
+  if (!arquivos) throw new ErroRequisicao('Fotos e vídeos ainda não estão ativos nesta instituição.');
+  const [tipos] = await lerTabelas(p, [TiposRequisicao] as const);
+  const tipo = tipos.ativos().find((t) => t.id === a.tipoId);
+  if (!tipo) throw new ErroRequisicao('Escolha o tipo de requisição antes de anexar.');
+  if (!aceitaAnexos(tipo)) throw new ErroRequisicao(`O tipo "${tipo.nome}" não aceita foto nem vídeo.`);
+  const erros = conferirArquivo(a);
+  if (erros.length) throw new ErroRequisicao(erros.join(' '));
+  // Nome sem dados pessoais: só a data e o tipo.
+  const ext = a.mime.split('/')[1]?.replace('quicktime', 'mov').replace('jpeg', 'jpg') ?? 'bin';
+  const nome = `requisicao-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}-${a.tipo}.${ext}`;
+  return arquivos.iniciarEnvio({ nome, tipo: a.mime, tamanho: a.tamanho, origem: a.origem });
+}
+
+/**
+ * Lê um trecho de um anexo para mostrar no Elo, só para quem pode ver a
+ * requisição. A primeira leitura de cada abertura fica na auditoria.
+ */
+export async function lerAnexo(
+  p: Planilhas,
+  quem: Autorizador,
+  arquivos: ArmazenamentoArquivos | null,
+  anexoId: string,
+  pedido: { inicio: number; fim: number | null },
+) {
+  if (!arquivos) throw new ErroRequisicao('Fotos e vídeos não estão ativos nesta instituição.');
+  const tabela = await lerAnexos(p);
+  const anexo = tabela?.porId(anexoId);
+  if (!anexo || !anexo.ativo) throw new ErroRequisicao('Anexo não encontrado.');
+  const d = await ler(p, new Date());
+  const r = d.requisicoes.porId(anexo.requisicao_id);
+  if (!r || !r.ativo || !podeVer(quem, d, r)) throw new ErroPermissao('Você não tem acesso a este anexo.');
+  const inicio = Math.max(0, Math.min(pedido.inicio, anexo.tamanho - 1));
+  const fim = Math.min(pedido.fim ?? anexo.tamanho - 1, inicio + TRECHO_MAXIMO - 1, anexo.tamanho - 1);
+  const trecho = await arquivos.ler(anexo.arquivo_id, { inicio, fim });
+  if (inicio === 0) await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'RequisicaoAnexos', registroId: anexo.id });
+  return { ...trecho, tipo: anexo.mime };
 }
 
 // ---------------------------------------------------------------------------

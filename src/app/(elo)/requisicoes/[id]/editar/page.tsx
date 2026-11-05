@@ -7,7 +7,7 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { CabecalhoPagina } from '@/ui/pagina';
-import { acaoReenviarRequisicao } from '../../acoes';
+import { acaoIniciarEnvioAnexo, acaoReenviarRequisicao } from '../../acoes';
 
 export const metadata: Metadata = { title: 'Ajustar requisição' };
 
@@ -25,11 +25,11 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
     throw erro;
   }
   if (!d.acoes.includes('reenviar')) redirect(`/requisicoes/${id}`);
-  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador);
+  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador, { anexosAtivos: app.arquivos !== null });
   const r = d.requisicao;
   // O tipo não muda no ajuste: se tiver sido excluído, continua aparecendo.
   if (!opcoes.tipos.some((t) => t.id === r.tipo_id) && d.tipo)
-    opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null, areas: [], itens: [] });
+    opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null, areas: [], anexos: false, itens: [] });
   const pedido = [...d.historico].reverse().find((h) => h.acao === 'devolver');
   return (
     <div className="max-w-4xl">
@@ -53,6 +53,17 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
       <FormularioRequisicao
         opcoes={opcoes}
         acao={acaoReenviarRequisicao}
+        iniciarEnvio={acaoIniciarEnvioAnexo}
+        anexosIniciais={d.anexos.map((a) => ({
+          chave: a.id,
+          tipo: a.tipo,
+          nome: a.nome,
+          duracao: a.duracao,
+          arquivoId: a.arquivoId,
+          previa: `/requisicoes/anexos/${a.id}`,
+          progresso: 100,
+          erro: null,
+        }))}
         oculto={{ id: r.id, versao: r.versao }}
         rotuloEnviar="Reenviar requisição"
         comComentario

@@ -41,7 +41,14 @@ export function FormularioInstituicao({
             <input name="nome" required defaultValue={v('nome', i?.nome)} className={estiloEntrada} />
           </Campo>
           <Campo rotulo="Código" obrigatorio dica={i ? 'Não muda depois do cadastro.' : 'Minúsculas, sem espaço (ex.: apae-franca).'}>
-            <input name="codigo" required defaultValue={v('codigo', i?.codigo)} readOnly={!!i} pattern="[a-z0-9_-]{2,40}" className={`${estiloEntrada} ${i ? 'bg-superficie-2 text-texto-suave' : ''}`} />
+            <input
+              name="codigo"
+              required
+              defaultValue={v('codigo', i?.codigo)}
+              readOnly={!!i}
+              pattern="[a-z0-9_-]{2,40}"
+              className={`${estiloEntrada} ${i ? 'bg-superficie-2 text-texto-suave' : ''}`}
+            />
           </Campo>
         </div>
         <Campo rotulo="Razão social">
@@ -59,27 +66,55 @@ export function FormularioInstituicao({
             <textarea name="enderecos" rows={2} defaultValue={v('enderecos', i?.enderecos.join('\n'))} className={estiloEntrada} />
           </Campo>
         </div>
-        <Campo rotulo="Administradores iniciais" dica="E-mails do domínio da instituição, um por linha. Entram mesmo com as planilhas em branco, para rodar Preparar estrutura.">
-          <textarea name="administradoresIniciais" rows={2} defaultValue={v('administradoresIniciais', i?.administradoresIniciais.join('\n'))} className={estiloEntrada} />
+        <Campo
+          rotulo="Administradores iniciais"
+          dica="E-mails do domínio da instituição, um por linha. Entram mesmo com as planilhas em branco, para rodar Preparar estrutura."
+        >
+          <textarea
+            name="administradoresIniciais"
+            rows={2}
+            defaultValue={v('administradoresIniciais', i?.administradoresIniciais.join('\n'))}
+            className={estiloEntrada}
+          />
         </Campo>
       </fieldset>
 
       <fieldset className="space-y-3">
         <legend className="font-semibold">Planilhas no Drive da instituição</legend>
         <p className="text-sm text-texto-suave">
-          Cole o ID de cada planilha: o trecho do link entre <code>/d/</code> e <code>/edit</code>. Cada planilha deve estar compartilhada com a conta de serviço do Elo.
+          Cole o ID de cada planilha: o trecho do link entre <code>/d/</code> e <code>/edit</code>. Cada planilha deve estar compartilhada com a conta de
+          serviço do Elo.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {planilhas.map((p) => (
             <Campo key={p.chave} rotulo={p.nome} obrigatorio={p.obrigatoria}>
-              <input name={`planilha_${p.chave}`} required={p.obrigatoria} defaultValue={v(`planilha_${p.chave}`, i?.planilhas[p.chave])} className={`${estiloEntrada} font-mono text-xs`} />
+              <input
+                name={`planilha_${p.chave}`}
+                required={p.obrigatoria}
+                defaultValue={v(`planilha_${p.chave}`, i?.planilhas[p.chave])}
+                className={`${estiloEntrada} font-mono text-xs`}
+              />
             </Campo>
           ))}
         </div>
+        <Campo
+          rotulo="Pasta de anexos (fotos e vídeos)"
+          dica="Opcional. Uma pasta numa unidade compartilhada do Drive da instituição, com a conta de serviço como Gerente de conteúdo. Cole o trecho do link depois de /folders/. Sem ela, as requisições não aceitam foto nem vídeo."
+        >
+          <input name="pasta_anexos" defaultValue={v('pasta_anexos', i?.planilhas.anexos)} className={`${estiloEntrada} font-mono text-xs`} />
+        </Campo>
       </fieldset>
 
-      <Campo rotulo="Unidades iniciais" dica='Uma por linha, no formato codigo=Nome (ex.: sede=Apae Franca (Sede)). Usadas só quando a aba de unidades está vazia.'>
-        <textarea name="unidades" rows={2} defaultValue={v('unidades', i?.unidades.map((u) => `${u.codigo}=${u.nome}`).join('\n'))} className={`${estiloEntrada} font-mono text-xs`} />
+      <Campo
+        rotulo="Unidades iniciais"
+        dica="Uma por linha, no formato codigo=Nome (ex.: sede=Apae Franca (Sede)). Usadas só quando a aba de unidades está vazia."
+      >
+        <textarea
+          name="unidades"
+          rows={2}
+          defaultValue={v('unidades', i?.unidades.map((u) => `${u.codigo}=${u.nome}`).join('\n'))}
+          className={`${estiloEntrada} font-mono text-xs`}
+        />
       </Campo>
 
       {estado.erro && (

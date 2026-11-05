@@ -1,0 +1,288 @@
+'use client';
+
+/**
+ * Fotos e vídeo na abertura da requisição (ADR-014).
+ *
+ * - "Tirar foto" e "Gravar vídeo" abrem a câmera direto no celular; no
+ *   computador, abrem a escolha de arquivo. "Escolher arquivo" usa a galeria.
+ * - A foto é reduzida aqui mesmo (lado maior até 1600 px, JPG) antes do envio.
+ * - O vídeo é conferido antes do envio: até 30 segundos e 25 MB.
+ * - O arquivo vai direto para a pasta de anexos; a ficha só guarda a referência.
+ */
+import { useEffect, useRef, useState } from 'react';
+import { conferirArquivo, LIMITES_ANEXOS, mb, tipoDoArquivo, type TipoAnexo } from '../dominio/anexos';
+import { IconeFechar } from '@/ui/icones';
+
+export interface AnexoNaFicha {
+  /** Chave local (antes de existir o arquivo). */
+  chave: string;
+  tipo: TipoAnexo;
+  nome: string;
+  duracao: number | null;
+  /** Preenchido quando o envio termina. */
+  arquivoId: string | null;
+  /** Endereço para mostrar a miniatura (arquivo local ou anexo já guardado). */
+  previa: string | null;
+  progresso: number;
+  erro: string | null;
+}
+
+type Iniciar = (a: { tipoId: string; tipo: TipoAnexo; mime: string; tamanho: number; duracao: number | null }) => Promise<{ url?: string; erro?: string }>;
+
+const LADO_MAXIMO = 1600;
+
+/** Reduz a foto para JPG (lado maior até 1600 px), baixando a qualidade se ainda passar do limite. */
+async function reduzirFoto(arquivo: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(arquivo, { imageOrientation: 'from-image' }).catch(() => null);
+  if (!bitmap) throw new Error('Não foi possível ler esta foto. Tente tirar de novo ou escolher outra.');
+  const escala = Math.min(1, LADO_MAXIMO / Math.max(bitmap.width, bitmap.height));
+  const tela = document.createElement('canvas');
+  tela.width = Math.round(bitmap.width * escala);
+  tela.height = Math.round(bitmap.height * escala);
+  tela.getContext('2d')!.drawImage(bitmap, 0, 0, tela.width, tela.height);
+  bitmap.close();
+  for (const qualidade of [0.82, 0.7, 0.55]) {
+    const blob = await new Promise<Blob | null>((ok) => tela.toBlob(ok, 'image/jpeg', qualidade));
+    if (blob && blob.size <= LIMITES_ANEXOS.fotoBytes) return blob;
+  }
+  throw new Error(`A foto continua acima de ${mb(LIMITES_ANEXOS.fotoBytes)} mesmo reduzida.`);
+}
+
+/** Duração do vídeo em segundos (lida pelo próprio navegador). */
+function duracaoDoVideo(arquivo: File): Promise<number | null> {
+  return new Promise((ok) => {
+    const v = document.createElement('video');
+    const url = URL.createObjectURL(arquivo);
+    v.preload = 'metadata';
+    v.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      ok(Number.isFinite(v.duration) ? v.duration : null);
+    };
+    v.onerror = () => {
+      URL.revokeObjectURL(url);
+      ok(null);
+    };
+    v.src = url;
+  });
+}
+
+/** Manda o arquivo para o endereço do envio, avisando o progresso. Devolve o id do arquivo. */
+function enviarArquivo(url: string, corpo: Blob, mime: string, progresso: (p: number) => void): Promise<string> {
+  return new Promise((ok, falha) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', mime);
+    xhr.upload.onprogress = (e) => e.lengthComputable && progresso(Math.round((e.loaded / e.total) * 100));
+    xhr.onload = () => {
+      try {
+        const r = JSON.parse(xhr.responseText) as { id?: string; erro?: string };
+        if (xhr.status >= 200 && xhr.status < 300 && r.id) ok(r.id);
+        else falha(new Error(r.erro ?? `O envio falhou (${xhr.status}). Tente de novo.`));
+      } catch {
+        falha(new Error(`O envio falhou (${xhr.status}). Tente de novo.`));
+      }
+    };
+    xhr.onerror = () => falha(new Error('A internet caiu durante o envio. Tente de novo.'));
+    xhr.send(corpo);
+  });
+}
+
+const botao =
+  'inline-flex items-center gap-2 rounded-lg border border-borda-forte bg-superficie px-3 py-2 text-sm font-semibold text-texto transition-colors duration-150 ease-out hover:border-destaque hover:bg-destaque-suave focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--foco)] disabled:cursor-not-allowed disabled:opacity-50';
+
+export function AnexosDaRequisicao({
+  tipoId,
+  anexos,
+  mudar,
+  iniciar,
+}: {
+  tipoId: string;
+  anexos: AnexoNaFicha[];
+  mudar: (f: (l: AnexoNaFicha[]) => AnexoNaFicha[]) => void;
+  iniciar: Iniciar;
+}) {
+  const foto = useRef<HTMLInputElement>(null);
+  const video = useRef<HTMLInputElement>(null);
+  const galeria = useRef<HTMLInputElement>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+  const fotos = anexos.filter((a) => a.tipo === 'foto').length;
+  const videos = anexos.filter((a) => a.tipo === 'video').length;
+  const cabeFoto = fotos < LIMITES_ANEXOS.fotos;
+  const cabeVideo = videos < LIMITES_ANEXOS.videos;
+
+  // Libera as miniaturas locais ao sair da tela.
+  const previas = useRef(new Set<string>());
+  useEffect(() => {
+    const lista = previas.current;
+    return () => lista.forEach((u) => URL.revokeObjectURL(u));
+  }, []);
+
+  const atualizar = (chave: string, m: Partial<AnexoNaFicha>) => mudar((l) => l.map((a) => (a.chave === chave ? { ...a, ...m } : a)));
+
+  async function receber(arquivo: File) {
+    setAviso(null);
+    const tipo = tipoDoArquivo(arquivo.type) ?? (arquivo.type.startsWith('image/') ? 'foto' : arquivo.type.startsWith('video/') ? 'video' : null);
+    if (!tipo) return setAviso('Escolha uma foto ou um vídeo.');
+    if (tipo === 'foto' && !cabeFoto) return setAviso(`No máximo ${LIMITES_ANEXOS.fotos} fotos.`);
+    if (tipo === 'video' && !cabeVideo) return setAviso(`No máximo ${LIMITES_ANEXOS.videos} vídeo.`);
+    let corpo: Blob = arquivo;
+    let mime = arquivo.type;
+    let duracao: number | null = null;
+    try {
+      if (tipo === 'foto') {
+        // Fotos do iPhone (HEIC) e grandes viram JPG reduzido.
+        corpo = await reduzirFoto(arquivo);
+        mime = 'image/jpeg';
+      } else {
+        duracao = await duracaoDoVideo(arquivo);
+      }
+    } catch (e) {
+      return setAviso((e as Error).message);
+    }
+    const erros = conferirArquivo({ tipo, mime, tamanho: corpo.size, duracao });
+    if (erros.length) return setAviso(erros.join(' '));
+
+    const chave = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const previa = URL.createObjectURL(corpo);
+    previas.current.add(previa);
+    mudar((l) => [
+      ...l,
+      { chave, tipo, nome: arquivo.name || (tipo === 'foto' ? 'foto.jpg' : 'video'), duracao, arquivoId: null, previa, progresso: 0, erro: null },
+    ]);
+    const r = await iniciar({ tipoId, tipo, mime, tamanho: corpo.size, duracao });
+    if (!r.url) return atualizar(chave, { erro: r.erro ?? 'Não foi possível enviar.' });
+    try {
+      const id = await enviarArquivo(r.url, corpo, mime, (p) => atualizar(chave, { progresso: p }));
+      atualizar(chave, { arquivoId: id, progresso: 100 });
+    } catch (e) {
+      atualizar(chave, { erro: (e as Error).message });
+    }
+  }
+
+  const escolher = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const lista = [...(e.target.files ?? [])];
+    e.target.value = '';
+    lista.forEach((f) => void receber(f));
+  };
+
+  return (
+    <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-anexos">
+      <div>
+        <h2 id="t-anexos" className="text-lg font-bold">
+          Fotos e vídeo
+        </h2>
+        <p className="mt-0.5 text-sm text-texto-suave">
+          Opcional. Até {LIMITES_ANEXOS.fotos} fotos e {LIMITES_ANEXOS.videos} vídeo de até {LIMITES_ANEXOS.videoSegundos} segundos (
+          {mb(LIMITES_ANEXOS.videoBytes)}). Mostre o problema e evite o rosto de atendidos.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={botao} disabled={!cabeFoto} onClick={() => foto.current?.click()}>
+          <IconeCamera /> Tirar foto
+        </button>
+        <button type="button" className={botao} disabled={!cabeVideo} onClick={() => video.current?.click()}>
+          <IconeVideo /> Gravar vídeo
+        </button>
+        <button type="button" className={botao} disabled={!cabeFoto && !cabeVideo} onClick={() => galeria.current?.click()}>
+          Escolher arquivo
+        </button>
+        <input ref={foto} type="file" accept="image/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolher} />
+        <input ref={video} type="file" accept="video/*" capture="environment" className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolher} />
+        <input ref={galeria} type="file" accept="image/*,video/*" multiple className="sr-only" tabIndex={-1} aria-hidden="true" onChange={escolher} />
+      </div>
+      {aviso && (
+        <p role="alert" className="rounded-lg bg-erro-fundo px-3 py-2 text-sm text-erro">
+          {aviso}
+        </p>
+      )}
+      {anexos.length > 0 && (
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {anexos.map((a) => (
+            <li
+              key={a.chave}
+              className={`group relative overflow-hidden rounded-lg border bg-superficie-2 transition-shadow duration-200 ease-out hover:shadow-md ${a.erro ? 'border-erro' : 'border-borda'}`}
+            >
+              <div className="aspect-[4/3] bg-black/5">
+                {a.previa &&
+                  (a.tipo === 'foto' ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.previa} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <video src={a.previa} muted playsInline preload="metadata" className="h-full w-full object-cover" />
+                  ))}
+              </div>
+              <div className="space-y-1 px-2 py-1.5 text-xs">
+                <p className="truncate font-semibold">{a.tipo === 'foto' ? 'Foto' : `Vídeo${a.duracao ? ` · ${Math.round(a.duracao)} s` : ''}`}</p>
+                {a.erro ? (
+                  <p className="text-erro">{a.erro}</p>
+                ) : a.arquivoId ? (
+                  <p className="text-sucesso">Enviado</p>
+                ) : (
+                  <div
+                    className="h-1.5 overflow-hidden rounded-full bg-borda"
+                    role="progressbar"
+                    aria-valuenow={a.progresso}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Enviando"
+                  >
+                    <div
+                      className="h-full rounded-full bg-destaque transition-[width] duration-300 ease-out"
+                      style={{ width: `${Math.max(a.progresso, 4)}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => mudar((l) => l.filter((x) => x.chave !== a.chave))}
+                aria-label={`Tirar ${a.tipo === 'foto' ? 'a foto' : 'o vídeo'}`}
+                className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white opacity-90 transition-opacity duration-150 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--foco)]"
+              >
+                <IconeFechar tamanho={14} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function IconeCamera() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+      <circle cx="12" cy="13" r="3" />
+    </svg>
+  );
+}
+
+function IconeVideo() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m16 13 5.2 3.1a.5.5 0 0 0 .8-.4V8.3a.5.5 0 0 0-.8-.4L16 11" />
+      <rect x="2" y="6" width="14" height="12" rx="2" />
+    </svg>
+  );
+}

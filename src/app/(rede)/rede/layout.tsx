@@ -51,7 +51,10 @@ export default async function LayoutRede({ children }: { children: React.ReactNo
     if (erro instanceof ErroConfiguracao || erro instanceof ErroArmazenamento) {
       return corpo(
         <main className="px-4 py-12">
-          <ConfiguracaoInvalida mensagem={erro.message} titulo={erro instanceof ErroArmazenamento ? 'A rede não conseguiu acessar a planilha da rede' : undefined} />
+          <ConfiguracaoInvalida
+            mensagem={erro.message}
+            titulo={erro instanceof ErroArmazenamento ? 'A rede não conseguiu acessar a planilha da rede' : undefined}
+          />
         </main>,
       );
     }

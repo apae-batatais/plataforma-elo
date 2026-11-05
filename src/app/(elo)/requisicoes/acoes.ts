@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
@@ -13,6 +14,7 @@ import {
   enviarRequisicao,
   ErroRequisicao,
   incluirFeriadosNacionais,
+  iniciarEnvioAnexo,
   mudarSituacaoItemCatalogo,
   mudarSituacaoTipo,
   receberRequisicao,
@@ -25,7 +27,9 @@ import {
   type DadosRequisicao,
   type LinhaItemLote,
 } from '@/modulos/requisicoes/aplicacao/requisicoes';
+import type { TipoAnexo } from '@/modulos/requisicoes/dominio/anexos';
 import type { Formulario } from '@/modulos/requisicoes/dominio/requisicao';
+import { ErroArquivo } from '@/nucleo/armazenamento/arquivos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -36,7 +40,7 @@ async function contexto() {
   return { usuario, app: await obterAplicacao() };
 }
 
-const conhecido = (e: unknown) => e instanceof ErroRequisicao || e instanceof ErroConflito || e instanceof ErroPermissao;
+const conhecido = (e: unknown) => e instanceof ErroRequisicao || e instanceof ErroConflito || e instanceof ErroPermissao || e instanceof ErroArquivo;
 const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 const numero = (f: FormData, campo: string) => {
   const t = texto(f, campo).replace(/\s/g, '');
@@ -76,7 +80,7 @@ export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise
   const { usuario, app } = await contexto();
   let r: { id: string; numero: string; rota: { tipo: string } };
   try {
-    r = await enviarRequisicao(app.planilhas, usuario.autorizador, { ...lerFicha(f), nomeRequisitante: usuario.nome });
+    r = await enviarRequisicao(app.planilhas, usuario.autorizador, { ...lerFicha(f), nomeRequisitante: usuario.nome }, { arquivos: app.arquivos });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     if (erro instanceof SyntaxError) return { erro: 'A requisição veio incompleta. Tente de novo.' };
@@ -88,12 +92,32 @@ export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise
   redirect(`/requisicoes/${r.id}?ok=${encodeURIComponent(`Requisição ${r.numero} enviada. Agora aguarda ${quem}.`)}`);
 }
 
+/** Abre o envio de uma foto ou vídeo: o navegador manda o arquivo direto para a pasta de anexos. */
+export async function acaoIniciarEnvioAnexo(a: {
+  tipoId: string;
+  tipo: TipoAnexo;
+  mime: string;
+  tamanho: number;
+  duracao: number | null;
+}): Promise<{ url?: string; erro?: string }> {
+  const { usuario, app } = await contexto();
+  const h = await headers();
+  const origem = h.get('origin') ?? `https://${h.get('x-forwarded-host') ?? h.get('host')}`;
+  try {
+    return await iniciarEnvioAnexo(app.planilhas, usuario.autorizador, app.arquivos, { ...a, origem });
+  } catch (erro) {
+    if (conhecido(erro) || erro instanceof ErroArquivo) return { erro: (erro as Error).message };
+    throw erro;
+  }
+}
+
 export async function acaoReenviarRequisicao(_: EstadoFicha, f: FormData): Promise<EstadoFicha> {
   const { usuario, app } = await contexto();
   const id = texto(f, 'id');
   try {
     await reenviarRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerFicha(f), {
       comentario: texto(f, 'comentario'),
+      arquivos: app.arquivos,
     });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
@@ -167,6 +191,7 @@ export async function acaoSalvarTipo(f: FormData) {
         prazoAtendimento: numero(f, 'prazo_atendimento'),
         descricao: texto(f, 'descricao') || null,
         areas: texto(f, 'todas_areas') === 'sim' ? [] : lista('areas'),
+        anexos: texto(f, 'anexos') === 'sim',
       },
       id ? { id, versao: Number(texto(f, 'versao')) } : undefined,
     ),

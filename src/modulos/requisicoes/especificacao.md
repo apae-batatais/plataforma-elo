@@ -15,6 +15,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 3. **Mobiliário (Setor de Patrimônio)**: ficha com o que fazer (mudar de lugar, emprestar, recolher, montar/desmontar, outro), lista de móveis (quantidade, descrição, patrimônio), de onde, para onde, para quando e devolução (empréstimo); perfil novo Setor de Patrimônio.
 4. **Manutenção (Setor de Manutenção)**: ficha com tipo de serviço (elétrica, hidráulica, ar-condicionado, equipamento, portas/janelas/móveis, pintura, paredes/piso/telhado, outro), local, problema, urgência, equipamento, patrimônio, melhor horário e contato; perfil novo Setor de Manutenção; urgência na fila. Foto do problema fica para depois (precisa de pasta no Drive com envio de arquivos).
 5. **Painel de prazos e feriados**: painel com % de aprovação e de atendimento no prazo, tempo médio, atendidas em parte e atrasadas agora, por mês, setor e tipo; feriados (nacionais de uma vez, municipais um a um) fora das horas úteis.
+6. **Fotos e vídeo (ADR-014)**: até 3 fotos (reduzidas no celular) e 1 vídeo de até 30 s / 25 MB, gravados direto na abertura; arquivos numa pasta de unidade compartilhada do Drive da instituição; o tipo diz se aceita.
 
 ## Usuários e permissões
 
@@ -42,6 +43,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 | Historico     | Cada mudança de etapa: quando, quem, de/para, comentário (só inclusões)                                                                            | pessoal: usuário      |
 | Parametros    | Expediente (início e fim) usado no SLA                                                                                                             | interno               |
 | Feriados      | Data e nome dos dias que não contam nas horas úteis                                                                                                | interno               |
+| Anexos        | Fotos e vídeo de cada requisição: id do arquivo na pasta de anexos, tipo, tamanho, duração                                                         | sensível: arquivo     |
 
 O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão da Diretoria); a ligação com o Orçamento foi removida (ADR-013, Atualização).
 
@@ -64,6 +66,7 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 15. Manutenção: tipo de serviço, local, problema (mín. 10 letras) e urgência são obrigatórios; não tem itens; tipo é sempre "serviço". Concluir como chamado (resolvido ou em parte, com o que foi feito).
 16. Feriados: só a Administração da plataforma cadastra e tira; uma data só uma vez; os feriados não contam nas horas úteis de nenhum prazo (inclusive de requisições antigas, ao recalcular).
 17. Painel de prazos (`requisicoes.painel`: Diretoria, coordenação e setores): mostra só as requisições que a pessoa já pode ver. Aprovação conta no mês da decisão (aprovar, devolver ou recusar), com horas do envio à decisão; atendimento conta no mês da conclusão, com horas da aprovação à conclusão. Atrasadas agora: esperando decisão ou atendimento além do prazo.
+18. Fotos e vídeo: só nos tipos que aceitam (marcados no cadastro; sem marcação, as fichas de serviço); até 3 fotos de até 1,4 MB (já reduzidas) e 1 vídeo de até 30 s e 25 MB, em JPG/PNG/WebP e MP4/MOV/WebM/3GP. O servidor confere cada arquivo na pasta antes de ligar à requisição; um arquivo só pertence a uma requisição. Só quem vê a requisição vê os anexos, pelo Elo, e cada abertura vai para a auditoria. Ao ajustar uma devolvida, os anexos tirados são encerrados.
 
 ## Telas
 
