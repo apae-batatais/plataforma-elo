@@ -18,7 +18,7 @@ const SITUACAO = { elaboracao: 'Em elaboração', aprovado: 'Aprovado', encerrad
 
 function Bloco({ titulo, descricao, children, className = '' }: { titulo: string; descricao?: string; children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-xl border border-borda bg-superficie p-5 ${className}`} aria-label={titulo}>
+    <section className={`rounded-cartao border border-borda bg-superficie p-5 ${className}`} aria-label={titulo}>
       <h2 className="font-bold">{titulo}</h2>
       {descricao && <p className="mb-4 mt-0.5 text-sm text-texto-suave">{descricao}</p>}
       {!descricao && <div className="mb-4" />}
@@ -112,7 +112,7 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
 
       <dl className="grid gap-3 sm:grid-cols-3">
         {cartoes.map((c) => (
-          <div key={c.rotulo} className={`rounded-xl border bg-superficie px-5 py-4 ${c.alerta ? 'border-erro' : 'border-borda'}`}>
+          <div key={c.rotulo} className={`rounded-cartao border bg-superficie px-5 py-4 ${c.alerta ? 'border-erro' : 'border-borda'}`}>
             <dt className="text-sm text-texto-suave">{c.rotulo}</dt>
             <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${c.alerta ? 'text-erro' : ''}`}>{c.valor}</dd>
             <dd className="mt-1 flex flex-wrap items-center gap-2">

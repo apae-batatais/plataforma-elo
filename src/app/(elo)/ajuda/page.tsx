@@ -458,7 +458,7 @@ export default async function Ajuda() {
       />
       <section
         aria-label="Manual completo"
-        className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-borda bg-superficie px-5 py-4"
+        className="flex flex-wrap items-center justify-between gap-4 rounded-cartao border border-borda bg-superficie px-5 py-4"
       >
         <div>
           <p className="font-bold">Manual completo do {NOME_PLATAFORMA}</p>
@@ -477,7 +477,7 @@ export default async function Ajuda() {
       </nav>
       <div className="space-y-3">
         {assuntos.map((s, i) => (
-          <details key={s.id} id={s.id} open={i === 0} className="group scroll-mt-20 rounded-xl border border-borda bg-superficie">
+          <details key={s.id} id={s.id} open={i === 0} className="group scroll-mt-20 rounded-cartao border border-borda bg-superficie">
             <summary className="flex cursor-pointer list-none items-start justify-between gap-4 px-5 py-4">
               <span>
                 <span className="block text-lg font-bold">{s.titulo}</span>

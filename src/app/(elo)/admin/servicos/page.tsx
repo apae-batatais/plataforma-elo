@@ -182,7 +182,7 @@ export default async function ServicosAdmin({ searchParams }: { searchParams: Pr
       )}
 
       {excluidos.length > 0 && (
-        <details className="mt-6 rounded-xl border border-borda bg-superficie">
+        <details className="mt-6 rounded-cartao border border-borda bg-superficie">
           <summary className="cursor-pointer select-none px-5 py-3 text-sm">
             <span className="font-semibold">Serviços excluídos ({excluidos.length})</span>
             <span className="ml-2 text-texto-suave">Ficam guardados e podem ser reativados.</span>

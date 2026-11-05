@@ -250,7 +250,7 @@ export default async function Acessos({ searchParams }: { searchParams: Promise<
       />
 
       {inativos.length > 0 && (
-        <details className="mt-6 rounded-xl border border-borda bg-superficie text-sm">
+        <details className="mt-6 rounded-cartao border border-borda bg-superficie text-sm">
           <summary className="cursor-pointer select-none px-5 py-3 font-semibold">Acessos desativados ({inativos.length})</summary>
           <ul className="divide-y divide-borda border-t border-borda text-texto-suave">
             {inativos.map((u) => (

@@ -140,7 +140,7 @@ export function ImportarFolha({
 
   return (
     <div className="space-y-6">
-      <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-arquivo">
+      <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5" aria-labelledby="t-arquivo">
         <h2 id="t-arquivo" className="text-lg font-bold">
           1. Escolher o arquivo
         </h2>
@@ -149,7 +149,7 @@ export function ImportarFolha({
           dados e qual coluna corresponde a cada campo. Nada é gravado antes da sua confirmação.
         </p>
         {/* O botão nativo de arquivo mostra textos no idioma do navegador; este fica sempre em português. */}
-        <label className="flex cursor-pointer flex-wrap items-center gap-3 rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-foco hover:border-destaque/60">
+        <label className="flex cursor-pointer flex-wrap items-center gap-3 rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-destaque hover:border-destaque/60">
           <input
             type="file"
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -198,7 +198,7 @@ export function ImportarFolha({
       {a && <Relatorio analise={a} />}
 
       {a && (
-        <form action={enviarConfirmacao} className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+        <form action={enviarConfirmacao} className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
           <h2 className="text-lg font-bold">4. Confirmar</h2>
           {servicos.length > 0 && (
             <fieldset className="min-w-0 space-y-2">
@@ -402,7 +402,7 @@ function DePara({ abas, m, setM, children }: { abas: AbaResumida[]; m: Mapeament
   const outraAba = abas.find((a) => a.nome !== m.folha.aba) ?? abas[0];
 
   return (
-    <section className="space-y-6 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-depara">
+    <section className="space-y-6 rounded-cartao border border-borda bg-superficie p-5" aria-labelledby="t-depara">
       <div>
         <h2 id="t-depara" className="text-lg font-bold">
           2. Onde estão os dados (DE-PARA)
@@ -691,7 +691,7 @@ function Relatorio({ analise }: { analise: Analise }) {
     </ul>
   );
   return (
-    <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
+    <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
       <h2 id="t-relatorio" className="text-lg font-bold">
         3. Conferir o que será importado
       </h2>

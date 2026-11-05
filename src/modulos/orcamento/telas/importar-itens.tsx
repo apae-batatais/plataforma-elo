@@ -86,13 +86,13 @@ export function ImportarItens({ lerArquivo, analisar, confirmar }: { lerArquivo:
 
   return (
     <div className="space-y-6">
-      <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-arquivo">
+      <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5" aria-labelledby="t-arquivo">
         <h2 id="t-arquivo" className="text-lg font-bold">1. Escolher o arquivo</h2>
         <p className="max-w-2xl text-sm text-texto-suave">
           No Google Drive, abra a planilha e use Arquivo › Fazer download › Microsoft Excel (.xlsx). No passo seguinte você diz se são despesas ou receitas, em
           qual aba estão e qual coluna corresponde a cada campo. Nada é gravado antes da sua confirmação.
         </p>
-        <label className="flex cursor-pointer flex-wrap items-center gap-3 rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-foco hover:border-destaque/60">
+        <label className="flex cursor-pointer flex-wrap items-center gap-3 rounded-lg border border-dashed border-borda-forte bg-superficie-2 p-4 text-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-destaque hover:border-destaque/60">
           <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => ler(e.target.files?.[0] ?? null)} className="sr-only" />
           <span className="rounded-md border border-borda-forte bg-superficie px-3 py-2 font-semibold">{arquivo ? 'Trocar arquivo' : 'Escolher arquivo .xlsx'}</span>
           <span className={arquivo ? 'font-semibold' : 'text-texto-suave'}>{arquivo ? arquivo.name : 'Nenhum arquivo escolhido'}</span>
@@ -106,7 +106,7 @@ export function ImportarItens({ lerArquivo, analisar, confirmar }: { lerArquivo:
       </section>
 
       {m && leitura.abas && !lendo && (
-        <section className="space-y-6 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-depara">
+        <section className="space-y-6 rounded-cartao border border-borda bg-superficie p-5" aria-labelledby="t-depara">
           <div>
             <h2 id="t-depara" className="text-lg font-bold">2. Onde estão os dados (DE-PARA)</h2>
             <p className="max-w-2xl text-sm text-texto-suave">O app já sugeriu as escolhas pelos títulos das colunas. Confira e mude o que for preciso.</p>
@@ -139,7 +139,7 @@ export function ImportarItens({ lerArquivo, analisar, confirmar }: { lerArquivo:
       {a && <RelatorioItens analise={a} />}
 
       {a && nomes && (
-        <form action={enviarConfirmacao} className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+        <form action={enviarConfirmacao} className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
           <h2 className="text-lg font-bold">4. Confirmar</h2>
           {(Object.keys(ROTULO_NOME) as ChaveNome[])
             .filter((k) => nomes[k].length > 0)
@@ -346,7 +346,7 @@ function RelatorioItens({ analise }: { analise: AnaliseItens }) {
   const r = analise.relatorio;
   const despesa = r.tipo === 'despesa';
   return (
-    <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
+    <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5" aria-labelledby="t-relatorio">
       <h2 id="t-relatorio" className="text-lg font-bold">3. Conferir o que será importado</h2>
       <dl className="grid gap-3 text-sm sm:grid-cols-3">
         <div>

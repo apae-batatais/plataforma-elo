@@ -21,7 +21,7 @@ const pct = (v: number | null) => (v === null ? '—' : `${v.toLocaleString('pt-
 
 function Cartao({ rotulo, valor, detalhe, alerta = false }: { rotulo: string; valor: string; detalhe: ReactNode; alerta?: boolean }) {
   return (
-    <div className={`rounded-xl border bg-superficie px-5 py-4 ${alerta ? 'border-erro' : 'border-borda'}`}>
+    <div className={`rounded-cartao border bg-superficie px-5 py-4 ${alerta ? 'border-erro' : 'border-borda'}`}>
       <dt className="text-sm text-texto-suave">{rotulo}</dt>
       <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${alerta ? 'text-erro' : ''}`}>{valor}</dd>
       <dd className="mt-1 text-sm text-texto-suave">{detalhe}</dd>
@@ -78,7 +78,7 @@ export default async function PainelDePrazos({ searchParams }: { searchParams: P
         }
       />
 
-      <form className="flex flex-wrap items-end gap-3 rounded-xl border border-borda bg-superficie px-5 py-4" method="get">
+      <form className="flex flex-wrap items-end gap-3 rounded-cartao border border-borda bg-superficie px-5 py-4" method="get">
         <Campo rotulo="De (mês)">
           <input type="month" name="de" defaultValue={p.de} className={`${estiloEntrada} w-44`} />
         </Campo>

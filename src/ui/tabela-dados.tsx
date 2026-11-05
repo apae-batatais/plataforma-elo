@@ -148,7 +148,7 @@ export function TabelaDados({
           </button>
         </div>
       </div>
-      <div className={`relative overflow-auto rounded-xl border border-borda bg-superficie ${grande ? 'max-h-[75vh]' : ''}`}>
+      <div className={`relative overflow-auto rounded-cartao border border-borda bg-superficie ${grande ? 'max-h-[75vh]' : ''}`}>
         <table className={`border-separate border-spacing-0 text-left text-sm ${grande ? 'w-max min-w-full' : 'w-full'}`}>
           <caption className="sr-only">{legenda}. Clique no título de uma coluna para classificar.</caption>
           <thead className={`bg-superficie-2 text-texto-suave ${grande ? 'sticky top-0 z-20' : ''}`}>

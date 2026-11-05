@@ -28,7 +28,7 @@ const nomeDe = (chave: ChaveComponente) => COMPONENTES.find((c) => c.chave === c
 
 function Bloco({ titulo, descricao, children }: { titulo: string; descricao?: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-borda bg-superficie">
+    <section className="rounded-cartao border border-borda bg-superficie">
       <div className="border-b border-borda px-5 py-4">
         <h2 className="text-lg font-bold">{titulo}</h2>
         {descricao && <p className="mt-0.5 text-sm text-texto-suave">{descricao}</p>}
@@ -275,7 +275,7 @@ export function FormularioPosto({ ficha, acao }: { ficha: FichaPosto; acao: Acao
       </fieldset>
 
       <aside className="space-y-4 xl:sticky xl:top-6" aria-label="Resumo do funcionário">
-        <div className="rounded-xl border border-borda bg-superficie p-5">
+        <div className="rounded-cartao border border-borda bg-superficie p-5">
           <p className="text-sm text-texto-suave">Total mensal</p>
           <p className="mt-0.5 text-[1.75rem] font-bold leading-tight tabular-nums" aria-live="polite">
             {reais(calc.total)}
@@ -304,7 +304,7 @@ export function FormularioPosto({ ficha, acao }: { ficha: FichaPosto; acao: Acao
         </div>
 
         {podeEditar ? (
-          <div className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
+          <div className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
             <ul className="space-y-1.5 text-sm" aria-label="Para salvar">
               <Requisito ok={requisitos.quem}>{vaga ? 'Descrição da vaga' : 'Código e nome'}</Requisito>
               <Requisito ok={requisitos.cargo}>Cargo e {vaga ? 'início' : 'admissão'}</Requisito>

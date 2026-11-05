@@ -2,44 +2,57 @@
 @import "@fontsource-variable/atkinson-hyperlegible-next";
 
 /*
- * Tokens visuais da plataforma. Contraste mínimo AA em claro e escuro.
- * Mude cores aqui, nunca direto nas telas.
+ * Tokens visuais do Elo (docs/identidade-visual.md e ADR-015).
+ * Mude cores aqui, nunca direto nas telas. Contraste mínimo AA nos dois temas.
  *
- * Tons neutros (cinza quente) para fundo, bordas e texto; a barra lateral é grafite.
- * - Azul sóbrio: ações principais e links.
- * - Amarelo "margarida": só para marcar onde a pessoa está e o foco do teclado.
- * - Verde, âmbar e vermelho: estados (salvo, atenção, erro). Nunca decoração.
+ * Cada token tem o valor claro em :root e o escuro nos blocos de tema escuro.
+ * O tema segue o computador da pessoa; o seletor de tema no menu grava a escolha
+ * em <html data-tema="claro|escuro">.
+ *
+ * - Grafite: a marca do Elo. Botões principais e logotipo.
+ * - Destaque: a cor do app aberto (item atual do menu, filtros, links, ícones).
+ *   Fora dos apps (início e administração) o destaque é ardósia.
+ * - Verde, âmbar e vermelho: só alertas (salvo, atenção, erro). Nunca decoração.
  */
 :root {
-  --fundo: #f5f5f4;
+  color-scheme: light;
+  --fundo: #f6f7fb;
   --superficie: #ffffff;
-  --superficie-2: #fafaf9;
-  --borda: #e7e5e4;
-  --borda-forte: #cfccc9;
-  --texto: #1c1917;
-  --texto-suave: #5f5a55;
-  --destaque: #2d5b86;
-  --destaque-forte: #234a6e;
-  --destaque-suave: #eff3f7;
+  --superficie-2: #f4f5f8;
+  --borda: #dde2ec;
+  --borda-forte: #c3cad8;
+  --texto: #1a1f2c;
+  --texto-suave: #5b6478;
+  /* Marca (grafite): botão principal. */
+  --primario: #2b3445;
+  --primario-forte: #202734;
+  --sobre-primario: #ffffff;
+  /* Destaque: ardósia fora dos apps; cada app troca pelo seu par (abaixo). */
+  --destaque: #44597d;
+  --destaque-forte: #384967;
+  --destaque-suave: #f4f5f7;
   --sobre-destaque: #ffffff;
-  --marca: #f2c230;
-  --lateral: #1f1f1e;
-  --lateral-texto: #e7e5e4;
-  --lateral-suave: #a8a29e;
-  --lateral-ativo: #2f2e2c;
-  --sucesso: #1d6b45;
-  --sucesso-fundo: #ecf6f0;
-  --aviso: #7a5200;
-  --aviso-fundo: #fdf6e3;
-  --erro: #a5281f;
-  --erro-fundo: #fcefed;
-  --foco: #f2c230;
-  /* Séries dos gráficos (ordem fixa, validada para daltonismo). */
+  /* Painel de marca (tela de entrada e cabeçalho da rede): grafite nos dois temas. */
+  --lateral: #1f2738;
+  --lateral-texto: #e6eaf2;
+  --lateral-suave: #a4aec2;
+  --lateral-ativo: #2a3346;
+  /* Símbolo do Elo: dois elos em grafite. */
+  --elo-1: #2b3445;
+  --elo-2: #8a93a6;
+  --sucesso: #0b7a53;
+  --sucesso-fundo: #f0f7f5;
+  --aviso: #9a6700;
+  --aviso-fundo: #f9f6f0;
+  --erro: #d12d4a;
+  --erro-fundo: #fcf2f4;
+  /* Séries dos gráficos de várias séries (ordem fixa, validada para daltonismo).
+     Gráfico de uma série só usa a cor do app (var(--destaque)). */
   --serie-1: #2a78d6;
   --serie-2: #eb6834;
   --serie-3: #1baf7a;
   --serie-4: #6250d6;
-  /* Exercícios (anos): escala ordinal de um tom só, do mais antigo (claro) ao atual (escuro). */
+  /* Exercícios (anos): escala ordinal de um tom só, do mais antigo ao atual. */
   --ano-1: #86b6ef;
   --ano-2: #3987e5;
   --ano-3: #184f95;
@@ -49,31 +62,74 @@
   /* Polaridade (sobra × falta): azul e vermelho, validados para daltonismo. */
   --positivo: #2a78d6;
   --negativo: #d0473d;
-  --grade: #e7e5e4;
-  --referencia: #a5281f;
+  --grade: #dde2ec;
+  --referencia: #d12d4a;
+}
+
+:root[data-tema='escuro'] {
+  color-scheme: dark;
+  --fundo: #101521;
+  --superficie: #171d2b;
+  --superficie-2: #1f2738;
+  --borda: #2a3346;
+  --borda-forte: #3a4560;
+  --texto: #f1f4fa;
+  --texto-suave: #a4aec2;
+  --primario: #e6eaf2;
+  --primario-forte: #f5f7fa;
+  --sobre-primario: #101521;
+  --destaque: #aebeda;
+  --destaque-forte: #c2cee3;
+  --destaque-suave: #2f3747;
+  --sobre-destaque: #101521;
+  --elo-1: #e6eaf2;
+  --elo-2: #7f8aa3;
+  --sucesso: #3ddc97;
+  --sucesso-fundo: #1d3a3b;
+  --aviso: #ffc23d;
+  --aviso-fundo: #3a362e;
+  --erro: #ff5470;
+  --erro-fundo: #3a2535;
+  --serie-1: #3987e5;
+  --serie-2: #d95926;
+  --serie-3: #199e70;
+  --serie-4: #9085e9;
+  --ano-1: #1c5cab;
+  --ano-2: #3987e5;
+  --ano-3: #86b6ef;
+  --sobre-ano-1: #ffffff;
+  --sobre-ano-3: #0d366b;
+  --positivo: #3987e5;
+  --negativo: #dc5a4f;
+  --grade: #2a3346;
+  --referencia: #ff5470;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --fundo: #121212;
-    --superficie: #1a1a19;
-    --superficie-2: #201f1e;
-    --borda: #2e2d2b;
-    --borda-forte: #44423f;
-    --texto: #ecebea;
-    --texto-suave: #a8a29e;
-    --destaque: #8fb4d8;
-    --destaque-forte: #b0cbe5;
-    --destaque-suave: #1e2732;
-    --sobre-destaque: #10151b;
-    --lateral: #0d0d0d;
-    --lateral-ativo: #262524;
-    --sucesso: #86d1a6;
-    --sucesso-fundo: #14261c;
-    --aviso: #f0c868;
-    --aviso-fundo: #33290f;
-    --erro: #f0a69f;
-    --erro-fundo: #351815;
+  :root:not([data-tema='claro']) {
+    color-scheme: dark;
+    --fundo: #101521;
+    --superficie: #171d2b;
+    --superficie-2: #1f2738;
+    --borda: #2a3346;
+    --borda-forte: #3a4560;
+    --texto: #f1f4fa;
+    --texto-suave: #a4aec2;
+    --primario: #e6eaf2;
+    --primario-forte: #f5f7fa;
+    --sobre-primario: #101521;
+    --destaque: #aebeda;
+    --destaque-forte: #c2cee3;
+    --destaque-suave: #2f3747;
+    --sobre-destaque: #101521;
+    --elo-1: #e6eaf2;
+    --elo-2: #7f8aa3;
+    --sucesso: #3ddc97;
+    --sucesso-fundo: #1d3a3b;
+    --aviso: #ffc23d;
+    --aviso-fundo: #3a362e;
+    --erro: #ff5470;
+    --erro-fundo: #3a2535;
     --serie-1: #3987e5;
     --serie-2: #d95926;
     --serie-3: #199e70;
@@ -82,14 +138,62 @@
     --ano-2: #3987e5;
     --ano-3: #86b6ef;
     --sobre-ano-1: #ffffff;
-    --sobre-ano-2: #ffffff;
     --sobre-ano-3: #0d366b;
     --positivo: #3987e5;
     --negativo: #dc5a4f;
-    --grade: #2e2d2b;
-    --referencia: #f0a69f;
+    --grade: #2a3346;
+    --referencia: #ff5470;
   }
 }
+
+/*
+ * Cor de cada app. Vale para o elemento com data-app e tudo dentro dele:
+ * a casca marca o app aberto, e o menu e os cartões do início marcam cada app.
+ * App novo: escolher a cor na identidade visual antes de declarar aqui.
+ */
+[data-app='orcamento'] {
+  --destaque: #0e7c86;
+  --destaque-forte: #0b666e;
+  --destaque-suave: #f1f7f8;
+}
+
+:root[data-tema='escuro'] [data-app='orcamento'] {
+  --destaque: #3cc8c8;
+  --destaque-forte: #6dd6d6;
+  --destaque-suave: #1d3844;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='orcamento'] {
+    --destaque: #3cc8c8;
+    --destaque-forte: #6dd6d6;
+    --destaque-suave: #1d3844;
+  }
+}
+
+[data-app='requisicoes'] {
+  --destaque: #3730a3;
+  --destaque-forte: #2d2786;
+  --destaque-suave: #f3f3f9;
+}
+
+:root[data-tema='escuro'] [data-app='requisicoes'] {
+  --destaque: #8f8cff;
+  --destaque-forte: #aba9ff;
+  --destaque-suave: #2a2f4d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='requisicoes'] {
+    --destaque: #8f8cff;
+    --destaque-forte: #aba9ff;
+    --destaque-suave: #2a2f4d;
+  }
+}
+
+/* Reservadas na identidade visual para os próximos apps:
+   Questionários: magenta #a8197f (claro) / #f27acf (escuro)
+   Avaliação Diagnóstica: cobre #8c4a2f (claro) / #e0a07e (escuro) */
 
 @theme inline {
   --color-fundo: var(--fundo);
@@ -99,11 +203,13 @@
   --color-borda-forte: var(--borda-forte);
   --color-texto: var(--texto);
   --color-texto-suave: var(--texto-suave);
+  --color-primario: var(--primario);
+  --color-primario-forte: var(--primario-forte);
+  --color-sobre-primario: var(--sobre-primario);
   --color-destaque: var(--destaque);
   --color-destaque-forte: var(--destaque-forte);
   --color-destaque-suave: var(--destaque-suave);
   --color-sobre-destaque: var(--sobre-destaque);
-  --color-marca: var(--marca);
   --color-lateral: var(--lateral);
   --color-lateral-texto: var(--lateral-texto);
   --color-lateral-suave: var(--lateral-suave);
@@ -114,6 +220,7 @@
   --color-aviso-fundo: var(--aviso-fundo);
   --color-erro: var(--erro);
   --color-erro-fundo: var(--erro-fundo);
+  --radius-cartao: 20px;
   --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
@@ -135,7 +242,7 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--foco);
+  outline: 3px solid var(--destaque);
   outline-offset: 2px;
 }
 
@@ -157,4 +264,13 @@ body {
     opacity: 1;
     transform: none;
   }
+}
+
+/* Troca de tema e de app: as cores esmaecem em vez de piscar. */
+body,
+[data-app] {
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
 }

@@ -7,7 +7,7 @@ const BASE =
   'inline-flex min-h-10 items-center justify-center gap-2 rounded-md px-4 py-2 text-[0.95rem] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-55';
 
 const VARIANTES: Record<Variante, string> = {
-  primario: 'bg-destaque text-sobre-destaque hover:bg-destaque-forte',
+  primario: 'bg-primario text-sobre-primario hover:bg-primario-forte',
   secundario: 'border border-borda-forte bg-superficie text-texto hover:bg-destaque-suave',
   perigo: 'border border-erro bg-superficie text-erro hover:bg-erro-fundo',
   fantasma: 'text-destaque hover:bg-destaque-suave',

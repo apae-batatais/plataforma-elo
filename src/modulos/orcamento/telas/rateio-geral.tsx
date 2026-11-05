@@ -89,7 +89,7 @@ export function RateioGeral({ grade, acao, soPendentes }: { grade: GradeRateio; 
         </label>
       </div>
 
-      <div className="max-h-[65vh] overflow-auto rounded-xl border border-borda bg-superficie">
+      <div className="max-h-[65vh] overflow-auto rounded-cartao border border-borda bg-superficie">
         <table className="text-left text-sm">
           <thead className="sticky top-0 z-10 bg-superficie-2 text-texto-suave shadow-[0_1px_0_var(--borda)]">
             <tr>
