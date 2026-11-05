@@ -63,11 +63,6 @@ import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
 import { mesDe, montarPainel } from '../dominio/painel';
 import { EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
 
-/** Grupos de gasto do Orçamento, entregues pela plataforma (um módulo não lê as abas de outro). */
-export interface CatalogoOrcamento {
-  gruposDeGasto(): Promise<{ id: string; nome: string }[]>;
-}
-
 export { ErroRequisicao };
 
 const PERM = {
@@ -227,7 +222,6 @@ function sla(d: Dados, r: RegRequisicao, agora: Date) {
 export interface DadosRequisicao {
   tipoId: string;
   area: string;
-  grupoId: string;
   centros: Centro[];
   itens: ItemPedido[];
   /** Campos próprios da ficha (entrega, evento, utensílios). */
@@ -235,7 +229,7 @@ export interface DadosRequisicao {
   observacao?: string | null;
 }
 
-export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, catalogo: CatalogoOrcamento) {
+export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador) {
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   const d = await ler(p, new Date());
   const nomeArea = new Map(d.areas.ativos().map((a) => [a.codigo, a.nome]));
@@ -248,7 +242,6 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, catalo
         formulario: t.formulario,
         descricao: t.descricao,
         areas: lerLista(t.areas),
-        grupos: lerLista(t.grupos),
         itens: (d.catalogoPor.get(t.id) ?? [])
           .map((c) => ({ id: c.id, descricao: c.descricao, unidade: c.unidade }))
           .sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')),
@@ -262,21 +255,17 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, catalo
       .ativos()
       .map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
       .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
-    grupos: (await catalogo.gruposDeGasto()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
   };
 }
 
 /** Confere a ficha e devolve o que gravar (sem gravar). */
-async function conferirFicha(d: Dados, catalogo: CatalogoOrcamento, requisitante: string, dados: DadosRequisicao) {
+function conferirFicha(d: Dados, requisitante: string, dados: DadosRequisicao) {
   const erros: string[] = [];
   const tipo = d.tipos.ativos().find((t) => t.id === dados.tipoId);
   if (!tipo) erros.push('Escolha o tipo de requisição.');
   const area = d.areas.ativos().find((a) => a.codigo === dados.area);
   if (!area) erros.push('Escolha a área.');
   else if (tipo && !permitido(lerLista(tipo.areas), area.codigo)) erros.push(`O tipo "${tipo.nome}" não pode ser usado pela área ${area.nome}.`);
-  const grupo = (await catalogo.gruposDeGasto()).find((g) => g.id === dados.grupoId);
-  if (!grupo) erros.push('Escolha o grupo de despesa do orçamento.');
-  else if (tipo && !permitido(lerLista(tipo.grupos), grupo.id)) erros.push(`O tipo "${tipo.nome}" não aceita o grupo de despesa ${grupo.nome}.`);
   erros.push(...conferirCentros(dados.centros));
   if (dados.centros.some((c) => c.servico && !d.servicos.ativos().some((s) => s.codigo === c.servico))) erros.push('Há centro de custo que não existe mais.');
   let detalhes: unknown = null;
@@ -296,7 +285,7 @@ async function conferirFicha(d: Dados, catalogo: CatalogoOrcamento, requisitante
     requisitante,
     dados.centros.map((c) => d.coordenacao(c.servico)),
   );
-  return { tipo: tipo!, grupo: grupo!, detalhes, rota, itens };
+  return { tipo: tipo!, detalhes, rota, itens };
 }
 
 async function gravarHistorico(
@@ -327,7 +316,6 @@ const textoRota = (rota: RotaAprovacao) =>
 export async function enviarRequisicao(
   p: Planilhas,
   quem: Autorizador,
-  catalogo: CatalogoOrcamento,
   dados: DadosRequisicao & { nomeRequisitante: string },
   opcoes: { agora?: Date } = {},
 ): Promise<{ id: string; numero: string; rota: RotaAprovacao }> {
@@ -335,7 +323,7 @@ export async function enviarRequisicao(
   conferirTransicao('enviar', null);
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
-  const { grupo, detalhes, rota, itens } = await conferirFicha(d, catalogo, quem.email, dados);
+  const { detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
   const numero = proximoNumero(
     agora.getUTCFullYear(),
     d.requisicoes.todos().map((r) => r.numero),
@@ -350,8 +338,9 @@ export async function enviarRequisicao(
       requisitante: quem.email,
       requisitante_nome: dados.nomeRequisitante.trim() || quem.email,
       area: dados.area,
-      grupo_id: grupo.id,
-      grupo_nome: grupo.nome,
+      // Grupo de despesa saiu da ficha (04/11/2026); as colunas ficam para os pedidos antigos.
+      grupo_id: null,
+      grupo_nome: null,
       situacao: 'enviada',
       aprovacao: rota.tipo,
       detalhes: detalhes ? JSON.stringify(detalhes) : null,
@@ -403,7 +392,6 @@ function acharComVersao(d: Dados, id: string, versao: number) {
 export async function reenviarRequisicao(
   p: Planilhas,
   quem: Autorizador,
-  catalogo: CatalogoOrcamento,
   id: string,
   versao: number,
   dados: DadosRequisicao,
@@ -415,7 +403,7 @@ export async function reenviarRequisicao(
   if (r.requisitante !== quem.email) throw new ErroPermissao('Só quem fez a requisição pode ajustá-la.');
   conferirTransicao('reenviar', r.situacao);
   if (dados.tipoId !== r.tipo_id) throw new ErroRequisicao('O tipo da requisição não pode mudar. Cancele e abra outra.');
-  const { grupo, detalhes, rota, itens } = await conferirFicha(d, catalogo, quem.email, dados);
+  const { detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
   const autoria = { email: quem.email, agora: () => agora };
   const { colunasAlteradas } = await atualizar(
     p,
@@ -424,8 +412,6 @@ export async function reenviarRequisicao(
     versao,
     {
       area: dados.area,
-      grupo_id: grupo.id,
-      grupo_nome: grupo.nome,
       situacao: 'enviada',
       aprovacao: rota.tipo,
       detalhes: detalhes ? JSON.stringify(detalhes) : null,
@@ -734,16 +720,13 @@ export interface DadosTipo {
   prazoAprovacao: number;
   prazoAtendimento: number;
   descricao?: string | null;
-  /** Áreas (códigos) e grupos de despesa (ids) que podem usar o tipo. Vazio = todos. */
+  /** Áreas (códigos) que podem usar o tipo. Vazio = todas. */
   areas?: string[];
-  grupos?: string[];
 }
 
-export async function listarTipos(p: Planilhas, quem: Autorizador, catalogo: CatalogoOrcamento) {
+export async function listarTipos(p: Planilhas, quem: Autorizador) {
   if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
   const d = await ler(p, new Date());
-  const grupos = (await catalogo.gruposDeGasto()).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-  const nomeGrupo = new Map(grupos.map((g) => [g.id, g.nome]));
   const nomeArea = new Map(d.areas.todos().map((a) => [a.codigo, a.nome]));
   const elegiveis = d.perfisCom(PERM.atender);
   const nomePerfil = new Map(d.perfis.todos().map((x) => [x.codigo, x.nome]));
@@ -755,9 +738,7 @@ export async function listarTipos(p: Planilhas, quem: Autorizador, catalogo: Cat
       perfilNome: nomePerfil.get(t.perfil_responsavel) ?? t.perfil_responsavel,
       requisicoes: uso.get(t.id)?.length ?? 0,
       listaAreas: lerLista(t.areas),
-      listaGrupos: lerLista(t.grupos),
       nomesAreas: lerLista(t.areas).map((c) => nomeArea.get(c) ?? c),
-      nomesGrupos: lerLista(t.grupos).map((c) => nomeGrupo.get(c) ?? 'grupo excluído'),
       itensAceitos: d.catalogoPor.get(t.id)?.length ?? 0,
     })),
     excluidos: ordem(d.tipos.todos().filter((t) => !t.ativo)),
@@ -769,7 +750,6 @@ export async function listarTipos(p: Planilhas, quem: Autorizador, catalogo: Cat
       .ativos()
       .map((a) => ({ codigo: a.codigo, nome: a.nome }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-    grupos,
     expediente: d.expediente,
     feriados: d.feriados
       .ativos()
@@ -778,11 +758,10 @@ export async function listarTipos(p: Planilhas, quem: Autorizador, catalogo: Cat
   };
 }
 
-export async function salvarTipo(p: Planilhas, quem: Autorizador, catalogo: CatalogoOrcamento, dados: DadosTipo, existente?: { id: string; versao: number }) {
+export async function salvarTipo(p: Planilhas, quem: Autorizador, dados: DadosTipo, existente?: { id: string; versao: number }) {
   if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
   const d = await ler(p, new Date());
   const areasValidas = new Set(d.areas.ativos().map((a) => a.codigo));
-  const gruposValidos = new Set((await catalogo.gruposDeGasto()).map((g) => g.id));
   const nome = dados.nome.trim().replace(/\s+/g, ' ');
   const erros: string[] = [];
   if (!nome) erros.push('Informe o nome do tipo.');
@@ -792,7 +771,6 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, catalogo: Cata
   if (!FORMULARIOS.includes(dados.formulario)) erros.push('Escolha a ficha.');
   if (!d.perfisCom(PERM.atender).has(dados.perfilResponsavel)) erros.push('Escolha o setor (perfil) que atende.');
   if ((dados.areas ?? []).some((a) => !areasValidas.has(a))) erros.push('Há área marcada que não existe mais.');
-  if ((dados.grupos ?? []).some((g) => !gruposValidos.has(g))) erros.push('Há grupo de despesa marcado que não existe mais.');
   for (const [v, rotulo] of [
     [dados.prazoAprovacao, 'aprovação'],
     [dados.prazoAtendimento, 'atendimento'],
@@ -810,7 +788,8 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, catalogo: Cata
     prazo_atendimento: dados.prazoAtendimento,
     descricao: dados.descricao?.trim() || null,
     areas: juntarLista(dados.areas ?? []),
-    grupos: juntarLista(dados.grupos ?? []),
+    // Grupos de despesa não são mais usados nas requisições: limpa a marcação antiga.
+    grupos: null,
   };
   if (!existente) {
     const t = await inserir(p, TiposRequisicao, campos, { email: quem.email });

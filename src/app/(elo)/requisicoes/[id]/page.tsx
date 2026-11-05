@@ -229,7 +229,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
           <Dado rotulo="Quem pediu">{r.requisitante_nome}</Dado>
           <Dado rotulo="Enviada em">{dataHora(r.enviada_em)}</Dado>
           <Dado rotulo="Área">{d.area}</Dado>
-          <Dado rotulo="Grupo de despesa">{r.grupo_nome}</Dado>
+          {r.grupo_nome && <Dado rotulo="Grupo de despesa">{r.grupo_nome}</Dado>}
           <Dado rotulo="Centros de custo">{d.centros.map((c) => `${c.nome} (${numeroBR(c.percentual)}%)`).join(' · ')}</Dado>
           {r.recebida_por && <Dado rotulo="Recebida por">{r.recebida_por}</Dado>}
           {r.executada_por && <Dado rotulo="Executada por">{r.executada_por}</Dado>}

@@ -3,7 +3,6 @@ import { redirect } from 'next/navigation';
 import { opcoesDoFormulario } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { FormularioRequisicao } from '@/modulos/requisicoes/telas/formulario-requisicao';
 import { obterAplicacao } from '@/plataforma/aplicacao';
-import { catalogoOrcamento } from '@/plataforma/catalogos';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { CabecalhoPagina } from '@/ui/pagina';
@@ -16,7 +15,7 @@ export default async function NovaRequisicao() {
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissaoAlgumEscopo('requisicoes.solicitar')) redirect('/requisicoes');
   const app = await obterAplicacao();
-  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas));
+  const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador);
   return (
     <div className="max-w-4xl">
       <CabecalhoPagina

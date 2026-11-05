@@ -28,7 +28,6 @@ import {
 import type { Formulario } from '@/modulos/requisicoes/dominio/requisicao';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
-import { catalogoOrcamento } from '@/plataforma/catalogos';
 import { usuarioLogado } from '@/plataforma/sessao';
 
 async function contexto() {
@@ -77,7 +76,7 @@ export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise
   const { usuario, app } = await contexto();
   let r: { id: string; numero: string; rota: { tipo: string } };
   try {
-    r = await enviarRequisicao(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas), { ...lerFicha(f), nomeRequisitante: usuario.nome });
+    r = await enviarRequisicao(app.planilhas, usuario.autorizador, { ...lerFicha(f), nomeRequisitante: usuario.nome });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     if (erro instanceof SyntaxError) return { erro: 'A requisição veio incompleta. Tente de novo.' };
@@ -93,7 +92,7 @@ export async function acaoReenviarRequisicao(_: EstadoFicha, f: FormData): Promi
   const { usuario, app } = await contexto();
   const id = texto(f, 'id');
   try {
-    await reenviarRequisicao(app.planilhas, usuario.autorizador, catalogoOrcamento(app.planilhas), id, Number(texto(f, 'versao')), lerFicha(f), {
+    await reenviarRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerFicha(f), {
       comentario: texto(f, 'comentario'),
     });
   } catch (erro) {
@@ -159,7 +158,6 @@ export async function acaoSalvarTipo(f: FormData) {
     salvarTipo(
       app.planilhas,
       usuario.autorizador,
-      catalogoOrcamento(app.planilhas),
       {
         nome: texto(f, 'nome'),
         categoria: texto(f, 'categoria') as 'material' | 'servico',
@@ -169,7 +167,6 @@ export async function acaoSalvarTipo(f: FormData) {
         prazoAtendimento: numero(f, 'prazo_atendimento'),
         descricao: texto(f, 'descricao') || null,
         areas: texto(f, 'todas_areas') === 'sim' ? [] : lista('areas'),
-        grupos: texto(f, 'todos_grupos') === 'sim' ? [] : lista('grupos'),
       },
       id ? { id, versao: Number(texto(f, 'versao')) } : undefined,
     ),

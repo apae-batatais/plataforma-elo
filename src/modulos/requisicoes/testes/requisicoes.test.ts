@@ -31,7 +31,6 @@ import {
   reenviarRequisicao,
   salvarExpediente,
   salvarTipo,
-  type CatalogoOrcamento,
   type DadosRequisicao,
 } from '../aplicacao/requisicoes';
 import { RequisicaoHistorico, RequisicaoItens, Requisicoes, TABELAS_REQUISICOES, TiposRequisicao } from '../dados/tabelas';
@@ -43,12 +42,6 @@ import { FeriadosRequisicoes } from '../dados/tabelas';
 import { manifesto } from '../manifesto';
 
 let p: Planilhas;
-const catalogo: CatalogoOrcamento = {
-  gruposDeGasto: async () => [
-    { id: 'g1', nome: 'Material de consumo (exemplo)' },
-    { id: 'g2', nome: 'Alimentação (exemplo)' },
-  ],
-};
 let tipoId: string;
 
 async function como(email: string) {
@@ -65,7 +58,6 @@ const ficha = (x: Partial<DadosRequisicao> = {}): DadosRequisicao & { nomeRequis
   nomeRequisitante: 'Pessoa (fictícia)',
   tipoId,
   area: 'educacao',
-  grupoId: 'g1',
   centros: [{ servico: 'escola', percentual: 100 }],
   itens: [
     { quantidade: 10, unidade: 'resma', descricao: 'Papel sulfite' },
@@ -157,7 +149,7 @@ describe('regras puras', () => {
 describe('caminho de uma requisição de materiais', () => {
   it('envia → coordenação aprova → Almoxarifado recebe e conclui; histórico, auditoria só com colunas e prazos', async () => {
     const pede = await como('financeiro@exemplo.local');
-    const r = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: segunda(9) });
+    const r = await enviarRequisicao(p, pede, ficha(), { agora: segunda(9) });
     expect(r.numero).toBe('REQ-2026-0001');
     expect(r.rota).toEqual({ tipo: 'coordenacao', coordenadores: ['coord.educacao@exemplo.local'] });
     expect((await contadoresRequisicoes(p, await como('coord.educacao@exemplo.local'))).aprovar).toBe(1);
@@ -195,15 +187,14 @@ describe('caminho de uma requisição de materiais', () => {
   it('devolver pede o motivo; quem pediu ajusta e reenvia; os centros e itens antigos ficam no histórico', async () => {
     const pede = await como('financeiro@exemplo.local');
     const coord = await como('coord.educacao@exemplo.local');
-    const r = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: segunda(9) });
+    const r = await enviarRequisicao(p, pede, ficha(), { agora: segunda(9) });
     await expect(decidirRequisicao(p, coord, r.id, await versao(r.id), 'devolver', ' ')).rejects.toThrow(/ajustado/);
     await decidirRequisicao(p, coord, r.id, await versao(r.id), 'devolver', 'Divida com o Transporte.', { agora: segunda(10) });
     expect((await contadoresRequisicoes(p, pede)).devolvidas).toBe(1);
-    await expect(reenviarRequisicao(p, coord, catalogo, r.id, await versao(r.id), ficha())).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(reenviarRequisicao(p, coord, r.id, await versao(r.id), ficha())).rejects.toBeInstanceOf(ErroPermissao);
     await reenviarRequisicao(
       p,
       pede,
-      catalogo,
       r.id,
       await versao(r.id),
       ficha({
@@ -223,7 +214,7 @@ describe('caminho de uma requisição de materiais', () => {
 
   it('pedido da própria coordenação e de serviço sem coordenação vão para a Diretoria; coordenações diferentes são recusadas na hora', async () => {
     const coord = await como('coord.educacao@exemplo.local');
-    const propria = await enviarRequisicao(p, coord, catalogo, ficha(), { agora: segunda(9) });
+    const propria = await enviarRequisicao(p, coord, ficha(), { agora: segunda(9) });
     expect(propria.rota).toEqual({ tipo: 'diretoria', motivo: 'propria_coordenacao' });
     await expect(decidirRequisicao(p, coord, propria.id, await versao(propria.id), 'aprovar', null)).rejects.toThrow(/própria requisição/);
     await decidirRequisicao(p, await como('diretoria@exemplo.local'), propria.id, await versao(propria.id), 'aprovar', null);
@@ -231,7 +222,6 @@ describe('caminho de uma requisição de materiais', () => {
     const semCoord = await enviarRequisicao(
       p,
       await como('tecnico.cer@exemplo.local'),
-      catalogo,
       ficha({ area: 'saude', centros: [{ servico: 'cer_reabilitacao', percentual: 100 }] }),
     );
     expect(semCoord.rota).toEqual({ tipo: 'diretoria', motivo: 'sem_coordenacao' });
@@ -240,7 +230,6 @@ describe('caminho de uma requisição de materiais', () => {
       enviarRequisicao(
         p,
         await como('financeiro@exemplo.local'),
-        catalogo,
         ficha({
           centros: [
             { servico: 'escola', percentual: 50 },
@@ -253,14 +242,14 @@ describe('caminho de uma requisição de materiais', () => {
 
   it('recusar e cancelar encerram; atendimento parcial exige explicação; ficha incompleta é recusada', async () => {
     const pede = await como('financeiro@exemplo.local');
-    await expect(enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'x', itens: [] }))).rejects.toThrow(/grupo de despesa.*pelo menos um item/);
-    await expect(enviarRequisicao(p, pede, catalogo, ficha({ detalhes: { evento: { nome: 'Festa', data: '' } } }))).rejects.toThrow(/data do evento/);
+    await expect(enviarRequisicao(p, pede, ficha({ itens: [] }))).rejects.toThrow(/pelo menos um item/);
+    await expect(enviarRequisicao(p, pede, ficha({ detalhes: { evento: { nome: 'Festa', data: '' } } }))).rejects.toThrow(/data do evento/);
 
-    const a = await enviarRequisicao(p, pede, catalogo, ficha());
+    const a = await enviarRequisicao(p, pede, ficha());
     await cancelarRequisicao(p, pede, a.id, await versao(a.id), 'Não precisa mais.');
     await expect(decidirRequisicao(p, await como('coord.educacao@exemplo.local'), a.id, await versao(a.id), 'aprovar', null)).rejects.toThrow(/cancelada/);
 
-    const b = await enviarRequisicao(p, pede, catalogo, ficha());
+    const b = await enviarRequisicao(p, pede, ficha());
     await expect(cancelarRequisicao(p, await como('coord.educacao@exemplo.local'), b.id, await versao(b.id), null)).rejects.toBeInstanceOf(ErroPermissao);
     await decidirRequisicao(p, await como('diretoria@exemplo.local'), b.id, await versao(b.id), 'aprovar', null);
     const almox = await como('almoxarifado@exemplo.local');
@@ -280,8 +269,8 @@ describe('caminho de uma requisição de materiais', () => {
   });
 
   it('quem vê o quê: cada um as suas; coordenação as do escopo; Diretoria todas; setor só depois de aprovadas', async () => {
-    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha());
-    await enviarRequisicao(p, await como('dp@exemplo.local'), catalogo, ficha({ area: 'assistencia_social', centros: [{ servico: 'ur', percentual: 100 }] }));
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), ficha());
+    await enviarRequisicao(p, await como('dp@exemplo.local'), ficha({ area: 'assistencia_social', centros: [{ servico: 'ur', percentual: 100 }] }));
     expect((await listarRequisicoes(p, await como('financeiro@exemplo.local'), 'minhas')).map((x) => x.numero)).toEqual(['REQ-2026-0001']);
     expect((await listarRequisicoes(p, await como('coord.educacao@exemplo.local'), 'aprovar')).map((x) => x.id)).toEqual([r.id]);
     expect(await listarRequisicoes(p, await como('diretoria@exemplo.local'), 'todas')).toHaveLength(2);
@@ -296,7 +285,7 @@ describe('perfil Funcionário', () => {
   it('pede e acompanha as próprias requisições, e nada mais', async () => {
     expect(manifesto.permissoesPorPerfil.funcionario).toEqual(['requisicoes.acessar', 'requisicoes.solicitar']);
     const f = await como('funcionario@exemplo.local');
-    const r = await enviarRequisicao(p, f, catalogo, ficha());
+    const r = await enviarRequisicao(p, f, ficha());
     expect((await listarRequisicoes(p, f, 'minhas')).map((x) => x.id)).toEqual([r.id]);
     await expect(listarRequisicoes(p, f, 'todas')).rejects.toBeInstanceOf(ErroPermissao);
     await expect(painelDePrazos(p, f)).rejects.toBeInstanceOf(ErroPermissao);
@@ -306,9 +295,9 @@ describe('perfil Funcionário', () => {
 describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');
-    const t = await listarTipos(p, adm, catalogo);
+    const t = await listarTipos(p, adm);
     expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'manutencao', 'patrimonio']);
-    await salvarTipo(p, adm, catalogo, {
+    await salvarTipo(p, adm, {
       nome: 'Higiene e limpeza',
       categoria: 'material',
       formulario: 'materiais',
@@ -317,7 +306,7 @@ describe('tipos de requisição e expediente', () => {
       prazoAtendimento: 24,
     });
     await expect(
-      salvarTipo(p, adm, catalogo, {
+      salvarTipo(p, adm, {
         nome: 'higiene e limpeza',
         categoria: 'material',
         formulario: 'materiais',
@@ -327,7 +316,7 @@ describe('tipos de requisição e expediente', () => {
       }),
     ).rejects.toThrow(/Já existe/);
     await expect(
-      salvarTipo(p, adm, catalogo, {
+      salvarTipo(p, adm, {
         nome: 'Outro',
         categoria: 'material',
         formulario: 'materiais',
@@ -336,24 +325,24 @@ describe('tipos de requisição e expediente', () => {
         prazoAtendimento: 24,
       }),
     ).rejects.toThrow(/setor.*prazo de aprovação/);
-    await expect(listarTipos(p, await como('financeiro@exemplo.local'), catalogo)).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(listarTipos(p, await como('financeiro@exemplo.local'))).rejects.toBeInstanceOf(ErroPermissao);
     await expect(salvarExpediente(p, adm, { inicio: 18, fim: 8 })).rejects.toThrow(/depois do início/);
     await salvarExpediente(p, adm, { inicio: 7, fim: 16 });
-    expect((await listarTipos(p, adm, catalogo)).expediente).toMatchObject({ inicio: 7, fim: 16 });
+    expect((await listarTipos(p, adm)).expediente).toMatchObject({ inicio: 7, fim: 16 });
   });
 });
 
-describe('tipos: áreas, grupos e itens aceitos', () => {
+describe('tipos: áreas e itens aceitos', () => {
   const lerTipo = async () => (await lerTabela(p, TiposRequisicao)).porId(tipoId)!;
 
   it('só a Administração da plataforma cria e altera tipos e listas (a Diretoria não)', async () => {
     const dir = await como('diretoria@exemplo.local');
-    await expect(listarTipos(p, dir, catalogo)).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(listarTipos(p, dir)).rejects.toBeInstanceOf(ErroPermissao);
     await expect(salvarItemCatalogo(p, dir, tipoId, { descricao: 'X', unidade: 'un' })).rejects.toBeInstanceOf(ErroPermissao);
     await expect(analisarItensEmLote(p, dir, tipoId, 'X;un')).rejects.toBeInstanceOf(ErroPermissao);
   });
 
-  it('o tipo só aceita as áreas e os grupos marcados; sem marcação, aceita todos', async () => {
+  it('o tipo só aceita as áreas marcadas; sem marcação, aceita todas; a ficha não tem mais grupo de despesa', async () => {
     const adm = await como('admin@exemplo.local');
     const t = await lerTipo();
     const base = {
@@ -364,28 +353,30 @@ describe('tipos: áreas, grupos e itens aceitos', () => {
       prazoAprovacao: 8,
       prazoAtendimento: 16,
     };
-    await expect(salvarTipo(p, adm, catalogo, { ...base, areas: ['nao_existe'] }, { id: t.id, versao: t.versao })).rejects.toThrow(/área marcada/);
-    await salvarTipo(p, adm, catalogo, { ...base, areas: ['educacao'], grupos: ['g2'] }, { id: t.id, versao: t.versao });
-    expect((await listarTipos(p, adm, catalogo)).ativos[0]).toMatchObject({ nomesAreas: ['Educação'], nomesGrupos: ['Alimentação (exemplo)'] });
+    await expect(salvarTipo(p, adm, { ...base, areas: ['nao_existe'] }, { id: t.id, versao: t.versao })).rejects.toThrow(/área marcada/);
+    await salvarTipo(p, adm, { ...base, areas: ['educacao'] }, { id: t.id, versao: t.versao });
+    expect((await listarTipos(p, adm)).ativos[0]).toMatchObject({ nomesAreas: ['Educação'] });
 
     const pede = await como('financeiro@exemplo.local');
-    await expect(enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g1' }))).rejects.toThrow(/não aceita o grupo de despesa Material de consumo/);
-    await expect(enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g2', area: 'saude' }))).rejects.toThrow(/não pode ser usado pela área Saúde/);
-    expect((await enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g2' }))).numero).toBe('REQ-2026-0001');
+    await expect(enviarRequisicao(p, pede, ficha({ area: 'saude' }))).rejects.toThrow(/não pode ser usado pela área Saúde/);
+    const r1 = await enviarRequisicao(p, pede, ficha());
+    expect(r1.numero).toBe('REQ-2026-0001');
+    // Grupo de despesa saiu da ficha: a requisição é gravada sem ele.
+    expect((await lerTabela(p, Requisicoes)).porId(r1.id)).toMatchObject({ grupo_id: null, grupo_nome: null });
 
     const t2 = await lerTipo();
-    await salvarTipo(p, adm, catalogo, { ...base, areas: [], grupos: [] }, { id: t2.id, versao: t2.versao });
+    await salvarTipo(p, adm, { ...base, areas: [] }, { id: t2.id, versao: t2.versao });
     expect((await lerTipo()).areas).toBeNull();
-    expect(
-      (await enviarRequisicao(p, pede, catalogo, ficha({ grupoId: 'g1', area: 'saude', centros: [{ servico: 'cer_reabilitacao', percentual: 100 }] }))).numero,
-    ).toBe('REQ-2026-0002');
+    expect((await enviarRequisicao(p, pede, ficha({ area: 'saude', centros: [{ servico: 'cer_reabilitacao', percentual: 100 }] }))).numero).toBe(
+      'REQ-2026-0002',
+    );
   });
 
   it('com lista de itens, só entram itens da lista, com a unidade da lista; sem lista, texto livre', async () => {
     const adm = await como('admin@exemplo.local');
     const pede = await como('financeiro@exemplo.local');
     // Sem lista: aceita o que foi digitado.
-    expect((await enviarRequisicao(p, pede, catalogo, ficha())).numero).toBe('REQ-2026-0001');
+    expect((await enviarRequisicao(p, pede, ficha())).numero).toBe('REQ-2026-0001');
 
     await salvarItemCatalogo(p, adm, tipoId, { descricao: 'Papel sulfite A4', unidade: 'resma' });
     await expect(salvarItemCatalogo(p, adm, tipoId, { descricao: 'papel sulfite a4', unidade: 'un' })).rejects.toThrow(/já está na lista/);
@@ -398,10 +389,10 @@ describe('tipos: áreas, grupos e itens aceitos', () => {
     ]);
     expect(await cadastrarItensEmLote(p, adm, tipoId, lote)).toBe(1);
 
-    await expect(enviarRequisicao(p, pede, catalogo, ficha({ itens: [{ quantidade: 1, unidade: 'un', descricao: 'Tinta guache' }] }))).rejects.toThrow(
+    await expect(enviarRequisicao(p, pede, ficha({ itens: [{ quantidade: 1, unidade: 'un', descricao: 'Tinta guache' }] }))).rejects.toThrow(
       /"Tinta guache" não está na lista deste tipo/,
     );
-    const r = await enviarRequisicao(p, pede, catalogo, ficha({ itens: [{ quantidade: 2, unidade: 'qualquer', descricao: 'giz DE cera' }] }));
+    const r = await enviarRequisicao(p, pede, ficha({ itens: [{ quantidade: 2, unidade: 'qualquer', descricao: 'giz DE cera' }] }));
     const item = (await lerTabela(p, RequisicaoItens)).ativos().find((i) => i.requisicao_id === r.id)!;
     expect([item.descricao, item.unidade, Boolean(item.catalogo_id)]).toEqual(['Giz de cera', 'caixa', true]);
 
@@ -447,9 +438,9 @@ describe('chamado de TI (Setor de Informática)', () => {
     const id = await tipoTi();
     const pede = await como('financeiro@exemplo.local');
     await expect(
-      enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: chamado({ problema: 'quebrou', local: '', urgencia: undefined }) })),
+      enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes: chamado({ problema: 'quebrou', local: '', urgencia: undefined }) })),
     ).rejects.toThrow(/onde está o problema.*mais de detalhe.*urgência/);
-    const r = await enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: chamado() }));
+    const r = await enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes: chamado() }));
     const d = await detalharRequisicao(p, pede, r.id);
     expect(d.itens).toHaveLength(0);
     expect(d.detalhes).toMatchObject({ categoria: 'impressora', urgencia: 'alta', patrimonio: 'PAT-0457' });
@@ -458,7 +449,7 @@ describe('chamado de TI (Setor de Informática)', () => {
 
   it('só o Setor de Informática atende; concluir pede o resultado e o que foi feito', async () => {
     const id = await tipoTi();
-    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha({ tipoId: id, itens: [], detalhes: chamado() }));
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), ficha({ tipoId: id, itens: [], detalhes: chamado() }));
     await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'aprovar', null);
     expect(await listarRequisicoes(p, await como('almoxarifado@exemplo.local'), 'atender')).toHaveLength(0);
     await expect(receberRequisicao(p, await como('almoxarifado@exemplo.local'), r.id, await versao(r.id))).rejects.toBeInstanceOf(ErroPermissao);
@@ -474,7 +465,7 @@ describe('chamado de TI (Setor de Informática)', () => {
 
   it('o tipo de TI é sempre serviço, mesmo que a tela mande material', async () => {
     const adm = await como('admin@exemplo.local');
-    await salvarTipo(p, adm, catalogo, {
+    await salvarTipo(p, adm, {
       nome: 'Chamado de TI',
       categoria: 'material',
       formulario: 'ti',
@@ -484,7 +475,7 @@ describe('chamado de TI (Setor de Informática)', () => {
     });
     const t = (await lerTabela(p, TiposRequisicao)).ativos().find((x) => x.nome === 'Chamado de TI')!;
     expect([t.formulario, t.categoria]).toEqual(['ti', 'servico']);
-    expect((await listarTipos(p, adm, catalogo)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'manutencao', 'patrimonio']);
+    expect((await listarTipos(p, adm)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'informatica', 'manutencao', 'patrimonio']);
   });
 });
 
@@ -521,7 +512,7 @@ describe('mobiliário (Setor de Patrimônio)', () => {
   it('lista de móveis, de onde e para quando são obrigatórios; empréstimo exige destino e devolução', async () => {
     const id = await tipoMobiliario();
     const pede = await como('financeiro@exemplo.local');
-    const enviar = (d: object) => enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: d }));
+    const enviar = (d: object) => enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes: d }));
     await expect(enviar(pedido({ moveis: [], origem: '' }))).rejects.toThrow(/pelo menos um móvel.*de onde/);
     await expect(enviar(pedido({ destino: null, devolucao: null }))).rejects.toThrow(/para onde.*quando os móveis voltam/);
     await expect(enviar(pedido({ devolucao: '2026-11-01' }))).rejects.toThrow(/não pode ser antes/);
@@ -533,7 +524,7 @@ describe('mobiliário (Setor de Patrimônio)', () => {
 
   it('só o Setor de Patrimônio atende, e conclui dizendo o que foi feito', async () => {
     const id = await tipoMobiliario();
-    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha({ tipoId: id, itens: [], detalhes: pedido() }));
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), ficha({ tipoId: id, itens: [], detalhes: pedido() }));
     await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'aprovar', null);
     await expect(receberRequisicao(p, await como('informatica@exemplo.local'), r.id, await versao(r.id))).rejects.toBeInstanceOf(ErroPermissao);
     const pat = await como('patrimonio@exemplo.local');
@@ -579,7 +570,7 @@ describe('manutenção (Setor de Manutenção)', () => {
   it('tipo de serviço, local, problema detalhado e urgência são obrigatórios; sem itens', async () => {
     const id = await tipoManutencao();
     const pede = await como('financeiro@exemplo.local');
-    const enviar = (d: object) => enviarRequisicao(p, pede, catalogo, ficha({ tipoId: id, itens: [], detalhes: d }));
+    const enviar = (d: object) => enviarRequisicao(p, pede, ficha({ tipoId: id, itens: [], detalhes: d }));
     await expect(enviar(pedido({ servico: 'foguete', local: ' ', problema: 'quebrou', urgencia: undefined }))).rejects.toThrow(
       /tipo de serviço.*onde é o serviço.*mais de detalhe.*urgência/,
     );
@@ -592,7 +583,7 @@ describe('manutenção (Setor de Manutenção)', () => {
 
   it('só o Setor de Manutenção atende, e conclui com o resultado e o que foi feito', async () => {
     const id = await tipoManutencao();
-    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), catalogo, ficha({ tipoId: id, itens: [], detalhes: pedido() }));
+    const r = await enviarRequisicao(p, await como('financeiro@exemplo.local'), ficha({ tipoId: id, itens: [], detalhes: pedido() }));
     // Antes da aprovação, o setor não vê o pedido.
     expect(await listarRequisicoes(p, await como('manutencao@exemplo.local'), 'atender')).toHaveLength(0);
     await decidirRequisicao(p, await como('coord.educacao@exemplo.local'), r.id, await versao(r.id), 'aprovar', null);
@@ -627,7 +618,7 @@ describe('feriados e painel de prazos (SLA)', () => {
     const adm = await como('admin@exemplo.local');
     await expect(salvarFeriado(p, await como('diretoria@exemplo.local'), { data: '2026-11-02', nome: 'Finados' })).rejects.toBeInstanceOf(ErroPermissao);
     const pede = await como('financeiro@exemplo.local');
-    const r = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: em('2026-10-30', 16) });
+    const r = await enviarRequisicao(p, pede, ficha(), { agora: em('2026-10-30', 16) });
     const antes = (await detalharRequisicao(p, pede, r.id, { agora: em('2026-11-03', 10) })).sla!.aprovacao.horas;
     expect(await incluirFeriadosNacionais(p, adm, 2026)).toBe(11);
     expect(await incluirFeriadosNacionais(p, adm, 2026)).toBe(0);
@@ -653,12 +644,12 @@ describe('feriados e painel de prazos (SLA)', () => {
           .map((i) => [i.id, i.quantidade]),
       );
     // A: decidida em 1 h (no prazo de 8 h); concluída em 25 h (fora do prazo de 16 h).
-    const a = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: em('2026-10-05', 9) });
+    const a = await enviarRequisicao(p, pede, ficha(), { agora: em('2026-10-05', 9) });
     await decidirRequisicao(p, coord, a.id, await versao(a.id), 'aprovar', null, { agora: em('2026-10-05', 10) });
     await receberRequisicao(p, almox, a.id, await versao(a.id), { agora: em('2026-10-05', 11) });
     await concluirRequisicao(p, almox, a.id, await versao(a.id), await tudo(a.id), null, { agora: em('2026-10-07', 17) });
     // B: decidida em 18 h (fora do prazo) e ainda não atendida.
-    const b = await enviarRequisicao(p, pede, catalogo, ficha(), { agora: em('2026-10-06', 9) });
+    const b = await enviarRequisicao(p, pede, ficha(), { agora: em('2026-10-06', 9) });
     await decidirRequisicao(p, coord, b.id, await versao(b.id), 'aprovar', null, { agora: em('2026-10-08', 9) });
 
     const agora = em('2026-10-30', 12);

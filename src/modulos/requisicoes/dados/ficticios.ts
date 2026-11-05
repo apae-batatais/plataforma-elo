@@ -4,26 +4,19 @@
  * Almoxarifado e atendido em parte). Gravados pelos próprios casos de uso.
  */
 import { Autorizador } from '@/nucleo/acesso/autorizador';
-import { atualizar, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
-import {
-  concluirRequisicao,
-  decidirRequisicao,
-  enviarRequisicao,
-  incluirFeriadosNacionais,
-  receberRequisicao,
-  type CatalogoOrcamento,
-} from '../aplicacao/requisicoes';
+import { concluirRequisicao, decidirRequisicao, enviarRequisicao, incluirFeriadosNacionais, receberRequisicao } from '../aplicacao/requisicoes';
 import { CatalogoItens, Requisicoes, TiposRequisicao } from './tabelas';
 
 const TIPOS = [
   { nome: 'Higiene e limpeza', descricao: 'Produtos de limpeza e de higiene pessoal.' },
   { nome: 'Material pedagógico', descricao: 'Papel, tintas, jogos e material escolar.' },
-  { nome: 'Alimentação e cozinha', descricao: 'Gêneros alimentícios e itens de cozinha, inclusive para eventos.' },
+  { nome: 'Requisição Cozinha', descricao: 'Gêneros alimentícios e itens de cozinha, inclusive para eventos.' },
   { nome: 'Material de escritório', descricao: 'Papelaria e suprimentos de escritório.' },
 ] as const;
 
-export async function popularRequisicoesFicticias(p: Planilhas, catalogo: CatalogoOrcamento): Promise<void> {
+export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
   const [tiposLidos] = await lerTabelas(p, [TiposRequisicao] as const);
   const tipos = await inserirRegistros(
     p,
@@ -90,7 +83,7 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     Servicos,
     CatalogoItens,
   ] as const);
-  // Itens aceitos: Higiene e limpeza e Alimentação e cozinha têm lista; os outros aceitam texto livre.
+  // Itens aceitos: Higiene e limpeza e Requisição Cozinha têm lista; os outros aceitam texto livre.
   const lista: [number, string, string][] = [
     [0, 'Detergente neutro', 'L'],
     [0, 'Papel toalha', 'pacote'],
@@ -129,21 +122,6 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     });
   // Feriados nacionais do ano da demonstração (não contam nos prazos).
   await incluirFeriadosNacionais(p, como('admin@exemplo.local'), 2026);
-  const grupos = await catalogo.gruposDeGasto();
-  const grupo = (inicio: string) => (grupos.find((g) => g.nome.startsWith(inicio)) ?? grupos[0])?.id ?? '';
-  if (!grupos.length) return;
-  // Alimentação e cozinha só aceita o grupo de despesa de alimentação.
-  const alimentacao = grupos.find((g) => g.nome.startsWith('Alimentação'));
-  if (alimentacao) {
-    await atualizar(
-      p,
-      TiposRequisicao,
-      tipos[2].id,
-      tipos[2].versao,
-      { grupos: alimentacao.id },
-      { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
-    );
-  }
 
   const dia = (d: string, h: number) => new Date(`${d}T${String(h + 3).padStart(2, '0')}:00:00Z`); // horário de Brasília
   const pedir = (
@@ -151,7 +129,6 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     nome: string,
     tipo: number,
     area: string,
-    g: string,
     centros: { servico: string; percentual: number }[],
     itens: [number, string, string][],
     quando: Date,
@@ -160,12 +137,10 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     enviarRequisicao(
       p,
       como(email),
-      catalogo,
       {
         nomeRequisitante: nome,
         tipoId: tipos[tipo].id,
         area,
-        grupoId: grupo(g),
         centros,
         itens: itens.map(([quantidade, unidade, descricao]) => ({ quantidade, unidade, descricao })),
         detalhes,
@@ -180,7 +155,6 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     'Financeiro (fictício)',
     1,
     'educacao',
-    'Material de consumo',
     [{ servico: 'escola', percentual: 100 }],
     [
       [10, 'resma', 'Papel sulfite A4'],
@@ -195,7 +169,6 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     'Coordenação UR (fictícia)',
     0,
     'assistencia_social',
-    'Material de consumo',
     [{ servico: 'ur', percentual: 100 }],
     [
       [6, 'L', 'Detergente neutro'],
@@ -210,7 +183,6 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     'Departamento Pessoal (fictício)',
     2,
     'educacao',
-    'Alimentação',
     [
       { servico: 'escola', percentual: 60 },
       { servico: 'transporte', percentual: 40 },
@@ -234,7 +206,6 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     'Técnico CER (fictício)',
     0,
     'saude',
-    'Material de consumo',
     [{ servico: 'cer_reabilitacao', percentual: 100 }],
     [
       [5, 'L', 'Álcool 70%'],
@@ -261,12 +232,10 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     enviarRequisicao(
       p,
       como(email),
-      catalogo,
       {
         nomeRequisitante: nome,
         tipoId: tiposTi[0].id,
         area,
-        grupoId: grupo('Serviços de terceiros'),
         centros: [{ servico, percentual: 100 }],
         itens: [],
         detalhes,
@@ -313,8 +282,7 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     enviarRequisicao(
       p,
       como(email),
-      catalogo,
-      { nomeRequisitante: nome, tipoId: tiposTi[2].id, area, grupoId: grupo('Manutenção'), centros: [{ servico, percentual: 100 }], itens: [], detalhes },
+      { nomeRequisitante: nome, tipoId: tiposTi[2].id, area, centros: [{ servico, percentual: 100 }], itens: [], detalhes },
       { agora: quando },
     );
   await moveis(
@@ -362,8 +330,7 @@ export async function popularRequisicoesFicticias(p: Planilhas, catalogo: Catalo
     enviarRequisicao(
       p,
       como(email),
-      catalogo,
-      { nomeRequisitante: nome, tipoId: tiposTi[3].id, area, grupoId: grupo('Manutenção'), centros: [{ servico, percentual: 100 }], itens: [], detalhes },
+      { nomeRequisitante: nome, tipoId: tiposTi[3].id, area, centros: [{ servico, percentual: 100 }], itens: [], detalhes },
       { agora: quando },
     );
   await conserto(

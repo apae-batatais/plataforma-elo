@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Escolha de quais opções podem usar um tipo (áreas, grupos de despesa).
+ * Escolha de quais opções podem usar um tipo (áreas).
  * "Todas" marcado = sem restrição; desmarcado, a pessoa marca as permitidas.
  */
 import { useState } from 'react';

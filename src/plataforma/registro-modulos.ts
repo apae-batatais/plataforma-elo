@@ -14,7 +14,6 @@ import { validarRegistro } from '@/nucleo/modulos/registro';
 import type { EstruturaDosModulos } from '@/nucleo/estrutura/preparar';
 import { manifesto as orcamento, popularFolhaFicticia, popularPrevisaoFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
 import { manifesto as requisicoes, popularRequisicoesFicticias, TABELAS_REQUISICOES } from '@/modulos/requisicoes';
-import { catalogoOrcamento } from './catalogos';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 
 export const MODULOS: readonly Manifesto[] = [orcamento, requisicoes];
@@ -27,14 +26,16 @@ export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
   tabelas: TABELAS_DOS_MODULOS,
   perfis: MODULOS.flatMap((m) => m.perfis),
   permissoes: MODULOS.flatMap((m) => Object.entries(m.permissoesPorPerfil).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao })))),
-  permissoesRetiradas: MODULOS.flatMap((m) => Object.entries(m.permissoesRetiradas).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao })))),
+  permissoesRetiradas: MODULOS.flatMap((m) =>
+    Object.entries(m.permissoesRetiradas).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao }))),
+  ),
 };
 
 /** Dados fictícios dos módulos, gravados só na demonstração (em memória). */
 export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void> {
   await popularFolhaFicticia(p);
   await popularPrevisaoFicticia(p);
-  await popularRequisicoesFicticias(p, catalogoOrcamento(p));
+  await popularRequisicoesFicticias(p);
 }
 
 validarRegistro(MODULOS);

@@ -2,7 +2,7 @@
 
 /**
  * Ficha da requisição de materiais (com base no modelo usado hoje):
- * tipo, área, grupo de despesa, centros de custo com percentual, itens,
+ * tipo, área, centros de custo com percentual, itens,
  * retirada ou entrega, evento (se houver), utensílios e observações.
  * Os dados ficam no navegador até o envio: um erro não apaga nada.
  */
@@ -36,14 +36,12 @@ export interface OpcoesFicha {
     nome: string;
     formulario: string;
     descricao: string | null;
-    /** Áreas e grupos permitidos (vazio = todos) e itens aceitos (vazio = texto livre). */
+    /** Áreas permitidas (vazio = todas) e itens aceitos (vazio = texto livre). */
     areas: string[];
-    grupos: string[];
     itens: { id: string; descricao: string; unidade: string }[];
   }[];
   areas: { codigo: string; nome: string }[];
   servicos: { codigo: string; nome: string; area: string | null; areaNome: string }[];
-  grupos: { id: string; nome: string }[];
 }
 
 const UNIDADES = ['un', 'kg', 'g', 'L', 'ml', 'pacote', 'caixa', 'resma', 'dúzia', 'fardo', 'rolo', 'par', 'frasco', 'galão'];
@@ -78,7 +76,6 @@ export function FormularioRequisicao({
   const det = (inicial?.detalhes ?? {}) as DetalhesMateriais;
   const [tipoId, setTipoId] = useState(inicial?.tipoId ?? (opcoes.tipos.length === 1 ? opcoes.tipos[0].id : ''));
   const [area, setArea] = useState(inicial?.area ?? '');
-  const [grupoId, setGrupoId] = useState(inicial?.grupoId ?? '');
   const [centros, setCentros] = useState(
     inicial?.centros.map((c) => ({ servico: c.servico, percentual: String(c.percentual) })) ?? [{ servico: '', percentual: '100' }],
   );
@@ -137,18 +134,15 @@ export function FormularioRequisicao({
 
   const tipo = opcoes.tipos.find((t) => t.id === tipoId);
   const areasDoTipo = tipo?.areas.length ? opcoes.areas.filter((a) => tipo.areas.includes(a.codigo)) : opcoes.areas;
-  const gruposDoTipo = tipo?.grupos.length ? opcoes.grupos.filter((g) => tipo.grupos.includes(g.id)) : opcoes.grupos;
   const lista = tipo?.itens ?? [];
   const daLista = (descricao: string) => lista.find((c) => comparavel(c.descricao) === comparavel(descricao));
   const mudarTipo = (id: string) => {
     setTipoId(id);
     const t = opcoes.tipos.find((x) => x.id === id);
     if (!t) return;
-    // Área e grupo que o tipo não aceita saem; se só há uma opção, ela já vem marcada.
+    // Área que o tipo não aceita sai; se só há uma opção, ela já vem marcada.
     const areasOk = t.areas.length ? opcoes.areas.filter((a) => t.areas.includes(a.codigo)) : opcoes.areas;
-    const gruposOk = t.grupos.length ? opcoes.grupos.filter((g) => t.grupos.includes(g.id)) : opcoes.grupos;
     if (!areasOk.some((a) => a.codigo === area)) setArea(areasOk.length === 1 ? areasOk[0].codigo : '');
-    if (!gruposOk.some((g) => g.id === grupoId)) setGrupoId(gruposOk.length === 1 ? gruposOk[0].id : '');
     if (t.itens.length) {
       const porNome = new Map(t.itens.map((c) => [comparavel(c.descricao), c]));
       setItens(itens.map((x) => ({ ...x, unidade: porNome.get(comparavel(x.descricao))?.unidade ?? (x.descricao ? x.unidade : '') })));
@@ -175,7 +169,6 @@ export function FormularioRequisicao({
   const dados: DadosRequisicao = {
     tipoId,
     area,
-    grupoId,
     centros: centros.map((c) => ({ servico: c.servico, percentual: paraNumero(c.percentual) })),
     itens: (tipo && tipo.formulario !== 'materiais' ? [] : itens)
       .filter((x) => x.descricao.trim() || x.quantidade.trim())
@@ -217,7 +210,7 @@ export function FormularioRequisicao({
 
       <section className="space-y-4 rounded-xl border border-borda bg-superficie p-5">
         <h2 className="text-lg font-bold">Pedido</h2>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Campo rotulo="Tipo de requisição" obrigatorio dica={tipo?.descricao ?? undefined}>
             <select value={tipoId} onChange={(e) => mudarTipo(e.target.value)} disabled={Boolean(inicial)} required className={estiloEntrada}>
               <option value="">Escolha…</option>
@@ -238,18 +231,7 @@ export function FormularioRequisicao({
               ))}
             </select>
           </Campo>
-          <Campo rotulo="Grupo de despesa" obrigatorio dica="Como está no orçamento.">
-            <select value={grupoId} onChange={(e) => setGrupoId(e.target.value)} required className={estiloEntrada}>
-              <option value="">Escolha…</option>
-              {gruposDoTipo.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
         </div>
-        {opcoes.grupos.length === 0 && <Aviso tipo="atencao">Nenhum grupo de despesa cadastrado no Orçamento. Peça ao Financeiro para cadastrar.</Aviso>}
       </section>
 
       <section className="space-y-3 rounded-xl border border-borda bg-superficie p-5">
