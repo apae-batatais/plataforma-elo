@@ -13,13 +13,10 @@ export const manifesto = defineModulo({
   schema: 'comunicacao',
   rota: '/comunicacao',
   permissaoAcesso: 'comunicacao.acessar',
+  // Só as telas desta entrega; Novo pedido, Pedidos, Indicadores e Contatos voltam ao menu com as suas entregas.
   menu: [
     { rotulo: 'Meus pedidos', caminho: '/', permissao: 'comunicacao.solicitar', secao: 'Pedir' },
-    { rotulo: 'Novo pedido', caminho: '/novo', permissao: 'comunicacao.solicitar', secao: 'Pedir' },
-    { rotulo: 'Pedidos', caminho: '/pedidos', permissao: 'comunicacao.revisar', secao: 'Acompanhar' },
-    { rotulo: 'Indicadores', caminho: '/indicadores', permissao: 'comunicacao.indicadores', secao: 'Acompanhar' },
     { rotulo: 'Calendário', caminho: '/calendario', permissao: 'comunicacao.calendario.gerenciar', secao: 'Cadastros' },
-    { rotulo: 'Contatos da imprensa', caminho: '/contatos', permissao: 'comunicacao.contatos.gerenciar', secao: 'Cadastros' },
     { rotulo: 'Configurações', caminho: '/configuracoes', permissao: 'comunicacao.configurar', secao: 'Cadastros' },
   ],
   permissoes: {

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
-import { itensParaPedido, listarCalendario, mudarSituacaoItemCalendario, salvarItemCalendario } from '../aplicacao/calendario';
+import { itemDoCalendario, itensParaPedido, listarCalendario, mudarSituacaoItemCalendario, salvarItemCalendario } from '../aplicacao/calendario';
 import { lerAntecedencia, salvarAntecedencia } from '../aplicacao/configuracoes';
 import { CalendarioComunicacao, ParametrosComunicacao, PedidosComunicacao } from '../dados/tabelas';
 import { popularComunicacaoFicticia } from '../dados/ficticios';
@@ -48,6 +48,23 @@ describe('itens do calendário', () => {
     for (const inicio of ['', '10/12/2026', '2026-13-40', '2026-02-30']) {
       await expect(salvarItemCalendario(p, quem, item({ inicio, fim: inicio }))).rejects.toThrow(new ErroComunicacao('Informe as datas no formato dia/mês/ano.'));
     }
+  });
+
+  it('período sem fim pede o fim; data malformada continua pedindo o formato', async () => {
+    const quem = await como(p, COMUNICACAO);
+    await expect(salvarItemCalendario(p, quem, item({ tipoData: 'periodo', inicio: '2026-12-01', fim: '' }))).rejects.toThrow('Informe o fim do período.');
+    await expect(salvarItemCalendario(p, quem, item({ tipoData: 'periodo', inicio: '2026-12-01', fim: '01/12/2026' }))).rejects.toThrow('Informe as datas no formato dia/mês/ano.');
+  });
+
+  it('busca um item pelo código em qualquer mês, só para quem cuida do calendário', async () => {
+    await popularComunicacaoFicticia(p);
+    const quem = await como(p, COMUNICACAO);
+    const longe = (await listarCalendario(p, quem, { inicio: '2026-08-01', fim: '2026-08-31' })).find((i) => i.tema.startsWith('Semana'))!;
+    const achado = await itemDoCalendario(p, quem, longe.id);
+    expect(achado?.tema).toBe(longe.tema);
+    expect(achado?.pedidos).toBe(longe.pedidos);
+    expect(await itemDoCalendario(p, quem, 'nao-existe')).toBeNull();
+    await expect(itemDoCalendario(p, await como(p, FUNCIONARIO), longe.id)).rejects.toThrow(ErroPermissao);
   });
 
   it('altera um item com a versão lida e audita só as colunas', async () => {

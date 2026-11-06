@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { listarCalendario, tiposDoItem } from '@/modulos/comunicacao/aplicacao/calendario';
+import { itemDoCalendario, listarCalendario, tiposDoItem } from '@/modulos/comunicacao/aplicacao/calendario';
 import { Controles, FormularioItem, VisaoLista, VisaoMes, type ItemDaTela, type Visao } from '@/modulos/comunicacao/telas/calendario';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { limitesDoMes, mesValido, semanasDoMes, somarMeses } from '@/modulos/comunicacao/telas/mes';
@@ -47,7 +47,10 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
 
   // O item a alterar pode estar em outro mês: busca no calendário todo.
   let emEdicao = p.editar ? itens.find((i) => i.id === p.editar) : undefined;
-  if (p.editar && !emEdicao) emEdicao = (await listarCalendario(planilhas, usuario.autorizador, { inicio: '0001-01-01', fim: '9999-12-31' })).map(paraTela).find((i) => i.id === p.editar);
+  if (p.editar && !emEdicao) {
+    const achado = await itemDoCalendario(planilhas, usuario.autorizador, p.editar);
+    emEdicao = achado ? paraTela(achado) : undefined;
+  }
   const voltarPara = `/comunicacao/calendario?visao=${visao}&mes=${mes}`;
 
   return (

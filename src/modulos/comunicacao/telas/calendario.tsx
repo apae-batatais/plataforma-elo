@@ -9,6 +9,7 @@ import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { Etiqueta } from '@/ui/pagina';
 import { NOME_TIPO_PECA, TIPOS_PECA, type TipoPeca } from '../dominio/pedido';
+import { CamposDeData } from './campos-de-data';
 import { DIAS_DA_SEMANA, nomeDoMes, quandoCai, semanasDoMes } from './mes';
 
 type Acao = (f: FormData) => void | Promise<void>;
@@ -240,33 +241,7 @@ export function FormularioItem({ acao, visao, mes, valor, rotuloBotao }: { acao:
       <Campo rotulo="Tema" obrigatorio dica="Ex.: Dia Internacional da Pessoa com Deficiência.">
         <input name="tema" required defaultValue={valor?.tema} className={estiloEntrada} />
       </Campo>
-      <fieldset>
-        <legend className="text-sm font-semibold">Como a data cai</legend>
-        <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
-          {(
-            [
-              ['exata', 'Data exata', 'Um dia só.'],
-              ['periodo', 'Período', 'Do início ao fim.'],
-            ] as const
-          ).map(([v, r, d]) => (
-            <label key={v} className="flex min-h-11 items-start gap-2 rounded-lg border border-borda px-3 py-2.5 text-sm">
-              <input type="radio" name="tipo_data" value={v} defaultChecked={tipoData === v} className="mt-0.5" />
-              <span>
-                <span className="font-semibold">{r}</span>
-                <span className="block text-texto-suave">{d}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Data ou início do período" obrigatorio>
-          <input type="date" name="inicio" required defaultValue={valor?.inicio} className={estiloEntrada} />
-        </Campo>
-        <Campo rotulo="Fim do período" dica="Só para período. Em data exata, deixe em branco.">
-          <input type="date" name="fim" defaultValue={valor && valor.tipo_data === 'periodo' ? valor.fim : ''} className={estiloEntrada} />
-        </Campo>
-      </div>
+      <CamposDeData tipoData={tipoData} inicio={valor?.inicio} fim={valor && valor.tipo_data === 'periodo' ? valor.fim : ''} />
       <fieldset>
         <legend className="text-sm font-semibold">
           Tipos de peça sugeridos<span className="ml-0.5 text-erro" aria-hidden="true">*</span>

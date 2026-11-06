@@ -50,6 +50,7 @@ export function tiposDoItem(tipos: string): TipoPeca[] {
 export async function salvarItemCalendario(p: Planilhas, quem: Autorizador, d: DadosItemCalendario, opcoes: Opcoes = {}): Promise<{ id: string }> {
   if (!quem.temPermissao(PERM.gerenciar)) throw new ErroPermissao();
   const agora = opcoes.agora ?? new Date();
+  if (d.tipoData === 'periodo' && !d.fim.trim()) throw new ErroComunicacao('Informe o fim do período.');
   if (!dataValida(d.inicio) || !dataValida(d.fim)) throw new ErroComunicacao('Informe as datas no formato dia/mês/ano.');
   const tema = d.tema.trim().replace(/\s+/g, ' ');
   const tipos = TIPOS_PECA.filter((t) => d.tipos.includes(t));
@@ -96,6 +97,16 @@ export async function mudarSituacaoItemCalendario(p: Planilhas, quem: Autorizado
     { usuario: quem.email, acao: ativo ? 'alteracao' : 'encerramento', entidade: 'CalendarioComunicacao', registroId: id, detalhes: { colunas: ['ativo'] } },
     agora,
   );
+}
+
+/** Um item do calendário pelo código (com os totais de pedidos), em qualquer mês; null se não existir. */
+export async function itemDoCalendario(p: Planilhas, quem: Autorizador, id: string): Promise<(RegCalendario & { pedidos: number; publicados: number }) | null> {
+  if (!quem.temPermissao(PERM.gerenciar)) throw new ErroPermissao();
+  const [calendario, pedidos] = await lerTabelas(p, [CalendarioComunicacao, PedidosComunicacao] as const);
+  const item = calendario.porId(id);
+  if (!item) return null;
+  const doItem = pedidos.ativos().filter((x) => x.calendario_id === id);
+  return { ...item, pedidos: doItem.length, publicados: doItem.filter((x) => x.situacao === 'publicado' || x.situacao === 'realizada').length };
 }
 
 /** Itens do calendário que tocam o período, com o total de pedidos e quantos já foram publicados. Inclui os desativados. */

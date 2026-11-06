@@ -7,6 +7,7 @@ import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
 import { ErroComunicacao, TIPOS_PECA, type TipoPeca } from '@/modulos/comunicacao/dominio/pedido';
+import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
@@ -43,7 +44,7 @@ async function executar(pagina: (resultado: unknown) => string, erroEm: string, 
 /** Endereço do calendário que a pessoa estava vendo (mês e forma de ver vêm escondidos no formulário). */
 function calendarioEm(f: FormData, mes?: string | null) {
   const visao = texto(f, 'visao') === 'lista' ? 'lista' : 'mes';
-  const m = mes ?? mesValido(texto(f, 'mes')) ?? new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 7);
+  const m = mes ?? mesValido(texto(f, 'mes')) ?? diaEmBrasilia(new Date()).slice(0, 7);
   return `/comunicacao/calendario?visao=${visao}&mes=${m}`;
 }
 
