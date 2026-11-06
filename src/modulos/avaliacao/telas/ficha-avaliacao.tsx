@@ -11,6 +11,7 @@ import {
   idadeEm,
   INDICE_MAXIMO,
   NENHUMA_BARREIRA,
+  proximaAvaliacao,
   temViolacao,
   type DadosAvaliacao,
 } from '../dominio/avaliacao';
@@ -65,6 +66,8 @@ export function FichaAvaliacao({ d, servicoNome }: { d: DadosAvaliacao; servicoN
             ['Prontuário', d.prontuario || '—'],
             ['Serviço atual', servicoNome],
             ['Data da avaliação', br(d.data_avaliacao)],
+            ['Tipo de avaliação', d.tipo || 'Inicial'],
+            ['Próxima avaliação', br(proximaAvaliacao(d.data_avaliacao))],
           ] as const
         ).map(([r, v]) => (
           <div key={r} className={r === 'Serviço atual' ? 'col-span-2' : ''}>

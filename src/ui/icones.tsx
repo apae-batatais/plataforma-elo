@@ -51,7 +51,7 @@ export const IconeRequisicao = (p: Props) => (
     <path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" />
   </Icone>
 );
-/** Avaliação Diagnóstica: ficha com a linha de um indicador. */
+/** Avaliação de Serviços Sociais: ficha com a linha de um indicador. */
 export const IconeAvaliacao = (p: Props) => (
   <Icone {...p}>
     <rect x="4" y="4" width="16" height="17" rx="2" />

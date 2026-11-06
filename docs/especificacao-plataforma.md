@@ -8,7 +8,7 @@ camada de aplicação na Netlify e armazenamento em Google Planilhas.
 ## Objetivo
 Reunir em um só lugar os apps de cada departamento da Apae Batatais, sobre um
 Núcleo comum de pessoas, acesso e auditoria. Primeiros apps: Orçamento (Fase 1)
-e Avaliação Diagnóstica da Assistência Social (Fase 2).
+e Avaliação de Serviços Sociais da Assistência Social (Fase 2).
 
 ## Princípios
 1. Simples antes de elegante: uma linguagem, um banco, um app, um deploy.
@@ -59,7 +59,7 @@ Escopo de atribuição: global, unidade, área ou serviço. Escopo de unidade ou
 | 1 · Orçamento | Importação 2026/2027, previsão, folha e rateio, lançamentos, painel | Execução confere com a planilha; DPO definido |
 | 2 · Avaliação | Motor + módulo da Assistência, primeiro ciclo da UR | Ciclo fechado, enquadramentos justificados |
 
-Fase 2, entrega 1 (06/11/2026): módulo Avaliação Diagnóstica com o questionário diagnóstico da Assistência Social e o painel por serviço atual (ADR-016). O motor de avaliação fica para as próximas entregas.
+Fase 2, entrega 1 (06/11/2026): módulo Avaliação de Serviços Sociais, com avaliação inicial e anual, comparativo da mesma pessoa, painel por serviço atual e fundamento legal do instrumento (ADR-016). O motor de avaliação fica para as próximas entregas.
 | 3 · Expansão | Educação, Saúde/CER, novos módulos | — |
 
 ## Situação da Fase 0

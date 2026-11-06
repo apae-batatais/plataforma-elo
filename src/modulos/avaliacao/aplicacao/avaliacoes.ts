@@ -1,11 +1,11 @@
 /**
- * Casos de uso da Avaliação Diagnóstica (camada de aplicação).
+ * Casos de uso da Avaliação de Serviços Sociais (camada de aplicação).
  *
  * Quem vê o quê:
  * - "avaliacao.avaliar" no serviço (escopo global, da unidade, da área ou do
  *   próprio serviço): aplica, lê e corrige as avaliações daquele serviço.
  * - "avaliacao.painel" no serviço: vê só os números agregados do painel.
- * Abrir uma avaliação registra leitura na auditoria; incluir, alterar e
+ * Abrir uma avaliação ou o comparativo da pessoa registra leitura na auditoria; incluir, alterar e
  * retirar registram as colunas alteradas (nunca os valores).
  */
 import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
@@ -15,14 +15,18 @@ import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
 import {
   barreirasDoTexto,
   barreirasParaTexto,
+  chavePessoa,
   conferirAvaliacao,
   ErroAvaliacao,
   idadeEm,
   indiceDeCuidado,
   ROTULOS,
+  situacaoReavaliacao,
   temViolacao,
   type DadosAvaliacao,
+  type SituacaoReavaliacao,
 } from '../dominio/avaliacao';
+import { compararAvaliacoes, type Comparativo } from '../dominio/comparativo';
 import { montarPainel, type PainelAvaliacao } from '../dominio/painel';
 import { Avaliacoes } from '../dados/tabelas';
 
@@ -60,6 +64,7 @@ export async function servicosParaAvaliar(p: Planilhas, quem: Autorizador, opcoe
 }
 
 const paraDados = (r: RegAvaliacao): DadosAvaliacao => ({
+  tipo: r.tipo,
   iniciais: r.iniciais,
   nascimento: r.nascimento,
   sexo: r.sexo,
@@ -90,6 +95,7 @@ const paraDados = (r: RegAvaliacao): DadosAvaliacao => ({
 
 export interface LinhaAvaliacao {
   id: string;
+  tipo: string;
   iniciais: string;
   nascimento: string;
   sexo: string;
@@ -100,32 +106,83 @@ export interface LinhaAvaliacao {
   grauDependencia: string;
   indice: number;
   violacao: boolean;
+  /** Quantas avaliações da mesma pessoa você vê (para o comparativo). */
+  avaliacoesDaPessoa: number;
+  /** Reavaliação anual: só na avaliação mais recente da pessoa. */
+  reavaliacao: { vence: string; situacao: SituacaoReavaliacao } | null;
 }
 
 /** Avaliações ativas dos serviços em que a pessoa avalia, da mais recente para a mais antiga. */
-export async function listarAvaliacoes(p: Planilhas, quem: Autorizador): Promise<LinhaAvaliacao[]> {
+export async function listarAvaliacoes(p: Planilhas, quem: Autorizador, opcoes: { agora?: Date } = {}): Promise<LinhaAvaliacao[]> {
   if (!quem.temPermissaoAlgumEscopo(PERM.avaliar)) throw new ErroPermissao();
+  const hoje = hojeEm(opcoes.agora ?? new Date());
   const [avaliacoes] = await lerTabelas(p, [Avaliacoes] as const);
-  return avaliacoes
+  const visiveis = avaliacoes
     .ativos()
     .filter((r) => podeAvaliar(quem, r.servico))
-    .sort((a, b) => b.data_avaliacao.localeCompare(a.data_avaliacao) || b.atualizado_em.localeCompare(a.atualizado_em))
+    .sort((a, b) => b.data_avaliacao.localeCompare(a.data_avaliacao) || b.atualizado_em.localeCompare(a.atualizado_em));
+  const porPessoa = new Map<string, string[]>();
+  for (const r of visiveis) porPessoa.set(chavePessoa(r), [...(porPessoa.get(chavePessoa(r)) ?? []), r.id]);
+  return visiveis.map((r) => {
+    const d = paraDados(r);
+    const daPessoa = porPessoa.get(chavePessoa(r))!;
+    return {
+      id: r.id,
+      tipo: r.tipo,
+      iniciais: r.iniciais,
+      nascimento: r.nascimento,
+      sexo: r.sexo,
+      idade: idadeEm(r.nascimento, r.data_avaliacao),
+      servico: r.servico,
+      servicoNome: r.servico_nome,
+      dataAvaliacao: r.data_avaliacao,
+      grauDependencia: r.grau_dependencia,
+      indice: indiceDeCuidado(d),
+      violacao: temViolacao(d.barreiras),
+      avaliacoesDaPessoa: daPessoa.length,
+      reavaliacao: daPessoa[0] === r.id ? situacaoReavaliacao(r.data_avaliacao, hoje) : null,
+    };
+  });
+}
+
+export interface HistoricoPessoa {
+  iniciais: string;
+  nascimento: string;
+  sexo: string;
+  avaliacoes: { id: string; tipo: string; data: string; servicoNome: string; indice: number; dados: DadosAvaliacao }[];
+  comparativo: Comparativo;
+  reavaliacao: { vence: string; situacao: SituacaoReavaliacao; dias: number };
+}
+
+/**
+ * Todas as avaliações da mesma pessoa (iniciais + nascimento + sexo) nos serviços
+ * em que você avalia, da mais antiga para a mais recente, com o comparativo.
+ * Registra uma leitura na auditoria.
+ */
+export async function historicoDaPessoa(p: Planilhas, quem: Autorizador, id: string, opcoes: { agora?: Date } = {}): Promise<HistoricoPessoa> {
+  const hoje = hojeEm(opcoes.agora ?? new Date());
+  const [avaliacoes] = await lerTabelas(p, [Avaliacoes] as const);
+  const base = avaliacoes.porId(id);
+  if (!base || !base.ativo) throw new ErroAvaliacao('Avaliação não encontrada.');
+  if (!podeAvaliar(quem, base.servico)) throw new ErroPermissao();
+  const chave = chavePessoa(base);
+  const lista = avaliacoes
+    .ativos()
+    .filter((r) => chavePessoa(r) === chave && podeAvaliar(quem, r.servico))
+    .sort((a, b) => a.data_avaliacao.localeCompare(b.data_avaliacao) || a.criado_em.localeCompare(b.criado_em))
     .map((r) => {
-      const d = paraDados(r);
-      return {
-        id: r.id,
-        iniciais: r.iniciais,
-        nascimento: r.nascimento,
-        sexo: r.sexo,
-        idade: idadeEm(r.nascimento, r.data_avaliacao),
-        servico: r.servico,
-        servicoNome: r.servico_nome,
-        dataAvaliacao: r.data_avaliacao,
-        grauDependencia: r.grau_dependencia,
-        indice: indiceDeCuidado(d),
-        violacao: temViolacao(d.barreiras),
-      };
+      const dados = paraDados(r);
+      return { id: r.id, tipo: r.tipo, data: r.data_avaliacao, servicoNome: r.servico_nome, indice: indiceDeCuidado(dados), dados };
     });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: ENTIDADE, registroId: id, detalhes: { comparativo: lista.length } });
+  return {
+    iniciais: base.iniciais,
+    nascimento: base.nascimento,
+    sexo: base.sexo,
+    avaliacoes: lista,
+    comparativo: compararAvaliacoes(lista),
+    reavaliacao: situacaoReavaliacao(lista[lista.length - 1].data, hoje),
+  };
 }
 
 export interface AvaliacaoDetalhada {
@@ -177,6 +234,7 @@ export class ErroRespostas extends ErroAvaliacao {
 }
 
 const paraRegistro = (d: DadosAvaliacao, servicoNome: string) => ({
+  tipo: d.tipo as RegAvaliacao['tipo'],
   iniciais: d.iniciais,
   nascimento: d.nascimento,
   sexo: d.sexo as 'F' | 'M',
@@ -276,20 +334,34 @@ export interface FiltroPainel {
   /** Mês inicial e final (AAAA-MM) da data da avaliação; vazio = tudo. */
   de?: string;
   ate?: string;
+  /** Só um serviço (código); vazio = todos os que a pessoa acompanha. */
+  servico?: string;
 }
 
-/** Números agregados das avaliações ativas dos serviços que a pessoa acompanha no painel. */
-export async function painelDaAvaliacao(p: Planilhas, quem: Autorizador, filtro: FiltroPainel = {}): Promise<PainelAvaliacao & { todos: boolean }> {
+/**
+ * Números agregados das avaliações ativas dos serviços que a pessoa acompanha no painel.
+ * Cada pessoa conta uma vez no retrato atual (pela avaliação mais recente do período).
+ */
+export async function painelDaAvaliacao(
+  p: Planilhas,
+  quem: Autorizador,
+  filtro: FiltroPainel = {},
+  opcoes: { agora?: Date } = {},
+): Promise<PainelAvaliacao & { todos: boolean; servicosDisponiveis: { codigo: string; nome: string }[] }> {
   if (!quem.temPermissaoAlgumEscopo(PERM.painel)) throw new ErroPermissao();
+  const hoje = hojeEm(opcoes.agora ?? new Date());
   const [avaliacoes] = await lerTabelas(p, [Avaliacoes] as const);
   const mes = (d: string) => d.slice(0, 7);
-  const lista = avaliacoes
-    .ativos()
-    .filter((r) => podeVerPainel(quem, r.servico))
+  const doEscopo = avaliacoes.ativos().filter((r) => podeVerPainel(quem, r.servico));
+  const servicosDisponiveis = [...new Map(doEscopo.map((r) => [r.servico, r.servico_nome])).entries()]
+    .map(([codigo, nome]) => ({ codigo, nome }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const lista = doEscopo
+    .filter((r) => !filtro.servico || r.servico === filtro.servico)
     .filter((r) => (!filtro.de || mes(r.data_avaliacao) >= filtro.de) && (!filtro.ate || mes(r.data_avaliacao) <= filtro.ate))
     .map((r) => {
       const d = paraDados(r);
-      return { ...d, servicoNome: r.servico_nome, indice: indiceDeCuidado(d) };
+      return { ...d, servicoNome: r.servico_nome, indice: indiceDeCuidado(d), idade: idadeEm(r.nascimento, r.data_avaliacao), chave: chavePessoa(r) };
     });
-  return { ...montarPainel(lista), todos: quem.temPermissao(PERM.painel) };
+  return { ...montarPainel(lista, hoje), todos: quem.temPermissao(PERM.painel), servicosDisponiveis };
 }

@@ -22,7 +22,7 @@ export default async function LayoutAvaliacao({ children }: { children: React.Re
     if (erro instanceof ErroEstruturaAusente || (erro instanceof ErroArmazenamento && /sem as colunas/.test(erro.message))) {
       return (
         <ConfiguracaoInvalida
-          titulo="Falta preparar a aba da Avaliação Diagnóstica"
+          titulo="Falta preparar a aba da Avaliação de Serviços Sociais"
           mensagem={`${erro.message} A administração faz isso em Preparar estrutura (na área da rede ou em Administração › Estrutura das planilhas).`}
         />
       );
@@ -30,8 +30,8 @@ export default async function LayoutAvaliacao({ children }: { children: React.Re
     if (erro instanceof ErroArmazenamento) {
       return (
         <ConfiguracaoInvalida
-          titulo="A Avaliação Diagnóstica ainda não tem planilha"
-          mensagem={`${erro.message} Crie uma planilha em branco no Drive da instituição (só para as avaliações, porque guarda dados sensíveis), compartilhe com a conta de serviço e informe o ID no cadastro da instituição na rede (campo Avaliação Diagnóstica).`}
+          titulo="A Avaliação de Serviços Sociais ainda não tem planilha"
+          mensagem={`${erro.message} Crie uma planilha em branco no Drive da instituição (só para as avaliações, porque guarda dados sensíveis), compartilhe com a conta de serviço e informe o ID no cadastro da instituição na rede (campo Avaliação de Serviços Sociais).`}
         />
       );
     }

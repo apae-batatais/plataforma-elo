@@ -38,11 +38,18 @@ export default async function AbrirAvaliacao({ params }: { params: Promise<{ id:
   return (
     <div>
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliação Diagnóstica', href: '/avaliacao' }, { rotulo: `${d.iniciais} · ${br(d.nascimento)}` }]}
+        trilha={[
+          { rotulo: 'Início', href: '/' },
+          { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' },
+          { rotulo: `${d.iniciais} · ${br(d.nascimento)}` },
+        ]}
         titulo={`Avaliação de ${d.iniciais} · ${br(d.nascimento)} · ${d.sexo}`}
-        descricao={`${av.servicoNome} · avaliada em ${br(d.data_avaliacao)}. Corrija o que precisar e salve.`}
+        descricao={`${d.tipo} · ${av.servicoNome} · avaliada em ${br(d.data_avaliacao)}. Corrija o que precisar e salve.`}
         acoes={
           <>
+            <LinkBotao href={`/avaliacao/${av.id}/comparativo`} variante="secundario" className={pequeno}>
+              Comparativo da pessoa
+            </LinkBotao>
             <LinkBotao href={`/avaliacao/${av.id}/ficha`} variante="secundario" className={pequeno}>
               Imprimir ficha
             </LinkBotao>

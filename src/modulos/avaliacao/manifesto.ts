@@ -1,6 +1,6 @@
 /**
- * Manifesto do módulo Avaliação Diagnóstica — entrega 1: questionário
- * diagnóstico da Assistência Social (com salvamento) e painel por serviço atual.
+ * Manifesto do módulo Avaliação de Serviços Sociais: avaliação inicial e anual das
+ * pessoas atendidas, comparativo da mesma pessoa e painel por serviço atual.
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
 
@@ -8,8 +8,8 @@ const TUDO = ['avaliacao.acessar', 'avaliacao.avaliar', 'avaliacao.painel'];
 
 export const manifesto = defineModulo({
   id: 'avaliacao',
-  nome: 'Avaliação Diagnóstica',
-  descricao: 'Questionário diagnóstico das pessoas atendidas e painel de indicadores por serviço.',
+  nome: 'Avaliação de Serviços Sociais',
+  descricao: 'Avaliação inicial e anual das pessoas atendidas, evolução de cada uma e painel por serviço.',
   icone: 'stethoscope',
   schema: 'avaliacao',
   rota: '/avaliacao',
@@ -18,9 +18,10 @@ export const manifesto = defineModulo({
     { rotulo: 'Avaliações', caminho: '/', permissao: 'avaliacao.avaliar', secao: 'Avaliar' },
     { rotulo: 'Nova avaliação', caminho: '/nova', permissao: 'avaliacao.avaliar', secao: 'Avaliar' },
     { rotulo: 'Painel', caminho: '/painel', permissao: 'avaliacao.painel', secao: 'Acompanhar' },
+    { rotulo: 'Sobre o instrumento', caminho: '/sobre', permissao: 'avaliacao.acessar', secao: 'Acompanhar' },
   ],
   permissoes: {
-    'avaliacao.acessar': 'Entrar no módulo Avaliação Diagnóstica',
+    'avaliacao.acessar': 'Entrar no módulo Avaliação de Serviços Sociais',
     'avaliacao.avaliar': 'Aplicar, abrir e corrigir avaliações dos serviços do seu escopo (Diretoria: todos)',
     'avaliacao.painel': 'Ver o painel com os números agregados das avaliações dos serviços do seu escopo (sem identificar pessoas)',
   },

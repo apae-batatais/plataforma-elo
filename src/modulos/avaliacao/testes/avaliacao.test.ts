@@ -1,5 +1,5 @@
 /**
- * Avaliação Diagnóstica, com dados FICTÍCIOS: conferência das respostas,
+ * Avaliação de Serviços Sociais, com dados FICTÍCIOS: conferência das respostas,
  * índice de necessidade de cuidado, painel, quem avalia e quem vê, auditoria.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -12,6 +12,7 @@ import { Atribuicoes, PerfilPermissoes, Pessoas, RegistrosAuditoria, Servicos, U
 import {
   detalharAvaliacao,
   fichaDaAvaliacao,
+  historicoDaPessoa,
   ErroRespostas,
   listarAvaliacoes,
   painelDaAvaliacao,
@@ -21,7 +22,17 @@ import {
 } from '../aplicacao/avaliacoes';
 import { popularAvaliacoesFicticias } from '../dados/ficticios';
 import { Avaliacoes, TABELAS_AVALIACAO } from '../dados/tabelas';
-import { conferirAvaliacao, idadeEm, indiceDeCuidado, normalizarIniciais, type DadosAvaliacao } from '../dominio/avaliacao';
+import {
+  chavePessoa,
+  conferirAvaliacao,
+  idadeEm,
+  indiceDeCuidado,
+  normalizarIniciais,
+  proximaAvaliacao,
+  situacaoReavaliacao,
+  type DadosAvaliacao,
+} from '../dominio/avaliacao';
+import { compararAvaliacoes } from '../dominio/comparativo';
 import { mediana, montarPainel } from '../dominio/painel';
 import { manifesto } from '../manifesto';
 
@@ -29,6 +40,7 @@ const HOJE = '2026-11-06';
 const AGORA = new Date('2026-11-06T15:00:00Z');
 
 const completa = (x: Partial<DadosAvaliacao> = {}): DadosAvaliacao => ({
+  tipo: 'Inicial',
   iniciais: 'mas',
   nascimento: '1958-03-02',
   sexo: 'F',
@@ -121,14 +133,23 @@ describe('índice de necessidade de cuidado', () => {
 });
 
 describe('painel (regras puras)', () => {
+  const a = (servico: string, indice: number, x: Partial<DadosAvaliacao> & { chave?: string } = {}) => {
+    const d = completa(x);
+    return {
+      ...d,
+      servico,
+      servicoNome: servico.toUpperCase(),
+      indice,
+      idade: idadeEm(d.nascimento, d.data_avaliacao),
+      chave: x.chave ?? `${servico}-${indice}-${d.data_avaliacao}`,
+    };
+  };
+
   it('agrupa por serviço, ordena pelo maior e calcula mediana e percentuais', () => {
-    const a = (servico: string, indice: number, x: Partial<DadosAvaliacao> = {}) => ({ ...completa(x), servico, servicoNome: servico.toUpperCase(), indice });
-    const p = montarPainel([
-      a('ur', 2),
-      a('ur', 6, { grau_dependencia: 'III', evolucao_usuario: 'Regrediu' }),
-      a('ur', 4),
-      a('cdi', 5, { barreiras: ['abandono'] }),
-    ]);
+    const p = montarPainel(
+      [a('ur', 2), a('ur', 6, { grau_dependencia: 'III', evolucao_usuario: 'Regrediu' }), a('ur', 4), a('cdi', 5, { barreiras: ['abandono'], sexo: 'M' })],
+      HOJE,
+    );
     expect(p.total).toBe(4);
     expect(p.servicos.map((s) => s.servico)).toEqual(['ur', 'cdi']);
     expect(p.servicos[0].mediana).toBe(4);
@@ -137,8 +158,64 @@ describe('painel (regras puras)', () => {
     expect(p.regrediram).toBe(1);
     expect(p.violacao).toBe(1);
     expect(p.geral?.pessoas).toBe(4);
+    expect(p.sexo).toEqual({ f: 3, m: 1 });
+    expect(p.piramide.find((g) => g.geracao === 'Pessoa idosa')).toMatchObject({ f: 3, m: 1 });
     expect(mediana([1, 2, 3, 4])).toBe(2.5);
-    expect(montarPainel([]).mediaIndice).toBeNull();
+    expect(montarPainel([], HOJE).mediaIndice).toBeNull();
+  });
+
+  it('cada pessoa conta uma vez (pela mais recente) e a evolução compara a primeira com a última', () => {
+    const p = montarPainel(
+      [
+        a('ur', 8, { chave: 'A', data_avaliacao: '2025-10-01', grau_dependencia: 'III' }),
+        a('ur', 5, { chave: 'A', data_avaliacao: '2026-10-01', tipo: 'Acompanhamento anual' }),
+        a('ur', 3, { chave: 'B', data_avaliacao: '2025-10-01' }),
+        a('ur', 6, { chave: 'B', data_avaliacao: '2026-10-02', tipo: 'Acompanhamento anual' }),
+        a('ur', 4, { chave: 'C', data_avaliacao: '2025-09-01' }),
+      ],
+      HOJE,
+    );
+    expect(p.total).toBe(3);
+    expect(p.avaliacoes).toBe(5);
+    expect(p.grauIII).toBe(0);
+    expect(p.comparadas).toBe(2);
+    expect(p.servicos[0].entreAvaliacoes).toEqual({ melhorou: 1, manteve: 0, piorou: 1 });
+    expect(p.servicos[0].mediaPrimeira).toBe(5.5);
+    expect(p.reavaliacao).toEqual({ atrasadas: 1, venceEmBreve: 0 });
+  });
+});
+
+describe('periodicidade e comparativo (regras puras)', () => {
+  it('a próxima avaliação vence 12 meses depois e avisa 30 dias antes', () => {
+    expect(proximaAvaliacao('2025-11-06')).toBe('2026-11-06');
+    expect(proximaAvaliacao('2024-02-29')).toBe('2025-02-28');
+    expect(situacaoReavaliacao('2025-11-05', HOJE).situacao).toBe('atrasada');
+    expect(situacaoReavaliacao('2025-11-20', HOJE).situacao).toBe('vence_em_breve');
+    expect(situacaoReavaliacao('2026-10-01', HOJE).situacao).toBe('em_dia');
+  });
+
+  it('a mesma pessoa é reconhecida por iniciais, nascimento e sexo', () => {
+    expect(chavePessoa({ iniciais: 'm.a.s', nascimento: '1958-03-02', sexo: 'F' })).toBe(chavePessoa({ iniciais: 'MAS', nascimento: '1958-03-02', sexo: 'F' }));
+    expect(chavePessoa({ iniciais: 'MAS', nascimento: '1958-03-02', sexo: 'M' })).not.toBe(
+      chavePessoa({ iniciais: 'MAS', nascimento: '1958-03-02', sexo: 'F' }),
+    );
+  });
+
+  it('o comparativo aponta melhora quando o índice cai e mostra item por item', () => {
+    const c = compararAvaliacoes([
+      { dados: completa({ grau_dependencia: 'III', isolamento: 'Sim', rede_apoio: 'Não', barreiras: ['sobrecarga'] }), servicoNome: 'UR' },
+      {
+        dados: completa({ grau_dependencia: 'II', isolamento: 'Não', rede_apoio: 'Sim', barreiras: ['nenhuma'], tipo: 'Acompanhamento anual' }),
+        servicoNome: 'UR',
+      },
+    ]);
+    expect(c.indices).toEqual([5, 1]);
+    expect(c.variacao).toBe(-4);
+    expect(c.tendencia).toBe('melhorou');
+    expect(c.linhas.find((l) => l.rotulo === 'Isolamento social')?.tendencia).toBe('melhorou');
+    expect(c.linhas.find((l) => l.rotulo === 'Recebe BPC')?.tendencia).toBeNull();
+    expect(c.itensPioraram).toBe(0);
+    expect(c.itensMelhoraram).toBe(4);
   });
 });
 
@@ -262,6 +339,42 @@ describe('casos de uso', () => {
     const leitura = await painelDaAvaliacao(p, await como('leitura@exemplo.local'));
     expect(leitura.total).toBe(todos.total);
     expect((await painelDaAvaliacao(p, dir, { de: '2026-11', ate: '2026-11' })).total).toBe(0);
+  });
+
+  it('o comparativo junta as avaliações da mesma pessoa só nos serviços em que você avalia e registra leitura', async () => {
+    const dir = await como('diretoria@exemplo.local');
+    const inicial = await salvarAvaliacao(p, dir, completa({ data_avaliacao: '2025-10-10', isolamento: 'Sim' }), { agora: AGORA });
+    await salvarAvaliacao(p, dir, completa({ data_avaliacao: '2026-10-10', tipo: 'Acompanhamento anual', servico: 'centro_dia_intergeracional' }), {
+      agora: AGORA,
+    });
+    await salvarAvaliacao(p, dir, completa({ iniciais: 'OUTRA', data_avaliacao: '2026-10-11' }), { agora: AGORA });
+    const h = await historicoDaPessoa(p, dir, inicial.id, { agora: AGORA });
+    expect(h.avaliacoes.map((a) => a.data)).toEqual(['2025-10-10', '2026-10-10']);
+    expect(h.comparativo.tendencia).toBe('melhorou');
+    expect(h.reavaliacao.vence).toBe('2027-10-10');
+    const coord = await como('coord.ur@exemplo.local');
+    expect((await historicoDaPessoa(p, coord, inicial.id, { agora: AGORA })).avaliacoes).toHaveLength(1);
+    await expect(historicoDaPessoa(p, await como('leitura@exemplo.local'), inicial.id)).rejects.toThrow(ErroPermissao);
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((x) => x.registro_id === inicial.id && x.acao === 'leitura');
+    expect(aud).toHaveLength(2);
+  });
+
+  it('a lista marca a reavaliação só na avaliação mais recente da pessoa', async () => {
+    const coord = await como('coord.ur@exemplo.local');
+    await salvarAvaliacao(p, coord, completa({ data_avaliacao: '2025-10-01' }), { agora: AGORA });
+    await salvarAvaliacao(p, coord, completa({ iniciais: 'JPS', data_avaliacao: '2025-09-01' }), { agora: AGORA });
+    await salvarAvaliacao(p, coord, completa({ data_avaliacao: '2026-10-01', tipo: 'Acompanhamento anual' }), { agora: AGORA });
+    const lista = await listarAvaliacoes(p, coord, { agora: AGORA });
+    const mas = lista.filter((l) => l.iniciais === 'MAS');
+    expect(mas.map((l) => l.avaliacoesDaPessoa)).toEqual([2, 2]);
+    expect(mas[0].reavaliacao?.situacao).toBe('em_dia');
+    expect(mas[1].reavaliacao).toBeNull();
+    expect(lista.find((l) => l.iniciais === 'JPS')?.reavaliacao?.situacao).toBe('atrasada');
+  });
+
+  it('o tipo de avaliação é obrigatório', async () => {
+    const coord = await como('coord.ur@exemplo.local');
+    await expect(salvarAvaliacao(p, coord, { ...completa(), tipo: '' }, { agora: AGORA })).rejects.toThrow(/Tipo de avaliação/);
   });
 
   it('a lista vem da mais recente para a mais antiga, com índice e marca de violação', async () => {

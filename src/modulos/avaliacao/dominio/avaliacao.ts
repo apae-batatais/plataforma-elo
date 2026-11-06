@@ -1,6 +1,10 @@
 /**
- * Questionário diagnóstico da Assistência Social: as perguntas, a conferência
- * das respostas e o índice de necessidade de cuidado. Regras puras, sem planilha.
+ * Avaliação de Serviços Sociais: as perguntas, a conferência das respostas e o
+ * índice de necessidade de cuidado. Regras puras, sem planilha.
+ *
+ * A base técnica e legal de cada pergunta está em FUNDAMENTOS (./fundamentos.ts).
+ * A avaliação é feita na entrada da pessoa no serviço (inicial) e repetida uma
+ * vez por ano (acompanhamento), para comparar a evolução da mesma pessoa.
  *
  * As perguntas seguem as colunas da aba TODOS da planilha de diagnóstico usada
  * hoje pela equipe (Novos Serviços 2027). A identificação é feita por iniciais,
@@ -13,6 +17,12 @@ export const EVOLUCOES = ['Regrediu', 'Manteve', 'Melhorou'] as const;
 export const GRAUS_DEFICIENCIA = ['Leve', 'Moderada', 'Grave', 'Não se aplica'] as const;
 export const GRAUS_DEPENDENCIA = ['I', 'II', 'III'] as const;
 export const TRANSPORTES = ['Comum', 'Rampa', 'Cadeirante'] as const;
+/** Inicial: quando a pessoa é encaminhada ao serviço. Acompanhamento anual: uma vez por ano depois disso. */
+export const TIPOS_AVALIACAO = ['Inicial', 'Acompanhamento anual'] as const;
+/** De quanto em quanto tempo a pessoa é reavaliada. */
+export const MESES_ENTRE_AVALIACOES = 12;
+/** A partir de quantos dias antes do vencimento a reavaliação aparece como "vence em breve". */
+export const DIAS_AVISO_REAVALIACAO = 30;
 
 /** Grau de dependência conforme a RDC Anvisa nº 502/2021. */
 export const DEFINICAO_GRAU: Record<(typeof GRAUS_DEPENDENCIA)[number], string> = {
@@ -71,6 +81,7 @@ type SimNao = (typeof SIM_NAO)[number];
 
 /** As respostas do questionário, como chegam da tela e como ficam guardadas. */
 export interface DadosAvaliacao {
+  tipo: (typeof TIPOS_AVALIACAO)[number] | '';
   iniciais: string;
   nascimento: string;
   sexo: (typeof SEXOS)[number] | '';
@@ -101,6 +112,7 @@ export interface DadosAvaliacao {
 }
 
 export const AVALIACAO_VAZIA: DadosAvaliacao = {
+  tipo: '',
   iniciais: '',
   nascimento: '',
   sexo: '',
@@ -131,6 +143,7 @@ export const AVALIACAO_VAZIA: DadosAvaliacao = {
 
 /** Nome de cada pergunta, para as mensagens de "falta responder". */
 export const ROTULOS: Record<keyof DadosAvaliacao, string> = {
+  tipo: 'Tipo de avaliação',
   iniciais: 'Iniciais',
   nascimento: 'Data de nascimento',
   sexo: 'Sexo',
@@ -189,6 +202,7 @@ export const temViolacao = (barreiras: readonly string[]) => barreiras.some((b) 
 export class ErroAvaliacao extends Error {}
 
 const OBRIGATORIAS: (keyof DadosAvaliacao)[] = [
+  'tipo',
   'iniciais',
   'nascimento',
   'sexo',
@@ -212,6 +226,7 @@ const OBRIGATORIAS: (keyof DadosAvaliacao)[] = [
 ];
 
 const LISTAS: Partial<Record<keyof DadosAvaliacao, readonly string[]>> = {
+  tipo: TIPOS_AVALIACAO,
   sexo: SEXOS,
   evolucao_usuario: EVOLUCOES,
   evolucao_familia: EVOLUCOES,
@@ -308,3 +323,27 @@ export const barreirasDoTexto = (t: string | null) =>
         .map((x) => x.trim())
         .filter(Boolean)
     : [];
+
+/**
+ * Mesma pessoa em avaliações diferentes: iniciais + data de nascimento + sexo
+ * (o prontuário é opcional e pode faltar numa das avaliações).
+ */
+export const chavePessoa = (d: Pick<DadosAvaliacao, 'iniciais' | 'nascimento' | 'sexo'>) => `${normalizarIniciais(d.iniciais)}|${d.nascimento}|${d.sexo}`;
+
+/** Data (AAAA-MM-DD) em que vence a próxima avaliação: 12 meses depois da última. */
+export function proximaAvaliacao(ultima: string): string {
+  const [y, m, d] = ultima.split('-').map(Number);
+  const alvo = new Date(Date.UTC(y, m - 1 + MESES_ENTRE_AVALIACOES, 1));
+  const ultimoDia = new Date(Date.UTC(alvo.getUTCFullYear(), alvo.getUTCMonth() + 1, 0)).getUTCDate();
+  alvo.setUTCDate(Math.min(d, ultimoDia));
+  return alvo.toISOString().slice(0, 10);
+}
+
+export type SituacaoReavaliacao = 'em_dia' | 'vence_em_breve' | 'atrasada';
+
+/** Situação da reavaliação anual a partir da última avaliação da pessoa. */
+export function situacaoReavaliacao(ultima: string, hoje: string): { vence: string; situacao: SituacaoReavaliacao; dias: number } {
+  const vence = proximaAvaliacao(ultima);
+  const dias = Math.round((Date.parse(`${vence}T12:00:00Z`) - Date.parse(`${hoje}T12:00:00Z`)) / 86_400_000);
+  return { vence, dias, situacao: dias < 0 ? 'atrasada' : dias <= DIAS_AVISO_REAVALIACAO ? 'vence_em_breve' : 'em_dia' };
+}

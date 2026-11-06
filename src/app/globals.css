@@ -257,7 +257,16 @@
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 10mm;
+  }
+
+  /* Folga própria da folha: garante pelo menos 0,5 cm mesmo quando o navegador
+     ignora a margem da página (ou a pessoa escolhe "Margens: nenhuma"), e se
+     repete em cada página impressa. */
+  .folha {
+    padding: 6mm 5mm !important;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   :root,

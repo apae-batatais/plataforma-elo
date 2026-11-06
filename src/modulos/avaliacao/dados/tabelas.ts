@@ -1,5 +1,5 @@
 /**
- * Abas do módulo Avaliação Diagnóstica, na planilha própria "avaliacao_assistencia"
+ * Abas do módulo Avaliação de Serviços Sociais, na planilha própria "avaliacao_assistencia"
  * (dados sensíveis de atendidos ficam separados das demais planilhas — ADR-011).
  *
  * - Avaliacoes: uma linha por questionário aplicado. O índice de necessidade de
@@ -8,7 +8,7 @@
  */
 import { z } from 'zod';
 import { definirTabela, texto, textoOpcional } from '@/nucleo/armazenamento/tabela';
-import { EVOLUCOES, GRAUS_DEFICIENCIA, GRAUS_DEPENDENCIA, SEXOS, SIM_NAO, TRANSPORTES } from '../dominio/avaliacao';
+import { EVOLUCOES, GRAUS_DEFICIENCIA, GRAUS_DEPENDENCIA, SEXOS, SIM_NAO, TIPOS_AVALIACAO, TRANSPORTES } from '../dominio/avaliacao';
 
 export const PLANILHA_AVALIACAO = 'avaliacao_assistencia';
 
@@ -27,6 +27,8 @@ export const Avaliacoes = definirTabela({
     servico: texto(),
     servico_nome: texto(),
     data_avaliacao: data(),
+    /** Inicial (entrada no serviço) ou acompanhamento anual. Linhas anteriores à coluna contam como inicial. */
+    tipo: z.preprocess((v) => (v === undefined || v === null || v === '' ? 'Inicial' : String(v).trim()), z.enum(TIPOS_AVALIACAO)),
     evolucao_usuario: z.enum(EVOLUCOES),
     evolucao_familia: z.enum(EVOLUCOES),
     cuidador: texto(),

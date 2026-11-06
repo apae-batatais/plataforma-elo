@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Questionário diagnóstico: uma tela só, em três colunas no computador.
+ * Questionário da Avaliação de Serviços Sociais: uma tela só, em três colunas no computador.
  * As respostas ficam no navegador até salvar: um erro não apaga nada.
  * O índice de necessidade de cuidado é recalculado a cada resposta.
  */
@@ -26,6 +26,7 @@ import {
   NENHUMA_BARREIRA,
   normalizarIniciais,
   ROTULOS,
+  TIPOS_AVALIACAO,
   SEM_CUIDADOR,
   temViolacao,
   type DadosAvaliacao,
@@ -161,6 +162,10 @@ export function FormularioAvaliacao({
     <form onSubmit={aoEnviar} noValidate className="rounded-cartao border border-borda bg-superficie">
       <div className="grid gap-x-8 gap-y-6 p-5 lg:grid-cols-2 xl:grid-cols-3">
         <Grupo titulo="Identificação">
+          <Escolha nome="tipo" rotulo="Tipo de avaliação" opcoes={TIPOS_AVALIACAO} valor={d.tipo} aoMudar={(v) => muda('tipo', v)} erro={erro('tipo')} />
+          <p className="-mt-2 text-xs text-texto-suave">
+            Inicial: quando a pessoa é encaminhada ao serviço. Acompanhamento anual: uma vez por ano depois disso.
+          </p>
           <div className="grid grid-cols-[4.5rem_1fr_1fr] gap-2">
             <label className="block" aria-invalid={erro('iniciais') || undefined}>
               <Rotulo texto="Iniciais" erro={erro('iniciais')} />

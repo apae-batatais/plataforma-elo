@@ -1,6 +1,8 @@
 /**
- * Avaliações FICTÍCIAS da demonstração: questionários de pessoas inventadas nos
- * serviços de exemplo da Assistência Social, gravados pelos próprios casos de uso.
+ * Avaliações FICTÍCIAS da demonstração: pessoas inventadas nos serviços de exemplo
+ * da Assistência Social, umas só com a avaliação inicial, outras também com o
+ * acompanhamento anual, e algumas com a reavaliação atrasada ou vencendo.
+ * Gravadas pelos próprios casos de uso.
  * O sorteio usa semente fixa: a demonstração mostra sempre os mesmos números.
  */
 import { Autorizador } from '@/nucleo/acesso/autorizador';
@@ -46,23 +48,25 @@ export async function popularAvaliacoesFicticias(p: Planilhas): Promise<void> {
     servicos: servicos.todos(),
   });
   const s = sorteador(2027);
+  const agora = new Date('2026-11-05T15:00:00Z');
   let dia = 0;
   for (const sv of SERVICOS.filter((x) => existentes.has(x.codigo))) {
     for (let i = 0; i < sv.pessoas; i++) {
       const idade = sv.idade[0] + Math.floor(s.r() * (sv.idade[1] - sv.idade[0] + 1));
-      const dataAv = `2026-10-${String(1 + (dia++ % 28)).padStart(2, '0')}`;
+      const dd = String(1 + (dia++ % 28)).padStart(2, '0');
       const nasc = `${2026 - idade - 1}-${String(1 + Math.floor(s.r() * 12)).padStart(2, '0')}-${String(1 + Math.floor(s.r() * 28)).padStart(2, '0')}`;
       const grau = s.um(['I', 'II', 'III'] as const, [0.12, 0.88 - sv.iii, sv.iii]);
       const ostomia = s.sim(grau === 'III' ? 0.15 : 0.03);
       const barreiras = (['sobrecarga', 'sem_apoio', 'violencia_psicologica', 'rendimentos', 'abandono'] as const).filter(
         (_, k) => s.r() < [0.7, 0.45, 0.05, 0.04, 0.03][k],
       );
-      const dados: Partial<DadosAvaliacao> = {
+      const atual: Partial<DadosAvaliacao> = {
         iniciais: Array.from({ length: 2 + Math.floor(s.r() * 2) }, () => s.um(LETRAS.split(''))).join(''),
         nascimento: nasc,
         sexo: s.um(['F', 'M'] as const),
         servico: sv.codigo,
-        data_avaliacao: dataAv,
+        data_avaliacao: `2026-10-${dd}`,
+        tipo: 'Inicial',
         evolucao_usuario: s.um(['Regrediu', 'Manteve', 'Melhorou'] as const, [0.3, 0.58, 0.12]),
         evolucao_familia: s.um(['Regrediu', 'Manteve', 'Melhorou'] as const, [0.34, 0.62, 0.04]),
         cuidador: s.r() < 0.05 ? SEM_CUIDADOR : s.um(CUIDADORES.slice(0, 8)),
@@ -82,7 +86,38 @@ export async function popularAvaliacoesFicticias(p: Planilhas): Promise<void> {
         barreiras: barreiras.length ? [...barreiras] : ['nenhuma'],
         profissional: 'Assistente social (fictícia)',
       };
-      await salvarAvaliacao(p, diretoria, dados, { agora: new Date('2026-11-05T15:00:00Z') });
+      const cenario = s.r();
+      if (cenario < 0.45) {
+        // Já tinha a avaliação inicial em 2025: a de 2026 é o acompanhamento anual.
+        const antes = s.um(['pior', 'melhor', 'igual'] as const, [0.55, 0.25, 0.2]);
+        const inicial: Partial<DadosAvaliacao> = {
+          ...atual,
+          tipo: 'Inicial',
+          data_avaliacao: `2025-10-${dd}`,
+          evolucao_usuario: 'Manteve',
+          evolucao_familia: 'Manteve',
+        };
+        if (antes === 'pior') {
+          Object.assign(inicial, {
+            isolamento: 'Sim',
+            rede_apoio: 'Não',
+            barreiras: [...new Set([...(atual.barreiras ?? []).filter((b) => b !== 'nenhuma'), 'sobrecarga', 'sem_apoio'])],
+          });
+          if (s.r() < 0.4 && atual.grau_dependencia !== 'III') inicial.grau_dependencia = atual.grau_dependencia === 'I' ? 'II' : 'III';
+        } else if (antes === 'melhor') {
+          Object.assign(inicial, { isolamento: 'Não', rede_apoio: 'Sim', barreiras: ['nenhuma'] });
+        }
+        await salvarAvaliacao(p, diretoria, inicial, { agora });
+        await salvarAvaliacao(p, diretoria, { ...atual, tipo: 'Acompanhamento anual' }, { agora });
+      } else if (cenario < 0.53) {
+        // Avaliada em 2025 e ainda sem o acompanhamento anual: reavaliação atrasada.
+        await salvarAvaliacao(p, diretoria, { ...atual, data_avaliacao: `2025-10-${dd}` }, { agora });
+      } else if (cenario < 0.58) {
+        // Avaliada em novembro de 2025: o acompanhamento vence em breve.
+        await salvarAvaliacao(p, diretoria, { ...atual, data_avaliacao: `2025-11-${String(20 + (dia % 8)).padStart(2, '0')}` }, { agora });
+      } else {
+        await salvarAvaliacao(p, diretoria, atual, { agora });
+      }
     }
   }
 }

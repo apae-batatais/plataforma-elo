@@ -231,11 +231,12 @@ export default async function Ajuda() {
   if (pode.avaliar || pode.painelAvaliacao) {
     assuntos.push({
       id: 'avaliacao',
-      titulo: 'Avaliação Diagnóstica',
-      resumo: 'Aplicar o questionário diagnóstico das pessoas atendidas e acompanhar os indicadores por serviço.',
+      titulo: 'Avaliação de Serviços Sociais',
+      resumo: 'Avaliar as pessoas atendidas na entrada e uma vez por ano, comparar a evolução de cada uma e acompanhar os indicadores por serviço.',
       atalhos: [
         ...(pode.avaliar ? [{ rotulo: 'Nova avaliação', href: '/avaliacao/nova' }] : []),
         ...(pode.painelAvaliacao ? [{ rotulo: 'Painel', href: '/avaliacao/painel' }] : []),
+        { rotulo: 'Sobre o instrumento', href: '/avaliacao/sobre' },
       ],
       conteudo: (
         <>
@@ -244,11 +245,13 @@ export default async function Ajuda() {
               <Sub>Avaliar</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação Diagnóstica › Nova avaliação.',
+                  'Abra Avaliação de Serviços Sociais › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
                   'Identifique a pessoa só pelas iniciais, data de nascimento e sexo. O prontuário é opcional e o nome completo não é pedido.',
                   'Escolha o serviço atual (aparecem os serviços do seu escopo) e responda todas as perguntas. O que faltar fica em vermelho ao salvar.',
                   'O índice de necessidade de cuidado (0 a 12) é calculado enquanto você responde. Em suspeita de violação de direitos, siga o fluxo de notificação e o encaminhamento ao CREAS.',
                   'Clique em Salvar avaliação. Para corrigir, abra a avaliação na lista. Lançou por engano? Use Retirar avaliação e escreva o motivo: ela sai da lista e do painel, mas fica guardada.',
+                  'A lista mostra a próxima avaliação de cada pessoa (12 meses depois da última), avisa 30 dias antes e marca as atrasadas. Use Reavaliar: a identificação, o serviço e o cuidador já vêm preenchidos.',
+                  'Com duas ou mais avaliações da mesma pessoa, clique em Comparar: o índice e cada resposta aparecem lado a lado, com o que melhorou ou piorou da primeira para a última. Índice menor = melhora na qualidade de vida. O comparativo também pode ser impresso.',
                   'Para ter a avaliação no papel, clique em Ficha na lista (ou Imprimir ficha dentro da avaliação) e depois em Imprimir ou salvar em PDF. A ficha tem campo de assinatura e contém dados sensíveis: guarde no prontuário.',
                 ]}
               />
@@ -259,8 +262,9 @@ export default async function Ajuda() {
               <Sub>Painel</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação Diagnóstica › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
-                  'Escolha um período (meses da data da avaliação) para comparar ciclos. Em cada gráfico, "Ver os números" mostra a tabela.',
+                  'Abra Avaliação de Serviços Sociais › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
+                  'Filtre por serviço e por período (meses da data da avaliação). Cada pessoa conta uma vez, pela avaliação mais recente. Em cada gráfico, "Ver os números" mostra a tabela.',
+                  'O painel tem quatro partes: necessidade de cuidado, evolução (entre avaliações da mesma pessoa e a percebida pela equipe), dependência e transporte, e análise por sexo.',
                   'Para imprimir ou salvar em PDF, clique em Imprimir painel: os gráficos saem com as cores e com a tabela de números, sem quadro cortado entre as páginas.',
                 ]}
               />

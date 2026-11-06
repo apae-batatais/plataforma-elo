@@ -1,11 +1,11 @@
 /**
- * Gráficos do painel da Avaliação Diagnóstica, em HTML e CSS (sem biblioteca),
+ * Gráficos do painel da Avaliação de Serviços Sociais, em HTML e CSS (sem biblioteca),
  * nas cores do app. Cada gráfico tem um texto alternativo e a tabela de números
  * fica logo abaixo, em "Ver os números". Nenhum identifica pessoas.
  */
 import type { ReactNode } from 'react';
-import { EVOLUCOES, GRAUS_DEPENDENCIA, INDICE_MAXIMO } from '../dominio/avaliacao';
-import { INDICADORES, percentual, type ResumoServico } from '../dominio/painel';
+import { EVOLUCOES, GRAUS_DEPENDENCIA, INDICE_MAXIMO, TRANSPORTES } from '../dominio/avaliacao';
+import { INDICADORES, percentual, TENDENCIAS, type IndicadorPorSexo, type PainelAvaliacao, type ResumoServico } from '../dominio/painel';
 
 const nf = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const pessoas = (n: number) => `${n} ${n === 1 ? 'pessoa' : 'pessoas'}`;
@@ -328,5 +328,271 @@ export function IndicadoresPorServico({ servicos, geral }: { servicos: ResumoSer
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Evolução entre avaliações, transporte e análise por sexo
+// ---------------------------------------------------------------------------
+
+const COR_TENDENCIA = {
+  melhorou: { cor: 'var(--sucesso)', texto: '#ffffff', nome: 'Melhorou (índice menor)' },
+  manteve: { cor: 'var(--borda-forte)', texto: 'var(--texto)', nome: 'Manteve' },
+  piorou: { cor: 'var(--erro)', texto: '#ffffff', nome: 'Piorou (índice maior)' },
+} as const;
+
+/** Pessoas com duas ou mais avaliações: o índice caiu, ficou igual ou subiu da primeira para a última. */
+export function EvolucaoEntreAvaliacoes({ servicos, geral, impressao = false }: Props & { geral: ResumoServico | null }) {
+  const linhas = [...servicos, ...(servicos.length > 1 && geral ? [geral] : [])].filter((s) => TENDENCIAS.some((t) => s.entreAvaliacoes[t] > 0));
+  if (!linhas.length) {
+    return <p className="text-sm text-texto-suave">Ainda não há pessoas com duas avaliações. O comparativo aparece depois do primeiro acompanhamento anual.</p>;
+  }
+  return (
+    <figure aria-label="Pessoas com duas ou mais avaliações: variação do índice de necessidade de cuidado da primeira para a última">
+      <Legenda itens={TENDENCIAS.map((t) => ({ nome: COR_TENDENCIA[t].nome, cor: COR_TENDENCIA[t].cor }))} />
+      <ul className="space-y-2.5">
+        {linhas.map((s) => {
+          const n = TENDENCIAS.reduce((x, t) => x + s.entreAvaliacoes[t], 0);
+          return (
+            <li key={s.servico} className="grid grid-cols-[minmax(6rem,11rem)_1fr_7rem] items-center gap-3 text-sm">
+              <span className="min-w-0">
+                <span className={`block truncate ${s.servico === 'todos' ? 'font-bold' : 'font-semibold'}`} title={s.nome}>
+                  {s.nome}
+                </span>
+                <span className="block text-xs text-texto-suave">{pessoas(n)} com 2+ avaliações</span>
+              </span>
+              <Barra100 rotulo={s.nome} partes={TENDENCIAS.map((t) => ({ valor: s.entreAvaliacoes[t], ...COR_TENDENCIA[t] }))} />
+              <span className="text-right text-xs text-texto-suave">
+                índice {nf(s.mediaPrimeira ?? 0)} → <b className="text-texto">{nf(s.mediaUltima ?? 0)}</b>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <VerNumeros aberto={impressao}>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className={th}>Serviço</th>
+              <th className={th}>Melhorou</th>
+              <th className={th}>Manteve</th>
+              <th className={th}>Piorou</th>
+              <th className={th}>Índice médio na 1ª</th>
+              <th className={th}>Índice médio na última</th>
+            </tr>
+          </thead>
+          <tbody>
+            {linhas.map((s) => (
+              <tr key={s.servico} className="border-t border-borda">
+                <td className="px-2 py-1">{s.nome}</td>
+                {TENDENCIAS.map((t) => (
+                  <td key={t} className={td}>
+                    {s.entreAvaliacoes[t]}
+                  </td>
+                ))}
+                <td className={td}>{nf(s.mediaPrimeira ?? 0)}</td>
+                <td className={td}>{nf(s.mediaUltima ?? 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </VerNumeros>
+    </figure>
+  );
+}
+
+const COR_TRANSPORTE = {
+  Comum: { cor: 'color-mix(in srgb, var(--destaque) 28%, var(--superficie))', texto: 'var(--texto)', nome: 'Comum' },
+  Rampa: { cor: 'color-mix(in srgb, var(--destaque) 62%, var(--superficie))', texto: 'var(--sobre-destaque)', nome: 'Com rampa' },
+  Cadeirante: { cor: 'var(--destaque)', texto: 'var(--sobre-destaque)', nome: 'Cadeirante' },
+} as const;
+
+/** Que veículo cada serviço precisa: comum, com rampa ou para cadeirante. */
+export function TransportePorServico({ servicos, impressao = false }: Props) {
+  return (
+    <figure aria-label="Transporte necessário por serviço atual">
+      <Legenda itens={TRANSPORTES.map((x) => ({ nome: COR_TRANSPORTE[x].nome, cor: COR_TRANSPORTE[x].cor }))} />
+      <ul className="space-y-2.5">
+        {servicos.map((s) => (
+          <li key={s.servico} className="grid grid-cols-[minmax(6rem,11rem)_1fr] items-center gap-3 text-sm">
+            <span className="truncate font-semibold" title={s.nome}>
+              {s.nome}
+            </span>
+            <Barra100 rotulo={s.nome} partes={TRANSPORTES.map((x) => ({ valor: s.transporte[x], ...COR_TRANSPORTE[x] }))} />
+          </li>
+        ))}
+      </ul>
+      <VerNumeros aberto={impressao}>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className={th}>Serviço</th>
+              {TRANSPORTES.map((x) => (
+                <th key={x} className={th}>
+                  {COR_TRANSPORTE[x].nome}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {servicos.map((s) => (
+              <tr key={s.servico} className="border-t border-borda">
+                <td className="px-2 py-1">{s.nome}</td>
+                {TRANSPORTES.map((x) => (
+                  <td key={x} className={td}>
+                    {s.transporte[x]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </VerNumeros>
+    </figure>
+  );
+}
+
+const COR_F = 'var(--serie-2)';
+const COR_M = 'var(--serie-1)';
+
+/** Pirâmide: pessoas por geração, mulheres à esquerda e homens à direita. */
+export function PiramideSexo({
+  piramide,
+  sexo,
+  impressao = false,
+}: {
+  piramide: PainelAvaliacao['piramide'];
+  sexo: PainelAvaliacao['sexo'];
+  impressao?: boolean;
+}) {
+  const max = Math.max(1, ...piramide.flatMap((g) => [g.f, g.m]));
+  const larg = (v: number) => `${(v / max) * 100}%`;
+  return (
+    <figure aria-label={`Pessoas por geração e sexo: ${sexo.f} mulheres e ${sexo.m} homens`}>
+      <div className="mb-2 grid grid-cols-[1fr_7.5rem_1fr] text-xs font-bold">
+        <span className="text-right">
+          Feminino · {sexo.f} ({percentual(sexo.f, sexo.f + sexo.m)}%)
+        </span>
+        <span />
+        <span>
+          Masculino · {sexo.m} ({percentual(sexo.m, sexo.f + sexo.m)}%)
+        </span>
+      </div>
+      <ul className="space-y-1.5">
+        {piramide.map((g) => (
+          <li key={g.geracao} className="grid grid-cols-[1fr_7.5rem_1fr] items-center gap-2 text-sm">
+            <span className="flex items-center justify-end gap-1.5">
+              <span className="text-xs font-bold tabular-nums">{g.f}</span>
+              <span className="h-5 rounded-l" style={{ width: larg(g.f), minWidth: g.f ? 3 : 0, background: COR_F }} title={`${g.geracao}, feminino: ${g.f}`} />
+            </span>
+            <span className="text-center leading-tight">
+              <span className="block text-xs font-semibold">{g.geracao}</span>
+              <span className="block text-[11px] text-texto-suave">{g.faixa} anos</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className="h-5 rounded-r"
+                style={{ width: larg(g.m), minWidth: g.m ? 3 : 0, background: COR_M }}
+                title={`${g.geracao}, masculino: ${g.m}`}
+              />
+              <span className="text-xs font-bold tabular-nums">{g.m}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <VerNumeros aberto={impressao}>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className={th}>Geração</th>
+              <th className={th}>Feminino</th>
+              <th className={th}>Masculino</th>
+            </tr>
+          </thead>
+          <tbody>
+            {piramide.map((g) => (
+              <tr key={g.geracao} className="border-t border-borda">
+                <td className="px-2 py-1">
+                  {g.geracao} ({g.faixa})
+                </td>
+                <td className={td}>{g.f}</td>
+                <td className={td}>{g.m}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </VerNumeros>
+    </figure>
+  );
+}
+
+/** Halteres: percentual de mulheres e de homens com cada indicador, lado a lado. */
+export function IndicadoresPorSexo({ itens, impressao = false }: { itens: IndicadorPorSexo[]; impressao?: boolean }) {
+  return (
+    <figure aria-label="Percentual de mulheres e de homens com cada indicador">
+      <Legenda
+        itens={[
+          { nome: 'Feminino', cor: COR_F },
+          { nome: 'Masculino', cor: COR_M },
+        ]}
+      />
+      <ul className="space-y-1">
+        {itens.map((i) => {
+          const pf = percentual(i.f, i.totalF);
+          const pm = percentual(i.m, i.totalM);
+          return (
+            <li
+              key={i.nome}
+              className="grid grid-cols-[minmax(7rem,12rem)_1fr_6.5rem] items-center gap-3 text-sm"
+              title={`${i.nome}: feminino ${i.f} de ${i.totalF}; masculino ${i.m} de ${i.totalM}`}
+            >
+              <span className="truncate text-texto-suave">{i.nome}</span>
+              <span className="relative h-4" aria-hidden="true">
+                <span className="absolute inset-x-0 top-1/2 h-px bg-borda" />
+                <span
+                  className="absolute top-1/2 h-0.5 -translate-y-1/2 bg-texto-suave"
+                  style={{ left: `${Math.min(pf, pm)}%`, width: `${Math.abs(pf - pm)}%` }}
+                />
+                <span
+                  className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-superficie"
+                  style={{ left: `${pf}%`, background: COR_F }}
+                />
+                <span
+                  className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-superficie"
+                  style={{ left: `${pm}%`, background: COR_M }}
+                />
+              </span>
+              <span className="text-right text-xs tabular-nums text-texto-suave">
+                F {pf}% · M {pm}%
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <VerNumeros aberto={impressao}>
+        <table className="w-full">
+          <thead>
+            <tr>
+              <th className={th}>Indicador</th>
+              <th className={th}>Feminino</th>
+              <th className={th}>Masculino</th>
+            </tr>
+          </thead>
+          <tbody>
+            {itens.map((i) => (
+              <tr key={i.nome} className="border-t border-borda">
+                <td className="px-2 py-1">{i.nome}</td>
+                <td className={td}>
+                  {i.f} de {i.totalF} ({percentual(i.f, i.totalF)}%)
+                </td>
+                <td className={td}>
+                  {i.m} de {i.totalM} ({percentual(i.m, i.totalM)}%)
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </VerNumeros>
+    </figure>
   );
 }

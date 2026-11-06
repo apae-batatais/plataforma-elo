@@ -1,4 +1,4 @@
-# ADR-016 · Avaliação Diagnóstica: questionário próprio e identificação por iniciais
+# ADR-016 · Avaliação de Serviços Sociais: questionário próprio, identificação por iniciais e comparação anual
 
 - Situação: aceita
 - Data: 2026-11-06
@@ -25,8 +25,17 @@ atendidos cadastrados, e o motor de avaliação (ADR-006) ainda não existe.
 ## Consequências
 
 - A equipe usa o Elo já, com o mesmo questionário e o mesmo cálculo do painel dos Novos Serviços.
-- Duas avaliações da mesma pessoa só se relacionam pelas iniciais e nascimento; comparar ciclos
-  por pessoa e ligar ao Cadastro Único fica para uma próxima entrega (migração das avaliações
-  para `pessoa_id` quando os atendidos estiverem no Núcleo).
+- Duas avaliações da mesma pessoa se relacionam por iniciais + nascimento + sexo. Isso basta para
+  a avaliação inicial e o acompanhamento anual e para o comparativo da pessoa, mas duas pessoas
+  com os mesmos três dados seriam tratadas como uma (raro; o prontuário ajuda a conferir). Ligar ao
+  Cadastro Único fica para uma próxima entrega (migração para `pessoa_id`).
 - Quando o motor de avaliação existir, este questionário pode virar um instrumento versionado
   (ADR-007), mantendo as respostas já gravadas.
+
+## Atualização (06/11/2026)
+- O módulo passou a se chamar **Avaliação de Serviços Sociais** (rota e permissões não mudaram).
+- Cada avaliação tem tipo: **inicial** (encaminhamento ao serviço) ou **acompanhamento anual**. A
+  reavaliação vence 12 meses depois da última (decisão técnica da instituição).
+- O painel conta cada pessoa uma vez (avaliação mais recente) e mostra a evolução entre a primeira e
+  a última avaliação de quem tem duas ou mais.
+- A base legal de cada grupo de perguntas fica em `dominio/fundamentos.ts` e na tela Sobre o instrumento.
