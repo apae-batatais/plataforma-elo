@@ -52,8 +52,8 @@ de necessidade de cuidado não é guardado: a camada de aplicação calcula a ca
    cuidados de saúde (enfermagem ou ostomia). Mesmo cálculo do painel dos Novos Serviços 2027.
 7. Correção grava só com a versão lida (outra pessoa alterou → aviso, nada é sobrescrito).
 8. Nada é apagado: "Retirar avaliação" pede motivo, deixa `ativo = FALSE` e tira da lista e do painel.
-9. Auditoria: inclusão; leitura ao abrir uma avaliação; alteração com as colunas (nunca os valores);
-   encerramento na retirada.
+9. Auditoria: inclusão; leitura ao abrir uma avaliação; exportação ao abrir a ficha para imprimir;
+   alteração com as colunas (nunca os valores); encerramento na retirada.
 10. O painel mostra só números agregados das avaliações ativas dos serviços em que a pessoa tem
     `avaliacao.painel`; nenhuma iniciais, data ou prontuário sai no painel.
 
@@ -73,6 +73,13 @@ de necessidade de cuidado não é guardado: a camada de aplicação calcula a ca
    (cada ponto uma pessoa, com mediana); indicadores por serviço (tabela de calor, com coluna
    Todos); grau de dependência por serviço; evolução da pessoa e da família. Cada gráfico tem
    "Ver os números".
+
+5. **Ficha para imprimir** (`/avaliacao/<id>/ficha`): folha A4 branca (também no tema escuro) com
+   identificação, todas as respostas, barreiras marcadas, índice com os fatores, registro técnico,
+   campo de assinatura e aviso de sigilo. "Imprimir ou salvar em PDF" usa a janela do navegador.
+6. **Painel para imprimir** (`/avaliacao/painel/imprimir`, com o mesmo período): cartões e os
+   quatro gráficos em uma coluna, cada um com a tabela de números aberta. Nenhum quadro é cortado
+   na troca de página (se não couber, começa na página seguinte) e as cores saem no papel.
 
 ## Eventos
 

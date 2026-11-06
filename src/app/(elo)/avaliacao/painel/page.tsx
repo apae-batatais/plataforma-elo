@@ -6,6 +6,7 @@ import { percentual } from '@/modulos/avaliacao/dominio/painel';
 import { DependenciaPorServico, EvolucaoPorServico, IndicadoresPorServico, PontosDoIndice } from '@/modulos/avaliacao/telas/graficos-painel';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
+import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina, EstadoVazio } from '@/ui/pagina';
@@ -67,6 +68,11 @@ export default async function PainelAvaliacao({ searchParams }: { searchParams: 
             <BotaoEnviar variante="secundario" enviando="Calculando…">
               Ver período
             </BotaoEnviar>
+            {n > 0 && (
+              <LinkBotao href={`/avaliacao/painel/imprimir${de || ate ? `?${new URLSearchParams({ ...(de ? { de } : {}), ...(ate ? { ate } : {}) })}` : ''}`}>
+                Imprimir painel
+              </LinkBotao>
+            )}
           </form>
         }
       />

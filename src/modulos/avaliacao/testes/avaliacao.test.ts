@@ -11,6 +11,7 @@ import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, Pessoas, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
   detalharAvaliacao,
+  fichaDaAvaliacao,
   ErroRespostas,
   listarAvaliacoes,
   painelDaAvaliacao,
@@ -217,6 +218,17 @@ describe('casos de uso', () => {
     expect(aud.map((a) => a.acao)).toEqual(['inclusao', 'leitura', 'alteracao']);
     expect(JSON.parse(aud[2].detalhes!)).toEqual({ colunas: ['grau_dependencia'] });
     expect(aud[2].detalhes).not.toContain('III');
+  });
+
+  it('a ficha para imprimir segue o acesso de abrir e registra exportação na auditoria', async () => {
+    const coord = await como('coord.ur@exemplo.local');
+    const { id } = await salvarAvaliacao(p, coord, completa(), { agora: AGORA });
+    const ficha = await fichaDaAvaliacao(p, coord, id);
+    expect(ficha.dados.iniciais).toBe('MAS');
+    await expect(fichaDaAvaliacao(p, await como('leitura@exemplo.local'), id)).rejects.toThrow(ErroPermissao);
+    await expect(fichaDaAvaliacao(p, await como('tecnico.cer@exemplo.local'), id)).rejects.toThrow(ErroPermissao);
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.registro_id === id);
+    expect(aud.map((a) => a.acao)).toEqual(['inclusao', 'exportacao']);
   });
 
   it('retirar pede motivo, não apaga a linha e tira a avaliação da lista e do painel', async () => {

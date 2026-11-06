@@ -249,6 +249,7 @@ export default async function Ajuda() {
                   'Escolha o serviço atual (aparecem os serviços do seu escopo) e responda todas as perguntas. O que faltar fica em vermelho ao salvar.',
                   'O índice de necessidade de cuidado (0 a 12) é calculado enquanto você responde. Em suspeita de violação de direitos, siga o fluxo de notificação e o encaminhamento ao CREAS.',
                   'Clique em Salvar avaliação. Para corrigir, abra a avaliação na lista. Lançou por engano? Use Retirar avaliação e escreva o motivo: ela sai da lista e do painel, mas fica guardada.',
+                  'Para ter a avaliação no papel, clique em Ficha na lista (ou Imprimir ficha dentro da avaliação) e depois em Imprimir ou salvar em PDF. A ficha tem campo de assinatura e contém dados sensíveis: guarde no prontuário.',
                 ]}
               />
             </>
@@ -260,6 +261,7 @@ export default async function Ajuda() {
                 itens={[
                   'Abra Avaliação Diagnóstica › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
                   'Escolha um período (meses da data da avaliação) para comparar ciclos. Em cada gráfico, "Ver os números" mostra a tabela.',
+                  'Para imprimir ou salvar em PDF, clique em Imprimir painel: os gráficos saem com as cores e com a tabela de números, sem quadro cortado entre as páginas.',
                 ]}
               />
             </>

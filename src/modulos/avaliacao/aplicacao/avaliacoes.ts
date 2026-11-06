@@ -139,11 +139,29 @@ export interface AvaliacaoDetalhada {
 
 /** Abre uma avaliação para corrigir. Registra a leitura na auditoria. */
 export async function detalharAvaliacao(p: Planilhas, quem: Autorizador, id: string): Promise<AvaliacaoDetalhada> {
+  return abrir(p, quem, id, 'leitura');
+}
+
+/**
+ * Ficha para imprimir ou salvar em PDF: o mesmo acesso de abrir, registrado na
+ * auditoria como exportação (o papel sai do Elo).
+ */
+export async function fichaDaAvaliacao(p: Planilhas, quem: Autorizador, id: string): Promise<AvaliacaoDetalhada> {
+  return abrir(p, quem, id, 'exportacao');
+}
+
+async function abrir(p: Planilhas, quem: Autorizador, id: string, acao: 'leitura' | 'exportacao'): Promise<AvaliacaoDetalhada> {
   const [avaliacoes] = await lerTabelas(p, [Avaliacoes] as const);
   const r = avaliacoes.porId(id);
   if (!r || !r.ativo) throw new ErroAvaliacao('Avaliação não encontrada.');
   if (!podeAvaliar(quem, r.servico)) throw new ErroPermissao();
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: ENTIDADE, registroId: id });
+  await registrarAuditoria(p, {
+    usuario: quem.email,
+    acao,
+    entidade: ENTIDADE,
+    registroId: id,
+    ...(acao === 'exportacao' ? { detalhes: { formato: 'ficha impressa' } } : {}),
+  });
   return { id: r.id, versao: r.versao, dados: paraDados(r), servicoNome: r.servico_nome, criadoPor: r.criado_por, atualizadoEm: r.atualizado_em };
 }
 

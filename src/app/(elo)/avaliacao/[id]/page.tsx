@@ -6,6 +6,7 @@ import { FormularioAvaliacao } from '@/modulos/avaliacao/telas/formulario-avalia
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
+import { LinkBotao, pequeno } from '@/ui/botao';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina } from '@/ui/pagina';
@@ -41,20 +42,25 @@ export default async function AbrirAvaliacao({ params }: { params: Promise<{ id:
         titulo={`Avaliação de ${d.iniciais} · ${br(d.nascimento)} · ${d.sexo}`}
         descricao={`${av.servicoNome} · avaliada em ${br(d.data_avaliacao)}. Corrija o que precisar e salve.`}
         acoes={
-          <FormularioConfirmado
-            acao={acaoRetirarAvaliacao}
-            campos={{ id: av.id, versao: av.versao }}
-            rotulo="Retirar avaliação"
-            pequeno
-            variante="secundario"
-            titulo="Retirar esta avaliação?"
-            mensagem="Use quando ela foi lançada por engano ou em duplicidade. Ela sai da lista e do painel, mas continua guardada na planilha com o motivo."
-            confirmar="Retirar"
-          >
-            <Campo rotulo="Motivo" obrigatorio>
-              <input name="motivo" required minLength={3} className={estiloEntrada} placeholder="Ex.: lançada em duplicidade" />
-            </Campo>
-          </FormularioConfirmado>
+          <>
+            <LinkBotao href={`/avaliacao/${av.id}/ficha`} variante="secundario" className={pequeno}>
+              Imprimir ficha
+            </LinkBotao>
+            <FormularioConfirmado
+              acao={acaoRetirarAvaliacao}
+              campos={{ id: av.id, versao: av.versao }}
+              rotulo="Retirar avaliação"
+              pequeno
+              variante="secundario"
+              titulo="Retirar esta avaliação?"
+              mensagem="Use quando ela foi lançada por engano ou em duplicidade. Ela sai da lista e do painel, mas continua guardada na planilha com o motivo."
+              confirmar="Retirar"
+            >
+              <Campo rotulo="Motivo" obrigatorio>
+                <input name="motivo" required minLength={3} className={estiloEntrada} placeholder="Ex.: lançada em duplicidade" />
+              </Campo>
+            </FormularioConfirmado>
+          </>
         }
       />
       <FormularioAvaliacao servicos={servicos} inicial={d} hoje={hojeBrasilia()} acao={acaoSalvarAvaliacao} id={av.id} versao={av.versao} />

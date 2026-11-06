@@ -10,7 +10,16 @@ import { INDICADORES, percentual, type ResumoServico } from '../dominio/painel';
 const nf = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
 const pessoas = (n: number) => `${n} ${n === 1 ? 'pessoa' : 'pessoas'}`;
 
-function VerNumeros({ children }: { children: ReactNode }) {
+/** Na tela, a tabela fica recolhida em "Ver os números"; na impressão (`aberto`), sai sempre embaixo do gráfico. */
+function VerNumeros({ children, aberto = false }: { children: ReactNode; aberto?: boolean }) {
+  if (aberto) {
+    return (
+      <div className="mt-2 text-[12px]">
+        <p className="sr-only">Números do gráfico</p>
+        {children}
+      </div>
+    );
+  }
   return (
     <details className="mt-3 text-sm">
       <summary className="cursor-pointer text-texto-suave hover:text-destaque">Ver os números</summary>
@@ -19,11 +28,14 @@ function VerNumeros({ children }: { children: ReactNode }) {
   );
 }
 
+/** `impressao`: mostra a tabela de números aberta, para o papel. */
+type Props = { servicos: ResumoServico[]; impressao?: boolean };
+
 const th = 'px-2 py-1 text-left font-normal text-texto-suave';
 const td = 'px-2 py-1 tabular-nums';
 
 /** Cada ponto é uma pessoa, no valor do índice (0 a 12). O traço marca a mediana. */
-export function PontosDoIndice({ servicos }: { servicos: ResumoServico[] }) {
+export function PontosDoIndice({ servicos, impressao = false }: Props) {
   const x = (v: number) => `${(v / INDICE_MAXIMO) * 100}%`;
   return (
     <figure aria-label="Índice de necessidade de cuidado de cada pessoa, por serviço atual, com a mediana">
@@ -78,7 +90,7 @@ export function PontosDoIndice({ servicos }: { servicos: ResumoServico[] }) {
           );
         })}
       </ul>
-      <VerNumeros>
+      <VerNumeros aberto={impressao}>
         <table className="w-full">
           <thead>
             <tr>
@@ -155,7 +167,7 @@ const COR_GRAU = {
   III: { cor: 'var(--destaque)', texto: 'var(--sobre-destaque)' },
 } as const;
 
-export function DependenciaPorServico({ servicos }: { servicos: ResumoServico[] }) {
+export function DependenciaPorServico({ servicos, impressao = false }: Props) {
   return (
     <figure aria-label="Grau de dependência por serviço atual">
       <Legenda itens={GRAUS_DEPENDENCIA.map((g) => ({ nome: `Grau ${g}`, cor: COR_GRAU[g].cor }))} />
@@ -169,7 +181,7 @@ export function DependenciaPorServico({ servicos }: { servicos: ResumoServico[] 
           </li>
         ))}
       </ul>
-      <VerNumeros>
+      <VerNumeros aberto={impressao}>
         <table className="w-full">
           <thead>
             <tr>
@@ -205,7 +217,7 @@ const COR_EVOLUCAO = {
   Melhorou: { cor: 'var(--sucesso)', texto: '#ffffff' },
 } as const;
 
-export function EvolucaoPorServico({ servicos }: { servicos: ResumoServico[] }) {
+export function EvolucaoPorServico({ servicos, impressao = false }: Props) {
   return (
     <figure aria-label="Evolução da pessoa atendida e da família desde a avaliação anterior, por serviço atual">
       <Legenda itens={EVOLUCOES.map((e) => ({ nome: e, cor: COR_EVOLUCAO[e].cor }))} />
@@ -230,7 +242,7 @@ export function EvolucaoPorServico({ servicos }: { servicos: ResumoServico[] }) 
           </li>
         ))}
       </ul>
-      <VerNumeros>
+      <VerNumeros aberto={impressao}>
         <table className="w-full">
           <thead>
             <tr>

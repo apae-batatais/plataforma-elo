@@ -217,13 +217,13 @@ export function Casca({
   }
 
   return (
-    <div data-app={appDoCaminho(caminho)} className={`min-h-screen transition-[padding] duration-200 ${recolhido ? 'lg:pl-20' : 'lg:pl-72'}`}>
+    <div data-app={appDoCaminho(caminho)} className={`min-h-screen transition-[padding] duration-200 print:!p-0 ${recolhido ? 'lg:pl-20' : 'lg:pl-72'}`}>
       <a href="#conteudo" className="sr-only z-50 rounded bg-primario px-4 py-2 font-semibold text-sobre-primario focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
         Pular para o conteúdo
       </a>
 
       {/* Computador: barra lateral fixa, que pode ser recolhida para mostrar só os ícones */}
-      <aside className={`fixed inset-y-0 left-0 z-20 hidden flex-col border-r border-borda bg-superficie transition-[width] duration-200 lg:flex ${recolhido ? 'w-20' : 'w-72'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-20 hidden flex-col print:!hidden border-r border-borda bg-superficie transition-[width] duration-200 lg:flex ${recolhido ? 'w-20' : 'w-72'}`}>
         <div className={`flex items-center pb-2 pt-5 ${recolhido ? 'flex-col gap-2 px-2' : 'justify-between gap-2 px-4'}`}>
           <Marca instituicao={instituicao} soSimbolo={recolhido} />
           <button
@@ -242,7 +242,7 @@ export function Casca({
       </aside>
 
       {/* Celular: barra superior + menu */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-borda bg-superficie px-3 py-2 lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-borda bg-superficie px-3 py-2 lg:hidden print:hidden">
         <Marca instituicao={instituicao} />
         <button
           type="button"
@@ -271,7 +271,7 @@ export function Casca({
       </dialog>
 
       {faixa}
-      <main id="conteudo" className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+      <main id="conteudo" className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-8 print:max-w-none print:p-0">
         {children}
       </main>
     </div>

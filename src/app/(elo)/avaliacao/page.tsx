@@ -116,6 +116,16 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                       >
                         Abrir
                       </Link>
+                      <span className="text-texto-suave" aria-hidden="true">
+                        {' · '}
+                      </span>
+                      <Link
+                        href={`/avaliacao/${a.id}/ficha`}
+                        className="font-semibold text-destaque underline-offset-2 hover:underline"
+                        aria-label={`Imprimir ficha de ${a.iniciais} ${br(a.nascimento)}`}
+                      >
+                        Ficha
+                      </Link>
                     </td>
                   </tr>
                 ))}
