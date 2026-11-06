@@ -148,6 +148,21 @@ describe('ajustar e reenviar', () => {
     expect(aud.at(-1)!.detalhes).not.toContain('Título ajustado');
   });
 
+  it('com link de vídeo, cada reenvio pede nova confirmação de imagem e registra a mais recente', async () => {
+    const r = await envia({ linkVideo: 'https://drive.google.com/x', imagemConfirmada: true });
+    const reg = await situacao(r.id);
+    await atualizar(p, PedidosComunicacao, r.id, reg.versao, { situacao: 'devolvido' }, { email: COMUNICACAO });
+    const v = (await situacao(r.id)).versao;
+    const f = await como(p, FUNCIONARIO);
+    const depois = { agora: new Date('2026-11-09T15:00:00Z') };
+    const dados = pedido({ linkVideo: 'https://drive.google.com/x' });
+    await expect(reenviarPedido(p, f, r.id, v, { ...dados, imagemConfirmada: false }, depois)).rejects.toThrow(
+      'Confirme que as pessoas que aparecem têm autorização de uso de imagem.',
+    );
+    await reenviarPedido(p, f, r.id, v, { ...dados, imagemConfirmada: true }, depois);
+    expect(await situacao(r.id)).toMatchObject({ imagem_confirmada_por: FUNCIONARIO, imagem_confirmada_em: depois.agora.toISOString() });
+  });
+
   it('não reenvia pedido que não foi devolvido', async () => {
     const r = await envia();
     await expect(reenviarPedido(p, await como(p, FUNCIONARIO), r.id, 1, pedido(), SEXTA)).rejects.toThrow('Esta ação não vale para um pedido em "Aguardando revisão".');

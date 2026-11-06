@@ -5,7 +5,7 @@
  * título, descrição, data desejada com aviso imediato de urgência e link do vídeo com a
  * confirmação de uso de imagem sempre visível quando há link.
  */
-import { useActionState, useMemo, useState } from 'react';
+import { useActionState, useMemo, useState, startTransition, type FormEvent } from 'react';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
@@ -28,7 +28,6 @@ export interface ValoresPedido {
   descricao: string;
   dataDesejada: string;
   linkVideo: string | null;
-  imagemConfirmada: boolean;
 }
 
 export interface ItemEscolha {
@@ -65,7 +64,14 @@ export function FormularioPedido({
   oculto?: Record<string, string | number>;
   rotuloEnviar: string;
 }) {
-  const [estado, enviar] = useActionState(acao, {});
+  const [estado, enviar, enviando] = useActionState(acao, {});
+
+  // Envio sem "action" no formulário: o React não limpa os campos quando o servidor devolve um erro.
+  const enviarSemLimpar = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    startTransition(() => enviar(f));
+  };
   const [busca, setBusca] = useState('');
   const [tema, setTema] = useState(inicial?.calendarioId ?? '');
   const [data, setData] = useState(inicial?.dataDesejada ?? '');
@@ -86,7 +92,7 @@ export function FormularioPedido({
   const limite = somarDiasUteis(hoje, antecedencia);
 
   return (
-    <form action={enviar} className="space-y-6">
+    <form onSubmit={enviarSemLimpar} className="space-y-6">
       {Object.entries(oculto ?? {}).map(([nome, valor]) => (
         <input key={nome} type="hidden" name={nome} value={valor} />
       ))}
@@ -181,15 +187,15 @@ export function FormularioPedido({
       </Campo>
       {link.trim() && (
         <label className="flex min-h-11 items-start gap-2 rounded-lg border border-borda p-3 text-sm">
-          <input type="checkbox" name="imagem_confirmada" defaultChecked={inicial?.imagemConfirmada} className="mt-0.5" />
+          <input type="checkbox" name="imagem_confirmada" className="mt-0.5" />
           <span>
             <span className="font-semibold">As pessoas que aparecem têm autorização de uso de imagem</span>
-            <span className="block text-texto-suave">Obrigatório quando há link de vídeo. O Elo guarda quando e por quem foi confirmado.</span>
+            <span className="block text-texto-suave">Obrigatório quando há link de vídeo, a cada envio e reenvio. O Elo guarda quando e por quem foi confirmado.</span>
           </span>
         </label>
       )}
 
-      <BotaoEnviar enviando="Enviando…">{rotuloEnviar}</BotaoEnviar>
+      <BotaoEnviar enviando="Enviando…" pendente={enviando}>{rotuloEnviar}</BotaoEnviar>
     </form>
   );
 }

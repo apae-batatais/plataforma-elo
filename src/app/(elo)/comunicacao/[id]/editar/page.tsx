@@ -62,7 +62,6 @@ export default async function AjustarPedido({ params }: { params: Promise<{ id: 
           descricao: r.descricao,
           dataDesejada: r.data_desejada,
           linkVideo: r.link_video,
-          imagemConfirmada: Boolean(r.imagem_confirmada_em),
         }}
       />
     </div>
