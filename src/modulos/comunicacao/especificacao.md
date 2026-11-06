@@ -1,6 +1,6 @@
 # Especificação — Módulo Comunicação (fase 1)
 
-- Situação: rascunho revisado com a Diretoria em 06/11/2026; aguarda aprovação final
+- Situação: aprovada em 06/11/2026 pela Diretoria
 - Dono do produto: Diretoria
 - Próximas fases: Roadmap do Elo (fase 2 e-mail automático e avisos por e-mail; fase 3 Instagram automático; fase 4 resultado das postagens)
 
