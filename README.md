@@ -10,6 +10,7 @@ Navegador ──► Camada de aplicação (Netlify) ──► Google Planilhas (
 - Decisão de arquitetura: [`docs/adr/011-camada-de-aplicacao-e-planilhas.md`](docs/adr/011-camada-de-aplicacao-e-planilhas.md)
 - Especificação: [`docs/especificacao-plataforma.md`](docs/especificacao-plataforma.md)
 - Regras para o agente desenvolvedor: [`CLAUDE.md`](CLAUDE.md)
+- Backlog (o que falta e em que ordem): [`docs/backlog.md`](docs/backlog.md)
 
 ## Como trabalhamos
 
