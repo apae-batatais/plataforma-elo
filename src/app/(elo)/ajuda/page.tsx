@@ -68,6 +68,8 @@ export default async function Ajuda() {
     aprovarRequisicao: a.temPermissaoAlgumEscopo('requisicoes.aprovar'),
     atenderRequisicao: a.temPermissaoAlgumEscopo('requisicoes.atender'),
     painelRequisicoes: a.temPermissaoAlgumEscopo('requisicoes.painel'),
+    avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
+    painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
   };
 
@@ -219,6 +221,47 @@ export default async function Ajuda() {
                 feriados nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo); os municipais e os pontos facultativos você inclui um
                 a um.
               </p>
+            </>
+          )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.avaliar || pode.painelAvaliacao) {
+    assuntos.push({
+      id: 'avaliacao',
+      titulo: 'Avaliação Diagnóstica',
+      resumo: 'Aplicar o questionário diagnóstico das pessoas atendidas e acompanhar os indicadores por serviço.',
+      atalhos: [
+        ...(pode.avaliar ? [{ rotulo: 'Nova avaliação', href: '/avaliacao/nova' }] : []),
+        ...(pode.painelAvaliacao ? [{ rotulo: 'Painel', href: '/avaliacao/painel' }] : []),
+      ],
+      conteudo: (
+        <>
+          {pode.avaliar && (
+            <>
+              <Sub>Avaliar</Sub>
+              <Passos
+                itens={[
+                  'Abra Avaliação Diagnóstica › Nova avaliação.',
+                  'Identifique a pessoa só pelas iniciais, data de nascimento e sexo. O prontuário é opcional e o nome completo não é pedido.',
+                  'Escolha o serviço atual (aparecem os serviços do seu escopo) e responda todas as perguntas. O que faltar fica em vermelho ao salvar.',
+                  'O índice de necessidade de cuidado (0 a 12) é calculado enquanto você responde. Em suspeita de violação de direitos, siga o fluxo de notificação e o encaminhamento ao CREAS.',
+                  'Clique em Salvar avaliação. Para corrigir, abra a avaliação na lista. Lançou por engano? Use Retirar avaliação e escreva o motivo: ela sai da lista e do painel, mas fica guardada.',
+                ]}
+              />
+            </>
+          )}
+          {pode.painelAvaliacao && (
+            <>
+              <Sub>Painel</Sub>
+              <Passos
+                itens={[
+                  'Abra Avaliação Diagnóstica › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
+                  'Escolha um período (meses da data da avaliação) para comparar ciclos. Em cada gráfico, "Ver os números" mostra a tabela.',
+                ]}
+              />
             </>
           )}
         </>

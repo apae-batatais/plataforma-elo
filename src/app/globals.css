@@ -191,9 +191,28 @@
   }
 }
 
-/* Reservadas na identidade visual para os próximos apps:
-   Questionários: magenta #a8197f (claro) / #f27acf (escuro)
-   Avaliação Diagnóstica: cobre #8c4a2f (claro) / #e0a07e (escuro) */
+[data-app='avaliacao'] {
+  --destaque: #8c4a2f;
+  --destaque-forte: #743d27;
+  --destaque-suave: #f7efeb;
+}
+
+:root[data-tema='escuro'] [data-app='avaliacao'] {
+  --destaque: #e0a07e;
+  --destaque-forte: #ebb898;
+  --destaque-suave: #3a2a24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='avaliacao'] {
+    --destaque: #e0a07e;
+    --destaque-forte: #ebb898;
+    --destaque-suave: #3a2a24;
+  }
+}
+
+/* Reservada na identidade visual para o próximo app:
+   Questionários: magenta #a8197f (claro) / #f27acf (escuro) */
 
 @theme inline {
   --color-fundo: var(--fundo);

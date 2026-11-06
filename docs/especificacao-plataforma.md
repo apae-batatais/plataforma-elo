@@ -58,6 +58,8 @@ Escopo de atribuição: global, unidade, área ou serviço. Escopo de unidade ou
 | 0 · Fundação | Camada de aplicação, armazenamento em planilhas, acesso, auditoria, demonstração, CI | Google Cloud, Drive e Netlify configurados; login Google institucional |
 | 1 · Orçamento | Importação 2026/2027, previsão, folha e rateio, lançamentos, painel | Execução confere com a planilha; DPO definido |
 | 2 · Avaliação | Motor + módulo da Assistência, primeiro ciclo da UR | Ciclo fechado, enquadramentos justificados |
+
+Fase 2, entrega 1 (06/11/2026): módulo Avaliação Diagnóstica com o questionário diagnóstico da Assistência Social e o painel por serviço atual (ADR-016). O motor de avaliação fica para as próximas entregas.
 | 3 · Expansão | Educação, Saúde/CER, novos módulos | — |
 
 ## Situação da Fase 0
