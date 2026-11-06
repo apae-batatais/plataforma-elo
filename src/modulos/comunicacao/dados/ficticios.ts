@@ -22,7 +22,7 @@ const CALENDARIO = [
   { tema: 'Dia Nacional de Luta da Pessoa com Deficiência', tipo_data: 'exata', inicio: '2026-09-21', fim: '2026-09-21', tipos: ['post_instagram', 'reel_instagram'] },
   { tema: 'Semana da Pessoa com Deficiência Intelectual e Múltipla', tipo_data: 'periodo', inicio: '2026-08-21', fim: '2026-08-28', tipos: ['post_instagram', 'release', 'artigo'] },
   { tema: 'Campanha de arrecadação de fim de ano', tipo_data: 'periodo', inicio: '2026-11-16', fim: '2026-12-18', tipos: ['post_instagram', 'reel_instagram', 'release'] },
-  { tema: 'Dia Internacional da Pessoa com Deficiência', tipo_data: 'exata', inicio: '2026-12-03', fim: '2026-12-03', tipos: ['post_instagram', 'entrevista'] },
+  { tema: 'Dia Internacional da Pessoa com Deficiência', tipo_data: 'exata', inicio: '2026-12-03', fim: '2026-12-03', tipos: ['post_instagram', 'entrevista', 'artigo'] },
   { tema: 'Festa da Família', tipo_data: 'exata', inicio: '2026-11-21', fim: '2026-11-21', tipos: ['post_instagram', 'release'] },
   { tema: 'Mês da Consciência Negra', tipo_data: 'periodo', inicio: '2026-11-01', fim: '2026-11-30', tipos: ['post_instagram', 'artigo'] },
 ] as const;
@@ -128,7 +128,8 @@ export async function popularComunicacaoFicticia(p: Planilhas): Promise<void> {
         situacao,
         juntado_a: null,
         enviado_em: hist[0].em,
-        agendado_para: agendado ? hist.find((h) => h.para === 'agendado')!.em : null,
+        // Data e hora planejadas da publicação (data desejada, às 10h de Brasília), não o momento do agendamento.
+        agendado_para: agendado ? `${r.desejada}T13:00:00.000Z` : null,
         destinatarios: r.tipo === 'release' || r.tipo === 'entrevista' ? JSON.stringify({ grupos: [gs[0].id], contatos: [cs[2].id] }) : null,
         link_publicacao: passou('publicado', 'realizada') ? 'https://exemplo.com.br/publicacao-ficticia' : null,
         publicado_em: passou('publicado', 'realizada') ? hist[hist.length - 1].em : null,

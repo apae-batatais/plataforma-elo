@@ -92,4 +92,12 @@ describe('demonstração', () => {
       for (const r of h.slice(1)) expect(conferirTransicao(r.de as never, r.acao as Acao, x.tipo_peca)).toBe(r.para);
     }
   });
+  it('pedido ligado a um item usa um tipo de peça sugerido por ele e o agendamento é a data planejada', async () => {
+    await popularComunicacaoFicticia(p);
+    const [cal, pedidos] = await lerTabelas(p, [CalendarioComunicacao, PedidosComunicacao] as const);
+    for (const x of pedidos.todos().filter((r) => r.calendario_id)) {
+      expect(cal.porId(x.calendario_id!)?.tipos.split(',')).toContain(x.tipo_peca);
+    }
+    for (const x of pedidos.todos().filter((r) => r.agendado_para)) expect(x.agendado_para).toBe(`${x.data_desejada}T13:00:00.000Z`);
+  });
 });
