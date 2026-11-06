@@ -191,6 +191,26 @@
   }
 }
 
+[data-app='comunicacao'] {
+  --destaque: #0369a1;
+  --destaque-forte: #025684;
+  --destaque-suave: #f2f8fa;
+}
+
+:root[data-tema='escuro'] [data-app='comunicacao'] {
+  --destaque: #5cc8f5;
+  --destaque-forte: #7dd3f7;
+  --destaque-suave: #22384b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='comunicacao'] {
+    --destaque: #5cc8f5;
+    --destaque-forte: #7dd3f7;
+    --destaque-suave: #22384b;
+  }
+}
+
 /* Reservadas na identidade visual para os próximos apps:
    Questionários: magenta #a8197f (claro) / #f27acf (escuro)
    Avaliação Diagnóstica: cobre #8c4a2f (claro) / #e0a07e (escuro) */

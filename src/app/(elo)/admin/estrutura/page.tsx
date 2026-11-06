@@ -16,6 +16,7 @@ const NOME_PLANILHA: Record<string, string> = {
   orcamento: 'Orçamento',
   orcamento_folha: 'Folha de pagamento',
   requisicoes: 'Requisições',
+  comunicacao: 'Comunicação',
 };
 
 export default async function Estrutura({ searchParams }: { searchParams: Promise<{ resultado?: string }> }) {
