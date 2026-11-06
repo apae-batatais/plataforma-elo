@@ -9,6 +9,7 @@ import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import type { Acao, Situacao } from '../dominio/pedido';
+import { ACOES_DA_EQUIPE } from './acoes-da-equipe';
 
 type Envio = (f: FormData) => void | Promise<void>;
 
@@ -39,9 +40,6 @@ const MOTIVO: Partial<Record<Acao, { titulo: string; mensagem: string; confirmar
     confirmar: 'Recusar pedido',
   },
 };
-
-/** As ações que esta tela desenha (a página usa a mesma lista para saber se há o que mostrar). */
-export const ACOES_DA_EQUIPE: Acao[] = ['iniciar_revisao', 'enviar_aprovacao', 'devolver', 'recusar', 'juntar', 'aprovar', 'pedir_ajustes'];
 
 export function AcoesPedido({
   acoes,
