@@ -6,7 +6,7 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
-import { cancelarPedido, enviarPedido, reenviarPedido, type DadosPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
+import { cancelarPedido, decidirPedido, editarNaRevisao, enviarPedido, juntarPedido, reenviarPedido, revisarPedido, type DadosPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, TIPOS_PECA, type TipoPeca } from '@/modulos/comunicacao/dominio/pedido';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
@@ -161,4 +161,70 @@ export async function acaoCancelarPedido(f: FormData) {
     'Pedido cancelado. Ele fica guardado no histórico.',
     ({ usuario, app }) => cancelarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Revisão e aprovação
+// ---------------------------------------------------------------------------
+
+const MENSAGEM_ACAO: Record<string, string> = {
+  iniciar_revisao: 'Revisão iniciada. O pedido está com você.',
+  enviar_aprovacao: 'Pedido enviado para aprovação da coordenação.',
+  devolver: 'Pedido devolvido para quem pediu ajustar.',
+  recusar: 'Pedido recusado. Ele fica guardado no histórico.',
+  aprovar: 'Pedido aprovado. Agora ele aguarda o agendamento.',
+  pedir_ajustes: 'Ajustes pedidos. O pedido volta para a revisão da Comunicação.',
+};
+
+export async function acaoRevisarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  const acao = texto(f, 'acao') as 'iniciar_revisao' | 'enviar_aprovacao' | 'devolver' | 'recusar';
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    MENSAGEM_ACAO[acao] ?? 'Feito.',
+    ({ usuario, app }) => revisarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), acao, texto(f, 'comentario') || null),
+  );
+}
+
+export async function acaoDecidirPedido(f: FormData) {
+  const id = texto(f, 'id');
+  const decisao = texto(f, 'acao') as 'aprovar' | 'pedir_ajustes' | 'recusar';
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    MENSAGEM_ACAO[decisao] ?? 'Feito.',
+    ({ usuario, app }) => decidirPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), decisao, texto(f, 'comentario') || null),
+  );
+}
+
+export async function acaoJuntarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    'Pedido juntado. Ele fica guardado com o número do pedido de destino.',
+    ({ usuario, app }) =>
+      juntarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), texto(f, 'destino_id'), texto(f, 'comentario') || null),
+  );
+}
+
+export async function acaoEditarNaRevisao(_: EstadoPedido, f: FormData): Promise<EstadoPedido> {
+  const { usuario, app } = await contexto();
+  const id = texto(f, 'id');
+  try {
+    await editarNaRevisao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), {
+      titulo: texto(f, 'titulo'),
+      descricao: texto(f, 'descricao'),
+      tipoPeca: texto(f, 'tipo_peca') as TipoPeca,
+      calendarioId: texto(f, 'calendario_id') || null,
+      dataDesejada: texto(f, 'data_desejada'),
+    });
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+  esquecerAlertas();
+  revalidatePath('/', 'layout');
+  redirect(`/comunicacao/${id}?ok=${encodeURIComponent('Alterações salvas no histórico do pedido.')}`);
 }

@@ -8,10 +8,22 @@ import { atualizar, ErroConflito, lerTabela, type Planilhas } from '@/nucleo/arm
 import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '../aplicacao/calendario';
 import { salvarAntecedencia } from '../aplicacao/configuracoes';
-import { cancelarPedido, detalharPedido, enviarPedido, listarPedidos, reenviarPedido, type DadosPedido } from '../aplicacao/pedidos';
+import {
+  cancelarPedido,
+  decidirPedido,
+  detalharPedido,
+  editarNaRevisao,
+  enviarPedido,
+  filtrarPedidos,
+  juntarPedido,
+  listarPedidos,
+  reenviarPedido,
+  revisarPedido,
+  type DadosPedido,
+} from '../aplicacao/pedidos';
 import { HistoricoComunicacao, PedidosComunicacao } from '../dados/tabelas';
 import { ErroComunicacao } from '../dominio/pedido';
-import { auditoriaDe, COMUNICACAO, COORDENACAO, como, DIRETORIA, FUNCIONARIO, item, OUTRO_FUNCIONARIO, planilhasDeComunicacao } from './apoio';
+import { auditoriaDe, COMUNICACAO, COORDENACAO, como, DIRETORIA, emAprovacao as emAprovacaoEm, emRevisao as emRevisaoEm, FUNCIONARIO, item, OUTRO_FUNCIONARIO, planilhasDeComunicacao } from './apoio';
 
 let p: Planilhas;
 let temaId: string;
@@ -251,5 +263,162 @@ describe('quem vê o quê', () => {
     expect(dono.anexos).toEqual([]);
     expect((await detalharPedido(p, await como(p, COMUNICACAO), r.id)).acoes).toEqual(['iniciar_revisao']);
     await expect(detalharPedido(p, await como(p, FUNCIONARIO), 'x')).rejects.toThrow('Pedido não encontrado.');
+  });
+});
+
+describe('revisão e aprovação', () => {
+  const emRevisao = () => emRevisaoEm(p);
+  const emAprovacao = (opts?: { por?: string }) => emAprovacaoEm(p, opts);
+  const c = async (e = COMUNICACAO) => como(p, e);
+
+  it('revisão → aprovação → aprovado, com histórico de cada passo', async () => {
+    const { id } = await envia();
+    await revisarPedido(p, await c(), id, 1, 'iniciar_revisao', null, SEXTA);
+    await editarNaRevisao(p, await c(), id, 2, { titulo: 'Novo título' }, SEXTA);
+    await revisarPedido(p, await c(), id, 3, 'enviar_aprovacao', null, SEXTA);
+    await expect(decidirPedido(p, await c(), id, 4, 'aprovar', null, SEXTA)).rejects.toThrow(ErroPermissao);
+    await decidirPedido(p, await c(COORDENACAO), id, 4, 'aprovar', null, SEXTA);
+    expect((await historicoDe(id)).map((h) => h.acao)).toEqual(['enviar', 'iniciar_revisao', 'editar', 'enviar_aprovacao', 'aprovar']);
+    expect((await situacao(id)).situacao).toBe('aprovado');
+  });
+
+  it('a edição na revisão registra as colunas no histórico e só nomes de colunas na auditoria', async () => {
+    const r = await emRevisao();
+    await editarNaRevisao(p, await c(), r.id, r.versao, { titulo: 'Título secreto de teste', tipoPeca: 'reel_instagram' }, SEXTA);
+    const h = (await historicoDe(r.id)).find((x) => x.acao === 'editar')!;
+    expect(h).toMatchObject({ de: 'em_revisao', para: 'em_revisao' });
+    expect(h.comentario).toContain('titulo');
+    expect(h.comentario).toContain('tipo_peca');
+    expect(h.comentario).not.toContain('Título secreto de teste');
+    const aud = (await auditoriaDe(p, r.id)).at(-1)!;
+    expect(aud.detalhes).toContain('titulo');
+    expect(aud.detalhes).not.toContain('Título secreto de teste');
+    expect(await situacao(r.id)).toMatchObject({ titulo: 'Título secreto de teste', tipo_peca: 'reel_instagram' });
+  });
+
+  it('só edita em revisão, só a Comunicação, e confere os dados', async () => {
+    const { id } = await envia();
+    await expect(editarNaRevisao(p, await c(), id, 1, { titulo: 'X' }, SEXTA)).rejects.toThrow('Esta ação não vale para um pedido em "Aguardando revisão".');
+    const r = await emRevisao();
+    await expect(editarNaRevisao(p, await c(FUNCIONARIO), r.id, r.versao, { titulo: 'X' }, SEXTA)).rejects.toThrow(ErroPermissao);
+    await expect(editarNaRevisao(p, await c(), r.id, r.versao, { titulo: ' ' }, SEXTA)).rejects.toThrow('Informe o título.');
+    await expect(editarNaRevisao(p, await c(), r.id, r.versao, {}, SEXTA)).rejects.toThrow('Nenhuma alteração para salvar.');
+    expect((await situacao(r.id)).versao).toBe(r.versao);
+    await expect(editarNaRevisao(p, await c(), r.id, r.versao + 5, { titulo: 'X' }, SEXTA)).rejects.toBeInstanceOf(ErroConflito);
+  });
+
+  it('na revisão, liga um pedido "fora do calendário" a um item existente', async () => {
+    const r = await emRevisao();
+    expect((await situacao(r.id)).calendario_id).toBeNull();
+    await editarNaRevisao(p, await c(), r.id, r.versao, { calendarioId: temaId }, SEXTA);
+    expect(await situacao(r.id)).toMatchObject({ calendario_id: temaId, calendario_tema: 'Setembro Verde' });
+    await expect(editarNaRevisao(p, await c(), r.id, r.versao + 1, { calendarioId: 'inexistente' }, SEXTA)).rejects.toThrow(
+      'Escolha um tema ativo do calendário ou "Fora do calendário".',
+    );
+  });
+
+  it('editar o título não é barrado por data desejada que já passou', async () => {
+    const r = await emRevisao();
+    await expect(
+      editarNaRevisao(p, await c(), r.id, r.versao, { titulo: 'Outro' }, { agora: new Date('2026-12-30T15:00:00Z') }),
+    ).resolves.toBeUndefined();
+    await expect(
+      editarNaRevisao(p, await c(), r.id, r.versao + 1, { dataDesejada: '2026-11-01' }, { agora: new Date('2026-12-30T15:00:00Z') }),
+    ).rejects.toThrow('A data desejada não pode estar no passado.');
+  });
+
+  it('devolver, recusar e pedir ajustes exigem motivo; pedir ajustes volta para a revisão', async () => {
+    const { id, versao } = await emAprovacao();
+    await expect(decidirPedido(p, await c(COORDENACAO), id, versao, 'pedir_ajustes', ' ', SEXTA)).rejects.toThrow('Escreva o motivo para quem pediu.');
+    await expect(decidirPedido(p, await c(COORDENACAO), id, versao, 'recusar', null, SEXTA)).rejects.toThrow('Escreva o motivo para quem pediu.');
+    await decidirPedido(p, await c(COORDENACAO), id, versao, 'pedir_ajustes', 'Trocar a foto', SEXTA);
+    expect((await situacao(id)).situacao).toBe('em_revisao');
+    expect((await historicoDe(id)).at(-1)).toMatchObject({ acao: 'pedir_ajustes', comentario: 'Trocar a foto' });
+
+    const r = await emRevisao();
+    await expect(revisarPedido(p, await c(), r.id, r.versao, 'devolver', '  ', SEXTA)).rejects.toThrow('Escreva o motivo para quem pediu.');
+    await revisarPedido(p, await c(), r.id, r.versao, 'devolver', 'Faltou o texto', SEXTA);
+    expect((await situacao(r.id)).situacao).toBe('devolvido');
+    const s = await emRevisao();
+    await revisarPedido(p, await c(), s.id, s.versao, 'recusar', 'Fora do escopo', SEXTA);
+    expect((await situacao(s.id)).situacao).toBe('recusado');
+  });
+
+  it('recusar na aprovação é da coordenação; a Comunicação não recusa nem aprova', async () => {
+    const { id, versao } = await emAprovacao();
+    await expect(revisarPedido(p, await c(), id, versao, 'recusar', 'Motivo', SEXTA)).rejects.toThrow(ErroPermissao);
+    await expect(decidirPedido(p, await c(), id, versao, 'recusar', 'Motivo', SEXTA)).rejects.toThrow(ErroPermissao);
+    await decidirPedido(p, await c(COORDENACAO), id, versao, 'recusar', 'Motivo', SEXTA);
+    expect((await situacao(id)).situacao).toBe('recusado');
+  });
+
+  it('ações fora da situação são recusadas, mas a versão é conferida primeiro', async () => {
+    const { id } = await envia();
+    await expect(revisarPedido(p, await c(), id, 1, 'enviar_aprovacao', null, SEXTA)).rejects.toThrow('Esta ação não vale para um pedido em "Aguardando revisão".');
+    await expect(revisarPedido(p, await c(), id, 9, 'enviar_aprovacao', null, SEXTA)).rejects.toBeInstanceOf(ErroConflito);
+    await expect(revisarPedido(p, await c(FUNCIONARIO), id, 1, 'iniciar_revisao', null, SEXTA)).rejects.toThrow(ErroPermissao);
+  });
+
+  it('juntar: destino ativo, outro pedido e não juntado; o destino recebe a referência', async () => {
+    const a = await emRevisao();
+    const b = await emRevisao();
+    await expect(juntarPedido(p, await c(), a.id, a.versao, a.id, null, SEXTA)).rejects.toThrow('Escolha outro pedido para juntar.');
+    await expect(juntarPedido(p, await c(), a.id, a.versao, 'x', null, SEXTA)).rejects.toThrow('Não encontramos o pedido escolhido.');
+    await juntarPedido(p, await c(), a.id, a.versao, b.id, null, SEXTA);
+    expect(await situacao(a.id)).toMatchObject({ situacao: 'juntado', juntado_a: b.numero });
+    expect((await historicoDe(a.id)).at(-1)).toMatchObject({ acao: 'juntar', para: 'juntado' });
+    expect((await historicoDe(b.id)).at(-1)).toMatchObject({ acao: 'juntar', de: 'em_revisao', para: 'em_revisao' });
+    expect((await historicoDe(b.id)).at(-1)!.comentario).toContain(a.numero);
+    expect((await situacao(b.id)).versao).toBe(b.versao);
+    const d = await emRevisao();
+    await expect(juntarPedido(p, await c(), d.id, d.versao, a.id, null, SEXTA)).rejects.toThrow(
+      'Este pedido já foi encerrado; escolha um pedido em andamento.',
+    );
+    await expect(juntarPedido(p, await c(FUNCIONARIO), d.id, d.versao, b.id, null, SEXTA)).rejects.toThrow(ErroPermissao);
+  });
+
+  it('duas pessoas no mesmo pedido: a segunda gravação não sobrescreve', async () => {
+    const { id } = await envia();
+    await revisarPedido(p, await c(), id, 1, 'iniciar_revisao', null, SEXTA);
+    await expect(cancelarPedido(p, await c(FUNCIONARIO), id, 1)).rejects.toBeInstanceOf(ErroConflito);
+    expect((await situacao(id)).situacao).toBe('em_revisao');
+  });
+
+  it('a coordenação aprova o próprio pedido; a Diretoria também aprova', async () => {
+    const a = await emAprovacao({ por: COORDENACAO });
+    await decidirPedido(p, await c(COORDENACAO), a.id, a.versao, 'aprovar', null, SEXTA);
+    const o = await emAprovacao();
+    await decidirPedido(p, await c(DIRETORIA), o.id, o.versao, 'aprovar', null, SEXTA);
+    expect((await situacao(o.id)).situacao).toBe('aprovado');
+  });
+
+  it('o detalhe mostra a cada pessoa só as ações que ela pode fazer', async () => {
+    const r = await emRevisao();
+    expect((await detalharPedido(p, await c(), r.id)).acoes).toEqual(['enviar_aprovacao', 'devolver', 'recusar', 'juntar']);
+    expect((await detalharPedido(p, await c(FUNCIONARIO), r.id)).acoes).toEqual([]);
+    const a = await emAprovacao();
+    expect((await detalharPedido(p, await c(), a.id)).acoes).toEqual([]);
+    expect((await detalharPedido(p, await c(COORDENACAO), a.id)).acoes).toEqual(['recusar', 'aprovar', 'pedir_ajustes']);
+  });
+
+  it('as filas mostram cada pedido na etapa certa', async () => {
+    const r = await emRevisao();
+    const a = await emAprovacao();
+    const ids = async (v: 'revisar' | 'aprovar') => (await listarPedidos(p, await c(COORDENACAO), v)).map((x) => x.id);
+    expect(await ids('revisar')).toEqual([r.id]);
+    expect(await ids('aprovar')).toEqual([a.id]);
+  });
+
+  it('filtros da tela Pedidos: situação, tipo, área e tema (inclusive fora do calendário)', async () => {
+    await envia();
+    await envia({ calendarioId: null, tipoPeca: 'release', area: 'saude' });
+    const todas = await listarPedidos(p, await c(), 'todos');
+    expect(filtrarPedidos(todas, {})).toHaveLength(2);
+    expect(filtrarPedidos(todas, { tipo: 'release' })).toHaveLength(1);
+    expect(filtrarPedidos(todas, { area: 'saude' })).toHaveLength(1);
+    expect(filtrarPedidos(todas, { tema: 'fora' })[0].tipoPeca).toBe('release');
+    expect(filtrarPedidos(todas, { tema: 'Setembro Verde' })[0].tipoPeca).toBe('post_instagram');
+    expect(filtrarPedidos(todas, { situacao: 'em_revisao' })).toEqual([]);
+    expect(filtrarPedidos(todas, { situacao: 'aguardando_revisao', tipo: 'release', area: 'educacao' })).toEqual([]);
   });
 });

@@ -24,7 +24,7 @@ import {
   type RegHistorico,
   type RegPedido,
 } from '../dados/tabelas';
-import { ACOES, conferirTransicao, ErroComunicacao, TIPOS_PECA, type Acao, type Situacao, type TipoPeca } from '../dominio/pedido';
+import { ACOES, NOME_SITUACAO, COMENTARIO_OBRIGATORIO, conferirTransicao, ErroComunicacao, SITUACOES_FINAIS, TIPOS_PECA, type Acao, type Situacao, type TipoPeca } from '../dominio/pedido';
 import { diaEmBrasilia, ehUrgente } from '../dominio/prazos';
 import { dataValida, itensParaPedido } from './calendario';
 import { lerAntecedencia } from './configuracoes';
@@ -78,7 +78,7 @@ export async function registrarMudanca(
   p: Planilhas,
   quem: Autorizador,
   pedido: { id: string; situacao: Situacao | null },
-  acao: Acao | 'enviar',
+  acao: Acao | 'enviar' | 'editar',
   para: Situacao,
   comentario: string | null,
   agora: Date,
@@ -98,7 +98,7 @@ export async function registrarMudanca(
 }
 
 /** Confere o formulário e devolve o que gravar nas colunas do pedido (sem gravar). */
-async function conferirDados(p: Planilhas, quem: Autorizador, d: DadosPedido, agora: Date, temaAtual: { id: string | null; tema: string | null } | null) {
+async function conferirDados(p: Planilhas, quem: Autorizador, d: DadosPedido, agora: Date, temaAtual: { id: string | null; tema: string | null } | null, permitirPassado = false) {
   const titulo = d.titulo.trim().replace(/\s+/g, ' ');
   const descricao = d.descricao.trim();
   if (!titulo) throw new ErroComunicacao('Informe o título.');
@@ -121,7 +121,7 @@ async function conferirDados(p: Planilhas, quem: Autorizador, d: DadosPedido, ag
   // Primeiro o formato da data: as contas de prazo só aceitam AAAA-MM-DD de um dia que existe.
   if (!dataValida(d.dataDesejada)) throw new ErroComunicacao('Informe a data desejada no formato dia/mês/ano.');
   const hoje = diaEmBrasilia(agora);
-  if (d.dataDesejada < hoje) throw new ErroComunicacao('A data desejada não pode estar no passado.');
+  if (!permitirPassado && d.dataDesejada < hoje) throw new ErroComunicacao('A data desejada não pode estar no passado.');
 
   const link = d.linkVideo?.trim() || null;
   if (link) {
@@ -212,6 +212,139 @@ export async function cancelarPedido(p: Planilhas, quem: Autorizador, id: string
 }
 
 // ---------------------------------------------------------------------------
+// Revisão e aprovação
+// ---------------------------------------------------------------------------
+
+function exigirPermissao(quem: Autorizador, permissao: string): void {
+  if (!quem.temPermissao(permissao)) throw new ErroPermissao();
+}
+
+/** Confere a transição, o motivo (quando obrigatório) e se esta pessoa pode fazer a ação neste pedido. */
+function conferirAcao(quem: Autorizador, r: RegPedido, acao: Acao, comentario: string | null): { para: Situacao; motivo: string | null } {
+  const para = conferirTransicao(r.situacao, acao, r.tipo_peca);
+  const motivo = comentario?.trim() || null;
+  if (COMENTARIO_OBRIGATORIO.has(acao) && !motivo) throw new ErroComunicacao('Escreva o motivo para quem pediu.');
+  if (!acoesPossiveis(quem, r).includes(acao)) throw new ErroPermissao();
+  return { para, motivo };
+}
+
+async function mover(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  acao: Acao,
+  comentario: string | null,
+  agora: Date,
+  extra: Record<string, unknown> = {},
+): Promise<void> {
+  const r = await acharComVersao(p, id, versao);
+  const { para, motivo } = conferirAcao(quem, r, acao, comentario);
+  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { situacao: para, ...extra }, autoriaDe(quem, agora));
+  await registrarMudanca(p, quem, r, acao, para, motivo, agora, colunasAlteradas);
+}
+
+/** Passos da Comunicação: começar a revisão, enviar para aprovação, devolver ou recusar. */
+export async function revisarPedido(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  acao: 'iniciar_revisao' | 'enviar_aprovacao' | 'devolver' | 'recusar',
+  comentario: string | null,
+  opcoes: Opcoes = {},
+): Promise<void> {
+  exigirPermissao(quem, PERM.revisar);
+  await mover(p, quem, id, versao, acao, comentario, opcoes.agora ?? new Date());
+}
+
+/** Decisão da coordenação da Comunicação (inclusive sobre os próprios pedidos). */
+export async function decidirPedido(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  decisao: 'aprovar' | 'pedir_ajustes' | 'recusar',
+  comentario: string | null,
+  opcoes: Opcoes = {},
+): Promise<void> {
+  exigirPermissao(quem, PERM.aprovar);
+  await mover(p, quem, id, versao, decisao, comentario, opcoes.agora ?? new Date());
+}
+
+/** Junta o pedido a outro em andamento; o destino recebe a referência no histórico. */
+export async function juntarPedido(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  destinoId: string,
+  comentario: string | null,
+  opcoes: Opcoes = {},
+): Promise<void> {
+  exigirPermissao(quem, PERM.revisar);
+  const agora = opcoes.agora ?? new Date();
+  const r = await acharComVersao(p, id, versao);
+  const { para, motivo } = conferirAcao(quem, r, 'juntar', comentario);
+  if (destinoId === id) throw new ErroComunicacao('Escolha outro pedido para juntar.');
+  const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
+  const destino = pedidos.porId(destinoId);
+  if (!destino || !destino.ativo) throw new ErroComunicacao('Não encontramos o pedido escolhido.');
+  if (SITUACOES_FINAIS.has(destino.situacao)) throw new ErroComunicacao('Este pedido já foi encerrado; escolha um pedido em andamento.');
+  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { situacao: para, juntado_a: destino.numero }, autoriaDe(quem, agora));
+  await registrarMudanca(p, quem, r, 'juntar', para, motivo, agora, colunasAlteradas);
+  // O destino não muda de situação; só ganha no histórico a referência do pedido juntado.
+  await registrarMudanca(p, quem, destino, 'juntar', destino.situacao, `Pedido ${r.numero} foi juntado a este.`, agora, []);
+}
+
+/** Alterações da Comunicação durante a revisão. O histórico lista as colunas, nunca os valores. */
+export async function editarNaRevisao(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  m: Partial<Pick<DadosPedido, 'titulo' | 'descricao' | 'tipoPeca' | 'calendarioId' | 'dataDesejada'>>,
+  opcoes: Opcoes = {},
+): Promise<void> {
+  exigirPermissao(quem, PERM.revisar);
+  const agora = opcoes.agora ?? new Date();
+  const r = await acharComVersao(p, id, versao);
+  if (r.situacao !== 'em_revisao') throw new ErroComunicacao(`Esta ação não vale para um pedido em "${NOME_SITUACAO[r.situacao]}".`);
+  const dataMudou = m.dataDesejada !== undefined && m.dataDesejada !== r.data_desejada;
+  const { campos } = await conferirDados(
+    p,
+    quem,
+    {
+      area: r.area,
+      calendarioId: m.calendarioId === undefined ? r.calendario_id : m.calendarioId,
+      tipoPeca: m.tipoPeca ?? r.tipo_peca,
+      titulo: m.titulo ?? r.titulo,
+      descricao: m.descricao ?? r.descricao,
+      dataDesejada: m.dataDesejada ?? r.data_desejada,
+      linkVideo: r.link_video,
+      imagemConfirmada: true,
+    },
+    agora,
+    { id: r.calendario_id, tema: r.calendario_tema },
+    !dataMudou,
+  );
+  // A urgência só é refeita quando a data muda; a confirmação de imagem fica como quem pediu deu.
+  const mudancas: Record<string, unknown> = {
+    titulo: campos.titulo,
+    descricao: campos.descricao,
+    tipo_peca: campos.tipo_peca,
+    calendario_id: campos.calendario_id,
+    calendario_tema: campos.calendario_tema,
+    data_desejada: campos.data_desejada,
+    ...(dataMudou ? { urgente: campos.urgente } : {}),
+  };
+  // Sem nada de novo, não grava (nem muda a versão).
+  if (Object.entries(mudancas).every(([c, v]) => v === (r as unknown as Record<string, unknown>)[c])) throw new ErroComunicacao('Nenhuma alteração para salvar.');
+  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, mudancas, autoriaDe(quem, agora));
+  await registrarMudanca(p, quem, r, 'editar', 'em_revisao', `Colunas alteradas: ${colunasAlteradas.join(', ')}`, agora, colunasAlteradas);
+}
+
+// ---------------------------------------------------------------------------
 // Quem vê e o que pode fazer
 // ---------------------------------------------------------------------------
 
@@ -244,6 +377,25 @@ const FILA: Record<Exclude<Visao, 'meus' | 'todos'>, { permissao: string; situac
   agendar: { permissao: PERM.revisar, situacoes: ['aprovado'] },
   agendados: { permissao: PERM.revisar, situacoes: ['agendado'] },
 };
+
+export interface FiltrosPedidos {
+  situacao?: string;
+  tipo?: string;
+  area?: string;
+  /** Tema do calendário; "fora" para os pedidos sem tema. */
+  tema?: string;
+}
+
+/** Filtros da tela Pedidos (pílulas): cada um só vale quando preenchido. */
+export function filtrarPedidos(linhas: LinhaPedido[], f: FiltrosPedidos): LinhaPedido[] {
+  return linhas.filter(
+    (r) =>
+      (!f.situacao || r.situacao === f.situacao) &&
+      (!f.tipo || r.tipoPeca === f.tipo) &&
+      (!f.area || r.area === f.area) &&
+      (!f.tema || (f.tema === 'fora' ? r.tema === null : r.tema === f.tema)),
+  );
+}
 
 export async function listarPedidos(p: Planilhas, quem: Autorizador, visao: Visao): Promise<LinhaPedido[]> {
   if (visao === 'meus' ? !quem.temPermissaoAlgumEscopo(PERM.solicitar) : !quem.temPermissao(visao === 'todos' ? PERM.verTodos : FILA[visao].permissao))

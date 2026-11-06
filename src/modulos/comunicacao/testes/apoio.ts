@@ -5,7 +5,8 @@ import { lerTabela, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/ta
 import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
-import { TABELAS_COMUNICACAO } from '../dados/tabelas';
+import { enviarPedido, revisarPedido } from '../aplicacao/pedidos';
+import { PedidosComunicacao, TABELAS_COMUNICACAO } from '../dados/tabelas';
 import type { TipoPeca } from '../dominio/pedido';
 import type { TipoData } from '../dominio/calendario';
 import { manifesto } from '../manifesto';
@@ -50,4 +51,45 @@ export function item(x: Partial<{ tema: string; tipoData: TipoData; inicio: stri
 /** Registros de auditoria de um registro, do mais antigo ao mais novo. */
 export async function auditoriaDe(p: Planilhas, id: string) {
   return (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.registro_id === id);
+}
+
+const SEXTA = { agora: new Date('2026-11-06T15:00:00Z') };
+
+/** Pedido novo (sem tema), enviado por `por` (padrão: funcionário). Devolve id, número e versão lida. */
+async function pedidoEnviado(p: Planilhas, por: string) {
+  const r = await enviarPedido(
+    p,
+    await como(p, por),
+    {
+      area: 'educacao',
+      calendarioId: null,
+      tipoPeca: 'post_instagram',
+      titulo: 'Convite para a festa',
+      descricao: 'Texto fictício do pedido.',
+      dataDesejada: '2026-11-25',
+      linkVideo: null,
+      imagemConfirmada: false,
+      nomeSolicitante: 'Pessoa fictícia',
+    },
+    SEXTA,
+  );
+  return r;
+}
+
+async function versaoDe(p: Planilhas, id: string) {
+  return (await lerTabela(p, PedidosComunicacao)).porId(id)!.versao;
+}
+
+/** Pedido já em "Em revisão". */
+export async function emRevisao(p: Planilhas, opts: { por?: string } = {}) {
+  const r = await pedidoEnviado(p, opts.por ?? FUNCIONARIO);
+  await revisarPedido(p, await como(p, COMUNICACAO), r.id, await versaoDe(p, r.id), 'iniciar_revisao', null, SEXTA);
+  return { id: r.id, numero: r.numero, versao: await versaoDe(p, r.id) };
+}
+
+/** Pedido já em "Aguardando aprovação". */
+export async function emAprovacao(p: Planilhas, opts: { por?: string } = {}) {
+  const r = await emRevisao(p, opts);
+  await revisarPedido(p, await como(p, COMUNICACAO), r.id, r.versao, 'enviar_aprovacao', null, SEXTA);
+  return { id: r.id, numero: r.numero, versao: await versaoDe(p, r.id) };
 }

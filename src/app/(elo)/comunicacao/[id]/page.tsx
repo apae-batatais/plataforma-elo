@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { detalharPedido, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
-import { ErroComunicacao, NOME_TIPO_PECA } from '@/modulos/comunicacao/dominio/pedido';
+import { detalharPedido, listarPedidos, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
+import { ErroComunicacao, NOME_TIPO_PECA, SITUACOES_FINAIS } from '@/modulos/comunicacao/dominio/pedido';
+import { AcoesPedido } from '@/modulos/comunicacao/telas/acoes-pedido';
 import { dataCurta } from '@/modulos/comunicacao/telas/mes';
 import { dataHoraBR, EtiquetaSituacao, EtiquetaUrgente } from '@/modulos/comunicacao/telas/rotulos';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
@@ -11,12 +12,13 @@ import { usuarioLogado } from '@/plataforma/sessao';
 import { LinkBotao } from '@/ui/botao';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, Secao } from '@/ui/pagina';
-import { acaoCancelarPedido } from '../acoes';
+import { acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoRevisarPedido } from '../acoes';
 
 export const metadata: Metadata = { title: 'Pedido' };
 
 const NOME_ACAO: Record<string, string> = {
   enviar: 'Pedido enviado',
+  editar: 'Dados alterados na revisão',
   reenviar: 'Pedido ajustado e reenviado',
   cancelar: 'Pedido cancelado',
   iniciar_revisao: 'Revisão iniciada',
@@ -54,6 +56,13 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
     throw erro;
   }
   const r = d.pedido;
+  const podeJuntar = d.acoes.includes('juntar');
+  const destinos = podeJuntar
+    ? (await listarPedidos(planilhas, usuario.autorizador, 'todos'))
+        .filter((x) => x.id !== r.id && !SITUACOES_FINAIS.has(x.situacao))
+        .map((x) => ({ id: x.id, rotulo: `${x.numero} · ${x.titulo}` }))
+    : [];
+  const daEquipe = d.acoes.some((a) => !['reenviar', 'cancelar'].includes(a));
   const nomeDaArea = (await opcoesDoPedido(planilhas, usuario.autorizador)).areas.find((a) => a.codigo === r.area)?.nome ?? r.area;
   return (
     <div className="max-w-4xl space-y-6">
@@ -69,7 +78,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
         descricao={r.titulo}
       />
 
-      {(d.acoes.includes('reenviar') || d.acoes.includes('cancelar')) && (
+      {(d.acoes.includes('reenviar') || d.acoes.includes('cancelar') || daEquipe) && (
         <Secao titulo="O que você pode fazer" id="t-acoes">
           <div className="flex flex-wrap items-center gap-3">
             {d.acoes.includes('reenviar') && <LinkBotao href={`/comunicacao/${r.id}/editar`}>Ajustar e reenviar</LinkBotao>}
@@ -84,6 +93,11 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
               />
             )}
           </div>
+          {daEquipe && (
+            <div className="mt-3">
+              <AcoesPedido acoes={d.acoes} id={r.id} versao={r.versao} destinos={destinos} revisar={acaoRevisarPedido} decidir={acaoDecidirPedido} juntar={acaoJuntarPedido} />
+            </div>
+          )}
         </Secao>
       )}
 
@@ -102,6 +116,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
               </a>
             </Dado>
           )}
+          {r.juntado_a && <Dado rotulo="Juntado ao pedido">{r.juntado_a}</Dado>}
           {r.imagem_confirmada_em && <Dado rotulo="Uso de imagem confirmado em">{dataHoraBR(r.imagem_confirmada_em)}</Dado>}
         </dl>
         <p className="mt-4 whitespace-pre-line">{r.descricao}</p>
