@@ -6,7 +6,18 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
-import { cancelarPedido, decidirPedido, editarNaRevisao, enviarPedido, juntarPedido, reenviarPedido, revisarPedido, type DadosPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
+import {
+  ACOES_DA_DECISAO,
+  ACOES_DA_REVISAO,
+  cancelarPedido,
+  decidirPedido,
+  editarNaRevisao,
+  enviarPedido,
+  juntarPedido,
+  reenviarPedido,
+  revisarPedido,
+  type DadosPedido,
+} from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, TIPOS_PECA, type TipoPeca } from '@/modulos/comunicacao/dominio/pedido';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
@@ -27,7 +38,12 @@ const comMensagem = (pagina: string, chave: 'ok' | 'erro', mensagem: string) =>
   `${pagina}${pagina.includes('?') ? '&' : '?'}${chave}=${encodeURIComponent(mensagem)}`;
 
 /** Executa e volta para a página com a mensagem no endereço (a notificação lê ?ok= e ?erro=). */
-async function executar(pagina: (resultado: unknown) => string, erroEm: string, sucesso: string, acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>) {
+async function executar(
+  pagina: (resultado: unknown) => string,
+  erroEm: string,
+  sucesso: string,
+  acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>,
+) {
   const ctx = await contexto();
   let destino: string;
   try {
@@ -62,7 +78,10 @@ export async function acaoSalvarItemCalendario(f: FormData) {
     tipoData: tipoData as 'exata' | 'periodo',
     inicio,
     fim,
-    tipos: f.getAll('tipos').map(String).filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
+    tipos: f
+      .getAll('tipos')
+      .map(String)
+      .filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
     observacao: texto(f, 'observacao') || null,
   };
   const mesDoItem = mesValido(inicio.slice(0, 7));
@@ -178,23 +197,41 @@ const MENSAGEM_ACAO: Record<string, string> = {
 
 export async function acaoRevisarPedido(f: FormData) {
   const id = texto(f, 'id');
-  const acao = texto(f, 'acao') as 'iniciar_revisao' | 'enviar_aprovacao' | 'devolver' | 'recusar';
+  const acao = texto(f, 'acao');
+  if (!(ACOES_DA_REVISAO as readonly string[]).includes(acao)) return void redirect(comMensagem(`/comunicacao/${id}`, 'erro', 'Ação inválida.'));
   await executar(
     () => `/comunicacao/${id}`,
     `/comunicacao/${id}`,
     MENSAGEM_ACAO[acao] ?? 'Feito.',
-    ({ usuario, app }) => revisarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), acao, texto(f, 'comentario') || null),
+    ({ usuario, app }) =>
+      revisarPedido(
+        app.planilhas,
+        usuario.autorizador,
+        id,
+        Number(texto(f, 'versao')),
+        acao as (typeof ACOES_DA_REVISAO)[number],
+        texto(f, 'comentario') || null,
+      ),
   );
 }
 
 export async function acaoDecidirPedido(f: FormData) {
   const id = texto(f, 'id');
-  const decisao = texto(f, 'acao') as 'aprovar' | 'pedir_ajustes' | 'recusar';
+  const decisao = texto(f, 'acao');
+  if (!(ACOES_DA_DECISAO as readonly string[]).includes(decisao)) return void redirect(comMensagem(`/comunicacao/${id}`, 'erro', 'Ação inválida.'));
   await executar(
     () => `/comunicacao/${id}`,
     `/comunicacao/${id}`,
     MENSAGEM_ACAO[decisao] ?? 'Feito.',
-    ({ usuario, app }) => decidirPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), decisao, texto(f, 'comentario') || null),
+    ({ usuario, app }) =>
+      decidirPedido(
+        app.planilhas,
+        usuario.autorizador,
+        id,
+        Number(texto(f, 'versao')),
+        decisao as (typeof ACOES_DA_DECISAO)[number],
+        texto(f, 'comentario') || null,
+      ),
   );
 }
 
@@ -222,7 +259,10 @@ export async function acaoEditarNaRevisao(_: EstadoPedido, f: FormData): Promise
     tipoData: tipoData as 'exata' | 'periodo',
     inicio,
     fim: tipoData === 'exata' ? inicio : texto(f, 'fim'),
-    tipos: f.getAll('tipos').map(String).filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
+    tipos: f
+      .getAll('tipos')
+      .map(String)
+      .filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
     observacao: null,
   };
   try {
@@ -236,7 +276,10 @@ export async function acaoEditarNaRevisao(_: EstadoPedido, f: FormData): Promise
     });
   } catch (erro) {
     if (conhecido(erro)) {
-      const aviso = novo && erro instanceof ErroConflito ? ' Se o tema novo chegou a ser criado, ele já está no calendário: abra o pedido de novo e escolha-o na lista.' : '';
+      const aviso =
+        novo && erro instanceof ErroConflito
+          ? ' Se o tema novo chegou a ser criado, ele já está no calendário: abra o pedido de novo e escolha-o na lista.'
+          : '';
       return { erro: (erro as Error).message + aviso };
     }
     throw erro;

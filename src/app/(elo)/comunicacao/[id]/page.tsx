@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { detalharPedido, listarPedidos, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, NOME_TIPO_PECA, SITUACOES_FINAIS } from '@/modulos/comunicacao/dominio/pedido';
-import { AcoesPedido } from '@/modulos/comunicacao/telas/acoes-pedido';
+import { ACOES_DA_EQUIPE, AcoesPedido } from '@/modulos/comunicacao/telas/acoes-pedido';
 import { dataCurta } from '@/modulos/comunicacao/telas/mes';
 import { dataHoraBR, EtiquetaSituacao, EtiquetaUrgente } from '@/modulos/comunicacao/telas/rotulos';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
@@ -62,7 +62,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
         .filter((x) => x.id !== r.id && !SITUACOES_FINAIS.has(x.situacao))
         .map((x) => ({ id: x.id, rotulo: `${x.numero} · ${x.titulo}` }))
     : [];
-  const daEquipe = d.acoes.some((a) => !['reenviar', 'cancelar'].includes(a));
+  const daEquipe = d.acoes.some((a) => ACOES_DA_EQUIPE.includes(a));
   const nomeDaArea = (await opcoesDoPedido(planilhas, usuario.autorizador)).areas.find((a) => a.codigo === r.area)?.nome ?? r.area;
   return (
     <div className="max-w-4xl space-y-6">
@@ -95,7 +95,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
           </div>
           {daEquipe && (
             <div className="mt-3">
-              <AcoesPedido acoes={d.acoes} id={r.id} versao={r.versao} destinos={destinos} revisar={acaoRevisarPedido} decidir={acaoDecidirPedido} juntar={acaoJuntarPedido} />
+              <AcoesPedido acoes={d.acoes} situacao={r.situacao} id={r.id} versao={r.versao} destinos={destinos} revisar={acaoRevisarPedido} decidir={acaoDecidirPedido} juntar={acaoJuntarPedido} />
             </div>
           )}
         </Secao>
@@ -133,7 +133,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
         <ol className="space-y-3 text-sm">
           {d.historico.map((h) => (
             <li key={h.id}>
-              <p className="font-semibold">{NOME_ACAO[h.acao] ?? h.acao}</p>
+              <p className="font-semibold">{h.acao === 'juntar' && h.de === h.para ? 'Outro pedido foi juntado a este' : (NOME_ACAO[h.acao] ?? h.acao)}</p>
               <p className="text-texto-suave">{dataHoraBR(h.em)}</p>
               {h.comentario && <p className="mt-1">{h.comentario}</p>}
             </li>

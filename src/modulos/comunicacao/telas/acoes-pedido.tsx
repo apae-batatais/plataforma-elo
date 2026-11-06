@@ -8,7 +8,7 @@ import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
-import type { Acao } from '../dominio/pedido';
+import type { Acao, Situacao } from '../dominio/pedido';
 
 type Envio = (f: FormData) => void | Promise<void>;
 
@@ -40,8 +40,12 @@ const MOTIVO: Partial<Record<Acao, { titulo: string; mensagem: string; confirmar
   },
 };
 
+/** As ações que esta tela desenha (a página usa a mesma lista para saber se há o que mostrar). */
+export const ACOES_DA_EQUIPE: Acao[] = ['iniciar_revisao', 'enviar_aprovacao', 'devolver', 'recusar', 'juntar', 'aprovar', 'pedir_ajustes'];
+
 export function AcoesPedido({
   acoes,
+  situacao,
   id,
   versao,
   destinos,
@@ -50,6 +54,8 @@ export function AcoesPedido({
   juntar,
 }: {
   acoes: Acao[];
+  /** Situação atual do pedido: decide se "Recusar" é da revisão ou da aprovação. */
+  situacao: Situacao;
   id: string;
   versao: number;
   /** Pedidos em andamento que podem receber este. */
@@ -58,11 +64,10 @@ export function AcoesPedido({
   decidir: Envio;
   juntar: Envio;
 }) {
-  const doRevisor: Acao[] = ['iniciar_revisao', 'enviar_aprovacao', 'devolver', 'recusar', 'juntar', 'aprovar', 'pedir_ajustes'];
-  const quais = doRevisor.filter((a) => acoes.includes(a));
+  const quais = ACOES_DA_EQUIPE.filter((a) => acoes.includes(a));
   if (quais.length === 0) return null;
   // Recusar na aprovação é da coordenação; na revisão, da Comunicação.
-  const envioDe = (a: Acao): Envio => (a === 'aprovar' || a === 'pedir_ajustes' || (a === 'recusar' && !acoes.includes('juntar')) ? decidir : revisar);
+  const envioDe = (a: Acao): Envio => (a === 'aprovar' || a === 'pedir_ajustes' || (a === 'recusar' && situacao === 'aguardando_aprovacao') ? decidir : revisar);
 
   return (
     <div className="flex flex-wrap items-center gap-3">

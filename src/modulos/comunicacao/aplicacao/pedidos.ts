@@ -30,6 +30,7 @@ import {
   COMENTARIO_OBRIGATORIO,
   conferirTransicao,
   ErroComunicacao,
+  proximoNumero,
   SITUACOES_FINAIS,
   TIPOS_PECA,
   type Acao,
@@ -116,6 +117,7 @@ async function conferirDados(
   agora: Date,
   temaAtual: { id: string | null; tema: string | null } | null,
   permitirPassado = false,
+  areaAtual: string | null = null,
 ) {
   const titulo = d.titulo.trim().replace(/\s+/g, ' ');
   const descricao = d.descricao.trim();
@@ -123,7 +125,8 @@ async function conferirDados(
   if (!descricao) throw new ErroComunicacao('Descreva o que deve ser publicado.');
   if (!(TIPOS_PECA as readonly string[]).includes(d.tipoPeca)) throw new ErroComunicacao('Escolha o tipo de peça.');
   const [areas, calendario] = await lerTabelas(p, [Areas, CalendarioComunicacao] as const);
-  if (!areas.ativos().some((a) => a.codigo === d.area)) throw new ErroComunicacao('Escolha a área.');
+  // Na revisão, a área já gravada no pedido continua valendo mesmo se foi desativada depois.
+  if (d.area !== areaAtual && !areas.ativos().some((a) => a.codigo === d.area)) throw new ErroComunicacao('Escolha a área.');
 
   let calendarioTema: string | null = null;
   if (d.calendarioId) {
@@ -175,12 +178,11 @@ export async function enviarPedido(
   const agora = opcoes.agora ?? new Date();
   const { hoje, campos } = await conferirDados(p, quem, d, agora, null);
   const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
-  const prefixo = `COM-${hoje.slice(0, 4)}-`;
-  const maior = pedidos
-    .todos()
-    .filter((x) => x.numero.startsWith(prefixo))
-    .reduce((m, x) => Math.max(m, Number(x.numero.slice(prefixo.length)) || 0), 0);
-  const numero = `${prefixo}${String(maior + 1).padStart(4, '0')}`;
+  // O número é lido e depois gravado: dois envios no mesmo instante podem repetir o número (risco aceito na fase 1).
+  const numero = proximoNumero(
+    pedidos.todos().map((x) => x.numero),
+    Number(hoje.slice(0, 4)),
+  );
   const dados = {
     numero,
     solicitante: quem.email,
@@ -246,6 +248,15 @@ function conferirAcao(quem: Autorizador, r: RegPedido, acao: Acao, comentario: s
   return { para, motivo };
 }
 
+/** Ações que cada porta aceita, e as situações em que valem (conferido no servidor, não só na tela). */
+export const ACOES_DA_REVISAO = ['iniciar_revisao', 'enviar_aprovacao', 'devolver', 'recusar'] as const;
+export const ACOES_DA_DECISAO = ['aprovar', 'pedir_ajustes', 'recusar'] as const;
+const SITUACOES_DA_REVISAO: Situacao[] = ['aguardando_revisao', 'em_revisao'];
+
+function exigirAcaoValida(r: RegPedido, acao: string, permitidas: readonly string[], situacoes: Situacao[]): void {
+  if (!permitidas.includes(acao) || !situacoes.includes(r.situacao)) throw new ErroComunicacao('Ação inválida.');
+}
+
 async function mover(
   p: Planilhas,
   quem: Autorizador,
@@ -254,11 +265,13 @@ async function mover(
   acao: Acao,
   comentario: string | null,
   agora: Date,
-  extra: Record<string, unknown> = {},
+  permitidas: readonly string[],
+  situacoes: Situacao[],
 ): Promise<void> {
   const r = await acharComVersao(p, id, versao);
+  exigirAcaoValida(r, acao, permitidas, situacoes);
   const { para, motivo } = conferirAcao(quem, r, acao, comentario);
-  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { situacao: para, ...extra }, autoriaDe(quem, agora));
+  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { situacao: para }, autoriaDe(quem, agora));
   await registrarMudanca(p, quem, r, acao, para, motivo, agora, colunasAlteradas);
 }
 
@@ -273,7 +286,7 @@ export async function revisarPedido(
   opcoes: Opcoes = {},
 ): Promise<void> {
   exigirPermissao(quem, PERM.revisar);
-  await mover(p, quem, id, versao, acao, comentario, opcoes.agora ?? new Date());
+  await mover(p, quem, id, versao, acao, comentario, opcoes.agora ?? new Date(), ACOES_DA_REVISAO, SITUACOES_DA_REVISAO);
 }
 
 /** Decisão da coordenação da Comunicação (inclusive sobre os próprios pedidos). */
@@ -287,7 +300,7 @@ export async function decidirPedido(
   opcoes: Opcoes = {},
 ): Promise<void> {
   exigirPermissao(quem, PERM.aprovar);
-  await mover(p, quem, id, versao, decisao, comentario, opcoes.agora ?? new Date());
+  await mover(p, quem, id, versao, decisao, comentario, opcoes.agora ?? new Date(), ACOES_DA_DECISAO, ['aguardando_aprovacao']);
 }
 
 /** Junta o pedido a outro em andamento; o destino recebe a referência no histórico. */
@@ -306,6 +319,7 @@ export async function juntarPedido(
   const { para, motivo } = conferirAcao(quem, r, 'juntar', comentario);
   if (destinoId === id) throw new ErroComunicacao('Escolha outro pedido para juntar.');
   const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
+  // O destino é lido sem conferir a versão dele: só ganha uma linha de histórico (corrida estreita, sem perda de dados).
   const destino = pedidos.porId(destinoId);
   if (!destino || !destino.ativo) throw new ErroComunicacao('Não encontramos o pedido escolhido.');
   if (SITUACOES_FINAIS.has(destino.situacao)) throw new ErroComunicacao('Este pedido já foi encerrado; escolha um pedido em andamento.');
@@ -343,7 +357,7 @@ export async function editarNaRevisao(
     imagemConfirmada: true,
   });
   const conferir = (calendarioId: string | null) =>
-    conferirDados(p, quem, dadosCom(calendarioId), agora, { id: r.calendario_id, tema: r.calendario_tema }, !dataMudou);
+    conferirDados(p, quem, dadosCom(calendarioId), agora, { id: r.calendario_id, tema: r.calendario_tema }, !dataMudou, r.area);
   let calendarioId = m.calendarioId === undefined ? r.calendario_id : m.calendarioId;
   if (m.novoTema) {
     exigirPermissao(quem, 'comunicacao.calendario.gerenciar');
@@ -493,9 +507,7 @@ export async function contadoresComunicacao(p: Planilhas, quem: Autorizador, opc
   const hoje = diaEmBrasilia(opcoes.agora ?? new Date());
   const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
   const ativos = pedidos.ativos();
-  const aRevisar = quem.temPermissao(PERM.revisar)
-    ? ativos.filter((r) => r.situacao === 'aguardando_revisao' || r.situacao === 'em_revisao')
-    : [];
+  const aRevisar = quem.temPermissao(PERM.revisar) ? ativos.filter((r) => r.situacao === 'aguardando_revisao' || r.situacao === 'em_revisao') : [];
   return {
     devolvidos: quem.temPermissaoAlgumEscopo(PERM.solicitar) ? ativos.filter((r) => r.solicitante === quem.email && r.situacao === 'devolvido').length : 0,
     revisar: aRevisar.length,

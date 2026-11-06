@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, ErroConflito, lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { PerfilPermissoes, RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
+import { Areas, PerfilPermissoes, RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '../aplicacao/calendario';
 import { salvarAntecedencia } from '../aplicacao/configuracoes';
 import {
@@ -347,6 +347,27 @@ describe('revisão e aprovação', () => {
     expect((await situacao(r.id)).versao).toBe(r.versao);
   });
 
+  it('ações fora da lista de cada porta são recusadas sem gravar nada', async () => {
+    const r = await emRevisao();
+    for (const a of ['agendar', 'juntar', 'publicar', 'reenviar', 'aprovar'])
+      await expect(revisarPedido(p, await c(COORDENACAO), r.id, r.versao, a as never, null, SEXTA), a).rejects.toThrow('Ação inválida.');
+    await expect(decidirPedido(p, await c(COORDENACAO), r.id, r.versao, 'agendar' as never, null, SEXTA)).rejects.toThrow('Ação inválida.');
+    await expect(decidirPedido(p, await c(COORDENACAO), r.id, r.versao, 'recusar', 'Motivo', SEXTA)).rejects.toThrow('Ação inválida.');
+    expect(await situacao(r.id)).toMatchObject({ situacao: 'em_revisao', versao: r.versao });
+    expect(await historicoDe(r.id)).toHaveLength(2);
+    const a = await emAprovacao();
+    await expect(revisarPedido(p, await c(COORDENACAO), a.id, a.versao, 'recusar', 'Motivo', SEXTA)).rejects.toThrow('Ação inválida.');
+    expect(await situacao(a.id)).toMatchObject({ situacao: 'aguardando_aprovacao', versao: a.versao });
+  });
+
+  it('a área desativada depois do envio não impede a edição na revisão', async () => {
+    const r = await emRevisao();
+    const area = (await lerTabela(p, Areas)).ativos().find((x) => x.codigo === 'educacao')!;
+    await atualizar(p, Areas, area.id, area.versao, { ativo: false }, { email: DIRETORIA });
+    await editarNaRevisao(p, await c(), r.id, r.versao, { titulo: 'Título novo' }, SEXTA);
+    expect(await situacao(r.id)).toMatchObject({ titulo: 'Título novo', area: 'educacao' });
+  });
+
   it('editar o título não é barrado por data desejada que já passou', async () => {
     const r = await emRevisao();
     await expect(
@@ -376,7 +397,7 @@ describe('revisão e aprovação', () => {
 
   it('recusar na aprovação é da coordenação; a Comunicação não recusa nem aprova', async () => {
     const { id, versao } = await emAprovacao();
-    await expect(revisarPedido(p, await c(), id, versao, 'recusar', 'Motivo', SEXTA)).rejects.toThrow(ErroPermissao);
+    await expect(revisarPedido(p, await c(), id, versao, 'recusar', 'Motivo', SEXTA)).rejects.toThrow('Ação inválida.');
     await expect(decidirPedido(p, await c(), id, versao, 'recusar', 'Motivo', SEXTA)).rejects.toThrow(ErroPermissao);
     await decidirPedido(p, await c(COORDENACAO), id, versao, 'recusar', 'Motivo', SEXTA);
     expect((await situacao(id)).situacao).toBe('recusado');
