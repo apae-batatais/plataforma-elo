@@ -13,6 +13,8 @@ import { manifesto } from '../manifesto';
 export const FUNCIONARIO = 'funcionario@exemplo.local';
 export const COMUNICACAO = 'comunicacao@exemplo.local';
 export const COORDENACAO = 'coord.comunicacao@exemplo.local';
+export const OUTRO_FUNCIONARIO = 'dp@exemplo.local';
+export const DIRETORIA = 'diretoria@exemplo.local';
 
 /** Planilhas novas, com a estrutura da Comunicação e os usuários fictícios do Núcleo. */
 export async function planilhasDeComunicacao(): Promise<Planilhas> {

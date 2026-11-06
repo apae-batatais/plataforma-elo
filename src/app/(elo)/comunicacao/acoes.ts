@@ -6,6 +6,7 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
+import { cancelarPedido, enviarPedido, reenviarPedido, type DadosPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, TIPOS_PECA, type TipoPeca } from '@/modulos/comunicacao/dominio/pedido';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
@@ -99,5 +100,65 @@ export async function acaoSalvarAntecedencia(f: FormData) {
     '/comunicacao/configuracoes',
     'Antecedência mínima salva.',
     ({ usuario, app }) => salvarAntecedencia(app.planilhas, usuario.autorizador, t === '' ? Number.NaN : Number(t), { versao: v === '' ? null : Number(v) }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pedidos
+// ---------------------------------------------------------------------------
+
+export interface EstadoPedido {
+  erro?: string;
+}
+
+function lerPedido(f: FormData): DadosPedido {
+  return {
+    area: texto(f, 'area'),
+    calendarioId: texto(f, 'calendario_id') || null,
+    tipoPeca: texto(f, 'tipo_peca') as TipoPeca,
+    titulo: texto(f, 'titulo'),
+    descricao: texto(f, 'descricao'),
+    dataDesejada: texto(f, 'data_desejada'),
+    linkVideo: texto(f, 'link_video') || null,
+    imagemConfirmada: f.get('imagem_confirmada') === 'on',
+  };
+}
+
+export async function acaoEnviarPedido(_: EstadoPedido, f: FormData): Promise<EstadoPedido> {
+  const { usuario, app } = await contexto();
+  let r: { id: string; numero: string; urgente: boolean };
+  try {
+    r = await enviarPedido(app.planilhas, usuario.autorizador, { ...lerPedido(f), nomeSolicitante: usuario.nome });
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+  esquecerAlertas();
+  revalidatePath('/', 'layout');
+  const aviso = r.urgente ? ' Ele foi marcado como urgente.' : '';
+  redirect(`/comunicacao/${r.id}?ok=${encodeURIComponent(`Pedido ${r.numero} enviado. Agora aguarda a revisão da Comunicação.${aviso}`)}`);
+}
+
+export async function acaoReenviarPedido(_: EstadoPedido, f: FormData): Promise<EstadoPedido> {
+  const { usuario, app } = await contexto();
+  const id = texto(f, 'id');
+  try {
+    await reenviarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerPedido(f));
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+  esquecerAlertas();
+  revalidatePath('/', 'layout');
+  redirect(`/comunicacao/${id}?ok=${encodeURIComponent('Pedido ajustado e reenviado. Ele volta para a revisão da Comunicação.')}`);
+}
+
+export async function acaoCancelarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => '/comunicacao',
+    `/comunicacao/${id}`,
+    'Pedido cancelado. Ele fica guardado no histórico.',
+    ({ usuario, app }) => cancelarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))),
   );
 }
