@@ -11,6 +11,7 @@ Navegador ──► Camada de aplicação (Netlify) ──► Google Planilhas (
 - Especificação: [`docs/especificacao-plataforma.md`](docs/especificacao-plataforma.md)
 - Regras para o agente desenvolvedor: [`CLAUDE.md`](CLAUDE.md)
 - Backlog (o que falta e em que ordem): [`docs/backlog.md`](docs/backlog.md)
+- Roadmap (o que ficou combinado para depois em cada app): [`docs/roadmap.md`](docs/roadmap.md)
 
 ## Como trabalhamos
 
