@@ -4,6 +4,7 @@ import { cumprimento } from '@/ui/saudacao';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
+import { contadoresComunicacao } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { contadoresRequisicoes } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { painelDeAcessos } from '@/nucleo/acesso/gestao';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
@@ -134,6 +135,54 @@ export default async function Portal() {
       }
     } catch {
       // Planilha das Requisições ainda não configurada: a página do app explica.
+    }
+  }
+  if (a.temPermissaoAlgumEscopo('comunicacao.acessar')) {
+    try {
+      const c = await contadoresComunicacao(app.planilhas, a);
+      const n = (x: number, um: string, varios: string) => `${x} ${x === 1 ? um : varios}`;
+      if (c.devolvidos > 0) {
+        pendencias.push({
+          texto: n(c.devolvidos, 'pedido seu foi devolvido para você ajustar', 'pedidos seus foram devolvidos para você ajustar'),
+          detalhe: 'Veja o que a Comunicação pediu e reenvie.',
+          href: '/comunicacao',
+          acao: 'Ajustar',
+        });
+      }
+      if (c.revisar > 0) {
+        pendencias.push({
+          texto: n(c.revisar, 'pedido aguarda revisão', 'pedidos aguardam revisão'),
+          detalhe: 'Comece a revisão, devolva ou envie para aprovação.',
+          href: '/comunicacao/pedidos?fila=revisar',
+          acao: 'Revisar',
+        });
+      }
+      if (c.urgentes > 0) {
+        pendencias.push({
+          texto: n(c.urgentes, 'pedido urgente na revisão', 'pedidos urgentes na revisão'),
+          detalhe: 'Pedidos feitos fora da antecedência mínima.',
+          href: '/comunicacao/pedidos?fila=revisar',
+          acao: 'Ver urgentes',
+        });
+      }
+      if (c.publicarHoje > 0) {
+        pendencias.push({
+          texto: n(c.publicarHoje, 'pedido para publicar hoje', 'pedidos para publicar hoje'),
+          detalhe: 'Já estão agendados para hoje.',
+          href: '/comunicacao/pedidos?fila=agendados',
+          acao: 'Ver agendados',
+        });
+      }
+      if (c.aprovar > 0) {
+        pendencias.push({
+          texto: n(c.aprovar, 'pedido aguarda a sua aprovação', 'pedidos aguardam a sua aprovação'),
+          detalhe: 'Aprove, peça ajustes ou recuse.',
+          href: '/comunicacao/pedidos?fila=aprovar',
+          acao: 'Aprovar',
+        });
+      }
+    } catch {
+      // Planilha da Comunicação ainda não configurada: a página do app explica.
     }
   }
   if (a.temPermissao('core.organizacao.gerenciar')) {

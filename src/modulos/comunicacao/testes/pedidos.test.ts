@@ -10,6 +10,7 @@ import { mudarSituacaoItemCalendario, salvarItemCalendario } from '../aplicacao/
 import { salvarAntecedencia } from '../aplicacao/configuracoes';
 import {
   cancelarPedido,
+  contadoresComunicacao,
   decidirPedido,
   detalharPedido,
   editarNaRevisao,
@@ -449,5 +450,35 @@ describe('revisão e aprovação', () => {
     expect(filtrarPedidos(todas, { tema: 'Setembro Verde' })[0].tipoPeca).toBe('post_instagram');
     expect(filtrarPedidos(todas, { situacao: 'em_revisao' })).toEqual([]);
     expect(filtrarPedidos(todas, { situacao: 'aguardando_revisao', tipo: 'release', area: 'educacao' })).toEqual([]);
+  });
+});
+
+describe('avisos no início e no menu', () => {
+  it('contadores por perfil, com o dia de Brasília', async () => {
+    const noite = new Date('2026-11-07T01:30:00Z');
+    // um devolvido do FUNCIONARIO
+    const dev = await envia({}, FUNCIONARIO);
+    await revisarPedido(p, await como(p, COMUNICACAO), dev.id, (await situacao(dev.id)).versao, 'iniciar_revisao', null, SEXTA);
+    await revisarPedido(p, await como(p, COMUNICACAO), dev.id, (await situacao(dev.id)).versao, 'devolver', 'Falta o texto.', SEXTA);
+    // dois para revisar (um urgente), de outra pessoa
+    await envia({ dataDesejada: '2026-11-12' }, OUTRO_FUNCIONARIO);
+    await envia({}, OUTRO_FUNCIONARIO);
+    // um para aprovar
+    await emAprovacaoEm(p, { por: OUTRO_FUNCIONARIO });
+    // um agendado para 06/11 às 23h de Brasília (02h UTC de 07/11), gravado direto na aba
+    const ag = await envia({}, OUTRO_FUNCIONARIO);
+    await atualizar(p, PedidosComunicacao, ag.id, (await situacao(ag.id)).versao, { situacao: 'agendado', agendado_para: '2026-11-07T02:00:00.000Z' }, { email: COMUNICACAO });
+
+    expect(await contadoresComunicacao(p, await como(p, FUNCIONARIO), { agora: noite })).toEqual({
+      devolvidos: 1,
+      revisar: 0,
+      urgentes: 0,
+      publicarHoje: 0,
+      aprovar: 0,
+    });
+    expect(await contadoresComunicacao(p, await como(p, COMUNICACAO), { agora: noite })).toMatchObject({ revisar: 2, urgentes: 1, publicarHoje: 1, aprovar: 0 });
+    expect(await contadoresComunicacao(p, await como(p, COORDENACAO), { agora: noite })).toMatchObject({ aprovar: 1 });
+    // No dia seguinte (Brasília), o agendado de ontem não conta mais como "hoje".
+    expect((await contadoresComunicacao(p, await como(p, COMUNICACAO), { agora: new Date('2026-11-07T15:00:00Z') })).publicarHoje).toBe(0);
   });
 });

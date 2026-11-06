@@ -484,3 +484,25 @@ export async function opcoesDoPedido(p: Planilhas, quem: Autorizador, opcoes: Op
     antecedencia: await lerAntecedencia(p),
   };
 }
+
+/**
+ * Números dos avisos (início e menu): o que espera por esta pessoa.
+ * Cada número só conta para quem tem a permissão correspondente; "hoje" é o dia de Brasília.
+ */
+export async function contadoresComunicacao(p: Planilhas, quem: Autorizador, opcoes: Opcoes = {}) {
+  const hoje = diaEmBrasilia(opcoes.agora ?? new Date());
+  const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
+  const ativos = pedidos.ativos();
+  const aRevisar = quem.temPermissao(PERM.revisar)
+    ? ativos.filter((r) => r.situacao === 'aguardando_revisao' || r.situacao === 'em_revisao')
+    : [];
+  return {
+    devolvidos: quem.temPermissaoAlgumEscopo(PERM.solicitar) ? ativos.filter((r) => r.solicitante === quem.email && r.situacao === 'devolvido').length : 0,
+    revisar: aRevisar.length,
+    urgentes: aRevisar.filter((r) => r.urgente).length,
+    publicarHoje: quem.temPermissao(PERM.revisar)
+      ? ativos.filter((r) => r.situacao === 'agendado' && r.agendado_para !== null && diaEmBrasilia(new Date(r.agendado_para)) === hoje).length
+      : 0,
+    aprovar: quem.temPermissao(PERM.aprovar) ? ativos.filter((r) => r.situacao === 'aguardando_aprovacao').length : 0,
+  };
+}

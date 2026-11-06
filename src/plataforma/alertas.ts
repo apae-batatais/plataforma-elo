@@ -4,6 +4,7 @@
  * instituição, para não ler as planilhas a cada página.
  */
 import 'server-only';
+import { contadoresComunicacao } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { contadoresRequisicoes } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { obterAplicacao } from './aplicacao';
@@ -24,6 +25,15 @@ export async function alertasDoMenu(autorizador: Autorizador): Promise<Record<st
         if (n > 0) r['/requisicoes'] = String(n);
       } catch {
         // Planilha das Requisições ainda não configurada: a página do app explica.
+      }
+    }
+    if (autorizador.temPermissaoAlgumEscopo('comunicacao.acessar')) {
+      try {
+        const c = await contadoresComunicacao(app.planilhas, autorizador);
+        const n = c.devolvidos + c.revisar + c.aprovar;
+        if (n > 0) r['/comunicacao'] = String(n);
+      } catch {
+        // Planilha da Comunicação ainda não configurada: a página do app explica.
       }
     }
     return r;
