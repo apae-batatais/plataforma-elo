@@ -1,11 +1,12 @@
 'use client';
 
 /** Alterações da Comunicação durante a revisão: título, descrição, tipo de peça, tema e data. */
-import { startTransition, useActionState, type FormEvent } from 'react';
+import { startTransition, useActionState, useState, type FormEvent } from 'react';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { NOME_TIPO_PECA, TIPOS_PECA, type TipoPeca } from '../dominio/pedido';
+import { CamposDeData } from './campos-de-data';
 import type { EstadoPedido, ItemEscolha } from './formulario-pedido';
 
 export function EditarNaRevisao({
@@ -28,6 +29,7 @@ export function EditarNaRevisao({
     const f = new FormData(e.currentTarget);
     startTransition(() => enviar(f));
   };
+  const [tema, setTema] = useState(inicial.calendarioId ?? '');
   const lista = [...itens];
   if (inicial.calendarioId && !lista.some((i) => i.id === inicial.calendarioId))
     lista.unshift({ id: inicial.calendarioId, tema: inicial.calendarioTema ?? 'Tema do pedido', inicio: '', fim: '', tipos: [] });
@@ -61,8 +63,9 @@ export function EditarNaRevisao({
         </Campo>
       </div>
       <Campo rotulo="Tema do calendário" dica="Ligue o pedido a um tema que já existe no calendário, ou deixe fora do calendário.">
-        <select name="calendario_id" defaultValue={inicial.calendarioId ?? ''} className={estiloEntrada}>
+        <select name="calendario_id" value={tema} onChange={(e) => setTema(e.target.value)} className={estiloEntrada}>
           <option value="">Fora do calendário</option>
+          <option value="__novo__">Criar novo tema no calendário</option>
           {lista.map((i) => (
             <option key={i.id} value={i.id}>
               {i.tema}
@@ -70,6 +73,26 @@ export function EditarNaRevisao({
           ))}
         </select>
       </Campo>
+      {tema === '__novo__' && (
+        <fieldset className="space-y-4 rounded-lg border border-borda p-4">
+          <legend className="px-1 text-sm font-semibold">Novo tema do calendário</legend>
+          <Campo rotulo="Tema" obrigatorio>
+            <input name="novo_tema" required className={estiloEntrada} />
+          </Campo>
+          <CamposDeData tipoData="exata" />
+          <fieldset>
+            <legend className="text-sm font-semibold">Tipos de peça sugeridos</legend>
+            <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+              {TIPOS_PECA.map((t) => (
+                <label key={t} className="flex min-h-11 items-center gap-2 rounded-lg border border-borda px-3 py-2 text-sm">
+                  <input type="checkbox" name="tipos" value={t} defaultChecked={t === inicial.tipoPeca} />
+                  {NOME_TIPO_PECA[t]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        </fieldset>
+      )}
       <BotaoEnviar enviando="Salvando…" pendente={enviando}>
         Salvar alterações
       </BotaoEnviar>

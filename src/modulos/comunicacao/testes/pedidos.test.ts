@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, ErroConflito, lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
+import { PerfilPermissoes, RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '../aplicacao/calendario';
 import { salvarAntecedencia } from '../aplicacao/configuracoes';
 import {
@@ -21,7 +21,7 @@ import {
   revisarPedido,
   type DadosPedido,
 } from '../aplicacao/pedidos';
-import { HistoricoComunicacao, PedidosComunicacao } from '../dados/tabelas';
+import { CalendarioComunicacao, HistoricoComunicacao, PedidosComunicacao } from '../dados/tabelas';
 import { ErroComunicacao } from '../dominio/pedido';
 import { auditoriaDe, COMUNICACAO, COORDENACAO, como, DIRETORIA, emAprovacao as emAprovacaoEm, emRevisao as emRevisaoEm, FUNCIONARIO, item, OUTRO_FUNCIONARIO, planilhasDeComunicacao } from './apoio';
 
@@ -315,6 +315,35 @@ describe('revisão e aprovação', () => {
     await expect(editarNaRevisao(p, await c(), r.id, r.versao + 1, { calendarioId: 'inexistente' }, SEXTA)).rejects.toThrow(
       'Escolha um tema ativo do calendário ou "Fora do calendário".',
     );
+  });
+
+  it('na revisão, cria um tema novo no calendário e liga o pedido a ele', async () => {
+    const r = await emRevisao();
+    await editarNaRevisao(p, await c(), r.id, r.versao, { novoTema: item({ tema: 'Semana da Inclusão', inicio: '2026-11-30', fim: '2026-11-30' }) }, SEXTA);
+    const reg = await situacao(r.id);
+    expect(reg.calendario_tema).toBe('Semana da Inclusão');
+    expect(reg.calendario_id).toBeTruthy();
+    const criado = (await lerTabela(p, CalendarioComunicacao)).porId(reg.calendario_id!);
+    expect(criado).toMatchObject({ tema: 'Semana da Inclusão', ativo: true });
+    const h = (await historicoDe(r.id)).find((x) => x.acao === 'editar')!;
+    expect(h.comentario).toContain('calendario_id');
+    expect(h.comentario).toContain('calendario_tema');
+    expect((await auditoriaDe(p, criado!.id))[0]).toMatchObject({ acao: 'inclusao', entidade: 'CalendarioComunicacao' });
+  });
+
+  it('sem poder gerenciar o calendário ou com dados inválidos, nenhum tema é criado', async () => {
+    const r = await emRevisao();
+    const antes = async () => (await lerTabela(p, CalendarioComunicacao)).todos().length;
+    const total = await antes();
+    await expect(editarNaRevisao(p, await c(), r.id, r.versao, { titulo: ' ', novoTema: item() }, SEXTA)).rejects.toThrow('Informe o título.');
+    await expect(editarNaRevisao(p, await c(), r.id, r.versao, { novoTema: item({ tema: ' ' }) }, SEXTA)).rejects.toThrow();
+    await expect(editarNaRevisao(p, await c(FUNCIONARIO), r.id, r.versao, { novoTema: item() }, SEXTA)).rejects.toThrow(ErroPermissao);
+    // Comunicação sem a permissão de gerenciar o calendário: revisa, mas não cria tema.
+    const linha = (await lerTabela(p, PerfilPermissoes)).ativos().find((x) => x.perfil === 'comunicacao' && x.permissao === 'comunicacao.calendario.gerenciar')!;
+    await atualizar(p, PerfilPermissoes, linha.id, linha.versao, { ativo: false }, { email: DIRETORIA });
+    await expect(editarNaRevisao(p, await c(), r.id, r.versao, { novoTema: item() }, SEXTA)).rejects.toThrow(ErroPermissao);
+    expect(await antes()).toBe(total);
+    expect((await situacao(r.id)).versao).toBe(r.versao);
   });
 
   it('editar o título não é barrado por data desejada que já passou', async () => {

@@ -24,9 +24,20 @@ import {
   type RegHistorico,
   type RegPedido,
 } from '../dados/tabelas';
-import { ACOES, NOME_SITUACAO, COMENTARIO_OBRIGATORIO, conferirTransicao, ErroComunicacao, SITUACOES_FINAIS, TIPOS_PECA, type Acao, type Situacao, type TipoPeca } from '../dominio/pedido';
+import {
+  ACOES,
+  NOME_SITUACAO,
+  COMENTARIO_OBRIGATORIO,
+  conferirTransicao,
+  ErroComunicacao,
+  SITUACOES_FINAIS,
+  TIPOS_PECA,
+  type Acao,
+  type Situacao,
+  type TipoPeca,
+} from '../dominio/pedido';
 import { diaEmBrasilia, ehUrgente } from '../dominio/prazos';
-import { dataValida, itensParaPedido } from './calendario';
+import { dataValida, itensParaPedido, salvarItemCalendario, type DadosItemCalendario } from './calendario';
 import { lerAntecedencia } from './configuracoes';
 
 const PERM = {
@@ -98,7 +109,14 @@ export async function registrarMudanca(
 }
 
 /** Confere o formulário e devolve o que gravar nas colunas do pedido (sem gravar). */
-async function conferirDados(p: Planilhas, quem: Autorizador, d: DadosPedido, agora: Date, temaAtual: { id: string | null; tema: string | null } | null, permitirPassado = false) {
+async function conferirDados(
+  p: Planilhas,
+  quem: Autorizador,
+  d: DadosPedido,
+  agora: Date,
+  temaAtual: { id: string | null; tema: string | null } | null,
+  permitirPassado = false,
+) {
   const titulo = d.titulo.trim().replace(/\s+/g, ' ');
   const descricao = d.descricao.trim();
   if (!titulo) throw new ErroComunicacao('Informe o título.');
@@ -303,7 +321,10 @@ export async function editarNaRevisao(
   quem: Autorizador,
   id: string,
   versao: number,
-  m: Partial<Pick<DadosPedido, 'titulo' | 'descricao' | 'tipoPeca' | 'calendarioId' | 'dataDesejada'>>,
+  m: Partial<Pick<DadosPedido, 'titulo' | 'descricao' | 'tipoPeca' | 'calendarioId' | 'dataDesejada'>> & {
+    /** Cria este tema no calendário e liga o pedido a ele (pede a permissão de gerenciar o calendário). */
+    novoTema?: Omit<DadosItemCalendario, 'id' | 'versao'>;
+  },
   opcoes: Opcoes = {},
 ): Promise<void> {
   exigirPermissao(quem, PERM.revisar);
@@ -311,23 +332,25 @@ export async function editarNaRevisao(
   const r = await acharComVersao(p, id, versao);
   if (r.situacao !== 'em_revisao') throw new ErroComunicacao(`Esta ação não vale para um pedido em "${NOME_SITUACAO[r.situacao]}".`);
   const dataMudou = m.dataDesejada !== undefined && m.dataDesejada !== r.data_desejada;
-  const { campos } = await conferirDados(
-    p,
-    quem,
-    {
-      area: r.area,
-      calendarioId: m.calendarioId === undefined ? r.calendario_id : m.calendarioId,
-      tipoPeca: m.tipoPeca ?? r.tipo_peca,
-      titulo: m.titulo ?? r.titulo,
-      descricao: m.descricao ?? r.descricao,
-      dataDesejada: m.dataDesejada ?? r.data_desejada,
-      linkVideo: r.link_video,
-      imagemConfirmada: true,
-    },
-    agora,
-    { id: r.calendario_id, tema: r.calendario_tema },
-    !dataMudou,
-  );
+  const dadosCom = (calendarioId: string | null): DadosPedido => ({
+    area: r.area,
+    calendarioId,
+    tipoPeca: m.tipoPeca ?? r.tipo_peca,
+    titulo: m.titulo ?? r.titulo,
+    descricao: m.descricao ?? r.descricao,
+    dataDesejada: m.dataDesejada ?? r.data_desejada,
+    linkVideo: r.link_video,
+    imagemConfirmada: true,
+  });
+  const conferir = (calendarioId: string | null) =>
+    conferirDados(p, quem, dadosCom(calendarioId), agora, { id: r.calendario_id, tema: r.calendario_tema }, !dataMudou);
+  let calendarioId = m.calendarioId === undefined ? r.calendario_id : m.calendarioId;
+  if (m.novoTema) {
+    exigirPermissao(quem, 'comunicacao.calendario.gerenciar');
+    await conferir(calendarioId); // confere o resto antes de criar o tema
+    calendarioId = (await salvarItemCalendario(p, quem, m.novoTema, { agora })).id;
+  }
+  const { campos } = await conferir(calendarioId);
   // A urgência só é refeita quando a data muda; a confirmação de imagem fica como quem pediu deu.
   const mudancas: Record<string, unknown> = {
     titulo: campos.titulo,
@@ -339,7 +362,8 @@ export async function editarNaRevisao(
     ...(dataMudou ? { urgente: campos.urgente } : {}),
   };
   // Sem nada de novo, não grava (nem muda a versão).
-  if (Object.entries(mudancas).every(([c, v]) => v === (r as unknown as Record<string, unknown>)[c])) throw new ErroComunicacao('Nenhuma alteração para salvar.');
+  if (Object.entries(mudancas).every(([c, v]) => v === (r as unknown as Record<string, unknown>)[c]))
+    throw new ErroComunicacao('Nenhuma alteração para salvar.');
   const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, mudancas, autoriaDe(quem, agora));
   await registrarMudanca(p, quem, r, 'editar', 'em_revisao', `Colunas alteradas: ${colunasAlteradas.join(', ')}`, agora, colunasAlteradas);
 }
@@ -401,8 +425,7 @@ export async function listarPedidos(p: Planilhas, quem: Autorizador, visao: Visa
   if (visao === 'meus' ? !quem.temPermissaoAlgumEscopo(PERM.solicitar) : !quem.temPermissao(visao === 'todos' ? PERM.verTodos : FILA[visao].permissao))
     throw new ErroPermissao();
   const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
-  const filtro = (r: RegPedido) =>
-    visao === 'meus' ? r.solicitante === quem.email : visao === 'todos' ? true : FILA[visao].situacoes.includes(r.situacao);
+  const filtro = (r: RegPedido) => (visao === 'meus' ? r.solicitante === quem.email : visao === 'todos' ? true : FILA[visao].situacoes.includes(r.situacao));
   return pedidos
     .ativos()
     .filter(filtro)

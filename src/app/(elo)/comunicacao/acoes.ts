@@ -209,19 +209,36 @@ export async function acaoJuntarPedido(f: FormData) {
   );
 }
 
+const NOVO_TEMA = '__novo__';
+
 export async function acaoEditarNaRevisao(_: EstadoPedido, f: FormData): Promise<EstadoPedido> {
   const { usuario, app } = await contexto();
   const id = texto(f, 'id');
+  const novo = texto(f, 'calendario_id') === NOVO_TEMA;
+  const tipoData = texto(f, 'tipo_data') === 'periodo' ? 'periodo' : 'exata';
+  const inicio = texto(f, 'inicio');
+  const novoTema = {
+    tema: texto(f, 'novo_tema'),
+    tipoData: tipoData as 'exata' | 'periodo',
+    inicio,
+    fim: tipoData === 'exata' ? inicio : texto(f, 'fim'),
+    tipos: f.getAll('tipos').map(String).filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
+    observacao: null,
+  };
   try {
     await editarNaRevisao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), {
       titulo: texto(f, 'titulo'),
       descricao: texto(f, 'descricao'),
       tipoPeca: texto(f, 'tipo_peca') as TipoPeca,
-      calendarioId: texto(f, 'calendario_id') || null,
+      calendarioId: novo ? null : texto(f, 'calendario_id') || null,
       dataDesejada: texto(f, 'data_desejada'),
+      ...(novo ? { novoTema } : {}),
     });
   } catch (erro) {
-    if (conhecido(erro)) return { erro: (erro as Error).message };
+    if (conhecido(erro)) {
+      const aviso = novo && erro instanceof ErroConflito ? ' Se o tema novo chegou a ser criado, ele já está no calendário: abra o pedido de novo e escolha-o na lista.' : '';
+      return { erro: (erro as Error).message + aviso };
+    }
     throw erro;
   }
   esquecerAlertas();
