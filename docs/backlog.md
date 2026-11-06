@@ -2,10 +2,19 @@
 
 - Atualizado em: 06/11/2026
 - Dono: Diretoria. A ordem de prioridade é decidida pela Diretoria.
-- Fonte: as especificações em `docs/` e `src/modulos/*/especificacao.md` e o
-  histórico de Pull Requests. Cada item aponta para o documento que o detalha.
+- Fonte: as especificações em `docs/` e `src/modulos/*/especificacao.md`, inclusive as
+  que estão em Pull Requests abertos, e o histórico de Pull Requests. Cada item aponta
+  para o documento que o detalha.
 
 Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir na prévia.
+
+## Em andamento
+
+| Item | Frente | Situação | Detalhe |
+| --- | --- | --- | --- |
+| Avaliação de Serviços Sociais — entrega 1 | Avaliação (Fase 2) | Especificação aprovada em 06/11/2026. Avaliação inicial e anual, comparativo da pessoa, painel por serviço atual, impressão e fundamento legal. Aguarda conferência na prévia e aprovação | PR #39; `src/modulos/avaliacao/especificacao.md`; ADR-016 |
+| Comunicação fase 1 — entrega 1 de 5 | Comunicação | Especificação aprovada em 06/11/2026. Calendário, antecedência mínima e cor do app. Aguarda conferência na prévia e aprovação | PR #40; `src/modulos/comunicacao/especificacao.md` |
+| Comunicação fase 1 — entregas 2 a 5 | Comunicação | Já planejadas: 2) pedidos, revisão e aprovação; 3) fotos e documentos; 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` (no PR #40) |
 
 ## Agora
 
@@ -27,7 +36,8 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | --- | --- | --- | --- |
 | Ligar a requisição à execução do orçamento | Requisições | Depende da Entrega 1C pronta | `src/modulos/requisicoes/especificacao.md` (Depois) |
 | Aviso por e-mail das requisições | Requisições | Precisa de ligação com o Gmail | `src/modulos/requisicoes/especificacao.md` (Depois) |
-| Fase 2 — Avaliação | Avaliação | Motor de avaliação e módulo da Assistência Social, com o primeiro ciclo da Apae Rural. Para avançar: ciclo fechado e enquadramentos justificados | `docs/especificacao-plataforma.md` (Roteiro); ADR-006 e ADR-007 |
+| Avaliação — próximas entregas | Avaliação (Fase 2) | A combinar: ligar a avaliação ao Cadastro Único de Pessoas (`pessoa_id`) e usar o motor de avaliação (ADR-006) para instrumentos com escala. Critério da Fase 2: ciclo fechado e enquadramentos justificados | `src/modulos/avaliacao/especificacao.md` (Entregas, no PR #39); ADR-006 e ADR-007 |
+| Comunicação fases 2 a 4 | Comunicação | 2) e-mail automático e avisos por e-mail; 3) Instagram automático; 4) resultado das postagens | `src/modulos/comunicacao/especificacao.md` (no PR #40) |
 | Fase 3 — Expansão | Novos apps | Educação, Saúde/CER e novos módulos | `docs/especificacao-plataforma.md` (Roteiro) |
 
 ## Pendências da Diretoria (fora do código)
