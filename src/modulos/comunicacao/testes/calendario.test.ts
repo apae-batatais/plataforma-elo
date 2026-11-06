@@ -4,10 +4,10 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
-import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { ErroConflito, lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import { itemDoCalendario, itensParaPedido, listarCalendario, mudarSituacaoItemCalendario, salvarItemCalendario } from '../aplicacao/calendario';
-import { lerAntecedencia, salvarAntecedencia } from '../aplicacao/configuracoes';
+import { lerAntecedencia, lerAntecedenciaComVersao, salvarAntecedencia } from '../aplicacao/configuracoes';
 import { CalendarioComunicacao, ParametrosComunicacao, PedidosComunicacao } from '../dados/tabelas';
 import { popularComunicacaoFicticia } from '../dados/ficticios';
 import { ErroComunicacao } from '../dominio/pedido';
@@ -78,7 +78,7 @@ describe('itens do calendário', () => {
     expect(a.map((x) => x.acao)).toEqual(['inclusao', 'alteracao']);
     expect(a[1].detalhes).toBe('{"colunas":["tema"]}');
     // Versão velha: conflito, nada se perde.
-    await expect(salvarItemCalendario(p, quem, { ...item({ tema: 'Velho' }), id, versao: 1 })).rejects.toThrow();
+    await expect(salvarItemCalendario(p, quem, { ...item({ tema: 'Velho' }), id, versao: 1 })).rejects.toThrow(ErroConflito);
   });
 
   it('item desativado some da escolha, mas não é apagado', async () => {
@@ -89,9 +89,13 @@ describe('itens do calendário', () => {
     expect((await itensParaPedido(p, await como(p, FUNCIONARIO), HOJE)).map((i) => i.id)).not.toContain(id);
     expect((await lerTabela(p, CalendarioComunicacao)).porId(id)?.ativo).toBe(false);
     expect((await auditoriaDe(p, id)).map((x) => x.acao)).toEqual(['inclusao', 'encerramento']);
+    // Repetir o mesmo estado dá uma resposta clara, não "não encontrado".
+    await expect(mudarSituacaoItemCalendario(p, await como(p, COMUNICACAO), id, 2, false)).rejects.toThrow('Este item já está desativado.');
     // Reativar volta a aparecer.
     await mudarSituacaoItemCalendario(p, await como(p, COMUNICACAO), id, 2, true, HOJE);
     expect((await itensParaPedido(p, await como(p, FUNCIONARIO), HOJE)).map((i) => i.id)).toContain(id);
+    await expect(mudarSituacaoItemCalendario(p, await como(p, COMUNICACAO), id, 3, true)).rejects.toThrow('Este item já está ativo.');
+    await expect(mudarSituacaoItemCalendario(p, await como(p, COMUNICACAO), 'nao-existe', 1, true)).rejects.toThrow('Item do calendário não encontrado.');
   });
 
   it('itens já encerrados não aparecem para escolha, e os dos tipos vêm como lista', async () => {
@@ -145,10 +149,29 @@ describe('antecedência mínima', () => {
     expect(await lerAntecedencia(p)).toBe(3);
   });
 
+  it('com a linha já salva, exige a versão vista e recusa gravação em cima de outra', async () => {
+    const quem = await como(p, COORDENACAO);
+    await salvarAntecedencia(p, quem, 3);
+    const vista = await lerAntecedenciaComVersao(p);
+    expect(vista).toEqual({ dias: 3, versao: 1 });
+    await expect(salvarAntecedencia(p, quem, 4)).rejects.toThrow(ErroComunicacao);
+    await salvarAntecedencia(p, quem, 4, { versao: vista.versao });
+    // Outra pessoa salvou antes: quem ainda tem a versão velha leva conflito e nada é perdido.
+    await expect(salvarAntecedencia(p, quem, 9, { versao: vista.versao })).rejects.toThrow(ErroConflito);
+    await expect(salvarAntecedencia(p, quem, 4, { versao: vista.versao })).rejects.toThrow(ErroConflito);
+    expect(await lerAntecedencia(p)).toBe(4);
+  });
+
+  it('valor gravado fora de 0 a 30 é ignorado e vale o padrão', async () => {
+    const { inserir } = await import('@/nucleo/armazenamento/tabela');
+    await inserir(p, ParametrosComunicacao, { chave: 'antecedencia_minima', valor: 99 }, { email: 'x@exemplo.local', agora: () => new Date() });
+    expect(await lerAntecedencia(p)).toBe(5);
+  });
+
   it('guarda uma linha só, aceita 0 e audita só a coluna', async () => {
     const quem = await como(p, COORDENACAO);
     await salvarAntecedencia(p, quem, 3);
-    await salvarAntecedencia(p, quem, 0);
+    await salvarAntecedencia(p, quem, 0, { versao: 1 });
     const linhas = (await lerTabela(p, ParametrosComunicacao)).ativos().filter((x) => x.chave === 'antecedencia_minima');
     expect(linhas).toHaveLength(1);
     expect(await lerAntecedencia(p)).toBe(0);

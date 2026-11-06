@@ -90,7 +90,8 @@ export async function mudarSituacaoItemCalendario(p: Planilhas, quem: Autorizado
   const agora = opcoes.agora ?? new Date();
   const [calendario] = await lerTabelas(p, [CalendarioComunicacao] as const);
   const atual = calendario.porId(id);
-  if (!atual || atual.ativo === ativo) throw new ErroComunicacao('Item do calendário não encontrado.');
+  if (!atual) throw new ErroComunicacao('Item do calendário não encontrado.');
+  if (atual.ativo === ativo) throw new ErroComunicacao(ativo ? 'Este item já está ativo.' : 'Este item já está desativado.');
   await atualizar(p, CalendarioComunicacao, id, versao, { ativo }, { email: quem.email, agora: () => agora });
   await registrarAuditoria(
     p,

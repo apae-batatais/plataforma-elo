@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { lerAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
+import { lerAntecedenciaComVersao } from '@/modulos/comunicacao/aplicacao/configuracoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
@@ -15,7 +15,7 @@ export default async function Configuracoes() {
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissao('comunicacao.configurar')) redirect('/comunicacao');
   const { planilhas } = await obterAplicacao();
-  const dias = await lerAntecedencia(planilhas);
+  const { dias, versao } = await lerAntecedenciaComVersao(planilhas);
 
   return (
     <div className="space-y-6">
@@ -30,6 +30,7 @@ export default async function Configuracoes() {
         className="max-w-2xl"
       >
         <form action={acaoSalvarAntecedencia} className="space-y-4">
+          <input type="hidden" name="versao" value={versao ?? ''} />
           <Campo rotulo="Dias úteis" obrigatorio dica="De 0 a 30. Conta de segunda a sexta, sem feriados nesta fase.">
             <input
               type="number"

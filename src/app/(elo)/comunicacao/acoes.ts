@@ -93,10 +93,11 @@ export async function acaoReativarItemCalendario(f: FormData) {
 
 export async function acaoSalvarAntecedencia(f: FormData) {
   const t = texto(f, 'dias').replace(',', '.');
+  const v = texto(f, 'versao');
   await executar(
     () => '/comunicacao/configuracoes',
     '/comunicacao/configuracoes',
     'Antecedência mínima salva.',
-    ({ usuario, app }) => salvarAntecedencia(app.planilhas, usuario.autorizador, t === '' ? Number.NaN : Number(t)),
+    ({ usuario, app }) => salvarAntecedencia(app.planilhas, usuario.autorizador, t === '' ? Number.NaN : Number(t), { versao: v === '' ? null : Number(v) }),
   );
 }

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { itemDoCalendario, listarCalendario, tiposDoItem } from '@/modulos/comunicacao/aplicacao/calendario';
 import { Controles, FormularioItem, VisaoLista, VisaoMes, type ItemDaTela, type Visao } from '@/modulos/comunicacao/telas/calendario';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
-import { limitesDoMes, mesValido, semanasDoMes, somarMeses } from '@/modulos/comunicacao/telas/mes';
+import { limitesDoMes, mesValido, nomeDoMes, semanasDoMes, somarMeses } from '@/modulos/comunicacao/telas/mes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { IconeMais } from '@/ui/icones';
@@ -83,10 +83,15 @@ export default async function Calendario({ searchParams }: { searchParams: Promi
       <Controles visao={visao} mes={mes} anterior={somarMeses(mes, -1)} seguinte={somarMeses(mes, 1)} atual={hoje.slice(0, 7)} />
 
       {visao === 'mes' ? (
-        <>
+        <div className="space-y-6">
           <VisaoMes mes={mes} itens={itens} hoje={hoje} />
-          <VisaoLista itens={doMes} visao={visao} mes={mes} desativar={acaoDesativarItemCalendario} reativar={acaoReativarItemCalendario} soNoCelular />
-        </>
+          <section aria-labelledby="t-itens-do-mes" className="space-y-3">
+            <h2 id="t-itens-do-mes" className="text-base font-semibold">
+              Itens de {nomeDoMes(mes)}
+            </h2>
+            <VisaoLista itens={doMes} visao={visao} mes={mes} desativar={acaoDesativarItemCalendario} reativar={acaoReativarItemCalendario} />
+          </section>
+        </div>
       ) : (
         <VisaoLista itens={doMes} visao={visao} mes={mes} desativar={acaoDesativarItemCalendario} reativar={acaoReativarItemCalendario} />
       )}

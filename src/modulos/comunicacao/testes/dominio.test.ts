@@ -51,6 +51,11 @@ describe('dias úteis e urgência', () => {
     expect(diaEmBrasilia(new Date('2026-11-07T01:30:00Z'))).toBe('2026-11-06'); // 22h30 de sexta em Brasília
   });
 
+  it('a virada do dia em Brasília acontece às 03h00 UTC', () => {
+    expect(diaEmBrasilia(new Date('2026-11-07T02:59:59Z'))).toBe('2026-11-06');
+    expect(diaEmBrasilia(new Date('2026-11-07T03:00:00Z'))).toBe('2026-11-07');
+  });
+
   it('urgência em dias úteis', () => {
     expect(somarDiasUteis('2026-11-06', 5)).toBe('2026-11-13');
     expect(ehUrgente('2026-11-12', '2026-11-06', 5)).toBe(true);

@@ -147,25 +147,22 @@ export function VisaoLista({
   mes,
   desativar,
   reativar,
-  soNoCelular = false,
 }: {
   itens: ItemDaTela[];
   visao: Visao;
   mes: string;
   desativar: Acao;
   reativar: Acao;
-  /** Na visão de mês, a lista aparece só no celular (a grade não cabe). */
-  soNoCelular?: boolean;
 }) {
   if (itens.length === 0) {
     return (
-      <p className={`rounded-cartao border border-borda bg-superficie px-5 py-4 text-sm text-texto-suave ${soNoCelular ? 'md:hidden' : ''}`}>
+      <p className="rounded-cartao border border-borda bg-superficie px-5 py-4 text-sm text-texto-suave">
         Nenhum item neste mês. Use “Adicionar item”.
       </p>
     );
   }
   return (
-    <ul className={`space-y-3 ${soNoCelular ? 'md:hidden' : ''}`} aria-label="Itens do calendário">
+    <ul className="space-y-3" aria-label="Itens do calendário">
       {itens.map((i) => (
         <li key={i.id} className={`rounded-cartao border border-borda bg-superficie p-4 ${i.ativo ? '' : 'opacity-80'}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">

@@ -14,7 +14,7 @@ export default async function MeusPedidos() {
     <div className="space-y-6">
       <CabecalhoPagina trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Comunicação' }]} titulo="Meus pedidos" />
       <EstadoVazio
-        titulo="Os pedidos de publicação chegam na próxima entrega"
+        titulo="Em breve você poderá pedir publicações por aqui"
         acao={
           cuidaDoCalendario ? (
             <LinkBotao href="/comunicacao/calendario" variante="secundario">
@@ -23,7 +23,7 @@ export default async function MeusPedidos() {
           ) : undefined
         }
       >
-        Por enquanto, a Comunicação está montando o calendário de temas. Em breve você poderá pedir uma publicação e acompanhar cada pedido aqui.
+        Por enquanto, a Comunicação está montando o calendário de temas. Quando estiver pronto, você poderá pedir uma publicação e acompanhar cada pedido nesta página.
       </EstadoVazio>
     </div>
   );
