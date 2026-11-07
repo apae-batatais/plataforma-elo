@@ -12,7 +12,7 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { APPS_PLANEJADOS } from '@/plataforma/apps-planejados';
 import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
-import { IconeAreas, IconeAtencao, IconeChave, IconeCerto, IconeComunicacao, IconeOrcamento, IconePessoas, IconeRequisicao, IconeSeta, IconeServicos } from '@/ui/icones';
+import { IconeAreas, IconeAtencao, IconeAvaliacao, IconeChave, IconeCerto, IconeComunicacao, IconeOrcamento, IconePessoas, IconeRequisicao, IconeSeta, IconeServicos } from '@/ui/icones';
 import { appDoCaminho } from '@/ui/cor-do-app';
 import { CabecalhoPagina } from '@/ui/pagina';
 
@@ -269,7 +269,7 @@ export default async function Portal() {
             <CartaoApp
               key={x.id}
               href={x.itens[0]?.href ?? x.rota}
-              icone={x.id === 'requisicoes' ? <IconeRequisicao tamanho={24} /> : x.id === 'comunicacao' ? <IconeComunicacao tamanho={24} /> : <IconeOrcamento tamanho={24} />}
+              icone={x.id === 'requisicoes' ? <IconeRequisicao tamanho={24} /> : x.id === 'avaliacao' ? <IconeAvaliacao tamanho={24} /> : x.id === 'comunicacao' ? <IconeComunicacao tamanho={24} /> : <IconeOrcamento tamanho={24} />}
               nome={x.nome}
               descricao={x.descricao}
               atalhos={x.itens.slice(1, 4)}

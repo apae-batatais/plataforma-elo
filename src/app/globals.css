@@ -191,6 +191,26 @@
   }
 }
 
+[data-app='avaliacao'] {
+  --destaque: #8c4a2f;
+  --destaque-forte: #743d27;
+  --destaque-suave: #f7efeb;
+}
+
+:root[data-tema='escuro'] [data-app='avaliacao'] {
+  --destaque: #e0a07e;
+  --destaque-forte: #ebb898;
+  --destaque-suave: #3a2a24;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='avaliacao'] {
+    --destaque: #e0a07e;
+    --destaque-forte: #ebb898;
+    --destaque-suave: #3a2a24;
+  }
+}
+
 [data-app='comunicacao'] {
   --destaque: #0369a1;
   --destaque-forte: #025684;
@@ -211,9 +231,79 @@
   }
 }
 
-/* Reservadas na identidade visual para os próximos apps:
-   Questionários: magenta #a8197f (claro) / #f27acf (escuro)
-   Avaliação Diagnóstica: cobre #8c4a2f (claro) / #e0a07e (escuro) */
+/* Reservada na identidade visual para o próximo app:
+   Questionários: magenta #a8197f (claro) / #f27acf (escuro) */
+
+/*
+ * Folha: página feita para imprimir ou salvar em PDF (ficha, relatório).
+ * Fica sempre no tema claro, como papel, também na tela. A cor de destaque
+ * continua a do app (cada app declara a sua para .folha abaixo).
+ */
+.folha {
+  color-scheme: light;
+  --fundo: #ffffff;
+  --superficie: #ffffff;
+  --superficie-2: #f4f5f8;
+  --borda: #dde2ec;
+  --borda-forte: #c3cad8;
+  --texto: #1a1f2c;
+  --texto-suave: #5b6478;
+  --destaque: #44597d;
+  --destaque-forte: #384967;
+  --destaque-suave: #f4f5f7;
+  --sobre-destaque: #ffffff;
+  --elo-1: #2b3445;
+  --elo-2: #8a93a6;
+  --sucesso: #0b7a53;
+  --sucesso-fundo: #f0f7f5;
+  --aviso: #9a6700;
+  --aviso-fundo: #f9f6f0;
+  --erro: #d12d4a;
+  --erro-fundo: #fcf2f4;
+  background: #ffffff;
+  color: var(--texto);
+}
+
+[data-app='avaliacao'] .folha {
+  --destaque: #8c4a2f;
+  --destaque-forte: #743d27;
+  --destaque-suave: #f7efeb;
+}
+
+/*
+ * Impressão: só o conteúdo (a casca some), folha A4 e cores como na tela —
+ * os gráficos são feitos de fundos coloridos, que o navegador apaga por padrão.
+ */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  /* Folga própria da folha: garante pelo menos 0,5 cm mesmo quando o navegador
+     ignora a margem da página (ou a pessoa escolhe "Margens: nenhuma"), e se
+     repete em cada página impressa. */
+  .folha {
+    padding: 6mm 5mm !important;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  :root,
+  :root[data-tema='escuro'] {
+    color-scheme: light !important;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
 
 @theme inline {
   --color-fundo: var(--fundo);

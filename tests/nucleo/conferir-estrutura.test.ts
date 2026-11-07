@@ -14,7 +14,7 @@ import { navegacaoDoUsuario } from '@/plataforma/navegacao';
 import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
 
 async function montar() {
-  const p: Planilhas = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha', 'requisicoes', 'comunicacao']), idDe: (c) => c };
+  const p: Planilhas = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha', 'requisicoes', 'avaliacao_assistencia', 'comunicacao']), idDe: (c) => c };
   await prepararEstrutura(p, ESTRUTURA_DOS_MODULOS);
   await popularDadosFicticios(p);
   return p;
@@ -64,7 +64,7 @@ describe('conferência da estrutura', () => {
   });
 
   it('planilha de antes da atualização: aponta o que falta e o menu volta depois de preparar', async () => {
-    const vazia: Planilhas = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha', 'requisicoes', 'comunicacao']), idDe: (c) => c };
+    const vazia: Planilhas = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha', 'requisicoes', 'avaliacao_assistencia', 'comunicacao']), idDe: (c) => c };
     // Prepara só com o Núcleo (como uma versão antiga, sem as permissões do Orçamento).
     await prepararEstrutura(vazia, { tabelas: ESTRUTURA_DOS_MODULOS.tabelas });
     await popularDadosFicticios(vazia);
