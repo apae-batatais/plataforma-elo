@@ -21,13 +21,13 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Especificar a Entrega 1C (Execução) | Orçamento | Detalhar a execução para aprovação antes de construir: importação do realizado de 2026 e 2027 sem duplicar lançamentos, fila "a classificar", painel, indicador `execucao_orcamentaria` e prestação de contas por fonte | `src/modulos/orcamento/especificacao.md` (Entrega 1C) |
+| Aprovar a especificação das Entregas 1C, 1D e 1E | Orçamento | Rascunho para aprovação (06/11/2026): 1C Execução (realizado importado do WK Radar, recursos livres, contra o previsto), 1D Tesouraria (saldos por conta, livre, reserva e vinculado, projeção de fim de ano) e 1E Histórico (2017 em diante) | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` (PR #44) |
 
 ## Próximo
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Construir a Entrega 1C (Execução) | Orçamento | Construção depois da especificação aprovada. Fecha a Fase 1, cujo critério é "a execução confere com a planilha" | `src/modulos/orcamento/especificacao.md` |
+| Construir as Entregas 1C, 1D e 1E | Orçamento | Construção depois da especificação aprovada. A 1C fecha a Fase 1, cujo critério é "a execução confere com a planilha" | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
 | Capacidade de Indicadores | Capacidades | Cálculo e painel de indicadores compartilhados entre os apps. A pasta `src/capacidades/indicadores` ainda está vazia | `docs/especificacao-plataforma.md` (Situação da Fase 0) |
 | Entrega R3 da Rede | Rede | Guia "Como trazer uma instituição para o Elo", termo de adesão (LGPD) e roteiro de transferência da Operadora. É documentação, não código | `docs/especificacao-rede.md` (Entregas) |
 
