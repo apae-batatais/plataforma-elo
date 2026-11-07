@@ -10,7 +10,7 @@
  * - O arquivo vai direto para a pasta de anexos; o pedido só guarda a referência.
  */
 import { useEffect, useRef, useState } from 'react';
-import { conferirArquivo, LIMITES_ANEXOS, mb, tipoDoArquivo, type TipoAnexo } from '../dominio/anexos';
+import { conferirArquivo, LIMITES_ANEXOS, mb, nomeDaFotoReduzida, tipoDoArquivo, type TipoAnexo } from '../dominio/anexos';
 import { IconeFechar } from '@/ui/icones';
 
 export interface AnexoNaFicha {
@@ -115,7 +115,7 @@ export function AnexosDoPedido({
     const chave = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previa = tipo === 'foto' ? URL.createObjectURL(corpo) : null;
     if (previa) previas.current.add(previa);
-    mudar((l) => [...l, { chave, tipo, nome: arquivo.name || (tipo === 'foto' ? 'foto.jpg' : 'documento'), arquivoId: null, previa, progresso: 0, erro: null }]);
+    mudar((l) => [...l, { chave, tipo, nome: tipo === 'foto' ? nomeDaFotoReduzida(arquivo.name) : arquivo.name || 'documento', arquivoId: null, previa, progresso: 0, erro: null }]);
     const r = await iniciar({ tipo, mime, tamanho: corpo.size });
     if (!r.url) return atualizar(chave, { erro: r.erro ?? 'Não foi possível enviar.' });
     try {
@@ -187,7 +187,7 @@ export function AnexosDoPedido({
               </div>
               <div className="space-y-1 px-2 py-1.5 text-xs">
                 <p className="truncate font-semibold" title={a.nome}>
-                  {a.tipo === 'foto' ? 'Foto' : a.nome}
+                  {a.nome}
                 </p>
                 {a.erro ? (
                   <p className="text-erro">{a.erro}</p>

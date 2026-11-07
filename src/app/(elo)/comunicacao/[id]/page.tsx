@@ -154,7 +154,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
                   </a>
                 )}
                 <p className="truncate px-3 py-1.5 text-xs text-texto-suave" title={a.nome}>
-                  {a.tipo === 'foto' ? 'Foto' : a.nome} ·{' '}
+                  {a.nome} ·{' '}
                   {a.tamanho < 1024 * 1024
                     ? `${Math.max(1, Math.round(a.tamanho / 1024))} KB`
                     : `${(a.tamanho / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`}

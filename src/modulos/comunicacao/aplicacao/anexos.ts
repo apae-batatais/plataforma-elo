@@ -12,7 +12,7 @@ import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { atualizarVarios, inserirRegistros, lerTabelas, type Planilhas, type TabelaLida } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { AnexosComunicacao, PedidosComunicacao, type RegAnexo } from '../dados/tabelas';
-import { conferirArquivo, conferirQuantidade, extensaoDoMime, type TipoAnexo } from '../dominio/anexos';
+import { conferirArquivo, conferirQuantidade, extensaoDoMime, limparNomeArquivo, type TipoAnexo } from '../dominio/anexos';
 import { ErroComunicacao } from '../dominio/pedido';
 import { diaEmBrasilia } from '../dominio/prazos';
 
@@ -27,6 +27,8 @@ export const TRECHO_MAXIMO = 4 * 1024 * 1024;
 export interface AnexoPedido {
   arquivoId: string;
   tipo: TipoAnexo;
+  /** Nome original do arquivo (só em envio novo); é limpo antes de guardar. */
+  nome?: string;
 }
 
 type LinhaAnexo = { tipo: TipoAnexo; arquivo_id: string; nome: string; mime: string; tamanho: number };
@@ -91,7 +93,7 @@ export async function conferirAnexosDoPedido(
     }
     erros.push(...conferirArquivo({ tipo: a.tipo, mime: f.tipo, tamanho: f.tamanho }));
     finais.push({ tipo: a.tipo });
-    novos.push({ tipo: a.tipo, arquivo_id: f.id, nome: f.nome.slice(0, 120), mime: f.tipo, tamanho: f.tamanho });
+    novos.push({ tipo: a.tipo, arquivo_id: f.id, nome: limparNomeArquivo(a.nome, f.nome), mime: f.tipo, tamanho: f.tamanho });
   }
   if (erros.length) throw new ErroComunicacao([...new Set(erros)].join(' '));
   const tirados = atuais.filter((a) => !vistos.has(a.arquivo_id));
@@ -140,7 +142,7 @@ export async function iniciarEnvioAnexoComunicacao(
   if (!arquivos) throw new ErroComunicacao('Fotos e documentos ainda não estão ativos nesta instituição.');
   const erros = conferirArquivo(a);
   if (erros.length) throw new ErroComunicacao(erros.join(' '));
-  // Nome sem dados pessoais: só o dia, o tipo e um código curto.
+  // Nome do arquivo na pasta do Drive sem dados pessoais: só o dia, o tipo e um código curto (o nome original fica só no pedido).
   const nome = `comunicacao-${diaEmBrasilia(new Date())}-${a.tipo}-${Date.now().toString(36)}.${extensaoDoMime(a.mime)}`;
   return arquivos.iniciarEnvio({ nome, tipo: a.mime, tamanho: a.tamanho, origem: a.origem });
 }

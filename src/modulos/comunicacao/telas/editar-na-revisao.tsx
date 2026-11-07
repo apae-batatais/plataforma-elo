@@ -46,7 +46,7 @@ export function EditarNaRevisao({
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="versao" value={versao} />
       {iniciarEnvio && (
-        <input type="hidden" name="anexos" value={JSON.stringify(anexos.filter((a) => a.arquivoId).map((a) => ({ arquivoId: a.arquivoId, tipo: a.tipo })))} />
+        <input type="hidden" name="anexos" value={JSON.stringify(anexos.filter((a) => a.arquivoId).map((a) => ({ arquivoId: a.arquivoId, tipo: a.tipo, nome: a.nome })))} />
       )}
       {estado.erro && (
         <Aviso tipo="erro" titulo="Não foi possível salvar">

@@ -150,7 +150,7 @@ export function FormularioPedido({
       <input type="hidden" name="calendario_id" value={tema} />
       {/* Só os arquivos já enviados; sem a pasta de anexos ativa, o campo não existe e os anexos ficam como estão. */}
       {iniciarEnvio && (
-        <input type="hidden" name="anexos" value={JSON.stringify(anexos.filter((a) => a.arquivoId).map((a) => ({ arquivoId: a.arquivoId, tipo: a.tipo })))} />
+        <input type="hidden" name="anexos" value={JSON.stringify(anexos.filter((a) => a.arquivoId).map((a) => ({ arquivoId: a.arquivoId, tipo: a.tipo, nome: a.nome })))} />
       )}
       {estado.erro && (
         <Aviso tipo="erro" titulo="Não foi possível enviar">

@@ -10,7 +10,7 @@ import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import { abrirAnexoComunicacao, iniciarEnvioAnexoComunicacao, lerAnexoComunicacao, TRECHO_MAXIMO } from '../aplicacao/anexos';
 import { detalharPedido, editarNaRevisao, enviarPedido, reenviarPedido, revisarPedido, type DadosPedido } from '../aplicacao/pedidos';
 import { AnexosComunicacao, HistoricoComunicacao, PedidosComunicacao } from '../dados/tabelas';
-import { conferirArquivo, conferirQuantidade, LIMITES_ANEXOS, tipoDoArquivo, type TipoAnexo } from '../dominio/anexos';
+import { conferirArquivo, conferirQuantidade, LIMITES_ANEXOS, limparNomeArquivo, nomeDaFotoReduzida, tipoDoArquivo, type TipoAnexo } from '../dominio/anexos';
 import { ErroComunicacao } from '../dominio/pedido';
 import { COMUNICACAO, como, FUNCIONARIO, OUTRO_FUNCIONARIO, planilhasDeComunicacao } from './apoio';
 
@@ -26,10 +26,10 @@ beforeEach(async () => {
 });
 
 /** Sobe um arquivo fictício pelo mesmo caminho do navegador e devolve a ligação ao pedido. */
-async function subir(tipo: TipoAnexo = 'foto', mime = tipo === 'foto' ? 'image/jpeg' : 'application/pdf', bytes = 100) {
+async function subir(tipo: TipoAnexo = 'foto', mime = tipo === 'foto' ? 'image/jpeg' : 'application/pdf', bytes = 100, nome?: string) {
   const { url } = await iniciarEnvioAnexoComunicacao(p, await como(p, FUNCIONARIO), arq, { tipo, mime, tamanho: bytes, origem: 'http://localhost' });
   const guardado = arq.receber(url.replace('/envio/', ''), new Uint8Array(bytes).fill(7));
-  return { arquivoId: guardado.id, tipo };
+  return { arquivoId: guardado.id, tipo, ...(nome === undefined ? {} : { nome }) };
 }
 
 function pedido(x: Partial<DadosPedido> = {}): DadosPedido & { nomeSolicitante: string } {
@@ -48,6 +48,7 @@ function pedido(x: Partial<DadosPedido> = {}): DadosPedido & { nomeSolicitante: 
   };
 }
 const envia = async (x: Partial<DadosPedido> = {}, email = FUNCIONARIO) => enviarPedido(p, await como(p, email), pedido(x), { ...SEXTA, arquivos: arq });
+const historicoDe = async (id: string) => (await lerTabela(p, HistoricoComunicacao)).todos().filter((h) => h.pedido_id === id);
 const linhas = async (id: string) => (await lerTabela(p, AnexosComunicacao)).todos().filter((a) => a.pedido_id === id);
 const pedidoDe = async (id: string) => (await lerTabela(p, PedidosComunicacao)).porId(id)!;
 
@@ -89,6 +90,57 @@ describe('regras do arquivo', () => {
   it('aceita até 5 arquivos', () => {
     expect(conferirQuantidade(new Array(5).fill({}))).toEqual([]);
     expect(conferirQuantidade(new Array(6).fill({}))).toEqual(['Cada pedido aceita até 5 arquivos.']);
+  });
+});
+
+describe('nome original do arquivo', () => {
+  it('limpa o nome: caminho, controle, espaços, 120 caracteres com a extensão, vazio usa o gerado', () => {
+    const g = 'comunicacao-gerado.pdf';
+    expect(limparNomeArquivo('C:\\fotos\\a.pdf', g)).toBe('a.pdf');
+    expect(limparNomeArquivo('/home/x/../Cartaz  da   festa.docx', g)).toBe('Cartaz da festa.docx');
+    expect(limparNomeArquivo('  a\u0000b\tc.pdf ', g)).toBe('a b c.pdf');
+    const longo = limparNomeArquivo(`${'a'.repeat(200)}.pdf`, g);
+    expect(longo).toHaveLength(120);
+    expect(longo.endsWith('.pdf')).toBe(true);
+    expect(limparNomeArquivo('', g)).toBe(g);
+    expect(limparNomeArquivo('   ', g)).toBe(g);
+    expect(limparNomeArquivo('C:\\fotos\\', g)).toBe(g);
+    expect(limparNomeArquivo('..', g)).toBe(g);
+    expect(limparNomeArquivo(undefined, g)).toBe(g);
+  });
+
+  it('foto reduzida para JPG mantém o nome-base com a extensão real', () => {
+    expect(nomeDaFotoReduzida('festa.png')).toBe('festa.jpg');
+    expect(nomeDaFotoReduzida('IMG 01.final.HEIC')).toBe('IMG 01.final.jpg');
+    expect(nomeDaFotoReduzida('semextensao')).toBe('semextensao.jpg');
+    expect(nomeDaFotoReduzida('')).toBe('foto.jpg');
+  });
+
+  it('guarda o nome original, devolve no detalhe só a quem vê o pedido e não o põe na auditoria', async () => {
+    const r = await envia({
+      anexos: [await subir('documento', 'application/pdf', 100, 'Cartaz da Maria Souza.pdf'), await subir('documento', DOCX, 100, '')],
+    });
+    const l = await linhas(r.id);
+    expect(l.map((a) => a.nome).sort()).toEqual([expect.stringMatching(/^comunicacao-.*\.docx$/), 'Cartaz da Maria Souza.pdf'].sort());
+    const d = await detalharPedido(p, await como(p, COMUNICACAO), r.id);
+    expect(d.anexos.map((a) => a.nome)).toContain('Cartaz da Maria Souza.pdf');
+    await expect(detalharPedido(p, await como(p, OUTRO_FUNCIONARIO), r.id)).rejects.toThrow(ErroPermissao);
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos();
+    expect(JSON.stringify(aud)).not.toContain('Maria');
+    expect(JSON.stringify(aud)).not.toContain('Cartaz');
+    expect(JSON.stringify(await historicoDe(r.id))).not.toContain('Maria');
+  });
+
+  it('no Drive o arquivo fica com o nome gerado, sem o original', async () => {
+    const a = await subir('documento', 'application/pdf', 100, 'Maria Souza.pdf');
+    expect((await arq.conferir(a.arquivoId))!.nome).toMatch(/^comunicacao-\d{4}-\d{2}-\d{2}-documento-.*\.pdf$/);
+  });
+
+  it('nome comprido é cortado em 120 ao guardar', async () => {
+    const r = await envia({ anexos: [await subir('documento', 'application/pdf', 100, `${'b'.repeat(200)}.pdf`)] });
+    const [a] = await linhas(r.id);
+    expect(a.nome).toHaveLength(120);
+    expect(a.nome.endsWith('.pdf')).toBe(true);
   });
 });
 

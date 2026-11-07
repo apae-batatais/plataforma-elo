@@ -52,3 +52,31 @@ export function extensaoDoMime(mime: string): string {
   if (m.endsWith('wordprocessingml.document')) return 'docx';
   return m.split('/')[1]?.replace('jpeg', 'jpg') ?? 'bin';
 }
+
+export const NOME_MAXIMO = 120;
+
+/**
+ * Nome original do arquivo para guardar no pedido (dado pessoal, só quem vê o pedido o lê):
+ * sem caminho, sem caracteres de controle, espaços únicos, até 120 caracteres com a extensão.
+ * Vazio depois de limpar: usa o nome `padrao` (o gerado pelo Elo).
+ */
+export function limparNomeArquivo(nome: string | null | undefined, padrao: string): string {
+  // eslint-disable-next-line no-control-regex
+  let n = String(nome ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+  n = n.slice(n.lastIndexOf('/') + 1);
+  n = n.slice(n.lastIndexOf('\\') + 1);
+  n = n.replace(/\s+/g, ' ').trim();
+  if (!n || /^\.+$/.test(n)) return padrao;
+  if (n.length <= NOME_MAXIMO) return n;
+  const ponto = n.lastIndexOf('.');
+  const ext = ponto > 0 && n.length - ponto <= 10 ? n.slice(ponto) : '';
+  return n.slice(0, NOME_MAXIMO - ext.length).trimEnd() + ext;
+}
+
+/** Nome da foto depois de reduzida no navegador (sempre JPG): mantém o nome-base original. */
+export function nomeDaFotoReduzida(original: string): string {
+  const n = original.trim();
+  const ponto = n.lastIndexOf('.');
+  const base = ponto > 0 ? n.slice(0, ponto) : n;
+  return `${base || 'foto'}.jpg`;
+}
