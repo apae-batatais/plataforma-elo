@@ -66,6 +66,6 @@ Escopo de atribuição: global, unidade, área ou serviço. Escopo de unidade ou
 - [x] Acesso por perfil e escopo e auditoria na camada de aplicação
 - [x] Login Google institucional (conferido no servidor) e demonstração com dados fictícios
 - [x] Publicação na Netlify pelo GitHub (oficial manual, prévia por PR)
-- [ ] Google Cloud: conta de serviço e ID do cliente OAuth
-- [ ] Planilhas Núcleo e Auditoria criadas e compartilhadas com a conta de serviço
+- [x] Google Cloud: conta de serviço e ID do cliente OAuth
+- [x] Planilhas Núcleo e Auditoria criadas e compartilhadas com a conta de serviço
 - [ ] Capacidade de Indicadores (cálculo e painel)
