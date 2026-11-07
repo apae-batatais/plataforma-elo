@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { COMENTARIO_OBRIGATORIO, ErroComunicacao, SITUACOES_FINAIS, conferirTransicao, proximoNumero } from '../dominio/pedido';
+import { ACOES, COMENTARIO_OBRIGATORIO, ErroComunicacao, SITUACOES, SITUACOES_FINAIS, TIPOS_PECA, conferirTransicao, proximoNumero } from '../dominio/pedido';
 import { conferirItemCalendario, itensParaEscolha } from '../dominio/calendario';
 import { diaEmBrasilia, diasUteisEntre, ehUrgente, somarDiasUteis } from '../dominio/prazos';
 
@@ -35,8 +35,39 @@ describe('caminho do pedido', () => {
     expect(() => conferirTransicao('publicado', 'reagendar', 'release')).toThrow('Esta ação não vale para um pedido em "Publicado".');
   });
 
-  it('situações finais não têm saída e devolver, recusar e pedir ajustes exigem comentário', () => {
+  it('situações finais não têm saída: nenhuma ação sai delas, para nenhum tipo de peça', () => {
     expect([...SITUACOES_FINAIS].sort()).toEqual(['cancelado', 'juntado', 'publicado', 'realizada', 'recusado']);
+    for (const s of SITUACOES_FINAIS)
+      for (const a of ACOES) for (const t of TIPOS_PECA) expect(() => conferirTransicao(s, a, t), `${s} + ${a}`).toThrow(ErroComunicacao);
+  });
+
+  it('matriz completa: só vale o que a regra 1 da especificação permite', () => {
+    const VALIDAS: Record<string, string> = {
+      'aguardando_revisao|iniciar_revisao': 'em_revisao',
+      'aguardando_revisao|cancelar': 'cancelado',
+      'em_revisao|enviar_aprovacao': 'aguardando_aprovacao',
+      'em_revisao|devolver': 'devolvido',
+      'em_revisao|recusar': 'recusado',
+      'em_revisao|juntar': 'juntado',
+      'devolvido|reenviar': 'aguardando_revisao',
+      'devolvido|cancelar': 'cancelado',
+      'aguardando_aprovacao|aprovar': 'aprovado',
+      'aguardando_aprovacao|pedir_ajustes': 'em_revisao',
+      'aguardando_aprovacao|recusar': 'recusado',
+      'aprovado|agendar': 'agendado',
+      'agendado|reagendar': 'agendado',
+      'agendado|publicar': 'publicado',
+    };
+    for (const s of SITUACOES)
+      for (const a of ACOES) {
+        const esperado = VALIDAS[`${s}|${a}`];
+        if (esperado) expect(conferirTransicao(s, a, 'post_instagram'), `${s} + ${a}`).toBe(esperado);
+        else expect(() => conferirTransicao(s, a, 'post_instagram'), `${s} + ${a}`).toThrow(ErroComunicacao);
+      }
+    expect(conferirTransicao('agendado', 'publicar', 'entrevista')).toBe('realizada');
+  });
+
+  it('devolver, recusar e pedir ajustes exigem comentário', () => {
     expect([...COMENTARIO_OBRIGATORIO].sort()).toEqual(['devolver', 'pedir_ajustes', 'recusar']);
   });
 

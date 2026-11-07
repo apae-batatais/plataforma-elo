@@ -6,6 +6,18 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
+import {
+  ACOES_DA_DECISAO,
+  ACOES_DA_REVISAO,
+  cancelarPedido,
+  decidirPedido,
+  editarNaRevisao,
+  enviarPedido,
+  juntarPedido,
+  reenviarPedido,
+  revisarPedido,
+  type DadosPedido,
+} from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, TIPOS_PECA, type TipoPeca } from '@/modulos/comunicacao/dominio/pedido';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
@@ -26,7 +38,12 @@ const comMensagem = (pagina: string, chave: 'ok' | 'erro', mensagem: string) =>
   `${pagina}${pagina.includes('?') ? '&' : '?'}${chave}=${encodeURIComponent(mensagem)}`;
 
 /** Executa e volta para a página com a mensagem no endereço (a notificação lê ?ok= e ?erro=). */
-async function executar(pagina: (resultado: unknown) => string, erroEm: string, sucesso: string, acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>) {
+async function executar(
+  pagina: (resultado: unknown) => string,
+  erroEm: string,
+  sucesso: string,
+  acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>,
+) {
   const ctx = await contexto();
   let destino: string;
   try {
@@ -61,7 +78,10 @@ export async function acaoSalvarItemCalendario(f: FormData) {
     tipoData: tipoData as 'exata' | 'periodo',
     inicio,
     fim,
-    tipos: f.getAll('tipos').map(String).filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
+    tipos: f
+      .getAll('tipos')
+      .map(String)
+      .filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
     observacao: texto(f, 'observacao') || null,
   };
   const mesDoItem = mesValido(inicio.slice(0, 7));
@@ -100,4 +120,171 @@ export async function acaoSalvarAntecedencia(f: FormData) {
     'Antecedência mínima salva.',
     ({ usuario, app }) => salvarAntecedencia(app.planilhas, usuario.autorizador, t === '' ? Number.NaN : Number(t), { versao: v === '' ? null : Number(v) }),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Pedidos
+// ---------------------------------------------------------------------------
+
+export interface EstadoPedido {
+  erro?: string;
+}
+
+function lerPedido(f: FormData): DadosPedido {
+  return {
+    area: texto(f, 'area'),
+    calendarioId: texto(f, 'calendario_id') || null,
+    tipoPeca: texto(f, 'tipo_peca') as TipoPeca,
+    titulo: texto(f, 'titulo'),
+    descricao: texto(f, 'descricao'),
+    dataDesejada: texto(f, 'data_desejada'),
+    linkVideo: texto(f, 'link_video') || null,
+    imagemConfirmada: f.get('imagem_confirmada') === 'on',
+  };
+}
+
+export async function acaoEnviarPedido(_: EstadoPedido, f: FormData): Promise<EstadoPedido> {
+  const { usuario, app } = await contexto();
+  let r: { id: string; numero: string; urgente: boolean };
+  try {
+    r = await enviarPedido(app.planilhas, usuario.autorizador, { ...lerPedido(f), nomeSolicitante: usuario.nome });
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+  esquecerAlertas();
+  revalidatePath('/', 'layout');
+  const aviso = r.urgente ? ' Ele foi marcado como urgente.' : '';
+  redirect(`/comunicacao/${r.id}?ok=${encodeURIComponent(`Pedido ${r.numero} enviado. Agora aguarda a revisão da Comunicação.${aviso}`)}`);
+}
+
+export async function acaoReenviarPedido(_: EstadoPedido, f: FormData): Promise<EstadoPedido> {
+  const { usuario, app } = await contexto();
+  const id = texto(f, 'id');
+  try {
+    await reenviarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerPedido(f));
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+  esquecerAlertas();
+  revalidatePath('/', 'layout');
+  redirect(`/comunicacao/${id}?ok=${encodeURIComponent('Pedido ajustado e reenviado. Ele volta para a revisão da Comunicação.')}`);
+}
+
+export async function acaoCancelarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => '/comunicacao',
+    `/comunicacao/${id}`,
+    'Pedido cancelado. Ele fica guardado no histórico.',
+    ({ usuario, app }) => cancelarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Revisão e aprovação
+// ---------------------------------------------------------------------------
+
+const MENSAGEM_ACAO: Record<string, string> = {
+  iniciar_revisao: 'Revisão iniciada. O pedido está com você.',
+  enviar_aprovacao: 'Pedido enviado para aprovação da coordenação.',
+  devolver: 'Pedido devolvido para quem pediu ajustar.',
+  recusar: 'Pedido recusado. Ele fica guardado no histórico.',
+  aprovar: 'Pedido aprovado. Agora ele aguarda o agendamento.',
+  pedir_ajustes: 'Ajustes pedidos. O pedido volta para a revisão da Comunicação.',
+};
+
+export async function acaoRevisarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  const acao = texto(f, 'acao');
+  if (!(ACOES_DA_REVISAO as readonly string[]).includes(acao)) return void redirect(comMensagem(`/comunicacao/${id}`, 'erro', 'Ação inválida.'));
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    MENSAGEM_ACAO[acao] ?? 'Feito.',
+    ({ usuario, app }) =>
+      revisarPedido(
+        app.planilhas,
+        usuario.autorizador,
+        id,
+        Number(texto(f, 'versao')),
+        acao as (typeof ACOES_DA_REVISAO)[number],
+        texto(f, 'comentario') || null,
+      ),
+  );
+}
+
+export async function acaoDecidirPedido(f: FormData) {
+  const id = texto(f, 'id');
+  const decisao = texto(f, 'acao');
+  if (!(ACOES_DA_DECISAO as readonly string[]).includes(decisao)) return void redirect(comMensagem(`/comunicacao/${id}`, 'erro', 'Ação inválida.'));
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    MENSAGEM_ACAO[decisao] ?? 'Feito.',
+    ({ usuario, app }) =>
+      decidirPedido(
+        app.planilhas,
+        usuario.autorizador,
+        id,
+        Number(texto(f, 'versao')),
+        decisao as (typeof ACOES_DA_DECISAO)[number],
+        texto(f, 'comentario') || null,
+      ),
+  );
+}
+
+export async function acaoJuntarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    'Pedido juntado. Ele fica guardado com o número do pedido de destino.',
+    ({ usuario, app }) =>
+      juntarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), texto(f, 'destino_id'), texto(f, 'comentario') || null),
+  );
+}
+
+const NOVO_TEMA = '__novo__';
+
+export async function acaoEditarNaRevisao(_: EstadoPedido, f: FormData): Promise<EstadoPedido> {
+  const { usuario, app } = await contexto();
+  const id = texto(f, 'id');
+  const novo = texto(f, 'calendario_id') === NOVO_TEMA;
+  const tipoData = texto(f, 'tipo_data') === 'periodo' ? 'periodo' : 'exata';
+  const inicio = texto(f, 'inicio');
+  const novoTema = {
+    tema: texto(f, 'novo_tema'),
+    tipoData: tipoData as 'exata' | 'periodo',
+    inicio,
+    fim: tipoData === 'exata' ? inicio : texto(f, 'fim'),
+    tipos: f
+      .getAll('tipos')
+      .map(String)
+      .filter((t): t is TipoPeca => (TIPOS_PECA as readonly string[]).includes(t)),
+    observacao: null,
+  };
+  try {
+    await editarNaRevisao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), {
+      titulo: texto(f, 'titulo'),
+      descricao: texto(f, 'descricao'),
+      tipoPeca: texto(f, 'tipo_peca') as TipoPeca,
+      calendarioId: novo ? null : texto(f, 'calendario_id') || null,
+      dataDesejada: texto(f, 'data_desejada'),
+      ...(novo ? { novoTema } : {}),
+    });
+  } catch (erro) {
+    if (conhecido(erro)) {
+      const aviso =
+        novo && erro instanceof ErroConflito
+          ? ' Se o tema novo chegou a ser criado, ele já está no calendário: abra o pedido de novo e escolha-o na lista.'
+          : '';
+      return { erro: (erro as Error).message + aviso };
+    }
+    throw erro;
+  }
+  esquecerAlertas();
+  revalidatePath('/', 'layout');
+  redirect(`/comunicacao/${id}?ok=${encodeURIComponent('Alterações salvas no histórico do pedido.')}`);
 }

@@ -1,16 +1,15 @@
 # Andamento — Comunicação (fase 1)
 
 Registro de execução do plano `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md`.
-Atualizado em 06/11/2026, 20h, na migração para o Claude Code na web.
+Atualizado em 06/11/2026, 21h, ao fim da Entrega 2.
 Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao.md`.
 
 ## Como retomar (para o agente)
 
 1. Leia, nesta ordem: o `CLAUDE.md` da raiz, a especificação, o plano e este arquivo.
-2. **Tarefas concluídas** (não refazer): 1, 2, 3 e 4, ou seja, toda a Entrega 1, que está no PR #40 (ramo `feat/comunicacao-base`).
-3. **Próxima:** Tarefa 5 (Entrega 2, ramo `feat/comunicacao-pedidos`).
-   - Se o PR #40 já tiver ido para a `main`, crie o ramo a partir da `main`.
-   - Se ainda não tiver ido, crie a partir de `feat/comunicacao-base`.
+2. **Tarefas concluídas** (não refazer): 1 a 4 (Entrega 1, PR #40, ramo `feat/comunicacao-base`) e 5 a 7 (Entrega 2, ramo `feat/comunicacao-pedidos`, criado a partir de `feat/comunicacao-base`).
+3. **Próxima:** Tarefa 8 (Entrega 3, ramo `feat/comunicacao-anexos`), só depois de a Diretoria conferir a Entrega 2.
+   - Crie o ramo a partir da `main` se os PRs das Entregas 1 e 2 já tiverem ido para ela; senão, a partir de `feat/comunicacao-pedidos`.
 4. **Método escolhido pela Diretoria:** um agente por tarefa, com revisão independente depois de cada uma (skill superpowers:subagent-driven-development).
    - Há uma revisão final de todo o ramo antes de cada PR, uma entrega por vez.
    - Ao fim de cada entrega, pare para a Diretoria conferir a prévia.
@@ -27,7 +26,12 @@ Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao
 | 4 · Calendário, antecedência e cor | concluída após 1 rodada de correção | 361e4a5, 29ddcf3, 23b9342, 8d18098 |
 | Revisão final da Entrega 1 | concluída após 1 rodada de correção | bd3b604 |
 | PR #40 | aberto, aguardando a Diretoria | prévia: https://pr-40--plataforma-elo.netlify.app |
-| 5 a 11 | a fazer | — |
+| 5 · Enviar, ajustar e cancelar | concluída após 1 rodada de correção | a21bb92, d480d03 |
+| 6 · Revisão, juntar e aprovação | concluída após 1 rodada de correção | 2c659a5, b1b1700 |
+| 7 · Avisos no início e no menu | concluída, revisão limpa | 0d02b27 |
+| Revisão final da Entrega 2 | concluída após 1 rodada de correção e 1 ajuste pontual | 1dbd3de, 1fe2a99 |
+| Conferência no navegador (build de produção, demonstração) | enviar (urgente) → começar revisão → enviar para aprovação → aprovar; todas as telas abrem com os três perfis | — |
+| 8 a 11 | a fazer | — |
 
 ## Decisões tomadas durante a execução
 
@@ -49,7 +53,29 @@ Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao
 8. **Antecedência mínima:** é gravada com a versão que a pessoa viu, e duas gravações ao mesmo tempo dão aviso de conflito. Na leitura, valores fora de 0 a 30 são ignorados e vale o padrão 5.
 9. **Publicar a Entrega 1 para a equipe** é decisão da Diretoria no PR #40. O roteiro de implantação está no PR.
 
+10. **Entrega 2 (06/11/2026):**
+    - O rodapé dos commits usa a sessão atual do Claude Code, não a do plano.
+    - A versão lida é conferida antes das regras de situação: versão diferente dá `ErroConflito`.
+    - No Ajustar, a confirmação de imagem começa desmarcada e é pedida de novo a cada envio com link de vídeo; o Elo guarda a confirmação mais recente.
+    - Regra 5: na revisão, a Comunicação também cria um tema novo no calendário (só data exata) e liga o pedido a ele.
+    - Anexos editáveis na revisão (regra 3) ficam para a Tarefa 8.
+    - Revisar e decidir só aceitam as próprias ações, conferidas no servidor ("Ação inválida." para o resto).
+    - `agendado_para` é gravado em ISO UTC e lido no dia de Brasília. **A Tarefa 10 precisa gravar nesse formato.**
+    - O número do menu não inclui "para publicar hoje". Rever na Tarefa 10.
+    - No `next dev` local, o detalhe de pedido da demonstração pode dar 404, porque cada rota monta a própria memória. No build de produção (prévia) funciona.
+
 ## Pendências pequenas (para as próximas tarefas)
+
+**Da Entrega 2 (podem esperar):**
+- reenviar e cancelar não conferem `comunicacao.solicitar`, só o dono;
+- o número COM e o destino do juntar podem ter corrida em envios simultâneos (comentado no código);
+- faltam testes de cancelar devolvido e de reenviar com versão antiga;
+- `EstadoPedido` está declarado duas vezes; o detalhe chama `opcoesDoPedido` só para o nome da área;
+- a auditoria no destino do juntar é "alteração" sem colunas;
+- os avisos usam ícone e cor de aviso, não os do app; o aviso de urgentes abre a fila sem filtro de urgentes;
+- um `agendado_para` malformado esconde todos os avisos da pessoa (guarda na Tarefa 10);
+- o histórico não mostra quem fez cada ação.
+
 
 **Na Tarefa 5:**
 - validar o formato de `data_desejada` antes das funções de data, porque datas malformadas fazem `prazos.ts` lançar `RangeError`.

@@ -34,7 +34,7 @@ interface Opcoes {
 }
 
 /** Dia que existe de verdade, no formato AAAA-MM-DD (o que o campo de data do navegador envia). */
-function dataValida(d: string): boolean {
+export function dataValida(d: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
   const [a, m, dia] = d.split('-').map(Number);
   const t = new Date(Date.UTC(a, m - 1, dia));
