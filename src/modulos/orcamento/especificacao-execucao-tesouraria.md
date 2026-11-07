@@ -1,6 +1,6 @@
 # Especificação — Orçamento: Execução, Tesouraria e Histórico (Entregas 1C, 1D e 1E)
 
-- Situação: **rascunho para aprovação** (06/11/2026)
+- Situação: **aprovada em 07/11/2026 pela Diretoria**
 - Dono do produto: Diretoria
 - Complementa `especificacao.md` deste módulo. Detalha a Entrega 1C (Execução), que lá está só em
   resumo, e propõe duas entregas novas: 1D (Tesouraria) e 1E (Histórico). Depois de aprovada, entra
