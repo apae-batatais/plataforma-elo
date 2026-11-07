@@ -14,19 +14,19 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | --- | --- | --- | --- |
 | Comunicação fase 1 — entrega 3 de 5 | Comunicação | Fotos e documentos no pedido (Tarefa 8 do plano). Em construção | ramo `feat/comunicacao-anexos`; `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
 | Comunicação fase 1 — entregas 4 e 5 | Comunicação | Já planejadas: 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores. Começam depois da conferência da entrega 3 | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
-| Plano de execução da Entrega 1C (Execução) | Orçamento | Plano em preparação, para aprovação da Diretoria antes da construção | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
+| Plano da Entrega 1D.1 (Contas e saldos) | Orçamento | Plano pronto em 07/11/2026; aguarda aprovação da Diretoria antes da construção | `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos.md` |
 
 ## Agora
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Construir a Entrega 1C (Execução) | Orçamento | Especificação aprovada em 07/11/2026; construção depois da aprovação do plano. 1C Execução (realizado importado do WK Radar, recursos livres, contra o previsto), 1D Tesouraria (saldos por conta, livre, reserva e vinculado, projeção de fim de ano) e 1E Histórico (2017 em diante) | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
+| Construir a Entrega 1D.1 (Contas e saldos) | Orçamento | Cadastro das contas, saldo do extrato por mês, ajustes de conciliação, total por classe e pendências. Primeira da ordem aprovada (1D.1 → 1E → 1C.1 → 1C.2 → 1D.2); começa depois da aprovação do plano | `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos.md` |
 
 ## Próximo
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Construir as Entregas 1D (Tesouraria) e 1E (Histórico) | Orçamento | Especificação aprovada em 07/11/2026; depois da 1C, que fecha a Fase 1 ("a execução confere com a planilha") | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
+| Entrega 1E (Histórico) | Orçamento | Anos fechados de 2017 a 2025, indicadores históricos e fontes de receita ano a ano. Vem depois da 1D.1 | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
 | Capacidade de Indicadores | Capacidades | Cálculo e painel de indicadores compartilhados entre os apps. A pasta `src/capacidades/indicadores` ainda está vazia | `docs/especificacao-plataforma.md` (Situação da Fase 0) |
 | Entrega R3 da Rede | Rede | Guia "Como trazer uma instituição para o Elo", termo de adesão (LGPD) e roteiro de transferência da Operadora. É documentação, não código | `docs/especificacao-rede.md` (Entregas) |
 
@@ -34,6 +34,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
+| Entregas 1C.1, 1C.2 e 1D.2 (realizado, execução, fim do ano e reserva) | Orçamento | A 1C.1 foi para o roadmap em 07/11/2026: espera a amostra da exportação do WK Radar. A 1C fecha a Fase 1 ("a execução confere com a planilha") | `docs/roadmap.md` (Orçamento) |
 | Ligar a requisição à execução do orçamento | Requisições | Depende da Entrega 1C pronta | `src/modulos/requisicoes/especificacao.md` (Depois) |
 | Aviso por e-mail das requisições | Requisições | Usa a mesma ligação com o Gmail da Comunicação fase 2 | `src/modulos/requisicoes/especificacao.md` (Depois); `docs/roadmap.md` |
 | Avaliação — próximas entregas | Avaliação (Fase 2) | A combinar: ligar a avaliação ao Cadastro Único de Pessoas (`pessoa_id`) e usar o motor de avaliação (ADR-006) para instrumentos com escala. Critério da Fase 2: ciclo fechado e enquadramentos justificados | `src/modulos/avaliacao/especificacao.md` (Entregas); ADR-006 e ADR-007 |
@@ -48,6 +49,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | Item | Por que importa |
 | --- | --- |
 | Definir o DPO (encarregado de dados, LGPD) | É condição para avançar a Fase 1 (Roteiro) |
+| Amostra da exportação do WK Radar (dados fictícios ou anonimizados) | Destrava a Entrega 1C.1 do Orçamento |
 
 ## Concluído
 
