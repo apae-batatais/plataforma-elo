@@ -18,3 +18,9 @@ export function faixaDeMeses(valores: number[]): string {
   const nome = (i: number) => MESES[i].slice(0, 3);
   return faixas.map(([a, b]) => (a === b ? nome(a) : b === a + 1 ? `${nome(a)}, ${nome(b)}` : `${nome(a)} a ${nome(b)}`)).join(', ');
 }
+
+/** "2026-09" → "setembro de 2026". */
+export function rotuloMes(mes: string): string {
+  const [ano, m] = mes.split('-').map(Number);
+  return `${MESES[m - 1].toLowerCase()} de ${ano}`;
+}
