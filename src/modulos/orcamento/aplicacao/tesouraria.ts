@@ -10,11 +10,11 @@
  * gravados continuam valendo.
  */
 import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
-import { atualizar, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Unidades } from '@/nucleo/estrutura/tabelas';
-import { Fontes, Contas, type RegConta, type RegFonte } from '../dados/tabelas';
-import { conferirConta, type DadosConta } from '../dominio/tesouraria';
+import { AjustesConciliacao, Contas, Fontes, Saldos, type RegAjusteConciliacao, type RegConta, type RegFonte, type RegSaldo } from '../dados/tabelas';
+import { CLASSES, conferirConta, contasSemSaldo, mesAnterior, mesAtualBrasilia, mesValido, totaisPorClasse, type Classe, type DadosConta } from '../dominio/tesouraria';
 import { nomeComparavel } from '../dominio/previsao';
 import { ErroValidacaoFolha } from './folha';
 
@@ -120,3 +120,130 @@ async function mudarSituacao(p: Planilhas, quem: Autorizador, id: string, versao
 
 export const excluirConta = (p: Planilhas, quem: Autorizador, id: string, versao: number) => mudarSituacao(p, quem, id, versao, false);
 export const reativarConta = (p: Planilhas, quem: Autorizador, id: string, versao: number) => mudarSituacao(p, quem, id, versao, true);
+
+// ---------------------------------------------------------------------------
+// Saldos do mês e ajustes de conciliação
+// ---------------------------------------------------------------------------
+
+export interface LinhaSaldo {
+  conta: RegConta;
+  saldo: RegSaldo | null;
+  saldoAnterior: number | null;
+  ajustes: RegAjusteConciliacao[];
+}
+
+export interface SaldosDoMes {
+  mes: string;
+  mesAtual: string;
+  linhas: LinhaSaldo[];
+  totais: Record<Classe, number>;
+  totaisAnterior: Record<Classe, number>;
+  pendentes: { id: string; nome: string }[];
+}
+
+function exigirMes(mes: string) {
+  if (!mesValido(mes) || mes > mesAtualBrasilia()) throw new ErroTesouraria('Escolha um mês até o mês atual.');
+}
+
+const nomeConta = (c: RegConta) => [c.banco, c.conta].filter(Boolean).join(' ');
+
+export async function lerSaldosDoMes(p: Planilhas, quem: Autorizador, mes: string): Promise<SaldosDoMes> {
+  exigir(quem, PERM.ver);
+  exigirMes(mes);
+  const [contas, saldos, ajustes] = await lerTabelas(p, [Contas, Saldos, AjustesConciliacao] as const);
+  const anterior = mesAnterior(mes);
+  const saldosAtivos = saldos.ativos();
+  const ajustesAtivos = ajustes.ativos();
+  // Todas as contas (ativas e excluídas): uma excluída com saldo no mês ainda conta.
+  const todas = contas.todos();
+  const ativas = todas.filter((c) => c.ativo);
+  const saldoDoMes = new Map(saldosAtivos.filter((s) => s.mes === mes).map((s) => [s.conta_id, s]));
+  const saldoAnterior = new Map(saldosAtivos.filter((s) => s.mes === anterior).map((s) => [s.conta_id, s.saldo]));
+
+  const ordem = (a: RegConta, b: RegConta) =>
+    CLASSES.indexOf(a.classe) - CLASSES.indexOf(b.classe) || a.banco.localeCompare(b.banco, 'pt-BR') || (a.conta ?? '').localeCompare(b.conta ?? '', 'pt-BR');
+  const linhas = todas
+    .filter((c) => c.ativo || saldoDoMes.has(c.id))
+    .sort(ordem)
+    .map<LinhaSaldo>((conta) => ({
+      conta,
+      saldo: saldoDoMes.get(conta.id) ?? null,
+      saldoAnterior: saldoAnterior.get(conta.id) ?? null,
+      ajustes: ajustesAtivos.filter((a) => a.conta_id === conta.id && a.mes === mes),
+    }));
+
+  const porId = new Map(ativas.map((c) => [c.id, c]));
+  return {
+    mes,
+    mesAtual: mesAtualBrasilia(),
+    linhas,
+    totais: totaisPorClasse(todas, saldosAtivos, ajustesAtivos, mes),
+    totaisAnterior: totaisPorClasse(todas, saldosAtivos, ajustesAtivos, anterior),
+    pendentes: contasSemSaldo(ativas, saldosAtivos, mes).map((id) => ({ id, nome: nomeConta(porId.get(id)!) })),
+  };
+}
+
+export async function salvarSaldosDoMes(
+  p: Planilhas,
+  quem: Autorizador,
+  mes: string,
+  linhas: { contaId: string; valor: number | null; versao?: number }[],
+): Promise<{ gravados: number }> {
+  exigir(quem, PERM.editar);
+  exigirMes(mes);
+  const [contas, saldos] = await lerTabelas(p, [Contas, Saldos] as const);
+  const existentes = new Map(saldos.ativos().filter((s) => s.mes === mes).map((s) => [s.conta_id, s]));
+
+  type Passo = { contaId: string; valor: number; existente: RegSaldo | null };
+  const passos: Passo[] = [];
+  for (const l of linhas) {
+    if (l.valor === null) continue;
+    if (!Number.isFinite(l.valor)) throw new ErroTesouraria('Valor de saldo inválido.');
+    const valor = Math.round(l.valor * 100) / 100;
+    const alvo = contas.porId(l.contaId);
+    const existente = existentes.get(l.contaId) ?? null;
+    if (!alvo || (!alvo.ativo && !existente)) throw new ErroTesouraria('Conta não encontrada.');
+    // Tudo ou nada: toda versão lida é conferida antes de gravar qualquer linha.
+    if (existente ? existente.versao !== l.versao : l.versao !== undefined) throw new ErroConflito(existente?.id ?? l.contaId);
+    if (existente && existente.saldo === valor) continue;
+    passos.push({ contaId: l.contaId, valor, existente });
+  }
+
+  for (const { contaId, valor, existente } of passos) {
+    if (existente) {
+      const { colunasAlteradas } = await atualizar(p, Saldos, existente.id, existente.versao, { saldo: valor }, { email: quem.email });
+      await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Saldos', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
+    } else {
+      const novo = await inserir(p, Saldos, { conta_id: contaId, mes, saldo: valor }, { email: quem.email });
+      await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Saldos', registroId: novo.id });
+    }
+  }
+  return { gravados: passos.length };
+}
+
+export async function incluirAjuste(
+  p: Planilhas,
+  quem: Autorizador,
+  a: { contaId: string; mes: string; valor: number; motivo: string },
+): Promise<string> {
+  exigir(quem, PERM.editar);
+  exigirMes(a.mes);
+  const motivo = limpar(a.motivo);
+  if (!motivo) throw new ErroTesouraria('Informe o motivo do ajuste.');
+  if (!Number.isFinite(a.valor) || Math.round(a.valor * 100) === 0) throw new ErroTesouraria('O ajuste não pode ser zero.');
+  const [contas] = await lerTabelas(p, [Contas] as const);
+  const alvo = contas.porId(a.contaId);
+  if (!alvo || !alvo.ativo) throw new ErroTesouraria('Conta não encontrada.');
+  const novo = await inserir(p, AjustesConciliacao, { conta_id: a.contaId, mes: a.mes, valor: Math.round(a.valor * 100) / 100, motivo }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'AjustesConciliacao', registroId: novo.id });
+  return novo.id;
+}
+
+export async function tirarAjuste(p: Planilhas, quem: Autorizador, id: string, versao: number): Promise<void> {
+  exigir(quem, PERM.editar);
+  const [ajustes] = await lerTabelas(p, [AjustesConciliacao] as const);
+  const alvo = ajustes.porId(id);
+  if (!alvo || !alvo.ativo) throw new ErroTesouraria('Ajuste não encontrado.');
+  await atualizar(p, AjustesConciliacao, id, versao, { ativo: false } as never, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'AjustesConciliacao', registroId: id, detalhes: { colunas: ['ativo'] } });
+}
