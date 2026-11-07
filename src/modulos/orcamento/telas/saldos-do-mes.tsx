@@ -73,49 +73,72 @@ export function SaldosDoMes({
   const [textos, setTextos] = useState<Record<string, string>>(() => Object.fromEntries(linhas.map((l) => [l.contaId, textoInicial(l.saldo)])));
   const [enviando, setEnviando] = useState(false);
   const [recuperado, setRecuperado] = useState(false);
-  const pronto = useRef(false);
+  /** Contas cujo rascunho foi descartado porque o saldo gravado mudou depois da digitação. */
+  const [alteradas, setAlteradas] = useState<Set<string>>(() => new Set());
   const chaveRascunho = `elo:orcamento:saldos:${mes}`;
+  // O aviso fica guardado à parte: a página pode ser montada de novo (redirect) antes de a pessoa vê-lo.
+  const chaveAvisos = `${chaveRascunho}:avisos`;
   const iniciais = useRef(textos);
 
   // Rascunho do que foi digitado e ainda não foi salvo: sobrevive à recarga da página
-  // (erro ao salvar, ajuste adicionado ou tirado). Sem armazenamento, a tela funciona igual.
+  // (erro ao salvar, ajuste adicionado ou tirado). Guarda só os campos editados, cada um
+  // com o saldo gravado que a pessoa via ao digitar (`base`). Sem armazenamento, a tela funciona igual.
   useEffect(() => {
     try {
       if (salvouAgora || !podeEditar) {
         sessionStorage.removeItem(chaveRascunho);
-      } else {
-        const bruto = sessionStorage.getItem(chaveRascunho);
-        const rascunho = bruto ? (JSON.parse(bruto) as Record<string, unknown>) : null;
-        if (rascunho && typeof rascunho === 'object') {
-          const mudancas: Record<string, string> = {};
-          for (const l of linhas) {
-            const t = rascunho[l.contaId];
-            if (typeof t === 'string' && lerValorEmReais(t) !== lerValorEmReais(iniciais.current[l.contaId] ?? '')) mudancas[l.contaId] = t;
-          }
-          if (Object.keys(mudancas).length > 0) {
-            setTextos((atual) => ({ ...atual, ...mudancas }));
-            setRecuperado(true);
-          }
-        }
+        sessionStorage.removeItem(chaveAvisos);
+        return;
       }
+      const bruto = sessionStorage.getItem(chaveRascunho);
+      const rascunho = bruto ? (JSON.parse(bruto) as Record<string, { texto?: unknown; base?: unknown } | null>) : null;
+      const avisosGuardados = JSON.parse(sessionStorage.getItem(chaveAvisos) ?? '[]') as unknown;
+      const descartados = new Set<string>(Array.isArray(avisosGuardados) ? avisosGuardados.filter((x): x is string => typeof x === 'string') : []);
+      if (!rascunho || typeof rascunho !== 'object') {
+        setAlteradas(new Set(linhas.filter((l) => descartados.has(l.contaId)).map((l) => l.contaId)));
+        return;
+      }
+      const mantidos: Record<string, string> = {};
+      for (const l of linhas) {
+        const campo = rascunho[l.contaId];
+        if (!campo || typeof campo.texto !== 'string') continue;
+        if ((campo.base ?? null) === l.saldo) mantidos[l.contaId] = campo.texto;
+        else descartados.add(l.contaId);
+      }
+      if (Object.keys(mantidos).length > 0) {
+        setTextos((atual) => ({ ...atual, ...mantidos }));
+        setRecuperado(true);
+      } else {
+        sessionStorage.removeItem(chaveRascunho);
+      }
+      if (descartados.size > 0) sessionStorage.setItem(chaveAvisos, JSON.stringify([...descartados]));
+      setAlteradas(new Set(linhas.filter((l) => descartados.has(l.contaId)).map((l) => l.contaId)));
     } catch {
       /* sem armazenamento: segue sem rascunho */
     }
-    pronto.current = true;
     // roda só ao abrir a tela
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (!pronto.current || !podeEditar) return;
+    // Primeira passagem (textos ainda é o objeto inicial): não mexe no rascunho antes de restaurar.
+    if (textos === iniciais.current || !podeEditar) return;
     try {
-      const mudou = linhas.some((l) => lerValorEmReais(textos[l.contaId] ?? '') !== lerValorEmReais(iniciais.current[l.contaId] ?? ''));
-      if (mudou) sessionStorage.setItem(chaveRascunho, JSON.stringify(textos));
+      const editados: Record<string, { texto: string; base: number | null }> = {};
+      for (const l of linhas) {
+        const t = textos[l.contaId] ?? '';
+        if (lerValorEmReais(t) !== lerValorEmReais(iniciais.current[l.contaId] ?? '')) editados[l.contaId] = { texto: t, base: l.saldo };
+      }
+      const avisos = JSON.parse(sessionStorage.getItem(chaveAvisos) ?? '[]') as string[];
+      const restantes = avisos.filter((id) => !(id in editados));
+      if (restantes.length > 0) sessionStorage.setItem(chaveAvisos, JSON.stringify(restantes));
+      else sessionStorage.removeItem(chaveAvisos);
+      if (Object.keys(editados).length > 0) sessionStorage.setItem(chaveRascunho, JSON.stringify(editados));
       else sessionStorage.removeItem(chaveRascunho);
     } catch {
       /* sem armazenamento: segue sem rascunho */
     }
-  }, [textos, linhas, chaveRascunho, podeEditar]);
+  }, [textos, linhas, chaveRascunho, chaveAvisos, podeEditar]);
 
   const lido = (l: LinhaTela) => lerValorEmReais(textos[l.contaId] ?? '');
   const algumInvalido = podeEditar && linhas.some((l) => lido(l) === 'invalido');
@@ -252,6 +275,11 @@ export function SaldosDoMes({
                                 className={`${estiloEntrada} !mt-0 min-w-36 text-right tabular-nums ${invalido ? '!border-erro' : ''}`}
                               />
                               {l.versao !== null && <input type="hidden" form={ID_FORM} name={`versao_${l.contaId}`} value={l.versao} />}
+                              {alteradas.has(l.contaId) && lido(l) === (lerValorEmReais(textoInicial(l.saldo)) ?? null) && (
+                                <p role="status" className="mt-1 text-sm text-aviso">
+                                  O saldo desta conta foi alterado por outra pessoa depois que você digitou. Confira antes de salvar.
+                                </p>
+                              )}
                               {invalido && (
                                 <p id={`${idCampo}-erro`} role="alert" className="mt-1 text-sm text-erro">
                                   {MSG_VALOR}
