@@ -4,10 +4,10 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
-import { ArquivosMemoria } from '@/nucleo/armazenamento/arquivos';
+import { ArquivosMemoria, type ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
-import { iniciarEnvioAnexoComunicacao, lerAnexoComunicacao } from '../aplicacao/anexos';
+import { abrirAnexoComunicacao, iniciarEnvioAnexoComunicacao, lerAnexoComunicacao, TRECHO_MAXIMO } from '../aplicacao/anexos';
 import { detalharPedido, editarNaRevisao, enviarPedido, reenviarPedido, revisarPedido, type DadosPedido } from '../aplicacao/pedidos';
 import { AnexosComunicacao, HistoricoComunicacao, PedidosComunicacao } from '../dados/tabelas';
 import { conferirArquivo, conferirQuantidade, LIMITES_ANEXOS, tipoDoArquivo, type TipoAnexo } from '../dominio/anexos';
@@ -317,10 +317,63 @@ describe('abrir o anexo (leitura)', () => {
     expect(await leituras(anexoId)).toHaveLength(0);
   });
 
-  it('anexo tirado, inexistente ou sem pasta de anexos não abre', async () => {
+  it('anexo tirado num ajuste não abre mais', async () => {
+    const r = await devolvido([await subir('documento', 'application/pdf', 300)]);
+    const [linha] = await linhas(r.id);
+    const f = await como(p, FUNCIONARIO);
+    await expect(lerAnexoComunicacao(p, f, arq, linha.id, { inicio: 0, fim: null })).resolves.toBeTruthy();
+    await reenviarPedido(p, f, r.id, (await pedidoDe(r.id)).versao, pedido({ anexos: [], imagemConfirmada: true }), { ...SEXTA, arquivos: arq });
+    expect((await linhas(r.id))[0].ativo).toBe(false);
+    await expect(lerAnexoComunicacao(p, f, arq, linha.id, { inicio: 0, fim: null })).rejects.toThrow('Anexo não encontrado.');
+    await expect(abrirAnexoComunicacao(p, f, arq, linha.id)).rejects.toThrow('Anexo não encontrado.');
+  });
+
+  it('anexo inexistente ou sem pasta de anexos não abre', async () => {
     const { anexoId } = await comAnexo();
     const f = await como(p, FUNCIONARIO);
     await expect(lerAnexoComunicacao(p, f, arq, 'nao-existe', { inicio: 0, fim: null })).rejects.toThrow('Anexo não encontrado.');
     await expect(lerAnexoComunicacao(p, f, null, anexoId, { inicio: 0, fim: null })).rejects.toThrow('não estão ativos');
+    await expect(abrirAnexoComunicacao(p, f, null, anexoId)).rejects.toThrow('não estão ativos');
+  });
+
+  it('documento maior que um trecho: sem faixa, todos os bytes chegam inteiros e a auditoria é uma só', async () => {
+    // A demonstração só aceita 4 MB por arquivo; a pasta de anexos de mentira entrega 9 MB, trecho a trecho.
+    const total = 9 * 1024 * 1024;
+    const byte = (i: number) => (i * 31 + 7) % 251;
+    let leiturasDaPasta = 0;
+    const pasta: ArmazenamentoArquivos = {
+      iniciarEnvio: async () => ({ url: '/x' }),
+      conferir: async (id) => ({ id, nome: 'grande.pdf', tipo: 'application/pdf', tamanho: total }),
+      ler: async (_id, t) => {
+        leiturasDaPasta++;
+        const fim = Math.min(t.fim, total - 1);
+        return { dados: Uint8Array.from({ length: fim - t.inicio + 1 }, (_, k) => byte(t.inicio + k)), total, inicio: t.inicio, fim, tipo: 'application/pdf' };
+      },
+      conferirPasta: async () => ({ ok: true as const, nome: 'x' }),
+    };
+    const r = await enviarPedido(p, await como(p, FUNCIONARIO), pedido({ anexos: [{ arquivoId: 'arquivo-grande-0001', tipo: 'documento' }] }), { ...SEXTA, arquivos: pasta });
+    const anexoId = (await linhas(r.id))[0].id;
+    const a = await abrirAnexoComunicacao(p, await como(p, FUNCIONARIO), pasta, anexoId);
+    expect(a).toMatchObject({ tipo: 'application/pdf', total });
+    expect(await leituras(anexoId)).toHaveLength(1);
+    const lidos: Uint8Array[] = [];
+    let pos = 0;
+    while (pos < a.total) {
+      const t = await a.lerTrecho(pos);
+      expect(t.dados.length).toBeLessThanOrEqual(TRECHO_MAXIMO);
+      lidos.push(t.dados);
+      pos += t.dados.length;
+    }
+    expect(lidos.length).toBe(3);
+    expect(pos).toBe(total);
+    const tudo = new Uint8Array(total);
+    let o = 0;
+    for (const d of lidos) {
+      tudo.set(d, o);
+      o += d.length;
+    }
+    expect(tudo.every((v, i) => v === byte(i))).toBe(true);
+    expect(leiturasDaPasta).toBe(3);
+    expect(await leituras(anexoId)).toHaveLength(1);
   });
 });

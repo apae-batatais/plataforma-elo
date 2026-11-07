@@ -145,17 +145,8 @@ export async function iniciarEnvioAnexoComunicacao(
   return arquivos.iniciarEnvio({ nome, tipo: a.mime, tamanho: a.tamanho, origem: a.origem });
 }
 
-/**
- * Lê um trecho de um anexo para mostrar no Elo, só para quem pode ver o pedido
- * (quem pediu ou quem vê todos). A abertura (primeiro trecho) fica na auditoria.
- */
-export async function lerAnexoComunicacao(
-  p: Planilhas,
-  quem: Autorizador,
-  arquivos: ArmazenamentoArquivos | null,
-  anexoId: string,
-  trecho: { inicio: number; fim: number | null },
-) {
+/** Confere que o anexo existe e que esta pessoa vê o pedido dele (quem pediu ou quem vê todos). */
+async function autorizarAnexo(p: Planilhas, quem: Autorizador, arquivos: ArmazenamentoArquivos | null, anexoId: string) {
   if (!arquivos) throw new ErroComunicacao('Fotos e documentos não estão ativos nesta instituição.');
   const [anexos, pedidos] = await lerTabelas(p, [AnexosComunicacao, PedidosComunicacao] as const);
   const anexo = anexos.porId(anexoId);
@@ -164,9 +155,40 @@ export async function lerAnexoComunicacao(
   // Mesma regra de quem vê o pedido (pedidos.ts); repetida aqui para não criar ciclo entre os arquivos.
   if (!r || !r.ativo || !(r.solicitante === quem.email || quem.temPermissao('comunicacao.ver_todos')))
     throw new ErroPermissao('Você não tem acesso a este anexo.');
+  return { anexo, arquivos };
+}
+
+/**
+ * Lê um trecho de um anexo para mostrar no Elo, só para quem pode ver o pedido.
+ * A abertura (primeiro trecho) fica na auditoria.
+ */
+export async function lerAnexoComunicacao(
+  p: Planilhas,
+  quem: Autorizador,
+  arquivos: ArmazenamentoArquivos | null,
+  anexoId: string,
+  trecho: { inicio: number; fim: number | null },
+) {
+  const { anexo, arquivos: pasta } = await autorizarAnexo(p, quem, arquivos, anexoId);
   const inicio = Math.max(0, Math.min(trecho.inicio, anexo.tamanho - 1));
   const fim = Math.min(trecho.fim ?? anexo.tamanho - 1, inicio + TRECHO_MAXIMO - 1, anexo.tamanho - 1);
-  const lido = await arquivos.ler(anexo.arquivo_id, { inicio, fim });
+  const lido = await pasta.ler(anexo.arquivo_id, { inicio, fim });
   if (inicio === 0) await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'AnexosComunicacao', registroId: anexo.id });
   return { ...lido, tipo: anexo.mime };
+}
+
+/**
+ * Abre o anexo inteiro (pedido sem faixa, como o link de um documento): confere quem vê e registra
+ * a leitura UMA vez, e devolve o tamanho e a função que lê cada trecho. Quem chama entrega o arquivo
+ * aos poucos, sem juntar tudo na memória.
+ */
+export async function abrirAnexoComunicacao(p: Planilhas, quem: Autorizador, arquivos: ArmazenamentoArquivos | null, anexoId: string) {
+  const { anexo, arquivos: pasta } = await autorizarAnexo(p, quem, arquivos, anexoId);
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'AnexosComunicacao', registroId: anexo.id });
+  return {
+    tipo: anexo.mime,
+    total: anexo.tamanho,
+    /** Lê os bytes de `inicio` a `fim` (inclusivo), no máximo TRECHO_MAXIMO por vez. */
+    lerTrecho: (inicio: number) => pasta.ler(anexo.arquivo_id, { inicio, fim: Math.min(inicio + TRECHO_MAXIMO, anexo.tamanho) - 1 }),
+  };
 }
