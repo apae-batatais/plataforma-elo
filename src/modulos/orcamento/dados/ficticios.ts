@@ -6,7 +6,8 @@ import { Faker, base, pt_BR } from '@faker-js/faker';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { distribuir, valorDoItem } from '../dominio/previsao';
-import { Ajustes, CentrosCusto, Componentes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas } from './tabelas';
+import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
+import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas, Saldos } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -314,6 +315,49 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       { ano: 2027, servico: 'cer_reabilitacao', fonte_id: F(2) },
       { ano: 2027, servico: 'administracao', fonte_id: F(5) },
     ],
+    autor,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Tesouraria FICTÍCIA (Entrega 1D.1): contas e saldos dos três meses anteriores
+// ---------------------------------------------------------------------------
+
+/**
+ * 6 contas fictícias e os saldos dos três meses anteriores ao mês atual (Brasília).
+ * A "Aplicação Fictícia B" fica sem saldo no último mês, para a pendência aparecer.
+ * As contas vinculadas usam as duas primeiras fontes restritas da previsão fictícia
+ * (se ela ainda não foi gravada, ficam sem fonte).
+ */
+export async function popularTesourariaFicticia(p: Planilhas): Promise<void> {
+  const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const [contas, saldos, fontes] = await lerTabelas(p, [Contas, Saldos, Fontes] as const);
+  const restritas = fontes.ativos().filter((f) => f.uso === 'restrita');
+  const gravadas = await inserirRegistros(
+    p,
+    contas,
+    [
+      { banco: 'Banco Fictício A', agencia: '0001', conta: '10001-0', tipo: 'movimento', classe: 'livre_disponivel', fonte_id: null, unidade: 'sede' },
+      { banco: 'Banco Fictício B', agencia: '0002', conta: '20002-3', tipo: 'aplicacao', classe: 'livre_disponivel', fonte_id: null, unidade: 'sede' },
+      { banco: 'Caixa da sede (fictício)', agencia: null, conta: null, tipo: 'caixa', classe: 'livre_disponivel', fonte_id: null, unidade: 'sede' },
+      { banco: 'Banco Fictício C', agencia: '0003', conta: '30003-6', tipo: 'aplicacao', classe: 'reserva', fonte_id: null, unidade: 'sede' },
+      { banco: 'Banco Fictício D', agencia: '0004', conta: '40004-9', tipo: 'movimento', classe: 'vinculada', fonte_id: restritas[0]?.id ?? null, unidade: 'sede' },
+      { banco: 'Banco Fictício E', agencia: '0005', conta: '50005-2', tipo: 'aplicacao', classe: 'vinculada', fonte_id: restritas[1]?.id ?? null, unidade: 'sede' },
+    ],
+    autor,
+  );
+  const ultimo = mesAnterior(mesAtualBrasilia());
+  const meses = [mesAnterior(mesAnterior(ultimo)), mesAnterior(ultimo), ultimo];
+  const base = [48250.4, 120000, 850, 310000, 96400.75, 52000];
+  await inserirRegistros(
+    p,
+    saldos,
+    meses.flatMap((mes, m) =>
+      gravadas.flatMap((c, i) => {
+        if (mes === ultimo && i === 1) return [];
+        return [{ conta_id: c.id, mes, saldo: Math.round(base[i] * (1 + (m - 2) * 0.03) * 100) / 100 }];
+      }),
+    ),
     autor,
   );
 }

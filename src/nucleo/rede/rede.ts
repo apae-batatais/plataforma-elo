@@ -335,6 +335,7 @@ const NOME_DA_PLANILHA: Record<string, string> = {
   auditoria: 'Auditoria',
   orcamento: 'Orçamento',
   orcamento_folha: 'Folha de pagamento',
+  orcamento_execucao: 'Orçamento — execução e tesouraria',
   requisicoes: 'Requisições',
   avaliacao_assistencia: 'Avaliação de Serviços Sociais',
   comunicacao: 'Comunicação',

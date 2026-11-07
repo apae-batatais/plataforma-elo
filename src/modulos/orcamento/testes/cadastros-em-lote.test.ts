@@ -21,7 +21,7 @@ async function como(email: string) {
 }
 
 beforeEach(async () => {
-  p = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha']), idDe: (c) => c };
+  p = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha', 'orcamento_execucao']), idDe: (c) => c };
   await prepararEstrutura(p, {
     tabelas: [...TABELAS_ORCAMENTO] as never,
     perfis: manifesto.perfis,
