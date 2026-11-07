@@ -13,7 +13,7 @@ App para gerenciar os pedidos de publicação: calendário de temas, pedidos de 
 funcionário, revisão, aprovação, agendamento e publicação. Cada OSC tem as próprias demandas,
 contatos e contas conectadas.
 
-### Fase 1 · especificação em revisão
+### Fase 1 · especificação aprovada (06/11/2026), em construção
 
 Fluxo completo sem nenhuma integração externa (especificação:
 `src/modulos/comunicacao/especificacao.md` no repositório):
