@@ -68,6 +68,6 @@ Fase 2, entrega 1 (06/11/2026): módulo Avaliação de Serviços Sociais, com av
 - [x] Acesso por perfil e escopo e auditoria na camada de aplicação
 - [x] Login Google institucional (conferido no servidor) e demonstração com dados fictícios
 - [x] Publicação na Netlify pelo GitHub (oficial manual, prévia por PR)
-- [ ] Google Cloud: conta de serviço e ID do cliente OAuth
-- [ ] Planilhas Núcleo e Auditoria criadas e compartilhadas com a conta de serviço
+- [x] Google Cloud: conta de serviço e ID do cliente OAuth
+- [x] Planilhas Núcleo e Auditoria criadas e compartilhadas com a conta de serviço
 - [ ] Capacidade de Indicadores (cálculo e painel)

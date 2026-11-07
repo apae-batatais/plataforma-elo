@@ -13,7 +13,7 @@ import { SeletorTema } from './tema';
 import { appDoCaminho } from './cor-do-app';
 import {
   IconeAjuda,
-  IconeAreas, IconeAvaliacao, IconeChave, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeRecolher, IconeRequisicao, IconeSair, IconeServicos,
+  IconeAreas, IconeAvaliacao, IconeChave, IconeComunicacao, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeRecolher, IconeRequisicao, IconeSair, IconeServicos,
 } from './icones';
 
 const ICONES = {
@@ -21,6 +21,7 @@ const ICONES = {
   pessoas: IconePessoas,
   orcamento: IconeOrcamento,
   requisicoes: IconeRequisicao,
+  comunicacao: IconeComunicacao,
   avaliacao: IconeAvaliacao,
   acessos: IconeChave,
   servicos: IconeServicos,

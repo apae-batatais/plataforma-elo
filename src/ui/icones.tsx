@@ -58,6 +58,12 @@ export const IconeAvaliacao = (p: Props) => (
     <path d="M9 4V3h6v1M7 14h2.5l1.5-3 2 5 1.5-2H17" />
   </Icone>
 );
+export const IconeComunicacao = (p: Props) => (
+  <Icone {...p}>
+    <path d="M3 10v4a1 1 0 0 0 1 1h3l9 5V4L7 9H4a1 1 0 0 0-1 1Z" />
+    <path d="M7 15l1.5 5h2.5l-1.2-4.2M19.5 9.5a4 4 0 0 1 0 5" />
+  </Icone>
+);
 export const IconeChave = (p: Props) => (
   <Icone {...p}>
     <circle cx="8" cy="15" r="4" />

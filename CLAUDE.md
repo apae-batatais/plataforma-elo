@@ -50,6 +50,39 @@ src/plataforma/             composição: módulos ativos, aplicação, sessão
 10. **Toda regra de negócio nova vem com teste**, incluindo quem vê e quem altera.
 11. **Decisão de arquitetura relevante = nova ADR** em `docs/adr/`.
 
+## Como trabalhar com a Diretoria
+
+- **Pergunte antes de propor.** Antes de especificar ou mudar algo, levante as
+  dúvidas: uma pergunta por mensagem, de preferência com opções numeradas.
+- **Nunca invente.** Não use informação que você não confirmou no código, nos
+  documentos ou com a Diretoria. Se não souber, diga e pergunte.
+- **Ao conferir manual ou documentação com o sistema**, aponte também melhorias
+  para quem usa (experiência do usuário), não só divergências.
+- Converse só em português, sem formalidade ("você"; nunca "senhor/senhora").
+  "Diretoria" é o órgão, não uma pessoa.
+- Vá direto ao ponto: o que mudou, o que precisa de decisão e o próximo passo.
+- Decisões que você tomar sozinho durante a execução são listadas para a
+  Diretoria no fim de cada entrega, com o que custam se estiverem erradas.
+
+## Onde ficam as informações (fonte única)
+
+| O quê | Onde | Quando atualizar |
+| --- | --- | --- |
+| O que falta e em que ordem | `docs/backlog.md` | Ao abrir, aprovar ou concluir uma entrega |
+| O que ficou para depois em cada app | `docs/roadmap.md` | Quando a Diretoria adiar ou decidir algo para uma fase futura |
+| Regras de cada app | `src/modulos/<id>/especificacao.md` | Antes de construir; registre cada decisão nova da Diretoria |
+| Plano de execução e andamento | `docs/superpowers/plans/<data>-<assunto>.md` e `...-andamento.md` | O andamento, ao fim de cada tarefa ou entrega |
+| Identidade visual (cores, fontes, regras) | `docs/identidade-visual.md` | Ao aprovar cor de app ou regra visual nova |
+| Decisões de arquitetura | `docs/adr/` | A cada decisão relevante (regra 11) |
+
+O repositório é a fonte. Documentos do projeto no Claude (roadmap, identidade
+visual) são só atalhos para estes arquivos; se divergirem, vale o repositório.
+
+**Ao retomar um trabalho em andamento**, leia primeiro o arquivo de andamento do
+plano e continue da primeira tarefa não concluída; nunca refaça tarefa marcada
+como concluída. Faça commit ao fim de cada tarefa: o ambiente da nuvem pode
+reiniciar, e só o que está no Git sobrevive.
+
 ## Antes de entregar
 
 Rode `npm run verificar` (tipos, lint, fronteiras e testes) e `npm run build`.
