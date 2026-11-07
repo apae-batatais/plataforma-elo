@@ -94,9 +94,23 @@ pelo navegador, no Pull Request e na prévia. Nunca peça para ela instalar
 ferramentas ou executar comandos.
 
 **Quando a Diretoria aprovar um PR** (dizendo "aprovado" na conversa ou
-aprovando no GitHub), o agente faz o merge na `main` e em seguida dispara a
-publicação oficial (`gh workflow run publicar.yml --ref main`), acompanha até
-o fim e informa o resultado.
+aprovando no GitHub), o agente faz o merge na `main` e **não** publica na hora.
+Informa que a mudança entrou na fila da próxima publicação.
+
+**Publicação oficial em lote.** Cada publicação oficial gasta créditos do plano
+gratuito da Netlify (cerca de 15 de 300 por mês); quando acabam, a Netlify recusa
+a publicação com "Forbidden" até o próximo ciclo. Por isso:
+
+- A publicação oficial (`gh workflow run publicar.yml --ref main`) só é disparada
+  quando a Diretoria pedir ("publicar"), de preferência **uma vez por semana**,
+  juntando tudo o que foi aprovado. O agente acompanha até o fim e informa o resultado.
+- Ao fim de cada entrega, o agente avisa quantos PRs aprovados estão esperando
+  publicação (merges na `main` depois da última publicação com sucesso).
+- Exceção: correção urgente de algo que quebrou no site oficial pode ser publicada
+  na hora, se a Diretoria pedir.
+- As prévias por Pull Request continuam a cada PR, para a conferência antes da aprovação.
+- Se a publicação falhar com "Forbidden", não tente de novo mais de uma vez: avise
+  a Diretoria para conferir "Usage & billing" na Netlify.
 
 ## Ciclo de trabalho (SDD)
 
