@@ -10,7 +10,7 @@
  * gravados continuam valendo.
  */
 import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
-import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { atualizar, atualizarVarios, ErroConflito, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Unidades } from '@/nucleo/estrutura/tabelas';
 import { AjustesConciliacao, Contas, Fontes, Saldos, type RegAjusteConciliacao, type RegConta, type RegFonte, type RegSaldo } from '../dados/tabelas';
@@ -196,7 +196,10 @@ export async function salvarSaldosDoMes(
 
   type Passo = { contaId: string; valor: number; existente: RegSaldo | null };
   const passos: Passo[] = [];
+  const vistas = new Set<string>();
   for (const l of linhas) {
+    if (vistas.has(l.contaId)) throw new ErroTesouraria('A mesma conta apareceu duas vezes. Abra a página de novo.');
+    vistas.add(l.contaId);
     if (l.valor === null) continue;
     if (!Number.isFinite(l.valor)) throw new ErroTesouraria('Valor de saldo inválido.');
     const valor = Math.round(l.valor * 100) / 100;
@@ -209,14 +212,27 @@ export async function salvarSaldosDoMes(
     passos.push({ contaId: l.contaId, valor, existente });
   }
 
-  for (const { contaId, valor, existente } of passos) {
-    if (existente) {
-      const { colunasAlteradas } = await atualizar(p, Saldos, existente.id, existente.versao, { saldo: valor }, { email: quem.email });
-      await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Saldos', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
-    } else {
-      const novo = await inserir(p, Saldos, { conta_id: contaId, mes, saldo: valor }, { email: quem.email });
-      await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Saldos', registroId: novo.id });
-    }
+  // Leitura nova na hora de gravar: um saldo novo para (conta, mês) que já
+  // existe vira conflito, e as versões das alterações são conferidas juntas.
+  const [saldosAgora] = await lerTabelas(p, [Saldos] as const);
+  const jaTem = new Set(saldosAgora.ativos().filter((s) => s.mes === mes).map((s) => s.conta_id));
+  const novos = passos.filter((x) => !x.existente);
+  const alterados = passos.filter((x) => x.existente);
+  for (const n of novos) if (jaTem.has(n.contaId)) throw new ErroConflito(n.contaId);
+
+  const feitos = await atualizarVarios(
+    p,
+    Saldos,
+    alterados.map((x) => ({ id: x.existente!.id, versao: x.existente!.versao, mudancas: { saldo: x.valor } })),
+    { email: quem.email },
+  );
+  const inseridos = await inserirRegistros(p, saldosAgora, novos.map((n) => ({ conta_id: n.contaId, mes, saldo: n.valor })), { email: quem.email });
+
+  for (const r of inseridos) {
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Saldos', registroId: r.id });
+  }
+  for (const r of feitos) {
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Saldos', registroId: r.id, detalhes: { colunas: r.colunasAlteradas } });
   }
   return { gravados: passos.length };
 }

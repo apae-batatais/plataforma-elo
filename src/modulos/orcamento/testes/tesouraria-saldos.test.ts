@@ -146,6 +146,34 @@ describe('saldos do mês', () => {
   });
 });
 
+describe('saldos: entradas inválidas', () => {
+  it('recusa a mesma conta duas vezes na mesma chamada, sem gravar nada', async () => {
+    const { a, b } = await tresContas();
+    const f = await fin();
+    await expect(salvarSaldosDoMes(p, f, MES, [{ contaId: b, valor: 1 }, { contaId: a, valor: 1 }, { contaId: a, valor: 2 }])).rejects.toThrow('A mesma conta apareceu duas vezes.');
+    expect((await lerTabela(p, Saldos)).todos()).toHaveLength(0);
+    await salvarSaldosDoMes(p, f, MES, [{ contaId: a, valor: 5 }]);
+    const v = (await lerSaldosDoMes(p, f, MES)).linhas.find((l) => l.conta.id === a)!.saldo!.versao;
+    await expect(salvarSaldosDoMes(p, f, MES, [{ contaId: a, valor: 6, versao: v }, { contaId: a, valor: 7, versao: v }])).rejects.toBeInstanceOf(ErroTesouraria);
+    expect((await lerTabela(p, Saldos)).todos().map((x) => x.saldo)).toEqual([5]);
+  });
+
+  it('saldo novo para conta e mês que já têm saldo (outra pessoa gravou antes) dá ErroConflito', async () => {
+    const { a, b } = await tresContas();
+    const f = await fin();
+    await salvarSaldosDoMes(p, f, MES, [{ contaId: a, valor: 5 }]);
+    await expect(salvarSaldosDoMes(p, f, MES, [{ contaId: b, valor: 9 }, { contaId: a, valor: 6 }])).rejects.toBeInstanceOf(ErroConflito);
+    expect((await lerTabela(p, Saldos)).todos().map((x) => x.saldo)).toEqual([5]);
+  });
+
+  it('conta que não existe é recusada e nada é gravado', async () => {
+    const { a } = await tresContas();
+    const f = await fin();
+    await expect(salvarSaldosDoMes(p, f, MES, [{ contaId: a, valor: 1 }, { contaId: 'nao-existe', valor: 2 }])).rejects.toThrow('Conta não encontrada.');
+    expect((await lerTabela(p, Saldos)).todos()).toHaveLength(0);
+  });
+});
+
 describe('ajustes de conciliação', () => {
   it('ajuste de -300 muda o total da classe; tirado deixa de somar', async () => {
     const { a } = await tresContas();
