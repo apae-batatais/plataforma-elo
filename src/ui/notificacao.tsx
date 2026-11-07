@@ -37,7 +37,7 @@ export function Notificacao() {
           </Aviso>
         </div>
       )}
-      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4">
+      <div aria-live="polite" className="pointer-events-none fixed inset-x-0 top-3 z-50 flex justify-center px-4 print:hidden">
         {visivel && (
           <div
             role="status"

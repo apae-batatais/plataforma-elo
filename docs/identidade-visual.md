@@ -5,7 +5,7 @@ Documento editável: https://claude.ai/artifact/WnRmuEPtZNBagyMgZTHn98 (esta é 
 
 ## Conceito
 
-O Elo é uma marca neutra em grafite: quem dá cor à tela é o app que está aberto. A plataforma reúne vários apps para organizações da sociedade civil (Orçamento, Requisições, Questionários, Avaliação Diagnóstica) e vai atender organizações diferentes, então não carrega a cor de nenhuma delas.
+O Elo é uma marca neutra em grafite: quem dá cor à tela é o app que está aberto. A plataforma reúne vários apps para organizações da sociedade civil (Orçamento, Requisições, Questionários, Avaliação de Serviços Sociais) e vai atender organizações diferentes, então não carrega a cor de nenhuma delas.
 
 O Elo mostra o que precisa de ação, não planilhas. A tela inicial reúne as pendências de todos os apps e dá acesso a cada um deles.
 
@@ -59,7 +59,7 @@ A marca é grafite; o destaque de cada tela é a cor do app aberto. Todas as cor
 | Orçamento | Petróleo | #0E7C86 | #3CC8C8 |
 | Requisições | Índigo | #3730A3 | #8F8CFF |
 | Questionários | Magenta | #A8197F | #F27ACF |
-| Avaliação Diagnóstica | Cobre | #8C4A2F | #E0A07E |
+| Avaliação de Serviços Sociais (antes Avaliação Diagnóstica) | Cobre | #8C4A2F | #E0A07E |
 | Comunicação | Azul-celeste | #0369A1 | #5CC8F5 |
 
 Dentro do app, a cor dele marca o item atual do menu, os filtros escolhidos, os links, o ícone e os gráficos de uma série só. O botão principal continua grafite em todos os apps.
