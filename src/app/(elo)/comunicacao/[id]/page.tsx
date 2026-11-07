@@ -121,14 +121,49 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
           {r.imagem_confirmada_em && <Dado rotulo="Uso de imagem confirmado em">{dataHoraBR(r.imagem_confirmada_em)}</Dado>}
         </dl>
         <p className="mt-4 whitespace-pre-line">{r.descricao}</p>
-        {d.anexos.length > 0 && (
-          <ul className="mt-4 list-disc pl-5 text-sm">
+      </Secao>
+
+      {d.anexos.length > 0 && (
+        <Secao titulo="Fotos e documentos" descricao="Clique na foto para ver em tamanho grande. Cada abertura fica registrada." id="t-anexos">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {d.anexos.map((a) => (
-              <li key={a.id}>{a.nome}</li>
+              <li key={a.id} className="overflow-hidden rounded-lg border border-borda bg-superficie-2">
+                {a.tipo === 'foto' ? (
+                  <a
+                    href={`/comunicacao/anexos/${a.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="group block focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--destaque)]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/comunicacao/anexos/${a.id}`}
+                      alt={`Foto anexada ao pedido ${r.numero}`}
+                      loading="lazy"
+                      className="aspect-[4/3] w-full object-cover transition-transform duration-300 ease-out group-hover:scale-[1.03]"
+                    />
+                  </a>
+                ) : (
+                  <a
+                    href={`/comunicacao/anexos/${a.id}`}
+                    target="_blank"
+                    rel="noopener"
+                    className="flex aspect-[4/3] items-center justify-center px-2 text-center text-sm font-semibold text-destaque underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--destaque)]"
+                  >
+                    Abrir {a.mime === 'application/pdf' ? 'PDF' : 'documento Word'}
+                  </a>
+                )}
+                <p className="truncate px-3 py-1.5 text-xs text-texto-suave" title={a.nome}>
+                  {a.tipo === 'foto' ? 'Foto' : a.nome} ·{' '}
+                  {a.tamanho < 1024 * 1024
+                    ? `${Math.max(1, Math.round(a.tamanho / 1024))} KB`
+                    : `${(a.tamanho / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`}
+                </p>
+              </li>
             ))}
           </ul>
-        )}
-      </Secao>
+        </Secao>
+      )}
 
       <Secao titulo="Histórico" id="t-historico">
         <ol className="space-y-3 text-sm">

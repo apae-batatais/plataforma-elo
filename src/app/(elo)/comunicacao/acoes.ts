@@ -1,9 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import { ErroArquivo } from '@/nucleo/armazenamento/arquivos';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
+import { iniciarEnvioAnexoComunicacao, type AnexoPedido } from '@/modulos/comunicacao/aplicacao/anexos';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
 import {
@@ -18,6 +21,7 @@ import {
   revisarPedido,
   type DadosPedido,
 } from '@/modulos/comunicacao/aplicacao/pedidos';
+import type { TipoAnexo } from '@/modulos/comunicacao/dominio/anexos';
 import { ErroComunicacao, TIPOS_PECA, type TipoPeca } from '@/modulos/comunicacao/dominio/pedido';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
@@ -31,7 +35,7 @@ async function contexto() {
   return { usuario, app: await obterAplicacao() };
 }
 
-const conhecido = (e: unknown) => e instanceof ErroComunicacao || e instanceof ErroConflito || e instanceof ErroPermissao;
+const conhecido = (e: unknown) => e instanceof ErroComunicacao || e instanceof ErroConflito || e instanceof ErroPermissao || e instanceof ErroArquivo;
 const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 
 const comMensagem = (pagina: string, chave: 'ok' | 'erro', mensagem: string) =>
@@ -130,6 +134,37 @@ export interface EstadoPedido {
   erro?: string;
 }
 
+/** Anexos que o formulário manda (JSON). Sem o campo, os anexos que já existem ficam como estão. */
+function lerAnexos(f: FormData): AnexoPedido[] | undefined {
+  const t = texto(f, 'anexos');
+  if (!t) return undefined;
+  const incompleto = new ErroComunicacao('Os anexos vieram incompletos. Tente de novo.');
+  let v: unknown;
+  try {
+    v = JSON.parse(t);
+  } catch {
+    throw incompleto;
+  }
+  if (!Array.isArray(v)) throw incompleto;
+  return v.map((x: { arquivoId?: unknown; tipo?: unknown }) => {
+    if (typeof x?.arquivoId !== 'string' || (x.tipo !== 'foto' && x.tipo !== 'documento')) throw incompleto;
+    return { arquivoId: x.arquivoId, tipo: x.tipo };
+  });
+}
+
+/** Abre o envio de uma foto ou documento: o navegador manda o arquivo direto para a pasta de anexos. */
+export async function acaoIniciarEnvioAnexo(a: { tipo: TipoAnexo; mime: string; tamanho: number }): Promise<{ url?: string; erro?: string }> {
+  const { usuario, app } = await contexto();
+  const h = await headers();
+  const origem = h.get('origin') ?? `https://${h.get('x-forwarded-host') ?? h.get('host')}`;
+  try {
+    return await iniciarEnvioAnexoComunicacao(app.planilhas, usuario.autorizador, app.arquivos, { ...a, origem });
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+}
+
 function lerPedido(f: FormData): DadosPedido {
   return {
     area: texto(f, 'area'),
@@ -140,6 +175,7 @@ function lerPedido(f: FormData): DadosPedido {
     dataDesejada: texto(f, 'data_desejada'),
     linkVideo: texto(f, 'link_video') || null,
     imagemConfirmada: f.get('imagem_confirmada') === 'on',
+    anexos: lerAnexos(f),
   };
 }
 
@@ -147,7 +183,7 @@ export async function acaoEnviarPedido(_: EstadoPedido, f: FormData): Promise<Es
   const { usuario, app } = await contexto();
   let r: { id: string; numero: string; urgente: boolean };
   try {
-    r = await enviarPedido(app.planilhas, usuario.autorizador, { ...lerPedido(f), nomeSolicitante: usuario.nome });
+    r = await enviarPedido(app.planilhas, usuario.autorizador, { ...lerPedido(f), nomeSolicitante: usuario.nome }, { arquivos: app.arquivos });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     throw erro;
@@ -162,7 +198,7 @@ export async function acaoReenviarPedido(_: EstadoPedido, f: FormData): Promise<
   const { usuario, app } = await contexto();
   const id = texto(f, 'id');
   try {
-    await reenviarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerPedido(f));
+    await reenviarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerPedido(f), { arquivos: app.arquivos });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     throw erro;
@@ -272,8 +308,9 @@ export async function acaoEditarNaRevisao(_: EstadoPedido, f: FormData): Promise
       tipoPeca: texto(f, 'tipo_peca') as TipoPeca,
       calendarioId: novo ? null : texto(f, 'calendario_id') || null,
       dataDesejada: texto(f, 'data_desejada'),
+      anexos: lerAnexos(f),
       ...(novo ? { novoTema } : {}),
-    });
+    }, { arquivos: app.arquivos });
   } catch (erro) {
     if (conhecido(erro)) {
       const aviso =
