@@ -61,7 +61,6 @@ export const NOME_MAXIMO = 120;
  * Vazio depois de limpar: usa o nome `padrao` (o gerado pelo Elo).
  */
 export function limparNomeArquivo(nome: string | null | undefined, padrao: string): string {
-  // eslint-disable-next-line no-control-regex
   let n = String(nome ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ');
   n = n.slice(n.lastIndexOf('/') + 1);
   n = n.slice(n.lastIndexOf('\\') + 1);
