@@ -25,7 +25,7 @@ describe('demonstração', () => {
     const dados = { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() };
     const quantos = async (email: string) => (await listarPessoasVisiveis(p, new Autorizador(email, dados))).length;
     expect(await quantos('coord.ur@exemplo.local')).toBe(25);
-    expect(await quantos('diretoria@exemplo.local')).toBe(89); // 74 atendidos e familiares + 15 usuários
+    expect(await quantos('diretoria@exemplo.local')).toBe(91); // 74 atendidos e familiares + 17 usuários
     expect(await quantos('admin@exemplo.local')).toBe(1);
     expect(usuarios.ativos()).toHaveLength(USUARIOS_FICTICIOS.length);
   });
