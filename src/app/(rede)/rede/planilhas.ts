@@ -6,6 +6,7 @@ const NOMES: Record<string, string> = {
   orcamento: 'Orçamento',
   orcamento_folha: 'Folha de pagamento',
   requisicoes: 'Requisições',
+  comunicacao: 'Comunicação',
 };
 
 /** As planilhas que cada instituição cria no próprio Drive: as do Núcleo e as dos apps ativos. */

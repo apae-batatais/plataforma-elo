@@ -6,6 +6,7 @@ describe('cor do app pelo endereço', () => {
     expect(appDoCaminho('/orcamento')).toBe('orcamento');
     expect(appDoCaminho('/orcamento/previsao/geral')).toBe('orcamento');
     expect(appDoCaminho('/requisicoes?aba=minhas')).toBe('requisicoes');
+    expect(appDoCaminho('/comunicacao/calendario')).toBe('comunicacao');
   });
 
   it('fora dos apps não há app (destaque ardósia)', () => {
