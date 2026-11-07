@@ -22,13 +22,20 @@ const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 const MSG_VALOR = 'Use números, como 1.234,56.';
 
 /** Volta para a página com a mensagem no endereço (mesmo padrão da Previsão). */
-async function executar(pagina: string, sucesso: string, acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>) {
+async function executar(
+  pagina: string,
+  sucesso: string | ((resultado: unknown) => string),
+  acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>,
+  /** Anexado ao endereço só quando deu certo (ex.: `salvo=1`). */
+  marcaDeSucesso?: string,
+) {
   const ctx = await contexto();
   let destino: string;
   const sep = pagina.includes('?') ? '&' : '?';
   try {
-    await acao(ctx);
-    destino = `${pagina}${sep}ok=${encodeURIComponent(sucesso)}`;
+    const resultado = await acao(ctx);
+    const texto = typeof sucesso === 'function' ? sucesso(resultado) : sucesso;
+    destino = `${pagina}${sep}ok=${encodeURIComponent(texto)}${marcaDeSucesso ? `&${marcaDeSucesso}` : ''}`;
   } catch (erro) {
     if (!conhecido(erro)) throw erro;
     destino = `${pagina}${sep}erro=${encodeURIComponent((erro as Error).message)}`;
@@ -83,20 +90,23 @@ const paginaSaldos = (mes: string) => `/orcamento/tesouraria?mes=${mesValido(mes
 
 export async function acaoSalvarSaldos(f: FormData) {
   const mes = texto(f, 'mes');
-  await executar(paginaSaldos(mes), 'Saldos do mês salvos.', ({ usuario, app }) => {
-    const linhas: { contaId: string; valor: number | null; versao?: number }[] = [];
-    for (const [nome, v] of f.entries()) {
-      if (!nome.startsWith('saldo_')) continue;
-      const contaId = nome.slice('saldo_'.length);
-      const valor = lerValorEmReais(String(v));
-      if (valor === 'invalido') throw new ErroTesouraria(MSG_VALOR);
-      const versao = texto(f, `versao_${contaId}`);
-      linhas.push({ contaId, valor, versao: versao ? Number(versao) : undefined });
-    }
-    return salvarSaldosDoMes(app.planilhas, usuario.autorizador, mes, linhas).then((r) => {
-      if (r.gravados === 0) throw new ErroTesouraria('Nenhum saldo mudou. Informe ou altere algum saldo antes de salvar.');
-    });
-  });
+  await executar(
+    paginaSaldos(mes),
+    (r) => ((r as { gravados: number }).gravados === 0 ? 'Nenhum saldo mudou: não havia nada novo para salvar.' : 'Saldos do mês salvos.'),
+    ({ usuario, app }) => {
+      const linhas: { contaId: string; valor: number | null; versao?: number }[] = [];
+      for (const [nome, v] of f.entries()) {
+        if (!nome.startsWith('saldo_')) continue;
+        const contaId = nome.slice('saldo_'.length);
+        const valor = lerValorEmReais(String(v));
+        if (valor === 'invalido') throw new ErroTesouraria(MSG_VALOR);
+        const versao = texto(f, `versao_${contaId}`);
+        linhas.push({ contaId, valor, versao: versao ? Number(versao) : undefined });
+      }
+      return salvarSaldosDoMes(app.planilhas, usuario.autorizador, mes, linhas);
+    },
+    'salvo=1',
+  );
 }
 
 export async function acaoIncluirAjuste(f: FormData) {

@@ -8,7 +8,7 @@
  * Os campos ficam fora do <form> e se ligam a ele pelo atributo `form`:
  * assim os formulários de ajuste, que também são formulários, cabem nas linhas.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { estiloBotao } from '@/ui/botao';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
@@ -53,6 +53,7 @@ export function SaldosDoMes({
   linhas,
   totaisAnterior,
   podeEditar,
+  salvouAgora,
   salvar,
   incluirAjuste,
   tirarAjuste,
@@ -63,12 +64,58 @@ export function SaldosDoMes({
   linhas: LinhaTela[];
   totaisAnterior: Record<Classe, number>;
   podeEditar: boolean;
+  /** A página acabou de voltar de um salvamento que deu certo: o rascunho não vale mais. */
+  salvouAgora: boolean;
   salvar: Acao;
   incluirAjuste: Acao;
   tirarAjuste: Acao;
 }) {
   const [textos, setTextos] = useState<Record<string, string>>(() => Object.fromEntries(linhas.map((l) => [l.contaId, textoInicial(l.saldo)])));
   const [enviando, setEnviando] = useState(false);
+  const [recuperado, setRecuperado] = useState(false);
+  const pronto = useRef(false);
+  const chaveRascunho = `elo:orcamento:saldos:${mes}`;
+  const iniciais = useRef(textos);
+
+  // Rascunho do que foi digitado e ainda não foi salvo: sobrevive à recarga da página
+  // (erro ao salvar, ajuste adicionado ou tirado). Sem armazenamento, a tela funciona igual.
+  useEffect(() => {
+    try {
+      if (salvouAgora || !podeEditar) {
+        sessionStorage.removeItem(chaveRascunho);
+      } else {
+        const bruto = sessionStorage.getItem(chaveRascunho);
+        const rascunho = bruto ? (JSON.parse(bruto) as Record<string, unknown>) : null;
+        if (rascunho && typeof rascunho === 'object') {
+          const mudancas: Record<string, string> = {};
+          for (const l of linhas) {
+            const t = rascunho[l.contaId];
+            if (typeof t === 'string' && lerValorEmReais(t) !== lerValorEmReais(iniciais.current[l.contaId] ?? '')) mudancas[l.contaId] = t;
+          }
+          if (Object.keys(mudancas).length > 0) {
+            setTextos((atual) => ({ ...atual, ...mudancas }));
+            setRecuperado(true);
+          }
+        }
+      }
+    } catch {
+      /* sem armazenamento: segue sem rascunho */
+    }
+    pronto.current = true;
+    // roda só ao abrir a tela
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!pronto.current || !podeEditar) return;
+    try {
+      const mudou = linhas.some((l) => lerValorEmReais(textos[l.contaId] ?? '') !== lerValorEmReais(iniciais.current[l.contaId] ?? ''));
+      if (mudou) sessionStorage.setItem(chaveRascunho, JSON.stringify(textos));
+      else sessionStorage.removeItem(chaveRascunho);
+    } catch {
+      /* sem armazenamento: segue sem rascunho */
+    }
+  }, [textos, linhas, chaveRascunho, podeEditar]);
 
   const lido = (l: LinhaTela) => lerValorEmReais(textos[l.contaId] ?? '');
   const algumInvalido = podeEditar && linhas.some((l) => lido(l) === 'invalido');
@@ -87,10 +134,16 @@ export function SaldosDoMes({
     <div className="space-y-6">
       <form
         id={ID_FORM}
-        action={salvar}
+        action={async (f) => {
+          setEnviando(true);
+          try {
+            await salvar(f);
+          } finally {
+            setEnviando(false);
+          }
+        }}
         onSubmit={(e) => {
           if (algumInvalido) e.preventDefault();
-          else setEnviando(true);
         }}
       >
         <input type="hidden" name="mes" value={mes} />
@@ -129,6 +182,12 @@ export function SaldosDoMes({
         </table>
         {podeEditar && <p className="border-t border-borda px-4 py-2 text-sm text-texto-suave">Os totais mudam enquanto você digita. O total oficial é calculado pelo Elo quando você salva.</p>}
       </section>
+
+      {recuperado && (
+        <p role="status" className="rounded-md border border-borda bg-superficie-2 px-4 py-2 text-sm">
+          Recuperamos os valores que você digitou e ainda não salvou.
+        </p>
+      )}
 
       {linhas.length === 0 && <p className="text-texto-suave">Nenhuma conta cadastrada. Cadastre em Contas.</p>}
 
@@ -235,7 +294,7 @@ export function SaldosDoMes({
                                 variante="fantasma"
                                 className="!min-h-8 !px-2 !py-1 !text-sm"
                                 titulo={`Adicionar ajuste em ${l.descricao}`}
-                                descricao={`Ajuste de conciliação de ${rotuloMes}. Use valor negativo para diminuir. Os saldos digitados e ainda não salvos se perdem: salve antes.`}
+                                descricao={`Ajuste de conciliação de ${rotuloMes}. Use valor negativo para diminuir. Os saldos digitados e ainda não salvos voltam depois de gravar o ajuste.`}
                               >
                                 <form action={incluirAjuste} className="space-y-4">
                                   <input type="hidden" name="mes" value={mes} />

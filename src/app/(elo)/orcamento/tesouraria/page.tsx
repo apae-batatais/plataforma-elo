@@ -14,8 +14,8 @@ import { acaoIncluirAjuste, acaoSalvarSaldos, acaoTirarAjuste } from './acoes';
 
 export const metadata: Metadata = { title: 'Saldos do mês' };
 
-export default async function SaldosDoMesPagina({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
-  const { mes: pedido } = await searchParams;
+export default async function SaldosDoMesPagina({ searchParams }: { searchParams: Promise<{ mes?: string; salvo?: string }> }) {
+  const { mes: pedido, salvo } = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const atual = mesAtualBrasilia();
@@ -82,6 +82,7 @@ export default async function SaldosDoMesPagina({ searchParams }: { searchParams
         linhas={linhas}
         totaisAnterior={s.totaisAnterior}
         podeEditar={podeEditar}
+        salvouAgora={salvo === '1'}
         salvar={acaoSalvarSaldos}
         incluirAjuste={acaoIncluirAjuste}
         tirarAjuste={acaoTirarAjuste}
