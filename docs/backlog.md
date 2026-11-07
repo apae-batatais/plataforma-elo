@@ -12,7 +12,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 
 | Item | Frente | Situação | Detalhe |
 | --- | --- | --- | --- |
-| Comunicação fase 1 — entrega 3 de 5 | Comunicação | Fotos e documentos no pedido (Tarefa 8 do plano). Em construção | ramo `feat/comunicacao-anexos`; `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
+| Comunicação fase 1 — entrega 3 de 5 | Comunicação | Fotos e documentos no pedido. Pronta; aguarda conferência na prévia e aprovação da Diretoria (há uma pergunta no PR sobre o nome dos documentos) | PR #46 |
 | Comunicação fase 1 — entregas 4 e 5 | Comunicação | Já planejadas: 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores. Começam depois da conferência da entrega 3 | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
 | Plano da Entrega 1D.1 (Contas e saldos) | Orçamento | Plano pronto em 07/11/2026; aguarda aprovação da Diretoria antes da construção | `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos.md` |
 
@@ -41,6 +41,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | Comunicação fase 2 — ligação com o Gmail | Comunicação e Núcleo | Implementação futura (decisão da Diretoria em 07/11/2026). Peça nova do núcleo para o Gmail; avisos e lembretes por e-mail; envio automático de release e artigo na data marcada, com registro e aviso de falha; verificação do app no Google para OSCs de outros domínios | `docs/roadmap.md` |
 | Comunicação fase 3 — Instagram automático | Comunicação | Conexão da conta profissional da OSC, publicação na hora marcada com gravação do link, aviso de falha. Antes, confirmar se a Meta exige revisão do app | `docs/roadmap.md` |
 | Comunicação fase 4 — resultado das postagens | Comunicação | Alcance e curtidas do Instagram nos indicadores | `docs/roadmap.md` |
+| Auditoria completa na leitura de anexos | Núcleo | Leitura por faixa que não começa no início do arquivo não gera registro, e o erro 502 repassa o texto do Google. Vale para Requisições e Comunicação; precisa de pedido da Diretoria para mexer no Núcleo | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1-andamento.md` (Pendências) |
 | Feriados no núcleo do Elo | Núcleo | Levar o cadastro de feriados do Requisições para o núcleo, para a Comunicação considerar feriados na antecedência mínima | `docs/roadmap.md` (Melhorias deixadas para depois) |
 | Fase 3 — Expansão | Novos apps | Educação, Saúde/CER e novos módulos | `docs/especificacao-plataforma.md` (Roteiro) |
 
