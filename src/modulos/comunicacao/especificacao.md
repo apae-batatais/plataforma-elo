@@ -107,6 +107,13 @@ Tipos de peça (fixos na fase 1): Post no Instagram, Reel no Instagram, Release,
 4. Quem pediu também pode cancelar um pedido devolvido (além de antes da revisão), como no Requisições.
 5. Cor do app: azul-celeste (#0369A1 no tema claro, #5CC8F5 no escuro), testada nos dois temas (contraste 5,5 e 8,9).
 
+## Decisões tomadas na construção (Entrega 3, 07/11/2026) — para conferência da Diretoria
+
+1. Na revisão, a Comunicação só inclui foto nova se quem pediu já confirmou a autorização de uso de imagem; senão, devolve o pedido para quem pediu confirmar. A Comunicação não confirma por outra pessoa.
+2. O documento aparece com o nome gerado pelo Elo (ex.: `comunicacao-2026-11-07-documento-…pdf`), sem o nome original do arquivo, que pode conter dado pessoal.
+3. Abrir o envio de anexos exige `comunicacao.solicitar` ou `comunicacao.revisar`.
+4. Documentos de até 10 MB são entregues inteiros, em partes, pela rota de leitura. Na prévia isso não pode ser conferido acima de 4 MB, porque a demonstração recusa arquivos maiores que 4 MB.
+
 ## Critérios de pronto
 
 - [ ] Regras de negócio com testes
