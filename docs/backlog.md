@@ -28,6 +28,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
 | Capacidade de Indicadores | Capacidades | Cálculo e painel de indicadores compartilhados entre os apps. A pasta `src/capacidades/indicadores` ainda está vazia | `docs/especificacao-plataforma.md` (Situação da Fase 0) |
+| Entrega R4 da Rede (pasta única) | Rede | Cadastro só com o link da pasta; o Elo cria as planilhas e a pasta de anexos que faltam. Especificação proposta em 07/11/2026, aguarda aprovação | `docs/especificacao-rede.md` (R4); ADR-018 |
 | Entrega R3 da Rede | Rede | Guia "Como trazer uma instituição para o Elo", termo de adesão (LGPD) e roteiro de transferência da Operadora. É documentação, não código | `docs/especificacao-rede.md` (Entregas) |
 
 ## Depois
