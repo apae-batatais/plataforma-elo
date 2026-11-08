@@ -77,6 +77,8 @@ export interface Rede {
   /** Endereços em que a área da rede pode ser aberta (vazio: qualquer um). */
   enderecos: string[];
   administradores: string[];
+  /** Nome da Operadora; só a demonstração usa (cabeçalho da rede). */
+  nome?: string;
 }
 
 const esquemaRede = z.object({
@@ -92,7 +94,7 @@ export type ConfigGeral =
   | ({ modo: 'producao'; instituicoes: Instituicao[]; rede: Rede | null } & z.infer<typeof esquemaGeral>);
 
 /** Operadora fictícia da demonstração. */
-export const REDE_DEMONSTRACAO: Rede = { planilha: 'rede', dominio: 'exemplo.local', enderecos: [], administradores: ['rede@exemplo.local'] };
+export const REDE_DEMONSTRACAO: Rede = { planilha: 'rede', dominio: 'exemplo.local', enderecos: [], administradores: ['rede@exemplo.local'], nome: 'Instituição Operadora da Plataforma' };
 
 function lerRede(env: Record<string, string | undefined>): Rede | null {
   const v = json('REDE', env.REDE);
@@ -120,8 +122,8 @@ export type Config =
 export const INSTITUICOES_DEMONSTRACAO: Instituicao[] = [
   {
     codigo: 'exemplo',
-    nome: 'Apae Exemplo',
-    nomeCompleto: 'Associação de Pais e Amigos dos Excepcionais de Exemplo (fictícia)',
+    nome: 'Instituição Operadora',
+    nomeCompleto: 'Instituição Operadora (fictícia)',
     dominio: 'exemplo.local',
     enderecos: [],
     situacao: 'ativa',
@@ -131,8 +133,8 @@ export const INSTITUICOES_DEMONSTRACAO: Instituicao[] = [
   },
   {
     codigo: 'modelo',
-    nome: 'Apae Modelo',
-    nomeCompleto: 'Associação de Pais e Amigos dos Excepcionais de Modelo (fictícia)',
+    nome: 'Instituição Modelo',
+    nomeCompleto: 'Instituição Modelo (fictícia)',
     dominio: 'exemplo.local',
     enderecos: [],
     situacao: 'ativa',

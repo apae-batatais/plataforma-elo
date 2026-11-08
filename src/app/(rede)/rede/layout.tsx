@@ -30,9 +30,12 @@ export default async function LayoutRede({ children }: { children: React.ReactNo
     </html>
   );
   let demonstracao = false;
+  let nomeOperadora: string | undefined;
   let adm;
   try {
-    demonstracao = configGeral().modo === 'demonstracao';
+    const geral = configGeral();
+    demonstracao = geral.modo === 'demonstracao';
+    if (geral.modo === 'demonstracao') nomeOperadora = geral.rede.nome;
     if (!(await enderecoDaRede())) {
       return corpo(
         <main className="px-4 py-12">
@@ -75,7 +78,7 @@ export default async function LayoutRede({ children }: { children: React.ReactNo
       <header className="bg-lateral text-lateral-texto">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Link href="/rede" aria-label={`${NOME_PLATAFORMA}: Rede de instituições`}>
-            <MarcaElo instituicao="Rede de instituições" />
+            <MarcaElo instituicao={nomeOperadora ?? 'Rede de instituições'} />
           </Link>
           {adm && (
             <nav aria-label="Rede" className="flex flex-wrap items-center gap-1 text-sm">
