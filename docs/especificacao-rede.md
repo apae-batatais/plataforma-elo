@@ -54,9 +54,19 @@ que já existe:
 - R3: guia à parte "Como trazer uma instituição para o Elo" e termo de adesão.
 
 ## Demonstração
-Duas instituições fictícias ("Apae Exemplo" e "Apae Modelo") e uma Operadora
-fictícia, para conferir na prévia que uma instituição não vê a outra e que a
-Administração da rede não vê dados de nenhuma.
+Duas instituições fictícias e uma Operadora fictícia, para conferir na prévia que uma
+instituição não vê a outra e que a Administração da rede não vê dados de nenhuma.
+
+Nomes na demonstração e nas prévias (decisão da Diretoria na proposta #72; nenhum deles
+leva "Apae"):
+
+| O que | Nome | Nome por extenso (tela de entrada) |
+| --- | --- | --- |
+| Instituição fictícia 1 (código `exemplo`) | Instituição Operadora | Instituição Operadora (fictícia) |
+| Instituição fictícia 2 (código `modelo`) | Instituição Modelo | Instituição Modelo (fictícia) |
+| Operadora fictícia (Administração da rede) | Instituição Operadora da Plataforma | — |
+
+Valem só para a demonstração e as prévias; as instituições reais não mudam.
 
 ## Configuração na hospedagem (R1)
 Até a R2, as instituições ficam nas variáveis da Netlify (contas da Operadora):
@@ -187,3 +197,51 @@ link e ver as planilhas aparecerem como "Criada" depois de "Preparar estrutura".
   (decisão da Diretoria, 07/11/2026), com orientação no guia e no termo de adesão da R3.
 - Criar o próprio Drive compartilhado: a conta de serviço não pode criar drives no Google
   Workspace da instituição.
+
+## Nomes da demonstração (proposta #72)
+
+**Objetivo**: nenhuma tela da demonstração ou da prévia mostra "Apae Exemplo" nem "Apae Modelo".
+**Para quem**: a Diretoria, ao conferir prévias. **Frentes**: regras e dados (configuração do
+Núcleo, a pedido da proposta) e telas (um texto no cabeçalho da rede).
+
+### O que muda
+1. `INSTITUICOES_DEMONSTRACAO` (`src/nucleo/config.ts`): `nome` e `nomeCompleto` passam para os
+   textos da tabela da seção "Demonstração". Os códigos (`exemplo`, `modelo`), domínios e
+   unidades não mudam, para não quebrar sessões, rotas e testes.
+2. `REDE_DEMONSTRACAO` ganha o campo opcional `nome` ("Instituição Operadora da Plataforma"),
+   usado só na demonstração. No cabeçalho da Administração da rede
+   (`src/app/(rede)/rede/layout.tsx`), em demonstração, o nome aparece como identificação da
+   Operadora fictícia (no lugar de "Rede de instituições" na marca). Em produção nada muda.
+3. A tela de entrada e o seletor de instituição da demonstração usam os novos nomes
+   automaticamente (leem `nome`/`nomeCompleto`).
+4. Qualquer outro texto da demonstração que diga "Apae Exemplo" ou "Apae Modelo" é trocado
+   (hoje só `config.ts`; o Desenvolvedor confere com busca no código, manual e Ajuda).
+
+### Regras (com teste)
+1. A demonstração tem duas instituições com nomes diferentes entre si, e nenhum nome ou nome
+   por extenso contém "Apae" (teste em `tests/nucleo/instituicoes.test.ts`, que hoje confere os
+   nomes antigos).
+2. Uma instituição fictícia continua sem ver a outra (testes existentes seguem verdes).
+3. A Operadora fictícia tem nome sem "Apae"; com a variável `REDE` (produção) o cabeçalho não
+   mostra nome de demonstração.
+4. Nenhuma regra de acesso, permissão ou aba muda.
+
+### Fica de fora
+Instituições, Operadora e dados reais; domínios `exemplo.local`; dados fictícios de pessoas.
+
+### Critérios de pronto (na prévia)
+- A tela de escolha/entrada mostra "Instituição Operadora (fictícia)" e "Instituição Modelo
+  (fictícia)"; em nenhuma tela aparece "Apae Exemplo" ou "Apae Modelo".
+- A Administração da rede mostra "Instituição Operadora da Plataforma".
+- Entrar numa instituição continua sem mostrar dados da outra.
+
+### Entrega
+Uma só, pequena. Não exige ADR (não muda a arquitetura).
+
+### Decisões tomadas sozinho
+- **Manter os códigos `exemplo`/`modelo`**: se a Diretoria quiser códigos novos, é uma troca
+  simples, mas apareceria nos endereços da prévia.
+- **Mostrar o nome da Operadora no cabeçalho da rede só na demonstração**: se for errado, é
+  trocar um texto.
+- **Nomes parecidos ("Instituição Operadora" e "Instituição Operadora da Plataforma")**: foram
+  escolhidos pela Diretoria; se atrapalhar a conferência, renomear é uma troca de texto.
