@@ -34,4 +34,7 @@ repetir o processo em todas as instituições. A Diretoria quer informar só o l
 - App novo: o próximo "Preparar estrutura" (ou "de todas") cria a planilha dele em cada instituição.
 - Instituições já cadastradas (Apae Batatais) mantêm as planilhas atuais; basta informar a pasta.
 - Quem é membro do Drive compartilhado vê todas as planilhas. A restrição de membros é
-  responsabilidade da instituição e entra no guia e no termo de adesão (R3).
+  responsabilidade da TI da instituição; o Elo não confere os membros. Entra no guia e no termo
+  de adesão (R3).
+- Só a Administração da rede prepara a estrutura e cria planilhas. A Administração da plataforma
+  de cada instituição deixa de rodar "Preparar estrutura".

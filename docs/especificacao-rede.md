@@ -144,8 +144,9 @@ instituição, com membros restritos.
   Grava os IDs no cadastro (auditoria com as colunas alteradas) e cria as abas, como hoje.
   Ao fim, mostra o que foi criado e o que já existia.
 - **Preparar estrutura de todas** faz o mesmo em todas as instituições ativas e em preparação.
-- **Administração da plataforma da instituição**, que já pode rodar "Preparar estrutura" da
-  própria instituição, passa a criar também as planilhas que faltam, só dentro da pasta dela.
+- **Só a Administração da rede prepara a estrutura** (decisão da Diretoria, 07/11/2026). A
+  Administração da plataforma de cada instituição deixa de rodar "Preparar estrutura" e não cria
+  planilhas; continua com o cadastro dos acessos.
 
 ### Instituições já cadastradas
 - A Apae Batatais informa a pasta. As planilhas atuais continuam valendo (os IDs já estão no
@@ -168,6 +169,7 @@ O armazenamento em memória simula a pasta: na prévia, cadastrar uma instituiç
 link e ver as planilhas aparecerem como "Criada" depois de "Preparar estrutura".
 
 ### Fica de fora da R4
-- Conferir quem é membro do Drive compartilhado (orientação no guia e no termo de adesão da R3).
+- Conferir quem é membro do Drive compartilhado: é responsabilidade da TI da instituição
+  (decisão da Diretoria, 07/11/2026), com orientação no guia e no termo de adesão da R3.
 - Criar o próprio Drive compartilhado: a conta de serviço não pode criar drives no Google
   Workspace da instituição.
