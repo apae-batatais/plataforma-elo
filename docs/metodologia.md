@@ -1,28 +1,29 @@
 # Metodologia de desenvolvimento do Elo
 
-Atualizado em 8 de novembro de 2026 · Diretoria da Apae Batatais
+Atualizado em 8 de novembro de 2026 · Diretoria da Apae Batatais · Decisão de arquitetura: ADR-019
 
-O Elo é desenvolvido por agentes (conversas no Claude e o Claude Code). A Diretoria é a dona do
-produto e participa só em três momentos. Todo o resto anda sozinho e fica registrado no GitHub,
-que é o ponto de encontro entre as conversas (elas não compartilham memória).
+O Elo é desenvolvido por agentes. A Diretoria é a dona do produto e participa só em três
+momentos. Todo o resto anda sozinho pelo GitHub, que é o ponto de encontro de tudo: propostas,
+especificações, código, prévias e publicação.
 
 ## Os três momentos da Diretoria
 
-1. **Ideias**: conversa com o Product Owner sobre o que o Elo deve oferecer.
-2. **Aprovar a especificação**: no PR de especificação.
-3. **Aprovar a entrega**: no PR de código, depois de conferir na prévia.
+1. **Ideias**: conversa com o Product Owner, que registra cada proposta como issue.
+2. **Aprovar a especificação**: botão "Approve" no PR de especificação.
+3. **Aprovar a entrega**: conferir a prévia e clicar em "Approve" no PR de entrega.
 
-A publicação oficial continua semanal, quando a Diretoria pedir (regras no `CLAUDE.md`).
+Além disso, a Diretoria responde às perguntas que o Arquiteto deixar como comentário na issue. O
+GitHub avisa por e-mail sempre que alguma coisa depende dela.
 
 ## Papéis
 
-| Papel | Onde | O que faz | O que entrega |
+| Papel | Quem | O que faz | O que entrega |
 | --- | --- | --- | --- |
-| Diretoria | — | Dona do produto: decide, prioriza e aprova | Ideias e aprovações |
-| Product Owner | Conversa "Product Owner" | Discute ideias com a Diretoria e registra cada proposta, sem detalhe técnico | Issue com o modelo "Proposta" |
-| Arquiteto de Soluções | Conversa "Arquiteto de Soluções" | Lê as propostas, levanta dúvidas com a Diretoria e escreve a especificação técnica (e a ADR, se houver decisão de arquitetura) | PR de especificação |
-| Scrum Master | Conversa "Scrum Master" | Organiza a construção do que foi aprovado, aciona o Claude Code, acompanha verificação, prévia, aprovação e publicação; sugere melhorias nas especificações | PR de entrega, publicação |
-| Desenvolvedor | Claude Code | Constrói seguindo o `CLAUDE.md` | Código, testes e prévia |
+| Diretoria | — | Dona do produto: decide, prioriza e aprova | Ideias, respostas e aprovações |
+| Product Owner | Conversa "Product Owner" no Claude | Discute ideias com a Diretoria e registra a proposta, sem detalhe técnico | Issue com o modelo "Proposta" |
+| Arquiteto de Soluções | Claude Code no GitHub, sozinho quando a issue é aberta | Lê a proposta, o código e os documentos; pergunta na issue o que não souber; escreve a especificação (e a ADR, se houver decisão de arquitetura); aponta melhorias | PR de especificação |
+| Desenvolvedor | Claude Code no GitHub, sozinho quando a especificação é aprovada | Constrói seguindo o `CLAUDE.md`, com testes, verificação e prévia | PR de entrega |
+| Automação | GitHub Actions | Move os cartões, faz o merge depois da aprovação e publica toda semana | — |
 
 ## Quadro (backlog)
 
@@ -31,74 +32,81 @@ de cada coluna é a prioridade, decidida pela Diretoria.
 
 | Coluna | Quando o cartão chega | Quem age |
 | --- | --- | --- |
-| Proposta | Issue aberta | Arquiteto |
+| Proposta | Issue aberta | Arquiteto (e a Diretoria, se houver pergunta na issue) |
 | Especificação em aprovação | PR com "Especifica #n" aberto | **Diretoria** |
-| Pronta para construir | Merge do PR de especificação | Scrum Master |
+| Pronta para construir | Merge do PR de especificação | Desenvolvedor |
 | Em construção | PR com "Entrega #n" aberto como rascunho | Desenvolvedor |
-| Entrega em aprovação | PR de entrega pronto para revisão | **Diretoria** |
+| Entrega em aprovação | PR de entrega pronto, com a prévia no ar | **Diretoria** |
 | Aprovada | Merge do PR de entrega (a issue é fechada) | fila da publicação |
-| Publicada | Publicação oficial com sucesso | — |
+| Publicada | Publicação oficial semanal com sucesso | — |
 
-As colunas em que a Diretoria age são a caixa de entrada dela. Os cartões andam sozinhos pela
-automação `.github/workflows/fluxo.yml`: a etapa fica numa etiqueta `etapa: …` da issue e é
-copiada para o quadro. Se o PR for fechado sem merge, o cartão volta uma coluna.
+As colunas em negrito são a caixa de entrada da Diretoria. A etapa de cada issue fica numa
+etiqueta `etapa: …` e é copiada para o quadro pela automação `.github/workflows/fluxo.yml`. Se o
+PR for fechado sem merge, o cartão volta uma coluna.
+
+## Habilidades do Claude Code
+
+O Claude Code usa as habilidades guardadas no repositório, em `.claude/skills/<nome>/SKILL.md`, e
+carrega cada uma sozinho quando o trabalho combina com a descrição dela. As habilidades do Elo:
+
+| Habilidade | Para quê |
+| --- | --- |
+| Arquiteto | Como especificar, perguntar na issue e escrever ADR |
+| Telas | Identidade visual, acessibilidade e componentes |
+| Regras e dados | Camada de aplicação, planilhas, permissões, auditoria e testes |
+| Infraestrutura | Netlify, GitHub Actions e Google |
+
+Toda especificação diz quais **frentes** a entrega tem (telas, regras e dados, infraestrutura), e
+o Desenvolvedor usa as habilidades dessas frentes. No GitHub, o Claude Code só enxerga o que está no
+repositório: habilidades da conta da Diretoria no Claude não vão junto.
 
 ## Combinados
 
-- **Uma proposta = uma issue.** Proposta grande é dividida pelo Arquiteto em várias entregas; cada
-  entrega pode virar uma issue própria ligada à proposta original.
+- **Uma proposta = uma issue.** Proposta grande é dividida pelo Arquiteto em entregas; cada entrega
+  pode virar uma issue própria ligada à original.
 - **No texto do PR**, sempre a referência à issue:
   - especificação: `Especifica #12`
-  - construção: `Entrega #12` (aberto como rascunho enquanto está em construção)
+  - construção: `Entrega #12` (rascunho enquanto está em construção)
 - **Etiquetas de app**: `app: orçamento`, `app: requisições`, `app: avaliação`,
   `app: comunicação`, `app: rede`, `app: plataforma`, `app: novo`. O Product Owner põe a do app.
 - **Pendências da Diretoria** fora do código (por exemplo, definir o DPO) são issues com a
   etiqueta `pendência da Diretoria`; elas não entram no fluxo.
-- **Ninguém mexe nas etiquetas `etapa: …` à mão**, exceto o Scrum Master para corrigir algo; a
-  automação cuida delas.
+- **Ninguém mexe nas etiquetas `etapa: …` à mão**; a automação cuida delas.
+- **Publicação oficial semanal e agendada**, juntando tudo o que foi aprovado na semana. Correção
+  urgente pode ser publicada na hora, se a Diretoria pedir.
 - **Fontes únicas**: proposta na issue; regras do app na especificação (`src/modulos/<id>/
   especificacao.md`); decisões de arquitetura nas ADRs; o que fica para depois no
   `docs/roadmap.md`; andamento da construção no plano (`docs/superpowers/plans/`).
 
-## Instruções para cada conversa
+## Conversa Product Owner
 
-Cole o texto de cada papel como primeira mensagem da conversa (ou nas instruções dela). As três
-precisam do GitHub conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
-
-### Product Owner
+Cole este texto como primeira mensagem da conversa (ou nas instruções dela). Ela precisa do GitHub
+conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
 
 > Você é o Product Owner assistente do Elo (repositório apae-batatais/plataforma-elo). A Diretoria
 > da Apae Batatais é a dona do produto e decide. Seu trabalho: discutir ideias de funcionalidades
 > e de apps com a Diretoria, fazer perguntas antes de propor (uma por mensagem, com opções
 > numeradas) e, quando a Diretoria aprovar a ideia, abrir uma issue com o modelo "Proposta"
 > (problema, para quem, resultado esperado, app, observações) e a etiqueta do app. Sem detalhe
-> técnico. Antes de abrir, procure issues parecidas para não duplicar. Leia `docs/metodologia.md`.
-> Converse só em português, sem formalidade.
+> técnico: a especificação é do Arquiteto. Antes de abrir, procure issues parecidas para não
+> duplicar. Leia `docs/metodologia.md`. Converse só em português, sem formalidade.
 
-### Arquiteto de Soluções
+## Implantação
 
-> Você é o Arquiteto de Soluções do Elo (repositório apae-batatais/plataforma-elo). Siga o
-> `CLAUDE.md` e `docs/metodologia.md`. Pegue as issues da coluna Proposta, na ordem do quadro,
-> leia o código e os documentos, levante as dúvidas com a Diretoria (uma pergunta por mensagem,
-> com opções numeradas) e escreva a especificação técnica no lugar indicado pelo `CLAUDE.md`, com
-> ADR quando houver decisão de arquitetura. Abra o PR de especificação com `Especifica #n` no
-> texto. Não escreva código de produção.
+| # | Passo | Quem |
+| --- | --- | --- |
+| 1 | Autenticação do Claude Code no GitHub: token da assinatura do Claude | Diretoria (decidido em 08/11/2026) |
+| 2 | Esta metodologia, a automação das etiquetas e o modelo de issue | Agente → aprovação |
+| 3 | Quadro "Elo" e chave do quadro (abaixo) | Diretoria, no navegador |
+| 4 | App do Claude no repositório e token da assinatura nos Secrets | Diretoria (o token é gerado uma vez num computador) |
+| 5 | E-mails do GitHub: "Watch → All activity" no repositório | Diretoria, no navegador |
+| 6 | Automações: Arquiteto na issue nova, construção depois da aprovação, merge automático, publicação semanal | Agente → aprovação |
+| 7 | Habilidades do Elo em `.claude/skills/` | Agente → aprovação |
+| 8 | Itens em aberto do `docs/backlog.md` viram issues; o arquivo passa a apontar para o quadro | Agente |
+| 9 | Teste de ponta a ponta com uma proposta pequena | Diretoria e agente |
+| 10 | Conversa "Product Owner" criada com o texto acima | Diretoria |
 
-### Scrum Master
-
-> Você é o Scrum Master do Elo (repositório apae-batatais/plataforma-elo). Siga o `CLAUDE.md` e
-> `docs/metodologia.md`. Pegue as issues da coluna "Pronta para construir", na ordem do quadro,
-> organize as entregas, acione o Claude Code para construir (PR de entrega com `Entrega #n`,
-> aberto como rascunho e marcado como pronto quando a verificação passar e a prévia estiver no
-> ar), acompanhe até a aprovação da Diretoria e o merge, e avise quando houver entregas
-> esperando a publicação semanal. Aponte melhorias nas especificações antes de construir.
-> Converse só em português, sem formalidade.
-
-A Diretoria ainda precisa testar se a conversa Scrum Master consegue acionar e acompanhar sessões
-do Claude Code sozinha. Enquanto isso não for confirmado, ela entrega ao Claude Code o texto da
-tarefa pronto para a Diretoria iniciar a sessão.
-
-## Configuração única do quadro (pela Diretoria, no navegador)
+### Passo 3 · Quadro (pela Diretoria, no navegador)
 
 As sessões do Claude só têm acesso ao repositório, não aos projetos da organização. Por isso o
 quadro é criado uma vez pela Diretoria:
@@ -109,23 +117,16 @@ quadro é criado uma vez pela Diretoria:
    Especificação em aprovação, Pronta para construir, Em construção, Entrega em aprovação,
    Aprovada, Publicada.
 3. **Desligar as automações próprias do quadro**: menu ⋯ → Workflows → desligue "Item closed",
-   "Pull request merged" e as demais que mudam o Status. Quem move os cartões é a automação do
-   repositório.
+   "Pull request merged" e as demais que mudam o Status.
 4. **Chave de acesso**: github.com/settings/personal-access-tokens → Generate new token
    (fine-grained) → Resource owner: apae-batatais → Repository access: só plataforma-elo, com
    Issues em "Read" → Organization permissions: Projects em "Read and write". Se a organização não
-   aparecer em Resource owner, a organização precisa permitir chaves desse tipo (Settings da
-   organização → Personal access tokens).
+   aparecer em Resource owner, ela precisa permitir chaves desse tipo (Settings da organização →
+   Personal access tokens).
 5. **Cadastrar no repositório**: plataforma-elo → Settings → Secrets and variables → Actions:
-   - aba Secrets: `QUADRO_TOKEN` com a chave do passo 4;
-   - aba Variables: `QUADRO_NUMERO` com o número do passo 1.
-6. **Sincronizar**: Actions → Fluxo → Run workflow. Todas as issues com etapa entram no quadro.
+   - aba Secrets: `QUADRO_TOKEN` com a chave do item 4;
+   - aba Variables: `QUADRO_NUMERO` com o número do item 1.
+6. **Sincronizar**: Actions → Fluxo → Run workflow.
 
-Sem os passos 4 e 5, a automação continua trocando as etiquetas `etapa: …`; só o quadro não
+Sem os itens 4 e 5, a automação continua trocando as etiquetas `etapa: …`; só o quadro não
 acompanha.
-
-## Migração do `docs/backlog.md`
-
-Depois que este fluxo for aprovado e as entregas em andamento na outra conversa terminarem, os
-itens em aberto do `docs/backlog.md` viram issues (cada uma na etapa em que está) e o arquivo passa
-a apontar para o quadro. Os itens concluídos ficam no histórico dos PRs.

@@ -69,7 +69,7 @@ src/plataforma/             composição: módulos ativos, aplicação, sessão
 | O quê | Onde | Quando atualizar |
 | --- | --- | --- |
 | Papéis, fluxo e combinados | `docs/metodologia.md` | Quando a Diretoria mudar o processo |
-| Propostas (uma por issue) | Issues do GitHub, modelo "Proposta" | A conversa Product Owner abre; a automação muda a etapa |
+| Propostas (uma por issue) | Issues do GitHub, modelo "Proposta" | A conversa Product Owner abre; a automação muda a etapa. Perguntas à Diretoria: comentário na issue |
 | O que falta e em que ordem | Quadro "Elo" no GitHub Projects (até a migração, `docs/backlog.md`) | A automação move os cartões pelos PRs; a ordem é da Diretoria |
 | O que ficou para depois em cada app | `docs/roadmap.md` | Quando a Diretoria adiar ou decidir algo para uma fase futura |
 | Regras de cada app | `src/modulos/<id>/especificacao.md` | Antes de construir; registre cada decisão nova da Diretoria |
