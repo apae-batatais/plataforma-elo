@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { etapaDaEtiqueta, etiquetaDe, executar, mudancas, referencias, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
+import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, referencias, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
 
 type Issue = { number: number; state: string; labels: { name: string }[]; node_id: string; pull_request?: unknown };
 
@@ -107,6 +107,23 @@ describe('fluxo do quadro', () => {
     });
     expect(etiquetas(issues[0])).toEqual(['etapa: publicada']);
     expect(etiquetas(issues[1])).toEqual(['etapa: em construção']);
+  });
+
+  it('publicação agendada (semanal) também conta como oficial', async () => {
+    const issues: Issue[] = [{ number: 1, state: 'closed', labels: [{ name: 'etapa: aprovada' }], node_id: 'I1' }];
+    const github = githubFalso(issues);
+    await executar({
+      github, core,
+      context: contexto('workflow_run', { workflow_run: { conclusion: 'success', event: 'schedule', head_branch: 'main' } }),
+    });
+    expect(etiquetas(issues[0])).toEqual(['etapa: publicada']);
+  });
+
+  it('aplicar põe a issue na etapa pedida sem depender de evento', async () => {
+    const issues: Issue[] = [{ number: 7, state: 'open', labels: [{ name: 'etapa: pronta para construir' }], node_id: 'I7' }];
+    const github = githubFalso(issues);
+    await aplicar({ github, core, context: contexto('workflow_dispatch', {}), lista: [{ issue: 7, etapa: 'Em construção' }] });
+    expect(etiquetas(issues[0])).toEqual(['etapa: em construção']);
   });
 
   it('prévia de PR (publicação que não é a oficial) não publica nada', async () => {

@@ -1,0 +1,102 @@
+# Aprovação da Diretoria (docs/metodologia.md, ADR-019).
+#
+# - "Approve" da Diretoria num PR: faz o merge, move o cartão e, se for especificação,
+#   chama o Desenvolvedor.
+# - "Request changes" da Diretoria num PR: o Claude Code ajusta o PR conforme os comentários.
+#
+# Ações feitas com o GITHUB_TOKEN não disparam outros workflows; por isso este workflow move o
+# cartão e chama o Desenvolvedor diretamente.
+
+name: Aprovação
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: write
+
+concurrency:
+  group: aprovacao-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  aprovar:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.review.state == 'approved' &&
+      github.event.review.user.login == 'diretoria823' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !github.event.pull_request.draft
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
+      - uses: actions/github-script@v7
+        env:
+          QUADRO_TOKEN: ${{ secrets.QUADRO_TOKEN }}
+          QUADRO_NUMERO: ${{ vars.QUADRO_NUMERO }}
+        with:
+          script: |
+            const { aplicar, mudancas, referencias } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            try {
+              await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'squash', commit_title: `${pr.title} (#${pr.number})` });
+            } catch (e) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number,
+                body: `Não consegui fazer o merge depois da aprovação: ${e.message}. Se houver conflito com a main, comente "@claude atualize este PR com a main".` });
+              core.setFailed(e.message);
+              return;
+            }
+            const texto = `${pr.title}\n${pr.body ?? ''}`;
+            await aplicar({ github, context, core,
+              tokenQuadro: process.env.QUADRO_TOKEN, numeroQuadro: process.env.QUADRO_NUMERO,
+              lista: mudancas({ tipo: 'pr_merge', texto }) });
+            for (const issue of referencias(texto).especifica) {
+              await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'claude-desenvolvedor.yml', ref: 'main', inputs: { issue: String(issue) } });
+              core.info(`Desenvolvedor chamado para a issue #${issue}`);
+            }
+
+  ajustar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    if: >-
+      github.event.review.state == 'changes_requested' &&
+      github.event.review.user.login == 'diretoria823' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --max-turns 150
+            --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash"
+          prompt: |
+            A Diretoria pediu ajustes no PR #${{ github.event.pull_request.number }}. Trabalhe sozinho.
+
+            1. Leia o CLAUDE.md e o docs/metodologia.md.
+            2. Leia o PR, a revisão e todos os comentários:
+               `gh pr view ${{ github.event.pull_request.number }} --comments` e
+               `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments`.
+            3. Faça os ajustes no próprio ramo do PR (${{ github.event.pull_request.head.ref }}), com testes
+               quando houver código. Rode `npm run verificar` e `npm run build` até tudo passar.
+            4. Faça commit e push e responda no PR, em poucas linhas, o que mudou em cada ponto pedido.
+               Se algum pedido não puder ser atendido, explique e proponha alternativas numeradas.

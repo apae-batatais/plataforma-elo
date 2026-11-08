@@ -95,31 +95,29 @@ A Diretoria não roda nada no computador (ADR-010): toda conferência é feita
 pelo navegador, no Pull Request e na prévia. Nunca peça para ela instalar
 ferramentas ou executar comandos.
 
-**Quando a Diretoria aprovar um PR** (dizendo "aprovado" na conversa ou
-aprovando no GitHub), o agente faz o merge na `main` e **não** publica na hora.
-Informa que a mudança entrou na fila da próxima publicação.
+**Quando a Diretoria aprovar um PR** ("Approve" no GitHub), o workflow Aprovação faz o merge
+na `main`. Se ela disser "aprovado" numa conversa, o agente faz o merge. Em nenhum caso o merge
+publica: a mudança entra na fila da próxima publicação oficial.
 
-**Publicação oficial em lote.** Cada publicação oficial gasta créditos do plano
-gratuito da Netlify (cerca de 15 de 300 por mês); quando acabam, a Netlify recusa
-a publicação com "Forbidden" até o próximo ciclo. Por isso:
+**Publicação oficial semanal e agendada** (ADR-019). Cada publicação oficial gasta créditos do
+plano gratuito da Netlify (cerca de 15 de 300 por mês); quando acabam, a Netlify recusa a
+publicação com "Forbidden" até o próximo ciclo. Por isso:
 
-- A publicação oficial (`gh workflow run publicar.yml --ref main`) só é disparada
-  quando a Diretoria pedir ("publicar"), de preferência **uma vez por semana**,
-  juntando tudo o que foi aprovado. O agente acompanha até o fim e informa o resultado.
-- Ao fim de cada entrega, o agente avisa quantos PRs aprovados estão esperando
-  publicação (merges na `main` depois da última publicação com sucesso).
-- Exceção: correção urgente de algo que quebrou no site oficial pode ser publicada
-  na hora, se a Diretoria pedir.
+- O workflow Publicar roda sozinho toda sexta-feira às 18h (Brasília) e só publica se houver
+  mudança desde a última publicação oficial.
+- Publicação fora da agenda (`gh workflow run publicar.yml --ref main`) só para correção urgente
+  de algo que quebrou no site oficial, se a Diretoria pedir.
 - As prévias por Pull Request continuam a cada PR, para a conferência antes da aprovação.
-- Se a publicação falhar com "Forbidden", não tente de novo mais de uma vez: avise
-  a Diretoria para conferir "Usage & billing" na Netlify.
+- Se a publicação falhar com "Forbidden", não tente de novo mais de uma vez: avise a Diretoria
+  para conferir "Usage & billing" na Netlify.
 
 ## Ciclo de trabalho (SDD)
 
 Cada entrega nasce de uma proposta (issue) e segue `docs/metodologia.md`. No texto do PR,
 sempre a referência à issue: `Especifica #n` no PR de especificação e `Entrega #n` no PR de
-código (aberto como rascunho e marcado como pronto quando a verificação passar e a prévia
-estiver no ar). É isso que move o cartão no quadro.
+código (aberto depois de `npm run verificar` e `npm run build` passarem). É isso que move o
+cartão no quadro. Use as habilidades de `.claude/skills/` (arquiteto, telas, regras-e-dados,
+infraestrutura) conforme as frentes da especificação.
 
 1. Especificar e pedir aprovação.
 2. Planejar: arquivos, abas, permissões e testes afetados.

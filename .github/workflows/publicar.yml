@@ -1,6 +1,8 @@
 # Publicação na Netlify feita pelo GitHub (ADR-011).
 #
-# - Versão oficial: MANUAL. Actions → Publicar → Run workflow (ramo main).
+# - Versão oficial: AGENDADA toda sexta-feira às 18h (Brasília), só se houver mudança desde a
+#   última publicação oficial; também pode ser disparada à mão (Actions → Publicar → Run workflow).
+#   Cada publicação oficial gasta créditos da Netlify (ADR-019).
 # - Pull Request:   publica uma prévia (demonstração) e comenta o link no PR.
 #
 # Precisa de dois Secrets no repositório (Settings → Secrets and variables → Actions):
@@ -13,10 +15,13 @@ name: Publicar
 on:
   workflow_dispatch:
   pull_request:
+  schedule:
+    - cron: '0 21 * * 5' # sexta-feira, 18h em Brasília (21h UTC)
 
 permissions:
   contents: read
   pull-requests: write
+  actions: read
 
 concurrency:
   group: publicar-${{ github.event.pull_request.number || 'producao' }}
@@ -30,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     # Pull Requests de cópias externas do repositório (forks) não recebem os Secrets.
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      ((github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && github.ref == 'refs/heads/main') ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - name: Conferir configuração
@@ -46,6 +51,19 @@ jobs:
             echo "pronto=nao" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Conferir se há mudança desde a última publicação oficial
+        id: mudou
+        if: steps.config.outputs.pronto == 'sim' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ultima=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/publicar.yml/runs?branch=main&status=success&per_page=30" \
+            --jq '[.workflow_runs[] | select(.event == "workflow_dispatch" or .event == "schedule")][0].head_sha // ""')
+          if [ "$ultima" = "$GITHUB_SHA" ]; then
+            echo "::notice::Nada novo desde a última publicação oficial; publicação da semana pulada."
+            echo "pular=sim" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v5
         if: steps.config.outputs.pronto == 'sim'
 
@@ -59,7 +77,7 @@ jobs:
         if: steps.config.outputs.pronto == 'sim'
 
       - name: Publicar versão oficial
-        if: steps.config.outputs.pronto == 'sim' && github.event_name == 'workflow_dispatch'
+        if: steps.config.outputs.pronto == 'sim' && steps.mudou.outputs.pular != 'sim' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
