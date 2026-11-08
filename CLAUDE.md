@@ -68,7 +68,9 @@ src/plataforma/             composição: módulos ativos, aplicação, sessão
 
 | O quê | Onde | Quando atualizar |
 | --- | --- | --- |
-| O que falta e em que ordem | `docs/backlog.md` | Ao abrir, aprovar ou concluir uma entrega |
+| Papéis, fluxo e combinados | `docs/metodologia.md` | Quando a Diretoria mudar o processo |
+| Propostas (uma por issue) | Issues do GitHub, modelo "Proposta" | A conversa Product Owner abre; a automação muda a etapa |
+| O que falta e em que ordem | Quadro "Elo" no GitHub Projects (até a migração, `docs/backlog.md`) | A automação move os cartões pelos PRs; a ordem é da Diretoria |
 | O que ficou para depois em cada app | `docs/roadmap.md` | Quando a Diretoria adiar ou decidir algo para uma fase futura |
 | Regras de cada app | `src/modulos/<id>/especificacao.md` | Antes de construir; registre cada decisão nova da Diretoria |
 | Plano de execução e andamento | `docs/superpowers/plans/<data>-<assunto>.md` e `...-andamento.md` | O andamento, ao fim de cada tarefa ou entrega |
@@ -113,6 +115,11 @@ a publicação com "Forbidden" até o próximo ciclo. Por isso:
   a Diretoria para conferir "Usage & billing" na Netlify.
 
 ## Ciclo de trabalho (SDD)
+
+Cada entrega nasce de uma proposta (issue) e segue `docs/metodologia.md`. No texto do PR,
+sempre a referência à issue: `Especifica #n` no PR de especificação e `Entrega #n` no PR de
+código (aberto como rascunho e marcado como pronto quando a verificação passar e a prévia
+estiver no ar). É isso que move o cartão no quadro.
 
 1. Especificar e pedir aprovação.
 2. Planejar: arquivos, abas, permissões e testes afetados.

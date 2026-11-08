@@ -1,0 +1,48 @@
+name: Proposta
+description: Uma ideia nova para o Elo (aberta pela conversa Product Owner)
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Descreva a ideia do ponto de vista de quem usa. Sem detalhe técnico: isso fica para a especificação.
+  - type: textarea
+    id: problema
+    attributes:
+      label: Problema ou necessidade
+      description: O que hoje é difícil, demorado ou não existe.
+    validations:
+      required: true
+  - type: textarea
+    id: quem
+    attributes:
+      label: Para quem
+      description: Quem usa (perfil, setor, instituição).
+    validations:
+      required: true
+  - type: textarea
+    id: resultado
+    attributes:
+      label: Resultado esperado
+      description: O que muda para quem usa quando estiver pronto. Como saber que deu certo.
+    validations:
+      required: true
+  - type: dropdown
+    id: app
+    attributes:
+      label: App
+      options:
+        - Orçamento
+        - Requisições
+        - Avaliação de Serviços Sociais
+        - Comunicação
+        - Rede
+        - Plataforma (vale para todos os apps)
+        - App novo
+    validations:
+      required: true
+  - type: textarea
+    id: observacoes
+    attributes:
+      label: Observações da Diretoria
+      description: Prioridade, prazo, restrições, decisões já tomadas.

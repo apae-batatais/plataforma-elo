@@ -1,0 +1,55 @@
+# Fluxo de trabalho do Elo (docs/metodologia.md).
+#
+# Troca a etiqueta "etapa: …" das propostas (issues) conforme os PRs e a
+# publicação, e copia a etapa para o quadro do GitHub Projects.
+#
+# O quadro é opcional. Para ligar, cadastre no repositório
+# (Settings → Secrets and variables → Actions):
+#   Secret    QUADRO_TOKEN   chave de acesso com permissão de escrita no projeto
+#   Variable  QUADRO_NUMERO  número do projeto (aparece no endereço: .../projects/<número>)
+# Sem eles, só as etiquetas são atualizadas.
+
+name: Fluxo
+
+on:
+  issues:
+    types: [opened, labeled, unlabeled]
+  pull_request:
+    types: [opened, reopened, edited, ready_for_review, converted_to_draft, closed]
+  workflow_run:
+    workflows: [Publicar]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: fluxo
+  cancel-in-progress: false
+
+jobs:
+  fluxo:
+    runs-on: ubuntu-latest
+    # PRs de cópias externas (forks) não mexem nas propostas.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/github-script@v7
+        env:
+          QUADRO_TOKEN: ${{ secrets.QUADRO_TOKEN }}
+          QUADRO_NUMERO: ${{ vars.QUADRO_NUMERO }}
+        with:
+          script: |
+            const { executar } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
+            await executar({
+              github, context, core,
+              tokenQuadro: process.env.QUADRO_TOKEN,
+              numeroQuadro: process.env.QUADRO_NUMERO,
+            });
