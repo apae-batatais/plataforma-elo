@@ -102,11 +102,11 @@ conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
 | 1 | Autenticação do Claude Code no GitHub: token da assinatura do Claude | Diretoria (decidido em 08/11/2026) | feito |
 | 2 | Esta metodologia, a automação das etiquetas e o modelo de issue | Agente → aprovação | feito (PR #52) |
 | 3 | Quadro "Elo" e chave do quadro (abaixo) | Diretoria, no navegador | feito |
-| 4 | App do Claude no repositório e token da assinatura nos Secrets | Diretoria (o token é gerado uma vez num computador) | app instalado; falta o token |
+| 4 | App do Claude no repositório e token da assinatura nos Secrets | Diretoria (o token é gerado uma vez num computador) | feito |
 | 5 | E-mails do GitHub: "Watch → All activity" no repositório | Diretoria, no navegador | feito |
-| 6 | Automações: Arquiteto na issue nova, construção depois da aprovação, merge automático, publicação semanal | Agente → aprovação | PR em aprovação |
-| 7 | Habilidades do Elo em `.claude/skills/` | Agente → aprovação | PR em aprovação |
-| 8 | Itens em aberto do `docs/backlog.md` viram issues; o arquivo passa a apontar para o quadro | Agente | a fazer |
+| 6 | Automações: Arquiteto na issue nova, construção depois da aprovação, merge automático, publicação semanal | Agente → aprovação | feito (PR #54) |
+| 7 | Habilidades do Elo em `.claude/skills/` | Agente → aprovação | feito (PR #54) |
+| 8 | Itens em aberto do `docs/backlog.md` viram issues; o arquivo passa a apontar para o quadro | Agente | feito (issues #53, #55 a #70) |
 | 9 | Teste de ponta a ponta com uma proposta pequena | Diretoria e agente | a fazer |
 | 10 | Conversa "Product Owner" criada com o texto acima | Diretoria | a fazer |
 
