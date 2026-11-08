@@ -18,6 +18,8 @@ repetir o processo em todas as instituições. A Diretoria quer informar só o l
 - **Um Drive compartilhado por instituição, com membros restritos** (decisão da Diretoria,
   07/11/2026): a conta de serviço e uma ou duas pessoas da TI ou da Diretoria. A equipe usa só o
   Elo. Assim a planilha sensível (Avaliação) fica no mesmo drive sem ficar visível à equipe.
+- **Ao salvar o link, o Elo prepara sozinho** (decisão da Diretoria, 07/11/2026): confere a pasta
+  e roda "Preparar estrutura", sem outro clique da Administração da rede.
 - **"Preparar estrutura" cria o que falta**: as planilhas do Núcleo e dos apps ativos e a pasta de
   anexos, dentro da pasta informada, e grava os IDs no cadastro. Depois cria as abas, como hoje.
 - O Elo continua achando cada planilha **pelo ID**. Cada planilha criada recebe uma marca invisível
@@ -37,4 +39,5 @@ repetir o processo em todas as instituições. A Diretoria quer informar só o l
   responsabilidade da TI da instituição; o Elo não confere os membros. Entra no guia e no termo
   de adesão (R3).
 - Só a Administração da rede prepara a estrutura e cria planilhas. A Administração da plataforma
-  de cada instituição deixa de rodar "Preparar estrutura".
+  de cada instituição perde a tela Estrutura e fica com Acessos, Áreas e Serviços (no Elo sem a
+  Rede, a tela Estrutura continua com ela).

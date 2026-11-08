@@ -32,8 +32,9 @@ Decisão de arquitetura: ADR-012. Este documento descreve o que muda para quem u
 3. A instituição cria as planilhas no próprio Drive e compartilha com a conta de serviço.
    A partir da R4: cria só o Drive compartilhado "Elo · <instituição>", inclui a conta de
    serviço como Gerente de conteúdo e envia o link.
-4. A Administração da rede cola os IDs (a partir da R4, só o link da pasta), usa **Conferir** e,
-   na conferência, **Preparar estrutura**. Com a estrutura em dia, clica em **Ativar**.
+4. A Administração da rede cola os IDs, usa **Conferir** e, na conferência, **Preparar
+   estrutura**. A partir da R4: cola só o link da pasta e salva; o Elo confere e prepara sozinho.
+   Com a estrutura em dia, clica em **Ativar**.
 5. O administrador inicial entra com tudo pronto e cadastra a organização e os acessos.
 
 ## Regras (com teste)
@@ -136,7 +137,10 @@ instituição, com membros restritos.
 - **Conferir** (sem gravar nada): a pasta existe, está num Drive compartilhado e a conta de
   serviço pode criar arquivos nela; aponta em português o que falta. Também avisa se alguma
   planilha já criada foi para a lixeira.
-- **Preparar estrutura**: para cada planilha necessária (Núcleo, Auditoria e as dos apps ativos) e
+- **Automático ao salvar o link** (decisão da Diretoria, 07/11/2026): a Administração da rede só
+  cadastra o link. Ao salvar, o Elo confere a pasta e, se estiver tudo certo, prepara a estrutura
+  sozinho, sem outro clique. Se algo falhar, a tela mostra o motivo e o botão **Tentar de novo**.
+- **Preparar estrutura** (o que roda sozinho): para cada planilha necessária (Núcleo, Auditoria e as dos apps ativos) e
   para a pasta de anexos:
   1. se o cadastro já tem o ID e o arquivo existe, usa;
   2. senão, procura na pasta um arquivo com a marca do Elo para aquela planilha e usa;
@@ -145,8 +149,9 @@ instituição, com membros restritos.
   Ao fim, mostra o que foi criado e o que já existia.
 - **Preparar estrutura de todas** faz o mesmo em todas as instituições ativas e em preparação.
 - **Só a Administração da rede prepara a estrutura** (decisão da Diretoria, 07/11/2026). A
-  Administração da plataforma de cada instituição deixa de rodar "Preparar estrutura" e não cria
-  planilhas; continua com o cadastro dos acessos.
+  Administração da plataforma de cada instituição perde a tela Estrutura e fica com Acessos,
+  Áreas e Serviços. Exceção: no Elo sem a Rede (uma instituição só), a tela Estrutura continua com
+  ela, porque não há Administração da rede.
 
 ### Instituições já cadastradas
 - A Apae Batatais informa a pasta. As planilhas atuais continuam valendo (os IDs já estão no
