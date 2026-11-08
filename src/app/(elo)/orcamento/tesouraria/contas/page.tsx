@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { listarContas } from '@/modulos/orcamento/aplicacao/tesouraria';
-import { ROTULO_CLASSE, ROTULO_TIPO } from '@/modulos/orcamento/dominio/tesouraria';
+import { mesAnterior, mesAtualBrasilia, ROTULO_CLASSE, ROTULO_TIPO } from '@/modulos/orcamento/dominio/tesouraria';
+import { rotuloMes } from '@/modulos/orcamento/telas/formato';
 import { CamposConta } from '@/modulos/orcamento/telas/campos-conta';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -27,6 +28,9 @@ export default async function ContasDaTesouraria({ searchParams }: { searchParam
   const emEdicao = podeEditar && editar ? ativas.find((c) => c.id === editar) : undefined;
   const nomeUnidade = new Map(unidades.map((u) => [u.codigo, u.nome]));
   const opcoesFonte = fontesRestritas.map((f) => ({ id: f.id, nome: f.nome }));
+  const meses = [mesAtualBrasilia()];
+  while (meses.length < 24) meses.push(mesAnterior(meses[meses.length - 1]));
+  const mesesTroca = meses.map((m) => ({ valor: m, rotulo: rotuloMes(m) }));
   const descrever = (c: { banco: string; agencia: string | null; conta: string | null }) =>
     [c.banco, c.agencia && `ag. ${c.agencia}`, c.conta && `conta ${c.conta}`].filter(Boolean).join(' · ');
 
@@ -68,6 +72,7 @@ export default async function ContasDaTesouraria({ searchParams }: { searchParam
               fontes={opcoesFonte}
               fonteAtual={emEdicao.fonte_id ? { id: emEdicao.fonte_id, nome: fontes[emEdicao.fonte_id] ?? 'Fonte não encontrada' } : null}
               unidades={unidades}
+              mesesTroca={mesesTroca}
             />
             <BotaoEnviar enviando="Salvando…" className="w-full">
               Salvar alterações

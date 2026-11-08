@@ -20,8 +20,11 @@ export function CamposConta({
   fontes,
   fonteAtual,
   unidades,
+  mesesTroca,
 }: {
   valor?: ValorConta;
+  /** Últimos meses para "mudou a partir de um mês". Só vem ao alterar uma conta existente. */
+  mesesTroca?: { valor: string; rotulo: string }[];
   /** Fontes restritas ativas: as únicas aceitas em conta vinculada. */
   fontes: { id: string; nome: string }[];
   /** Fonte já gravada na conta, mesmo que hoje não sirva mais (livre ou excluída). */
@@ -30,7 +33,9 @@ export function CamposConta({
 }) {
   const [classe, setClasse] = useState<string>(valor?.classe ?? '');
   const [tipo, setTipo] = useState<string>(valor?.tipo ?? '');
+  const [modo, setModo] = useState<string>('');
   const caixa = tipo === 'caixa';
+  const trocouClasse = !!valor && !!mesesTroca && classe !== '' && classe !== valor.classe;
   const fonteForaDaLista = !!fonteAtual && !fontes.some((f) => f.id === fonteAtual.id);
   return (
     <>
@@ -84,6 +89,35 @@ export function CamposConta({
             </span>
           )}
         </Campo>
+      )}
+      {trocouClasse && (
+        <fieldset className="space-y-2 rounded-lg border border-borda p-3">
+          <legend className="px-1 text-sm font-semibold">Trocar a classe muda os totais por classe.</legend>
+          <p className="text-sm text-texto-suave">Escolha como a mudança vale:</p>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="troca" value="corrigir" required checked={modo === 'corrigir'} onChange={() => setModo('corrigir')} className="mt-1" />
+            <span>
+              <span className="font-semibold">Corrigir em todos os meses</span>
+              <span className="block text-sm text-texto-suave">A classe estava errada desde o início.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2">
+            <input type="radio" name="troca" value="a_partir_de" required checked={modo === 'a_partir_de'} onChange={() => setModo('a_partir_de')} className="mt-1" />
+            <span className="font-semibold">Mudou a partir de um mês</span>
+          </label>
+          {modo === 'a_partir_de' && (
+            <Campo rotulo="Primeiro mês com a classe nova" obrigatorio dica="Os meses anteriores continuam na classe antiga.">
+              <select name="troca_mes" required defaultValue="" className={estiloEntrada}>
+                <option value="">Escolha…</option>
+                {mesesTroca.map((m) => (
+                  <option key={m.valor} value={m.valor}>
+                    {m.rotulo}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          )}
+        </fieldset>
       )}
       <Campo rotulo="Unidade" dica="Opcional.">
         <select name="unidade" defaultValue={valor?.unidade ?? ''} className={estiloEntrada}>

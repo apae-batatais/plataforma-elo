@@ -281,7 +281,18 @@ export const AjustesConciliacao = definirTabela({
   esquema: z.object({ conta_id: texto(), mes: mesAAAAMM(), valor: numero(), motivo: texto() }),
 });
 
+/**
+ * Histórico de troca de classe de uma conta (só inclusões). `classe_anterior` e
+ * `fonte_id_anterior` valem até o mês anterior a `a_partir_de`, o primeiro mês da classe nova.
+ */
+export const MudancasClasse = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'MudancasClasse',
+  esquema: z.object({ conta_id: texto(), classe_anterior: z.enum(CLASSES), fonte_id_anterior: textoOpcional(), a_partir_de: mesAAAAMM() }),
+});
+
 export type RegConta = Registro<typeof Contas.esquema>;
+export type RegMudancaClasse = Registro<typeof MudancasClasse.esquema>;
 export type RegSaldo = Registro<typeof Saldos.esquema>;
 export type RegAjusteConciliacao = Registro<typeof AjustesConciliacao.esquema>;
 
@@ -296,4 +307,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse] as const;

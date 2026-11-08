@@ -15,7 +15,7 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   recebem inclusões; a linha mais recente vale a partir da vigência.
 - Previsão (1B): planilha `orcamento`, sem dados pessoais. O RH da folha entra automático
   (`resumoFolha`, custo × lotação) e fecha em centavos com o Resumo da folha.
-- Tesouraria (1D.1): planilha `orcamento_execucao` (abas `Contas`, `Saldos`, `AjustesConciliacao`), sem dados
+- Tesouraria (1D.1): planilha `orcamento_execucao` (abas `Contas`, `Saldos`, `AjustesConciliacao`, `MudancasClasse`), sem dados
   pessoais. Saldos só para quem tem `orcamento.tesouraria.ver` (Diretoria e Financeiro); editar é do Financeiro.
   Totais por classe são sempre somas calculadas pelo Elo; o mês atual é o de Brasília.
 - Permissões: `orcamento.<recurso>.<acao>`, declaradas no manifesto.

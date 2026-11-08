@@ -192,6 +192,32 @@
 - [ ] **Passo 3: conferir no navegador** (build de produção em demonstração, Playwright): como Financeiro, cadastrar uma conta vinculada, informar o saldo de uma conta pendente, adicionar e tirar um ajuste, conferir que a pendência some e o total muda; como Diretoria, ver sem botões; como Coordenação e Leitura, o item Tesouraria não aparece no menu e `/orcamento/tesouraria` volta para `/orcamento`. Telas em 390 px sem rolagem horizontal da página.
 - [ ] **Passo 4:** commit `Orçamento: telas de contas e saldos do mês`.
 
+### Tarefa 6: Troca de classe com escolha (decisão da Diretoria em 08/11/2026)
+
+Ramo próprio: `feat/orcamento-tesouraria-classe`, criado de `feat/orcamento-tesouraria-contas`.
+
+**Arquivos:**
+- Alterar: `dominio/tesouraria.ts`, `dados/tabelas.ts`, `aplicacao/tesouraria.ts`, `telas/campos-conta.tsx`, `src/app/(elo)/orcamento/tesouraria/contas/page.tsx`, `src/app/(elo)/orcamento/tesouraria/acoes.ts`, `dados/ficticios.ts` (só se precisar)
+- Teste: `testes/tesouraria-dominio.test.ts`, `testes/tesouraria-contas.test.ts`, `testes/tesouraria-saldos.test.ts`
+
+**Interfaces:**
+- Produz:
+  - Aba `MudancasClasse` (planilha `orcamento_execucao`, `definirTabela`, só inclusões): `conta_id`, `classe_anterior` (enum `CLASSES`), `fonte_id_anterior?`, `a_partir_de` (`AAAA-MM`, o primeiro mês da classe nova). `RegMudancaClasse`; entra em `TABELAS_ORCAMENTO`.
+  - `classeNoMes(conta: { id: string; classe: Classe }, mudancas: { conta_id: string; classe_anterior: Classe; a_partir_de: string }[], mes: string): Classe` — entre as mudanças da conta com `a_partir_de > mes`, vale a `classe_anterior` da que tem o menor `a_partir_de`; sem nenhuma, vale `conta.classe`.
+  - `totaisPorClasse(contas, saldos, ajustes, mes, mudancas = [])` passa a usar `classeNoMes`. `lerSaldosDoMes` lê `MudancasClasse` e agrupa cada linha pela classe do mês (os totais do mês anterior, pela classe daquele mês).
+  - `salvarConta(p, quem, dados, existente?, troca?: { modo: 'corrigir' } | { modo: 'a_partir_de'; mes: string })`.
+- Regras:
+  - Classe alterada sem `troca`: "Escolha se a mudança corrige todos os meses ou vale a partir de um mês." Classe igual: `troca` é ignorada.
+  - `corrigir`: só atualiza `Contas` (como hoje).
+  - `a_partir_de`: mês válido, até o mês atual de Brasília e depois do último `a_partir_de` da conta ("Escolha um mês depois da última mudança de classe desta conta."). Grava a linha em `MudancasClasse` (auditoria `inclusao`, entidade `MudancasClasse`) e atualiza `Contas` (auditoria `alteracao` com as colunas).
+  - Tela "Alterar conta": quando a classe escolhida difere da atual, aparece o aviso "Trocar a classe muda os totais por classe." e a escolha obrigatória entre **Corrigir em todos os meses** ("A classe estava errada desde o início.") e **Mudou a partir de um mês** (lista dos últimos 24 meses, como na tela de saldos).
+
+- [ ] **Passo 1: testes que falham:** `classeNoMes` sem mudança, com uma e com duas mudanças (meses antes, no limite e depois); `totaisPorClasse` com mudança soma o mês anterior na classe antiga e o mês da mudança na nova; `salvarConta` recusa troca sem escolha, recusa mês futuro e mês anterior à última mudança, grava `corrigir` sem linha em `MudancasClasse` e `a_partir_de` com uma linha e as duas auditorias; `lerSaldosDoMes` de um mês anterior à mudança mostra a conta na classe antiga; Coordenação recebe `ErroPermissao`.
+- [ ] **Passo 2:** rodar. Esperado: FALHA.
+- [ ] **Passo 3:** implementar regras, aba, caso de uso e tela.
+- [ ] **Passo 4:** `npm run verificar`, `npm run build` e conferência no navegador (Financeiro altera a classe de uma conta "a partir de" um mês e confere os totais de um mês antes e de um mês depois).
+- [ ] **Passo 5:** commit `Orçamento: troca de classe da conta com escolha`.
+
 ### Fechamento da entrega
 
 - [ ] Registrar na especificação (`especificacao-execucao-tesouraria.md`) as decisões desta entrega: escopo da 1D.1 sem as regras 16 e 17; saldo negativo aceito; mês padrão da tela; quem informou = colunas de controle.
