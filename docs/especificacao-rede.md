@@ -30,8 +30,10 @@ Decisão de arquitetura: ADR-012. Este documento descreve o que muda para quem u
 2. A instituição cria `elo.<domínio>` no DNS (CNAME); a Operadora inclui o
    endereço na Netlify e no cliente OAuth do Google.
 3. A instituição cria as planilhas no próprio Drive e compartilha com a conta de serviço.
-4. A Administração da rede cola os IDs, usa **Conferir** e, na conferência,
-   **Preparar estrutura**. Com a estrutura em dia, clica em **Ativar**.
+   A partir da R4: cria só o Drive compartilhado "Elo · <instituição>", inclui a conta de
+   serviço como Gerente de conteúdo e envia o link.
+4. A Administração da rede cola os IDs (a partir da R4, só o link da pasta), usa **Conferir** e,
+   na conferência, **Preparar estrutura**. Com a estrutura em dia, clica em **Ativar**.
 5. O administrador inicial entra com tudo pronto e cadastra a organização e os acessos.
 
 ## Regras (com teste)
@@ -120,3 +122,52 @@ Drive compartilhado "Elo · <instituição>"    (um por instituição, no Worksp
   Batatais fixa no código); página de endereço não cadastrado; demonstração.
 - **R2**: planilha `rede` da Operadora, perfil Administração da rede, telas de cadastro e conferência.
 - **R3**: guia de adesão, termo de adesão (LGPD) e roteiro de transferência da Operadora.
+- **R4**: pasta única por instituição; o Elo cria as próprias planilhas (ADR-018). Detalhe abaixo.
+
+## R4 · Pasta única (proposta, aguarda aprovação)
+
+Decisão de arquitetura: ADR-018. Decisão da Diretoria (07/11/2026): um Drive compartilhado por
+instituição, com membros restritos.
+
+### O que muda para quem usa
+- **Cadastro da instituição**: os campos de ID de cada planilha saem. Entra o campo **Link da
+  pasta** (aceita o link copiado do Drive ou o ID). Abaixo dele, a lista das planilhas do Elo com a
+  situação de cada uma ("Criada", com o botão **Abrir**, ou "Será criada ao preparar a estrutura").
+- **Conferir** (sem gravar nada): a pasta existe, está num Drive compartilhado e a conta de
+  serviço pode criar arquivos nela; aponta em português o que falta. Também avisa se alguma
+  planilha já criada foi para a lixeira.
+- **Preparar estrutura**: para cada planilha necessária (Núcleo, Auditoria e as dos apps ativos) e
+  para a pasta de anexos:
+  1. se o cadastro já tem o ID e o arquivo existe, usa;
+  2. senão, procura na pasta um arquivo com a marca do Elo para aquela planilha e usa;
+  3. senão, cria "Elo · <nome curto da instituição> · <nome da planilha>" na pasta.
+  Grava os IDs no cadastro (auditoria com as colunas alteradas) e cria as abas, como hoje.
+  Ao fim, mostra o que foi criado e o que já existia.
+- **Preparar estrutura de todas** faz o mesmo em todas as instituições ativas e em preparação.
+- **Administração da plataforma da instituição**, que já pode rodar "Preparar estrutura" da
+  própria instituição, passa a criar também as planilhas que faltam, só dentro da pasta dela.
+
+### Instituições já cadastradas
+- A Apae Batatais informa a pasta. As planilhas atuais continuam valendo (os IDs já estão no
+  cadastro), mesmo fora da pasta. Na primeira preparação, o Elo põe a marca nelas.
+- Mover as planilhas atuais para a pasta é opcional e não muda nada (o ID não muda).
+
+### Regras (com teste)
+1. Rodar "Preparar estrutura" duas vezes não cria planilha duplicada.
+2. O Elo cria planilhas só dentro da pasta da instituição em preparação; nunca usa planilha
+   marcada de outra instituição.
+3. Os IDs criados são gravados no cadastro da instituição, com auditoria (colunas, nunca valores).
+4. O Elo nunca apaga nem move planilha ou pasta.
+5. Pasta fora de Drive compartilhado ou sem permissão de criar: nada é criado e a conferência
+   explica o que fazer.
+6. A Administração da rede continua sem ver dados das instituições: criar planilha vazia e abas
+   não lê conteúdo.
+
+### Demonstração
+O armazenamento em memória simula a pasta: na prévia, cadastrar uma instituição fictícia só com o
+link e ver as planilhas aparecerem como "Criada" depois de "Preparar estrutura".
+
+### Fica de fora da R4
+- Conferir quem é membro do Drive compartilhado (orientação no guia e no termo de adesão da R3).
+- Criar o próprio Drive compartilhado: a conta de serviço não pode criar drives no Google
+  Workspace da instituição.
