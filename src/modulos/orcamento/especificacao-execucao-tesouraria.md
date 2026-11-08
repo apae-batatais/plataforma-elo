@@ -43,7 +43,7 @@ e **calcular** todos os totais.
 | --- | --- | --- |
 | **1C.1 — Importar o realizado** | Importação dos lançamentos do WK Radar com DE-PARA; fila "a classificar"; regras de classificação reaproveitadas | Amostra da exportação do WK Radar |
 | **1C.2 — Painel de execução e recursos livres** | Orçado × realizado; recurso livre por serviço; adiantamentos e ressarcimentos; comparação com o ano anterior | 1C.1 |
-| **1D.1 — Contas e saldos** | Cadastro das contas (livre disponível, reserva, vinculada); saldo do extrato por mês; ajustes de conciliação; conferência dos termos | — (pode começar antes da 1C) |
+| **1D.1 — Contas e saldos** | Cadastro das contas (livre disponível, reserva, vinculada); saldo do extrato por mês; ajustes de conciliação. A conferência dos termos (regras 16 e 17) ficou para depois da 1C.1 (decisão de 07/11/2026) | — (pode começar antes da 1C) |
 | **1D.2 — Fim do ano e reserva** | Cenários para 31/12; política de reserva com aprovação; sinais da visão geral | 1D.1 e 1C.1 |
 | **1E — Histórico** | Importação dos anos fechados (2017–2025) das planilhas de Previsão; indicadores históricos; fontes de receita ano a ano | Cadastro de fontes (1B, já existe) |
 
@@ -249,6 +249,25 @@ ligação entre módulos (ADR-013).
    Paulista e outras).
 5. **Fim do painel provisório:** o painel "Análise financeira da Apae Batatais" no claude.ai continua até a
    1D.1 e a 1E estarem no ar.
+
+## Decisões da construção da 1D.1 (07/11/2026)
+
+1. A conferência dos termos e do recurso livre (regras 16 e 17, tela 9) sai da 1D.1: as duas comparam o saldo
+   com o realizado, que só existe depois da 1C.1. A 1C.1 foi para o roadmap, à espera da amostra do WK Radar.
+2. Saldo negativo é aceito (conta movimento pode ficar negativa).
+3. A tela "Saldos do mês" abre no mês anterior ao atual (o extrato fecha no último dia do mês). A escolha do
+   mês é uma lista com os últimos 24 meses; mês futuro não é aceito.
+4. Quem informou o saldo e quando ficam nas colunas de controle de toda aba (`atualizado_por`, `atualizado_em`).
+5. Conta excluída continua somando, na classe dela, nos meses em que tinha saldo; só sai das pendências e da
+   digitação dos meses seguintes.
+6. A aba `Contas` não tem coluna de observação (a especificação não pede).
+7. O que a pessoa digitou e não salvou fica guardado no navegador (só naquela aba) e volta depois de um erro
+   ou de um ajuste; se outra pessoa alterou o saldo da mesma conta nesse meio-tempo, o valor digitado não volta
+   e a tela avisa.
+8. Salvar os saldos do mês é tudo ou nada: se outra pessoa alterou algum saldo, nada é gravado e a pessoa é avisada.
+
+**Pergunta aberta:** trocar a classe de uma conta (ex.: de livre disponível para reserva) muda os totais de
+todos os meses passados. Serve para corrigir uma classe errada, mas reescreve o histórico numa mudança real.
 
 ## Decisões pedidas à Diretoria
 

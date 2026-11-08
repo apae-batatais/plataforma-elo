@@ -50,7 +50,7 @@ function novoPosto(extra: Partial<Parameters<typeof salvarPosto>[2]> = {}): Para
 }
 
 beforeEach(async () => {
-  p = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha']), idDe: (c) => c };
+  p = { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha', 'orcamento_execucao']), idDe: (c) => c };
   await prepararEstrutura(p, ESTRUTURA);
   await popularDadosFicticios(p);
   await popularFolhaFicticia(p);

@@ -12,22 +12,20 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 
 | Item | Frente | Situação | Detalhe |
 | --- | --- | --- | --- |
-| Avaliação de Serviços Sociais — entrega 1 | Avaliação (Fase 2) | Especificação aprovada em 06/11/2026. Avaliação inicial e anual, comparativo da pessoa, painel por serviço atual, impressão e fundamento legal. Aguarda conferência na prévia e aprovação | PR #39; `src/modulos/avaliacao/especificacao.md`; ADR-016 |
-| Comunicação fase 1 — entrega 1 de 5 | Comunicação | Especificação aprovada em 06/11/2026. Calendário, antecedência mínima e cor do app. Aguarda aprovação da Diretoria | PR #40; `src/modulos/comunicacao/especificacao.md` |
-| Comunicação fase 1 — entrega 2 de 5 | Comunicação | Pedidos, revisão e aprovação, com avisos no início e no menu. Aguarda aprovação da Diretoria (merge junto com o PR #40) | PR #43 |
-| Comunicação fase 1 — entregas 3 a 5 | Comunicação | Já planejadas: 3) fotos e documentos; 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` (no PR #40) |
+| Comunicação fase 1 — entrega 3 de 5 | Comunicação | Fotos e documentos no pedido. Pronta; aguarda conferência na prévia e aprovação da Diretoria (há uma pergunta no PR sobre o nome dos documentos) | PR #46 |
+| Comunicação fase 1 — entregas 4 e 5 | Comunicação | Já planejadas: 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores. Começam depois da conferência da entrega 3 | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
+| Entrega 1D.1 (Contas e saldos) | Orçamento | Plano aprovado em 07/11/2026; construída. Aguarda conferência na prévia e aprovação da Diretoria | ramo `feat/orcamento-tesouraria-contas`; `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos-andamento.md` |
 
 ## Agora
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Planejar e construir a Entrega 1C (Execução) | Orçamento | Especificação aprovada em 07/11/2026. 1C Execução (realizado importado do WK Radar, recursos livres, contra o previsto), 1D Tesouraria (saldos por conta, livre, reserva e vinculado, projeção de fim de ano) e 1E Histórico (2017 em diante) | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` (PR #44) |
+| Entrega 1E (Histórico) | Orçamento | Anos fechados de 2017 a 2025, indicadores históricos e fontes de receita ano a ano. Próxima da ordem aprovada (1D.1 → 1E → 1C.1 → 1C.2 → 1D.2); precisa de plano | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
 
 ## Próximo
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Construir as Entregas 1D (Tesouraria) e 1E (Histórico) | Orçamento | Especificação aprovada em 07/11/2026; depois da 1C, que fecha a Fase 1 ("a execução confere com a planilha") | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
 | Capacidade de Indicadores | Capacidades | Cálculo e painel de indicadores compartilhados entre os apps. A pasta `src/capacidades/indicadores` ainda está vazia | `docs/especificacao-plataforma.md` (Situação da Fase 0) |
 | Entrega R3 da Rede | Rede | Guia "Como trazer uma instituição para o Elo", termo de adesão (LGPD) e roteiro de transferência da Operadora. É documentação, não código | `docs/especificacao-rede.md` (Entregas) |
 
@@ -35,12 +33,14 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
+| Entregas 1C.1, 1C.2 e 1D.2 (realizado, execução, fim do ano e reserva) | Orçamento | A 1C.1 foi para o roadmap em 07/11/2026: espera a amostra da exportação do WK Radar. A 1C fecha a Fase 1 ("a execução confere com a planilha") | `docs/roadmap.md` (Orçamento) |
 | Ligar a requisição à execução do orçamento | Requisições | Depende da Entrega 1C pronta | `src/modulos/requisicoes/especificacao.md` (Depois) |
 | Aviso por e-mail das requisições | Requisições | Usa a mesma ligação com o Gmail da Comunicação fase 2 | `src/modulos/requisicoes/especificacao.md` (Depois); `docs/roadmap.md` |
-| Avaliação — próximas entregas | Avaliação (Fase 2) | A combinar: ligar a avaliação ao Cadastro Único de Pessoas (`pessoa_id`) e usar o motor de avaliação (ADR-006) para instrumentos com escala. Critério da Fase 2: ciclo fechado e enquadramentos justificados | `src/modulos/avaliacao/especificacao.md` (Entregas, no PR #39); ADR-006 e ADR-007 |
+| Avaliação — próximas entregas | Avaliação (Fase 2) | A combinar: ligar a avaliação ao Cadastro Único de Pessoas (`pessoa_id`) e usar o motor de avaliação (ADR-006) para instrumentos com escala. Critério da Fase 2: ciclo fechado e enquadramentos justificados | `src/modulos/avaliacao/especificacao.md` (Entregas); ADR-006 e ADR-007 |
 | Comunicação fase 2 — ligação com o Gmail | Comunicação e Núcleo | Implementação futura (decisão da Diretoria em 07/11/2026). Peça nova do núcleo para o Gmail; avisos e lembretes por e-mail; envio automático de release e artigo na data marcada, com registro e aviso de falha; verificação do app no Google para OSCs de outros domínios | `docs/roadmap.md` |
 | Comunicação fase 3 — Instagram automático | Comunicação | Conexão da conta profissional da OSC, publicação na hora marcada com gravação do link, aviso de falha. Antes, confirmar se a Meta exige revisão do app | `docs/roadmap.md` |
 | Comunicação fase 4 — resultado das postagens | Comunicação | Alcance e curtidas do Instagram nos indicadores | `docs/roadmap.md` |
+| Auditoria completa na leitura de anexos | Núcleo | Leitura por faixa que não começa no início do arquivo não gera registro, e o erro 502 repassa o texto do Google. Vale para Requisições e Comunicação; precisa de pedido da Diretoria para mexer no Núcleo | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1-andamento.md` (Pendências) |
 | Feriados no núcleo do Elo | Núcleo | Levar o cadastro de feriados do Requisições para o núcleo, para a Comunicação considerar feriados na antecedência mínima | `docs/roadmap.md` (Melhorias deixadas para depois) |
 | Fase 3 — Expansão | Novos apps | Educação, Saúde/CER e novos módulos | `docs/especificacao-plataforma.md` (Roteiro) |
 
@@ -49,6 +49,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | Item | Por que importa |
 | --- | --- |
 | Definir o DPO (encarregado de dados, LGPD) | É condição para avançar a Fase 1 (Roteiro) |
+| Amostra da exportação do WK Radar (dados fictícios ou anonimizados) | Destrava a Entrega 1C.1 do Orçamento |
 
 ## Concluído
 
@@ -62,3 +63,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | Orçamento | 1B — Previsão: grupos, fontes, despesas, receitas, RH da folha, propostas, cotação, aprovação e remanejamentos | #14, #15, #16, #17, #26 |
 | Rede | R1 (cada instituição pelo próprio endereço) e R2 (cadastro, conferência e Administração da rede) | #22, #23, #24 |
 | Requisições | Entregas 1 a 6: Materiais, TI, Mobiliário, Manutenção, painel de prazos e feriados, fotos e vídeo; perfil Setor Cozinha | #27 a #32, #34, #35, #36, #38 |
+| Avaliação (Fase 2) | Entrega 1: avaliação inicial e anual, comparativo da pessoa, painel por serviço atual, impressão e fundamento legal (ADR-016) | #39 |
+| Comunicação | Entregas 1 e 2 da fase 1: calendário, antecedência mínima, cor do app; pedidos, revisão, aprovação e avisos | #40, #43 |
+| Orçamento | Especificação das entregas 1C, 1D e 1E aprovada | #44 |
+| Documentação | Backlog e roadmap; regras do agente (como trabalhar com a Diretoria, publicação oficial em lote) | #41, #42, #45 |

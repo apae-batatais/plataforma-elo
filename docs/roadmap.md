@@ -1,11 +1,25 @@
 # Roadmap · Elo
 
-Atualizado em 6 de novembro de 2026 · Diretoria da Apae Batatais
+Atualizado em 7 de novembro de 2026 · Diretoria da Apae Batatais
 
 Registra o que ficou combinado para depois em cada app do Elo. Cada fase ganha a sua própria
 especificação antes de ser construída.
 
 A ordem de trabalho entre os apps fica no [backlog](backlog.md).
+
+## Orçamento
+
+Especificação de Execução, Tesouraria e Histórico aprovada em 07/11/2026
+(`src/modulos/orcamento/especificacao-execucao-tesouraria.md`). Ordem: 1D.1 → 1E → 1C.1 → 1C.2 → 1D.2.
+
+### Entrega 1C.1 · importar o realizado do WK Radar (adiada em 07/11/2026)
+
+- [ ] Receber da Diretoria uma amostra da exportação do WK Radar (lançamentos e saldos por conta),
+      com dados fictícios ou anonimizados. A amostra define o DE-PARA das colunas e as planilhas de teste.
+- [ ] Depois da amostra: planejar e construir a importação, a fila "A classificar" e as regras de
+      classificação; em seguida a 1C.2 (orçado × realizado e recursos livres).
+- [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): saíram da 1D.1
+      porque comparam os saldos com o realizado, que só existe depois da 1C.1.
 
 ## Comunicação
 

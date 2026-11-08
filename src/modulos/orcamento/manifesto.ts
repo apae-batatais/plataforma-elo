@@ -1,13 +1,13 @@
 /**
- * Manifesto do módulo Orçamento — Entregas 1A (Folha de Pagamento) e 1B (Previsão).
- * As permissões da 1C (execução) entram quando ela for construída.
+ * Manifesto do módulo Orçamento — Entregas 1A (Folha de Pagamento), 1B (Previsão) e 1D.1 (Tesouraria).
+ * As permissões da 1C (lançamentos da execução) entram quando ela for construída.
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
 
 export const manifesto = defineModulo({
   id: 'orcamento',
   nome: 'Orçamento',
-  descricao: 'Previsão do orçamento, folha de pagamento e lotação por serviço. Execução em breve.',
+  descricao: 'Previsão do orçamento, folha de pagamento e lotação por serviço. Tesouraria: contas e saldos do mês.',
   icone: 'calculator',
   schema: 'orcamento',
   rota: '/orcamento',
@@ -25,6 +25,8 @@ export const manifesto = defineModulo({
     { rotulo: 'Grupos de gasto', caminho: '/previsao/grupos', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Fontes de recurso', caminho: '/previsao/fontes', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Centros de custo', caminho: '/previsao/centros', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
+    { rotulo: 'Saldos do mês', caminho: '/tesouraria', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
+    { rotulo: 'Contas', caminho: '/tesouraria/contas', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
     { rotulo: 'Resumo da folha', caminho: '/', permissao: 'orcamento.folha.ver', secao: 'Folha de pagamento' },
     { rotulo: 'Folha completa', caminho: '/folha', permissao: 'orcamento.folha.ver_individual', secao: 'Folha de pagamento' },
     { rotulo: 'Lotação', caminho: '/lotacao', permissao: 'orcamento.folha.editar', secao: 'Folha de pagamento' },
@@ -42,16 +44,19 @@ export const manifesto = defineModulo({
     'orcamento.previsao.propor': 'Propor itens de despesa nos serviços do seu escopo',
     'orcamento.previsao.cotar': 'Informar a cotação (quantidade, valor e meses) das propostas pendentes, sem decidir',
     'orcamento.exercicio.aprovar': 'Aprovar e encerrar o exercício; aprovar remanejamentos e suplementações',
+    'orcamento.tesouraria.ver': 'Ver as contas, os saldos e os totais por classe',
+    'orcamento.tesouraria.editar': 'Cadastrar contas e informar os saldos do mês e os ajustes de conciliação',
   },
   perfis: [
     { codigo: 'departamento_pessoal', nome: 'Departamento Pessoal', descricao: 'Cadastra a folha e a lotação. Vê salários individuais.' },
     { codigo: 'compras', nome: 'Compras', descricao: 'Cota as propostas de despesa das coordenações. Não decide nem vê a folha.' },
   ],
   permissoesPorPerfil: {
-    diretoria: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.painel.ver', 'orcamento.exercicio.aprovar'],
+    diretoria: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.painel.ver', 'orcamento.exercicio.aprovar', 'orcamento.tesouraria.ver'],
     financeiro: [
       'orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.folha.editar', 'orcamento.parametros.editar',
       'orcamento.painel.ver', 'orcamento.previsao.editar', 'orcamento.previsao.propor',
+      'orcamento.tesouraria.ver', 'orcamento.tesouraria.editar',
     ],
     departamento_pessoal: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.folha.editar'],
     coordenacao_servico: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.previsao.propor'],

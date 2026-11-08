@@ -5,6 +5,8 @@
  *   ficam numa planilha à parte, que pode ter compartilhamento mais restrito.
  * - Os "centros de custo" são os Serviços do Núcleo (Administração › Serviços).
  * - Planilha "orcamento": a previsão (Entrega 1B). Não tem dados pessoais.
+ * - Planilha "orcamento_execucao": a tesouraria (Entrega 1D.1: contas, saldos e ajustes
+ *   de conciliação) e, depois, os lançamentos da 1C. Não tem dados pessoais.
  *
  * Abas com vigência (Componentes e Lotacoes) só recebem
  * inclusões: mudar um valor grava uma linha nova, e a mais recente vale a
@@ -13,6 +15,7 @@
 import { z } from 'zod';
 import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import { COMPONENTES } from '../dominio/folha';
+import { CLASSES, TIPOS_CONTA } from '../dominio/tesouraria';
 
 const vazio = (v: unknown) => v === undefined || v === null || v === '';
 const numero = () => z.preprocess((v) => (vazio(v) ? undefined : typeof v === 'number' ? v : Number(String(v).replace(',', '.'))), z.number());
@@ -20,6 +23,7 @@ const data = () => z.preprocess((v) => (vazio(v) ? undefined : String(v).trim())
 
 export const PLANILHA_ORCAMENTO = 'orcamento';
 export const PLANILHA_FOLHA = 'orcamento_folha';
+export const PLANILHA_EXECUCAO = 'orcamento_execucao';
 
 /** Funcionários e vagas previstas (colunas de identificação da aba Estudo). */
 export const Postos = definirTabela({
@@ -241,6 +245,46 @@ export const Ajustes = definirTabela({
   }),
 });
 
+// ---------------------------------------------------------------------------
+// Tesouraria (Entrega 1D.1) — planilha "orcamento_execucao"
+// ---------------------------------------------------------------------------
+
+const mesAAAAMM = () => z.preprocess((v) => (vazio(v) ? undefined : String(v).trim()), z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'mês no formato AAAA-MM'));
+
+/** Contas da instituição (banco, aplicação ou caixa). Excluir encerra (ativo = FALSE); nada é apagado. */
+export const Contas = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'Contas',
+  esquema: z.object({
+    banco: texto(),
+    agencia: textoOpcional(),
+    conta: textoOpcional(),
+    tipo: z.enum(TIPOS_CONTA),
+    classe: z.enum(CLASSES),
+    /** Fonte (termo) de onde vem o recurso; só nas contas vinculadas. */
+    fonte_id: textoOpcional(),
+    unidade: textoOpcional(),
+  }),
+});
+
+/** Saldo de uma conta no fim de um mês. Quem informou e quando: atualizado_por e atualizado_em. */
+export const Saldos = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'Saldos',
+  esquema: z.object({ conta_id: texto(), mes: mesAAAAMM(), saldo: numero() }),
+});
+
+/** Ajuste de conciliação de uma conta num mês (valor com sinal, sempre com motivo). */
+export const AjustesConciliacao = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'AjustesConciliacao',
+  esquema: z.object({ conta_id: texto(), mes: mesAAAAMM(), valor: numero(), motivo: texto() }),
+});
+
+export type RegConta = Registro<typeof Contas.esquema>;
+export type RegSaldo = Registro<typeof Saldos.esquema>;
+export type RegAjusteConciliacao = Registro<typeof AjustesConciliacao.esquema>;
+
 export type RegAjuste = Registro<typeof Ajustes.esquema>;
 
 export type RegGrupo = Registro<typeof GruposGasto.esquema>;
@@ -252,4 +296,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao] as const;
