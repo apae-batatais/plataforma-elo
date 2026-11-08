@@ -1,0 +1,74 @@
+# Arquiteto de Soluções (docs/metodologia.md, ADR-019).
+#
+# Roda o Claude Code quando:
+#  - uma proposta (issue) é aberta, sem etapa além de "Proposta";
+#  - a Diretoria comenta numa issue que está em "Proposta" (resposta às perguntas do Arquiteto).
+# O Arquiteto pergunta na issue o que não souber ou abre o PR de especificação ("Especifica #n").
+#
+# Precisa do Secret CLAUDE_CODE_OAUTH_TOKEN (token da assinatura do Claude) e do app do
+# Claude instalado no repositório.
+
+name: Arquiteto
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: arquiteto-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+env:
+  # Usuário do GitHub da Diretoria: só ela aprova e responde às perguntas.
+  DIRETORIA: diretoria823
+
+jobs:
+  arquiteto:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: >-
+      (github.event_name == 'issues' &&
+        !contains(join(github.event.issue.labels.*.name, ','), 'etapa: ') &&
+        !contains(join(github.event.issue.labels.*.name, ','), 'pendência da Diretoria')) ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
+        github.event.comment.user.login == 'diretoria823' &&
+        !contains(github.event.comment.body, '@claude') &&
+        contains(github.event.issue.labels.*.name, 'etapa: proposta'))
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          ISSUE: ${{ github.event.issue.number }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --max-turns 80
+            --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash(git:*),Bash(gh:*),Bash(ls:*),Bash(cat:*),Bash(grep:*)"
+          prompt: |
+            Você é o Arquiteto de Soluções do Elo. Trabalhe sozinho, sem esperar resposta nesta sessão.
+
+            1. Leia o CLAUDE.md, o docs/metodologia.md e a habilidade .claude/skills/arquiteto/SKILL.md.
+            2. Leia a proposta e todos os comentários: `gh issue view ${{ github.event.issue.number }} --comments`.
+            3. Leia o código e os documentos que a proposta toca.
+            4. Se houver dúvida que só a Diretoria pode responder, publique UM comentário na issue com
+               todas as perguntas numeradas, cada uma com opções numeradas, e pare aqui (sem PR).
+               Perguntas já respondidas nos comentários não se repetem.
+            5. Sem dúvidas pendentes: crie o ramo `spec/${{ github.event.issue.number }}-<assunto>` a partir
+               da main, escreva a especificação no lugar indicado pelo CLAUDE.md (com a seção "Frentes")
+               e a ADR se houver decisão de arquitetura. Não escreva código de produção.
+            6. Faça commit e push e abra o PR com `gh pr create --base main`: título "Especificação: <assunto>",
+               corpo em português começando com a linha "Especifica #${{ github.event.issue.number }}", resumo,
+               decisões tomadas sozinho (com o custo se estiverem erradas) e o que a Diretoria deve conferir.
+            7. Comente na issue o link do PR, em uma linha.

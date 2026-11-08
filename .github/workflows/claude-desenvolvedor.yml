@@ -1,0 +1,95 @@
+# Desenvolvedor (docs/metodologia.md, ADR-019).
+#
+# Roda o Claude Code para construir uma proposta com a especificação aprovada:
+#  - chamado pelo workflow Aprovação, depois do merge do PR de especificação;
+#  - à mão: Actions → Desenvolvedor → Run workflow, informando o número da issue;
+#  - quando a Diretoria comenta numa issue em construção (resposta a uma pergunta).
+# Entrega um PR com "Entrega #n", já verificado, com a prévia publicada pelo workflow Publicar.
+
+name: Desenvolvedor
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Número da issue (proposta) a construir
+        required: true
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: read
+
+concurrency:
+  group: desenvolvedor-${{ inputs.issue || github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  desenvolvedor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
+        github.event.comment.user.login == 'diretoria823' &&
+        !contains(github.event.comment.body, '@claude') &&
+        contains(github.event.issue.labels.*.name, 'etapa: em construção'))
+    env:
+      ISSUE: ${{ inputs.issue || github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Cartão para "Em construção"
+        uses: actions/github-script@v7
+        env:
+          QUADRO_TOKEN: ${{ secrets.QUADRO_TOKEN }}
+          QUADRO_NUMERO: ${{ vars.QUADRO_NUMERO }}
+        with:
+          script: |
+            const { aplicar } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
+            await aplicar({
+              github, context, core,
+              tokenQuadro: process.env.QUADRO_TOKEN,
+              numeroQuadro: process.env.QUADRO_NUMERO,
+              lista: [{ issue: Number(process.env.ISSUE), etapa: 'Em construção' }],
+            });
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_args: >-
+            --max-turns 250
+            --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash"
+          prompt: |
+            Você é o Desenvolvedor do Elo. Trabalhe sozinho, sem esperar resposta nesta sessão.
+
+            1. Leia o CLAUDE.md e o docs/metodologia.md e siga as regras deles.
+            2. Leia a proposta e os comentários: `gh issue view ${{ env.ISSUE }} --comments`.
+               Ache a especificação aprovada: `gh pr list --state merged --search "Especifica #${{ env.ISSUE }}"`
+               e leia o PR e os arquivos que ele alterou. Use as habilidades de .claude/skills/ das
+               "Frentes" indicadas na especificação.
+            3. Se já existir um PR aberto com "Entrega #${{ env.ISSUE }}", continue nele (é uma retomada).
+               Se existir um plano em docs/superpowers/plans/ para esta entrega, continue da primeira
+               tarefa não concluída.
+            4. Se faltar uma decisão que só a Diretoria pode tomar, comente na issue as perguntas
+               numeradas, com opções, e pare.
+            5. Senão: crie o ramo `feat/<modulo>-<assunto>` a partir da main, escreva o plano e o
+               andamento em docs/superpowers/plans/, construa com testes e faça commit e push ao fim
+               de cada tarefa.
+            6. Rode `npm run verificar` e `npm run build` até tudo passar.
+            7. Abra o PR com `gh pr create --base main`: corpo em português começando com a linha
+               "Entrega #${{ env.ISSUE }}", o que mudou, roteiro de conferência na prévia e as decisões
+               tomadas sozinho (com o custo se estiverem erradas). A prévia é publicada sozinha.

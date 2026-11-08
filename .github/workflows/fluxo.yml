@@ -26,8 +26,9 @@ permissions:
   issues: write
   pull-requests: read
 
+# Um evento por issue ou PR de cada vez; eventos de issues diferentes rodam em paralelo.
 concurrency:
-  group: fluxo
+  group: fluxo-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: false
 
 jobs:

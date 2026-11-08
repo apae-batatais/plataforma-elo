@@ -35,8 +35,8 @@ de cada coluna é a prioridade, decidida pela Diretoria.
 | Proposta | Issue aberta | Arquiteto (e a Diretoria, se houver pergunta na issue) |
 | Especificação em aprovação | PR com "Especifica #n" aberto | **Diretoria** |
 | Pronta para construir | Merge do PR de especificação | Desenvolvedor |
-| Em construção | PR com "Entrega #n" aberto como rascunho | Desenvolvedor |
-| Entrega em aprovação | PR de entrega pronto, com a prévia no ar | **Diretoria** |
+| Em construção | O Desenvolvedor começa a construir | Desenvolvedor (e a Diretoria, se houver pergunta na issue) |
+| Entrega em aprovação | PR com "Entrega #n" aberto, já verificado; a prévia é publicada em seguida | **Diretoria** |
 | Aprovada | Merge do PR de entrega (a issue é fechada) | fila da publicação |
 | Publicada | Publicação oficial semanal com sucesso | — |
 
@@ -66,14 +66,18 @@ repositório: habilidades da conta da Diretoria no Claude não vão junto.
   pode virar uma issue própria ligada à original.
 - **No texto do PR**, sempre a referência à issue:
   - especificação: `Especifica #12`
-  - construção: `Entrega #12` (rascunho enquanto está em construção)
+  - construção: `Entrega #12`
 - **Etiquetas de app**: `app: orçamento`, `app: requisições`, `app: avaliação`,
   `app: comunicação`, `app: rede`, `app: plataforma`, `app: novo`. O Product Owner põe a do app.
 - **Pendências da Diretoria** fora do código (por exemplo, definir o DPO) são issues com a
   etiqueta `pendência da Diretoria`; elas não entram no fluxo.
 - **Ninguém mexe nas etiquetas `etapa: …` à mão**; a automação cuida delas.
-- **Publicação oficial semanal e agendada**, juntando tudo o que foi aprovado na semana. Correção
-  urgente pode ser publicada na hora, se a Diretoria pedir.
+- **Publicação oficial semanal e agendada**: toda sexta-feira às 18h, só se houver mudança desde a
+  última. Correção urgente pode ser publicada na hora, se a Diretoria pedir.
+- **Aprovar ou pedir ajuste**: "Approve" no PR faz o merge (e, na especificação, começa a
+  construção). "Request changes", com comentários, faz o Claude Code ajustar o próprio PR.
+- **Pedido livre**: "@claude" e o pedido num comentário de issue ou PR (por exemplo, "@claude
+  atualize este PR com a main").
 - **Fontes únicas**: proposta na issue; regras do app na especificação (`src/modulos/<id>/
   especificacao.md`); decisões de arquitetura nas ADRs; o que fica para depois no
   `docs/roadmap.md`; andamento da construção no plano (`docs/superpowers/plans/`).
@@ -93,18 +97,18 @@ conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
 
 ## Implantação
 
-| # | Passo | Quem |
-| --- | --- | --- |
-| 1 | Autenticação do Claude Code no GitHub: token da assinatura do Claude | Diretoria (decidido em 08/11/2026) |
-| 2 | Esta metodologia, a automação das etiquetas e o modelo de issue | Agente → aprovação |
-| 3 | Quadro "Elo" e chave do quadro (abaixo) | Diretoria, no navegador |
-| 4 | App do Claude no repositório e token da assinatura nos Secrets | Diretoria (o token é gerado uma vez num computador) |
-| 5 | E-mails do GitHub: "Watch → All activity" no repositório | Diretoria, no navegador |
-| 6 | Automações: Arquiteto na issue nova, construção depois da aprovação, merge automático, publicação semanal | Agente → aprovação |
-| 7 | Habilidades do Elo em `.claude/skills/` | Agente → aprovação |
-| 8 | Itens em aberto do `docs/backlog.md` viram issues; o arquivo passa a apontar para o quadro | Agente |
-| 9 | Teste de ponta a ponta com uma proposta pequena | Diretoria e agente |
-| 10 | Conversa "Product Owner" criada com o texto acima | Diretoria |
+| # | Passo | Quem | Situação |
+| --- | --- | --- | --- |
+| 1 | Autenticação do Claude Code no GitHub: token da assinatura do Claude | Diretoria (decidido em 08/11/2026) | feito |
+| 2 | Esta metodologia, a automação das etiquetas e o modelo de issue | Agente → aprovação | feito (PR #52) |
+| 3 | Quadro "Elo" e chave do quadro (abaixo) | Diretoria, no navegador | feito |
+| 4 | App do Claude no repositório e token da assinatura nos Secrets | Diretoria (o token é gerado uma vez num computador) | app instalado; falta o token |
+| 5 | E-mails do GitHub: "Watch → All activity" no repositório | Diretoria, no navegador | feito |
+| 6 | Automações: Arquiteto na issue nova, construção depois da aprovação, merge automático, publicação semanal | Agente → aprovação | PR em aprovação |
+| 7 | Habilidades do Elo em `.claude/skills/` | Agente → aprovação | PR em aprovação |
+| 8 | Itens em aberto do `docs/backlog.md` viram issues; o arquivo passa a apontar para o quadro | Agente | a fazer |
+| 9 | Teste de ponta a ponta com uma proposta pequena | Diretoria e agente | a fazer |
+| 10 | Conversa "Product Owner" criada com o texto acima | Diretoria | a fazer |
 
 ### Passo 3 · Quadro (pela Diretoria, no navegador)
 

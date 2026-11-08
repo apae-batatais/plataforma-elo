@@ -73,6 +73,11 @@ export function mudancas(evento) {
   return saida;
 }
 
+/** Publicação oficial com sucesso: pedida à mão ou agendada, sempre no ramo main. */
+export function ehPublicacaoOficial(run) {
+  return run.conclusion === 'success' && ['workflow_dispatch', 'schedule'].includes(run.event) && run.head_branch === 'main';
+}
+
 /** Etiquetas a tirar e a pôr para deixar a issue só na etapa nova. */
 export function trocaDeEtiquetas(atuais, etapa) {
   const nova = etiquetaDe(etapa);
@@ -159,7 +164,7 @@ export async function executar({ github, context, core, tokenQuadro, numeroQuadr
     }
   } else if (nome === 'workflow_run') {
     const run = p.workflow_run;
-    if (run.conclusion === 'success' && run.event === 'workflow_dispatch' && run.head_branch === 'main') {
+    if (ehPublicacaoOficial(run)) {
       const aprovadas = await github.paginate(github.rest.issues.listForRepo, {
         owner, repo, state: 'all', labels: etiquetaDe('Aprovada'), per_page: 100,
       });
@@ -170,6 +175,17 @@ export async function executar({ github, context, core, tokenQuadro, numeroQuadr
     for (const i of todas) if (!i.pull_request && i.labels.some((l) => etapaDaEtiqueta(l.name))) sincronizar.push(i.number);
   }
 
+  await aplicar({ github, context, core, tokenQuadro, numeroQuadro, lista, sincronizar });
+}
+
+/**
+ * Põe cada issue da lista na etapa indicada (etiqueta, e fecha se pedido) e copia para o quadro.
+ * Usada pelos workflows que agem com o GITHUB_TOKEN, cujas ações não disparam o Fluxo.
+ * @param {{ github: any, context: any, core: any, tokenQuadro?: string, numeroQuadro?: string,
+ *   lista: { issue: number, etapa: string, fechar?: boolean }[], sincronizar?: number[] }} opcoes
+ */
+export async function aplicar({ github, context, core, tokenQuadro, numeroQuadro, lista, sincronizar = [] }) {
+  const { owner, repo } = context.repo;
   for (const m of lista) {
     const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: m.issue });
     if (issue.pull_request) continue;
