@@ -4,6 +4,8 @@
 #   chama o Desenvolvedor.
 # - "Request changes" da Diretoria num PR: o Claude Code ajusta o PR conforme os comentários.
 #
+# Revisões em PR já fechado (com ou sem merge) são ignoradas.
+#
 # Ações feitas com o GITHUB_TOKEN não disparam outros workflows; por isso este workflow move o
 # cartão e chama o Desenvolvedor diretamente.
 
@@ -29,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     if: >-
       github.event.review.state == 'approved' &&
+      github.event.pull_request.state == 'open' &&
       github.event.review.user.login == 'diretoria823' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !github.event.pull_request.draft
@@ -68,6 +71,7 @@ jobs:
     timeout-minutes: 120
     if: >-
       github.event.review.state == 'changes_requested' &&
+      github.event.pull_request.state == 'open' &&
       github.event.review.user.login == 'diretoria823' &&
       github.event.pull_request.head.repo.full_name == github.repository
     steps:
