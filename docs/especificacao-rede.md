@@ -125,7 +125,7 @@ Drive compartilhado "Elo · <instituição>"    (um por instituição, no Worksp
 - **R3**: guia de adesão, termo de adesão (LGPD) e roteiro de transferência da Operadora.
 - **R4**: pasta única por instituição; o Elo cria as próprias planilhas (ADR-018). Detalhe abaixo.
 
-## R4 · Pasta única (proposta, aguarda aprovação)
+## R4 · Pasta única (proposta completa, aguarda aprovação)
 
 Decisão de arquitetura: ADR-018. Decisão da Diretoria (07/11/2026): um Drive compartilhado por
 instituição, com membros restritos.
@@ -147,7 +147,16 @@ instituição, com membros restritos.
   3. senão, cria "Elo · <nome curto da instituição> · <nome da planilha>" na pasta.
   Grava os IDs no cadastro (auditoria com as colunas alteradas) e cria as abas, como hoje.
   Ao fim, mostra o que foi criado e o que já existia.
-- **Preparar estrutura de todas** faz o mesmo em todas as instituições ativas e em preparação.
+- **Preparar estrutura de todas** (decisão da Diretoria, 07/11/2026): continua sendo um botão da
+  Administração da rede, usado depois de publicar um app novo ou uma mudança de abas. Faz o mesmo
+  em todas as instituições ativas e em preparação.
+- **Aviso de estrutura desatualizada**: na lista de instituições da Rede, cada instituição em que
+  falta planilha, pasta ou aba aparece com o aviso "Estrutura desatualizada" e o que falta; no
+  topo da tela, quantas instituições estão nessa situação.
+- **Acompanhamento pela Administração da rede**: ao salvar o link e ao preparar uma ou todas, a
+  tela mostra o resultado por instituição: planilhas criadas (com o botão **Abrir**), planilhas
+  que já existiam, abas criadas e falhas com o motivo. O mesmo resumo fica no registro da Rede
+  (auditoria), com data e quem preparou.
 - **Só a Administração da rede prepara a estrutura** (decisão da Diretoria, 07/11/2026). A
   Administração da plataforma de cada instituição perde a tela Estrutura e fica com Acessos,
   Áreas e Serviços. Exceção: no Elo sem a Rede (uma instituição só), a tela Estrutura continua com
