@@ -1,0 +1,147 @@
+import { describe, expect, it, vi } from 'vitest';
+import { etapaDaEtiqueta, etiquetaDe, executar, mudancas, referencias, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
+
+type Issue = { number: number; state: string; labels: { name: string }[]; node_id: string; pull_request?: unknown };
+
+function githubFalso(issues: Issue[]) {
+  const achar = (n: number) => issues.find((i) => i.number === n)!;
+  const rest = {
+    issues: {
+      get: vi.fn(async ({ issue_number }: { issue_number: number }) => ({ data: structuredClone(achar(issue_number)) })),
+      addLabels: vi.fn(async ({ issue_number, labels }: { issue_number: number; labels: string[] }) => {
+        achar(issue_number).labels.push(...labels.map((name) => ({ name })));
+      }),
+      removeLabel: vi.fn(async ({ issue_number, name }: { issue_number: number; name: string }) => {
+        const i = achar(issue_number);
+        i.labels = i.labels.filter((l) => l.name !== name);
+      }),
+      update: vi.fn(async ({ issue_number, state }: { issue_number: number; state: string }) => {
+        achar(issue_number).state = state;
+      }),
+      listForRepo: vi.fn(),
+    },
+  };
+  const paginate = vi.fn(async (_f: unknown, { labels }: { labels?: string }) =>
+    issues.filter((i) => !labels || i.labels.some((l) => l.name === labels)).map((i) => structuredClone(i)),
+  );
+  return { rest, paginate };
+}
+
+const core = { info: vi.fn(), notice: vi.fn(), warning: vi.fn() };
+const contexto = (eventName: string, payload: unknown) => ({ eventName, payload, repo: { owner: 'org', repo: 'elo' } });
+const etiquetas = (i: Issue) => i.labels.map((l) => l.name);
+
+describe('fluxo do quadro', () => {
+  it('etiqueta e etapa vão e voltam', () => {
+    expect(etiquetaDe('Pronta para construir')).toBe('etapa: pronta para construir');
+    expect(etapaDaEtiqueta('etapa: entrega em aprovação')).toBe('Entrega em aprovação');
+    expect(etapaDaEtiqueta('app: orçamento')).toBeNull();
+    expect(etapaDaEtiqueta('etapa: inexistente')).toBeNull();
+  });
+
+  it('acha as issues citadas no PR, sem repetir', () => {
+    expect(referencias('Especifica #12\nEntrega #7 e entrega #7; Especifica #3')).toEqual({ especifica: [12, 3], entrega: [7] });
+    expect(referencias('Fecha #4')).toEqual({ especifica: [], entrega: [] });
+  });
+
+  it('issue nova entra em Proposta, menos pendência da Diretoria ou issue que já tem etapa', () => {
+    expect(mudancas({ tipo: 'issue_aberta', numero: 5, etiquetas: [] })).toEqual([{ issue: 5, etapa: 'Proposta' }]);
+    expect(mudancas({ tipo: 'issue_aberta', numero: 5, etiquetas: ['Pendência da Diretoria'] })).toEqual([]);
+    expect(mudancas({ tipo: 'issue_aberta', numero: 5, etiquetas: ['etapa: em construção'] })).toEqual([]);
+  });
+
+  it('PR de especificação: aberto, aprovado e fechado sem merge', () => {
+    const texto = 'Especifica #9';
+    expect(mudancas({ tipo: 'pr_aberto', texto })).toEqual([{ issue: 9, etapa: 'Especificação em aprovação' }]);
+    expect(mudancas({ tipo: 'pr_merge', texto })).toEqual([{ issue: 9, etapa: 'Pronta para construir' }]);
+    expect(mudancas({ tipo: 'pr_fechado', texto })).toEqual([{ issue: 9, etapa: 'Proposta' }]);
+  });
+
+  it('PR de entrega: rascunho, pronto, aprovado (fecha a issue) e fechado sem merge', () => {
+    const texto = 'Entrega #9';
+    expect(mudancas({ tipo: 'pr_aberto', texto, rascunho: true })).toEqual([{ issue: 9, etapa: 'Em construção' }]);
+    expect(mudancas({ tipo: 'pr_aberto', texto, rascunho: false })).toEqual([{ issue: 9, etapa: 'Entrega em aprovação' }]);
+    expect(mudancas({ tipo: 'pr_merge', texto })).toEqual([{ issue: 9, etapa: 'Aprovada', fechar: true }]);
+    expect(mudancas({ tipo: 'pr_fechado', texto })).toEqual([{ issue: 9, etapa: 'Pronta para construir' }]);
+  });
+
+  it('deixa a issue com uma etapa só e não mexe nas outras etiquetas', () => {
+    expect(trocaDeEtiquetas(['app: rede', 'etapa: proposta'], 'Pronta para construir')).toEqual({
+      remover: ['etapa: proposta'],
+      adicionar: 'etapa: pronta para construir',
+    });
+    expect(trocaDeEtiquetas(['etapa: aprovada'], 'Aprovada')).toEqual({ remover: [], adicionar: null });
+  });
+
+  it('merge do PR de entrega: issue vai para Aprovada e é fechada; sem quadro, só avisa', async () => {
+    const issues: Issue[] = [{ number: 9, state: 'open', labels: [{ name: 'app: rede' }, { name: 'etapa: entrega em aprovação' }], node_id: 'I9' }];
+    const github = githubFalso(issues);
+    await executar({
+      github, core,
+      context: contexto('pull_request', { action: 'closed', pull_request: { title: 'R4', body: 'Entrega #9', merged: true, state: 'closed' } }),
+    });
+    expect(etiquetas(issues[0])).toEqual(['app: rede', 'etapa: aprovada']);
+    expect(issues[0].state).toBe('closed');
+    expect(core.notice).toHaveBeenCalled();
+  });
+
+  it('PR já fechado e editado não volta a issue de etapa', async () => {
+    const issues: Issue[] = [{ number: 9, state: 'closed', labels: [{ name: 'etapa: publicada' }], node_id: 'I9' }];
+    const github = githubFalso(issues);
+    await executar({
+      github, core,
+      context: contexto('pull_request', { action: 'edited', pull_request: { title: 'R4', body: 'Entrega #9', state: 'closed', draft: false } }),
+    });
+    expect(etiquetas(issues[0])).toEqual(['etapa: publicada']);
+  });
+
+  it('publicação oficial com sucesso passa as aprovadas para Publicada', async () => {
+    const issues: Issue[] = [
+      { number: 1, state: 'closed', labels: [{ name: 'etapa: aprovada' }], node_id: 'I1' },
+      { number: 2, state: 'open', labels: [{ name: 'etapa: em construção' }], node_id: 'I2' },
+    ];
+    const github = githubFalso(issues);
+    await executar({
+      github, core,
+      context: contexto('workflow_run', { workflow_run: { conclusion: 'success', event: 'workflow_dispatch', head_branch: 'main' } }),
+    });
+    expect(etiquetas(issues[0])).toEqual(['etapa: publicada']);
+    expect(etiquetas(issues[1])).toEqual(['etapa: em construção']);
+  });
+
+  it('prévia de PR (publicação que não é a oficial) não publica nada', async () => {
+    const issues: Issue[] = [{ number: 1, state: 'closed', labels: [{ name: 'etapa: aprovada' }], node_id: 'I1' }];
+    const github = githubFalso(issues);
+    await executar({
+      github, core,
+      context: contexto('workflow_run', { workflow_run: { conclusion: 'success', event: 'pull_request', head_branch: 'feat/x' } }),
+    });
+    expect(etiquetas(issues[0])).toEqual(['etapa: aprovada']);
+  });
+
+  it('com quadro configurado, move o cartão para a coluna da etapa', async () => {
+    const issues: Issue[] = [{ number: 4, state: 'open', labels: [], node_id: 'I4' }];
+    const github = githubFalso(issues);
+    const chamadas: string[] = [];
+    const respostas = [
+      { organization: { projectV2: { id: 'P', field: { id: 'F', options: [{ id: 'O1', name: 'Proposta' }] } } } },
+      { node: { projectItems: { nodes: [] } } },
+      { addProjectV2ItemById: { item: { id: 'IT' } } },
+      { updateProjectV2ItemFieldValue: { projectV2Item: { id: 'IT' } } },
+    ];
+    const fetchFalso = vi.fn(async (_url: string, init: { body: string }) => {
+      chamadas.push(JSON.parse(init.body).query.slice(0, 20));
+      return { ok: true, json: async () => ({ data: respostas.shift() }) };
+    });
+    vi.stubGlobal('fetch', fetchFalso);
+    await executar({
+      github, core, tokenQuadro: 't', numeroQuadro: '3',
+      context: contexto('issues', { action: 'opened', issue: { number: 4, labels: [] } }),
+    });
+    vi.unstubAllGlobals();
+    expect(etiquetas(issues[0])).toEqual(['etapa: proposta']);
+    expect(fetchFalso).toHaveBeenCalledTimes(4);
+    const ultima = JSON.parse(fetchFalso.mock.calls[3][1].body);
+    expect(ultima.variables).toEqual({ p: 'P', i: 'IT', f: 'F', o: 'O1' });
+  });
+});
