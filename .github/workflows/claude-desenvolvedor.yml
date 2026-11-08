@@ -70,6 +70,8 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # O workflow Aprovação chama o Desenvolvedor pela automação do GitHub (github-actions).
+          allowed_bots: github-actions
           claude_args: >-
             --max-turns 250
             --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash"
@@ -93,3 +95,5 @@ jobs:
             7. Abra o PR com `gh pr create --base main`: corpo em português começando com a linha
                "Entrega #${{ env.ISSUE }}", o que mudou, roteiro de conferência na prévia e as decisões
                tomadas sozinho (com o custo se estiverem erradas). A prévia é publicada sozinha.
+            Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
+            (evita barras invertidas antes das aspas).
