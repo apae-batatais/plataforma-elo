@@ -13,8 +13,8 @@ import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizar, atualizarVarios, ErroConflito, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Unidades } from '@/nucleo/estrutura/tabelas';
-import { AjustesConciliacao, Contas, Fontes, Saldos, type RegAjusteConciliacao, type RegConta, type RegFonte, type RegSaldo } from '../dados/tabelas';
-import { CLASSES, conferirConta, contasSemSaldo, mesAnterior, mesAtualBrasilia, mesValido, totaisPorClasse, type Classe, type DadosConta } from '../dominio/tesouraria';
+import { AjustesConciliacao, Contas, Fontes, MudancasClasse, Saldos, type RegAjusteConciliacao, type RegConta, type RegFonte, type RegSaldo } from '../dados/tabelas';
+import { CLASSES, classeNoMes, conferirConta, contasSemSaldo, mesAnterior, mesAtualBrasilia, mesValido, totaisPorClasse, type Classe, type DadosConta } from '../dominio/tesouraria';
 import { nomeComparavel } from '../dominio/previsao';
 import { ErroValidacaoFolha } from './folha';
 
@@ -55,11 +55,15 @@ export async function listarContas(p: Planilhas, quem: Autorizador): Promise<Con
   };
 }
 
+/** Como valer uma troca de classe: corrige todos os meses ou vale a partir de um mês. */
+export type TrocaDeClasse = { modo: 'corrigir' } | { modo: 'a_partir_de'; mes: string };
+
 export async function salvarConta(
   p: Planilhas,
   quem: Autorizador,
   dados: DadosConta,
   existente?: { id: string; versao: number },
+  troca?: TrocaDeClasse,
 ): Promise<string> {
   exigir(quem, PERM.editar);
   const limpa: DadosConta = {
@@ -70,7 +74,7 @@ export async function salvarConta(
     fonteId: dados.fonteId || null,
     unidade: dados.unidade || null,
   };
-  const [contas, fontes] = await lerTabelas(p, [Contas, Fontes] as const);
+  const [contas, fontes, mudancas] = await lerTabelas(p, [Contas, Fontes, MudancasClasse] as const);
   const erros = conferirConta(limpa, fontes.todos());
   if (erros.length === 0 && limpa.fonteId && !fontes.porId(limpa.fonteId)) erros.push('A fonte escolhida não existe.');
   if (erros.length) throw new ErroTesouraria(erros.join(' '));
@@ -98,9 +102,30 @@ export async function salvarConta(
   }
   const alvo = contas.porId(existente.id);
   if (!alvo || !alvo.ativo) throw new ErroTesouraria('Conta não encontrada.');
+  // Troca de classe: a pessoa precisa dizer se corrige todos os meses ou vale a partir de um mês.
+  const trocouClasse = alvo.classe !== limpa.classe;
+  let novaMudanca: { mes: string } | null = null;
+  if (trocouClasse) {
+    if (!troca) throw new ErroTesouraria('Escolha se a mudança corrige todos os meses ou vale a partir de um mês.');
+    if (troca.modo === 'a_partir_de') {
+      if (!mesValido(troca.mes) || troca.mes > mesAtualBrasilia()) throw new ErroTesouraria('Escolha um mês até o mês atual.');
+      const ultima = mudancas.ativos().filter((m) => m.conta_id === alvo.id).map((m) => m.a_partir_de).sort().pop();
+      if (ultima && troca.mes <= ultima) throw new ErroTesouraria('Escolha um mês depois da última mudança de classe desta conta.');
+      novaMudanca = { mes: troca.mes };
+    }
+  }
   const { colunasAlteradas } = await atualizar(p, Contas, existente.id, existente.versao, campos, { email: quem.email });
   if (colunasAlteradas.length) {
     await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Contas', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
+  }
+  if (novaMudanca) {
+    const m = await inserir(
+      p,
+      MudancasClasse,
+      { conta_id: existente.id, classe_anterior: alvo.classe, fonte_id_anterior: alvo.fonte_id, a_partir_de: novaMudanca.mes },
+      { email: quem.email },
+    );
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'MudancasClasse', registroId: m.id });
   }
   return existente.id;
 }
@@ -127,6 +152,10 @@ export const reativarConta = (p: Planilhas, quem: Autorizador, id: string, versa
 
 export interface LinhaSaldo {
   conta: RegConta;
+  /** Classe da conta naquele mês (pode ser diferente da atual, se mudou de classe). */
+  classe: Classe;
+  /** Fonte da conta naquele mês, quando vinculada. */
+  fonteId: string | null;
   saldo: RegSaldo | null;
   saldoAnterior: number | null;
   ajustes: RegAjusteConciliacao[];
@@ -150,7 +179,8 @@ const nomeConta = (c: RegConta) => [c.banco, c.conta].filter(Boolean).join(' ');
 export async function lerSaldosDoMes(p: Planilhas, quem: Autorizador, mes: string): Promise<SaldosDoMes> {
   exigir(quem, PERM.ver);
   exigirMes(mes);
-  const [contas, saldos, ajustes] = await lerTabelas(p, [Contas, Saldos, AjustesConciliacao] as const);
+  const [contas, saldos, ajustes, mudancasTabela] = await lerTabelas(p, [Contas, Saldos, AjustesConciliacao, MudancasClasse] as const);
+  const mudancas = mudancasTabela.ativos();
   const anterior = mesAnterior(mes);
   const saldosAtivos = saldos.ativos();
   const ajustesAtivos = ajustes.ativos();
@@ -160,25 +190,39 @@ export async function lerSaldosDoMes(p: Planilhas, quem: Autorizador, mes: strin
   const saldoDoMes = new Map(saldosAtivos.filter((s) => s.mes === mes).map((s) => [s.conta_id, s]));
   const saldoAnterior = new Map(saldosAtivos.filter((s) => s.mes === anterior).map((s) => [s.conta_id, s.saldo]));
 
-  const ordem = (a: RegConta, b: RegConta) =>
-    CLASSES.indexOf(a.classe) - CLASSES.indexOf(b.classe) || a.banco.localeCompare(b.banco, 'pt-BR') || (a.conta ?? '').localeCompare(b.conta ?? '', 'pt-BR');
+  // A classe e a fonte de cada conta são as do mês escolhido, não as de hoje.
+  const doMes = (c: RegConta) => {
+    const classe = classeNoMes(c, mudancas, mes);
+    let fonteId = c.fonte_id;
+    if (classe !== c.classe) {
+      const primeira = mudancas.filter((m) => m.conta_id === c.id && m.a_partir_de > mes).sort((a, b) => a.a_partir_de.localeCompare(b.a_partir_de))[0];
+      fonteId = primeira?.fonte_id_anterior ?? null;
+    }
+    return { classe, fonteId };
+  };
   const linhas = todas
     .filter((c) => c.ativo || saldoDoMes.has(c.id))
-    .sort(ordem)
     .map<LinhaSaldo>((conta) => ({
       conta,
+      ...doMes(conta),
       saldo: saldoDoMes.get(conta.id) ?? null,
       saldoAnterior: saldoAnterior.get(conta.id) ?? null,
       ajustes: ajustesAtivos.filter((a) => a.conta_id === conta.id && a.mes === mes),
-    }));
+    }))
+    .sort(
+      (a, b) =>
+        CLASSES.indexOf(a.classe) - CLASSES.indexOf(b.classe) ||
+        a.conta.banco.localeCompare(b.conta.banco, 'pt-BR') ||
+        (a.conta.conta ?? '').localeCompare(b.conta.conta ?? '', 'pt-BR'),
+    );
 
   const porId = new Map(ativas.map((c) => [c.id, c]));
   return {
     mes,
     mesAtual: mesAtualBrasilia(),
     linhas,
-    totais: totaisPorClasse(todas, saldosAtivos, ajustesAtivos, mes),
-    totaisAnterior: totaisPorClasse(todas, saldosAtivos, ajustesAtivos, anterior),
+    totais: totaisPorClasse(todas, saldosAtivos, ajustesAtivos, mes, mudancas),
+    totaisAnterior: totaisPorClasse(todas, saldosAtivos, ajustesAtivos, anterior, mudancas),
     pendentes: contasSemSaldo(ativas, saldosAtivos, mes).map((id) => ({ id, nome: nomeConta(porId.get(id)!) })),
   };
 }

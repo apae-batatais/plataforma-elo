@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  conferirConta, contasSemSaldo, lerValorEmReais, mesAnterior, mesAtualBrasilia, mesValido, totaisPorClasse,
+  classeNoMes, conferirConta, contasSemSaldo, lerValorEmReais, mesAnterior, mesAtualBrasilia, mesValido, totaisPorClasse,
   type DadosConta,
 } from '../dominio/tesouraria';
 
@@ -145,5 +145,42 @@ describe('contasSemSaldo', () => {
       { conta_id: 'z', mes: '2026-09' },
     ];
     expect(contasSemSaldo(ativas, saldos, '2026-09')).toEqual(['b', 'c']);
+  });
+});
+
+describe('classeNoMes', () => {
+  const conta = { id: 'a', classe: 'vinculada' as const };
+  const m = (a_partir_de: string, classe_anterior: 'livre_disponivel' | 'reserva' | 'vinculada', conta_id = 'a') => ({ conta_id, classe_anterior, a_partir_de });
+  it('sem mudança vale a classe da conta', () => {
+    expect(classeNoMes(conta, [], '2026-05')).toBe('vinculada');
+    expect(classeNoMes(conta, [m('2026-03', 'reserva', 'outra')], '2026-01')).toBe('vinculada');
+  });
+  it('com uma mudança: antes vale a anterior; no mês e depois vale a atual', () => {
+    const l = [m('2026-06', 'reserva')];
+    expect(classeNoMes(conta, l, '2026-05')).toBe('reserva');
+    expect(classeNoMes(conta, l, '2026-06')).toBe('vinculada');
+    expect(classeNoMes(conta, l, '2026-07')).toBe('vinculada');
+  });
+  it('com duas mudanças: vale a anterior da primeira que ainda não começou', () => {
+    // livre até 2026-03, reserva de 2026-04 a 2026-08, vinculada de 2026-09 em diante
+    const l = [m('2026-09', 'reserva'), m('2026-04', 'livre_disponivel')];
+    expect(classeNoMes(conta, l, '2026-03')).toBe('livre_disponivel');
+    expect(classeNoMes(conta, l, '2026-04')).toBe('reserva');
+    expect(classeNoMes(conta, l, '2026-08')).toBe('reserva');
+    expect(classeNoMes(conta, l, '2026-09')).toBe('vinculada');
+    expect(classeNoMes(conta, l, '2026-12')).toBe('vinculada');
+  });
+});
+
+describe('totaisPorClasse com mudança de classe', () => {
+  it('soma o mês anterior na classe antiga e o mês da mudança na nova', () => {
+    const contas = [{ id: 'a', classe: 'reserva' as const }];
+    const mudancas = [{ conta_id: 'a', classe_anterior: 'livre_disponivel' as const, a_partir_de: '2026-09' }];
+    const saldos = [
+      { conta_id: 'a', mes: '2026-08', saldo: 100 },
+      { conta_id: 'a', mes: '2026-09', saldo: 150 },
+    ];
+    expect(totaisPorClasse(contas, saldos, [], '2026-08', mudancas)).toEqual({ livre_disponivel: 100, reserva: 0, vinculada: 0 });
+    expect(totaisPorClasse(contas, saldos, [], '2026-09', mudancas)).toEqual({ livre_disponivel: 0, reserva: 150, vinculada: 0 });
   });
 });

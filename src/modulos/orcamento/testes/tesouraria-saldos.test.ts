@@ -220,3 +220,44 @@ describe('permissões', () => {
     }
   });
 });
+
+describe('saldos com troca de classe', () => {
+  it('um mês anterior à mudança mostra a conta na classe antiga; o mês da mudança, na nova', async () => {
+    const f = await fin();
+    const { a } = await tresContas();
+    await salvarSaldosDoMes(p, f, ANTES, [{ contaId: a, valor: 100 }]);
+    await salvarSaldosDoMes(p, f, MES, [{ contaId: a, valor: 150 }]);
+    const [{ versao }] = (await listarContas(p, f)).ativas.filter((c) => c.id === a);
+    await salvarConta(p, f, conta({ classe: 'vinculada', fonteId: await restrita() }), { id: a, versao }, { modo: 'a_partir_de', mes: MES });
+
+    const antes = await lerSaldosDoMes(p, f, ANTES);
+    expect(antes.linhas.find((l) => l.conta.id === a)!.classe).toBe('livre_disponivel');
+    expect(antes.totais.livre_disponivel).toBe(100);
+    expect(antes.totais.vinculada).toBe(0);
+
+    const depois = await lerSaldosDoMes(p, f, MES);
+    expect(depois.linhas.find((l) => l.conta.id === a)!.classe).toBe('vinculada');
+    expect(depois.totais.vinculada).toBe(150);
+    // o total do mês anterior usa a classe daquele mês
+    expect(depois.totaisAnterior.livre_disponivel).toBe(100);
+    expect(depois.totaisAnterior.vinculada).toBe(0);
+  });
+
+  it('corrigir muda a classe em todos os meses', async () => {
+    const f = await fin();
+    const { a } = await tresContas();
+    await salvarSaldosDoMes(p, f, ANTES, [{ contaId: a, valor: 100 }]);
+    const [{ versao }] = (await listarContas(p, f)).ativas.filter((c) => c.id === a);
+    await salvarConta(p, f, conta({ classe: 'reserva' }), { id: a, versao }, { modo: 'corrigir' });
+    const antes = await lerSaldosDoMes(p, f, ANTES);
+    expect(antes.totais.reserva).toBe(100);
+    expect(antes.totais.livre_disponivel).toBe(0);
+  });
+});
+
+async function restrita(): Promise<string> {
+  const { salvarFonte, listarCadastros } = await import('../aplicacao/previsao');
+  const f = await fin();
+  await salvarFonte(p, f, { nome: 'Termo Fictício', natureza: 'publica', uso: 'restrita' });
+  return (await listarCadastros(p, f)).fontes.ativos.find((x) => x.nome === 'Termo Fictício')!.id;
+}

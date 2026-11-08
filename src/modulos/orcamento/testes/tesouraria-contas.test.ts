@@ -10,8 +10,8 @@ import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { excluirFonte, listarCadastros, salvarFonte } from '../aplicacao/previsao';
 import { ErroTesouraria, excluirConta, listarContas, reativarConta, salvarConta } from '../aplicacao/tesouraria';
-import { Contas, PLANILHA_EXECUCAO, TABELAS_ORCAMENTO } from '../dados/tabelas';
-import type { DadosConta } from '../dominio/tesouraria';
+import { Contas, MudancasClasse, PLANILHA_EXECUCAO, TABELAS_ORCAMENTO } from '../dados/tabelas';
+import { mesAnterior, mesAtualBrasilia, type DadosConta } from '../dominio/tesouraria';
 import { manifesto } from '../manifesto';
 
 let p: Planilhas;
@@ -154,5 +154,90 @@ describe('cadastro de contas', () => {
     await salvarConta(p, f, conta({ banco: 'Banco Fictício Y' }), { id, versao });
     await expect(salvarConta(p, f, conta({ banco: 'Banco Fictício W' }), { id, versao })).rejects.toBeInstanceOf(ErroConflito);
     await expect(excluirConta(p, f, id, versao)).rejects.toBeInstanceOf(ErroConflito);
+  });
+});
+
+describe('troca de classe da conta', () => {
+  const MES = mesAnterior(mesAtualBrasilia());
+  const ANTES = mesAnterior(MES);
+
+  async function criar(extra: Partial<DadosConta> = {}) {
+    const f = await fin();
+    const id = await salvarConta(p, f, conta(extra));
+    const [c] = (await listarContas(p, f)).ativas;
+    return { f, id, versao: c.versao };
+  }
+
+  it('recusa trocar a classe sem escolher corrigir ou a partir de um mês', async () => {
+    const { f, id, versao } = await criar();
+    const erro = await salvarConta(p, f, conta({ classe: 'reserva' }), { id, versao }).catch((e) => e);
+    expect(erro).toBeInstanceOf(ErroTesouraria);
+    expect(erro.message).toBe('Escolha se a mudança corrige todos os meses ou vale a partir de um mês.');
+    expect((await lerTabela(p, Contas)).porId(id)!.classe).toBe('livre_disponivel');
+  });
+
+  it('classe igual: a escolha é ignorada e nada entra no histórico', async () => {
+    const { f, id, versao } = await criar();
+    await salvarConta(p, f, conta({ unidade: 'rural' }), { id, versao }, { modo: 'a_partir_de', mes: MES });
+    expect((await lerTabela(p, MudancasClasse)).todos()).toHaveLength(0);
+  });
+
+  it('corrigir só atualiza Contas, sem linha em MudancasClasse', async () => {
+    const { f, id, versao } = await criar();
+    await salvarConta(p, f, conta({ classe: 'reserva' }), { id, versao }, { modo: 'corrigir' });
+    expect((await lerTabela(p, Contas)).porId(id)!.classe).toBe('reserva');
+    expect((await lerTabela(p, MudancasClasse)).todos()).toHaveLength(0);
+  });
+
+  it('a partir de um mês grava a linha com a classe anterior e as duas auditorias, só com nomes de colunas', async () => {
+    const { f, id, versao } = await criar();
+    await salvarConta(p, f, conta({ classe: 'reserva' }), { id, versao }, { modo: 'a_partir_de', mes: MES });
+    expect((await lerTabela(p, Contas)).porId(id)!.classe).toBe('reserva');
+    const m = (await lerTabela(p, MudancasClasse)).todos();
+    expect(m).toHaveLength(1);
+    expect(m[0]).toMatchObject({ conta_id: id, classe_anterior: 'livre_disponivel', a_partir_de: MES });
+    expect(m[0].fonte_id_anterior ?? null).toBeNull();
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos();
+    const daMudanca = aud.filter((a) => a.entidade === 'MudancasClasse');
+    expect(daMudanca.map((a) => a.acao)).toEqual(['inclusao']);
+    const nasContas = aud.filter((a) => a.entidade === 'Contas' && a.acao === 'alteracao');
+    expect(JSON.stringify(nasContas)).toContain('classe');
+    expect(JSON.stringify(aud)).not.toContain('Fictício');
+  });
+
+  it('guarda a fonte anterior quando a conta deixa de ser vinculada', async () => {
+    const termo = await fonte('Termo Fictício', 'restrita');
+    const { f, id, versao } = await criar({ classe: 'vinculada', fonteId: termo.id });
+    await salvarConta(p, f, conta({ classe: 'livre_disponivel' }), { id, versao }, { modo: 'a_partir_de', mes: MES });
+    const [m] = (await lerTabela(p, MudancasClasse)).todos();
+    expect(m).toMatchObject({ classe_anterior: 'vinculada', fonte_id_anterior: termo.id });
+  });
+
+  it('recusa mês futuro, mês inválido e mês sem escolha', async () => {
+    const { f, id, versao } = await criar();
+    const futuro = '2999-01';
+    await expect(salvarConta(p, f, conta({ classe: 'reserva' }), { id, versao }, { modo: 'a_partir_de', mes: futuro })).rejects.toThrow('Escolha um mês até o mês atual.');
+    await expect(salvarConta(p, f, conta({ classe: 'reserva' }), { id, versao }, { modo: 'a_partir_de', mes: '' })).rejects.toThrow('Escolha um mês até o mês atual.');
+    expect((await lerTabela(p, MudancasClasse)).todos()).toHaveLength(0);
+  });
+
+  it('recusa mês igual ou anterior à última mudança da conta', async () => {
+    const { f, id, versao } = await criar();
+    await salvarConta(p, f, conta({ classe: 'reserva' }), { id, versao }, { modo: 'a_partir_de', mes: MES });
+    const [c] = (await listarContas(p, f)).ativas;
+    const msg = 'Escolha um mês depois da última mudança de classe desta conta.';
+    await expect(salvarConta(p, f, conta({ classe: 'livre_disponivel' }), { id, versao: c.versao }, { modo: 'a_partir_de', mes: ANTES })).rejects.toThrow(msg);
+    await expect(salvarConta(p, f, conta({ classe: 'livre_disponivel' }), { id, versao: c.versao }, { modo: 'a_partir_de', mes: MES })).rejects.toThrow(msg);
+    await salvarConta(p, f, conta({ classe: 'livre_disponivel' }), { id, versao: c.versao }, { modo: 'a_partir_de', mes: mesAtualBrasilia() });
+    expect((await lerTabela(p, MudancasClasse)).todos()).toHaveLength(2);
+  });
+
+  it('Diretoria e Coordenação não trocam a classe', async () => {
+    const { id, versao } = await criar();
+    for (const email of ['diretoria@exemplo.local', 'coord.ur@exemplo.local']) {
+      await expect(
+        salvarConta(p, await como(email), conta({ classe: 'reserva' }), { id, versao }, { modo: 'a_partir_de', mes: MES }),
+      ).rejects.toThrow(ErroPermissao);
+    }
   });
 });

@@ -87,6 +87,24 @@ export function conferirConta(c: DadosConta, fontes: { id: string; uso: 'livre' 
 }
 
 /**
+ * Classe da conta num mês. Entre as mudanças da conta que começam depois do
+ * mês, vale a classe anterior da que começa primeiro; sem nenhuma, vale a
+ * classe atual da conta.
+ */
+export function classeNoMes(
+  conta: { id: string; classe: Classe },
+  mudancas: { conta_id: string; classe_anterior: Classe; a_partir_de: string }[],
+  mes: string,
+): Classe {
+  let primeira: { classe_anterior: Classe; a_partir_de: string } | null = null;
+  for (const m of mudancas) {
+    if (m.conta_id !== conta.id || m.a_partir_de <= mes) continue;
+    if (!primeira || m.a_partir_de < primeira.a_partir_de) primeira = m;
+  }
+  return primeira ? primeira.classe_anterior : conta.classe;
+}
+
+/**
  * Total por classe no mês: saldo de todas as contas que têm saldo naquele mês
  * (ativas ou não) mais os ajustes ativos do mês. Em centavos exatos.
  */
@@ -95,9 +113,10 @@ export function totaisPorClasse(
   saldos: { conta_id: string; mes: string; saldo: number }[],
   ajustes: { conta_id: string; mes: string; valor: number; ativo: boolean }[],
   mes: string,
+  mudancas: { conta_id: string; classe_anterior: Classe; a_partir_de: string }[] = [],
 ): Record<Classe, number> {
   const centavos: Record<Classe, number> = { livre_disponivel: 0, reserva: 0, vinculada: 0 };
-  const classeDe = new Map(contas.map((c) => [c.id, c.classe]));
+  const classeDe = new Map(contas.map((c) => [c.id, classeNoMes(c, mudancas, mes)]));
   for (const s of saldos) {
     const classe = classeDe.get(s.conta_id);
     if (s.mes === mes && classe) centavos[classe] += Math.round(s.saldo * 100);

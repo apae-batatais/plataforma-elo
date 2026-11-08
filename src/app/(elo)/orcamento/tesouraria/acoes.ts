@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import {
-  ErroTesouraria, excluirConta, incluirAjuste, reativarConta, salvarConta, salvarSaldosDoMes, tirarAjuste,
+  ErroTesouraria, excluirConta, incluirAjuste, reativarConta, salvarConta, salvarSaldosDoMes, tirarAjuste, type TrocaDeClasse,
 } from '@/modulos/orcamento/aplicacao/tesouraria';
 import { CLASSES, lerValorEmReais, mesValido, TIPOS_CONTA, type Classe, type TipoConta } from '@/modulos/orcamento/dominio/tesouraria';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -52,6 +52,9 @@ export async function acaoSalvarConta(f: FormData) {
   const id = texto(f, 'id');
   const tipo = texto(f, 'tipo');
   const classe = texto(f, 'classe');
+  const modo = texto(f, 'troca');
+  const troca: TrocaDeClasse | undefined =
+    modo === 'corrigir' ? { modo } : modo === 'a_partir_de' ? { modo, mes: texto(f, 'troca_mes') } : undefined;
   await executar('/orcamento/tesouraria/contas', id ? 'Conta alterada.' : 'Conta cadastrada.', ({ usuario, app }) =>
     salvarConta(
       app.planilhas,
@@ -66,6 +69,7 @@ export async function acaoSalvarConta(f: FormData) {
         unidade: texto(f, 'unidade') || null,
       },
       id ? { id, versao: Number(texto(f, 'versao')) } : undefined,
+      troca,
     ),
   );
 }
