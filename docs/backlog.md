@@ -1,6 +1,6 @@
 # Backlog do Elo
 
-- Atualizado em: 07/11/2026
+- Atualizado em: 08/11/2026
 - Dono: Diretoria. A ordem de prioridade é decidida pela Diretoria.
 - Fonte: as especificações em `docs/` e `src/modulos/*/especificacao.md`, inclusive as
   que estão em Pull Requests abertos, o [roadmap](roadmap.md) e o histórico de Pull Requests.
@@ -12,10 +12,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 
 | Item | Frente | Situação | Detalhe |
 | --- | --- | --- | --- |
-| Comunicação fase 1 — entrega 3 de 5 | Comunicação | Fotos e documentos no pedido. Pronta; aguarda conferência na prévia e aprovação da Diretoria (há uma pergunta no PR sobre o nome dos documentos) | PR #46 |
-| Comunicação fase 1 — entregas 4 e 5 | Comunicação | Já planejadas: 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores. Começam depois da conferência da entrega 3 | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
-| Troca de classe da conta com escolha | Orçamento | Decisão da Diretoria em 08/11/2026: corrigir todos os meses ou valer a partir de um mês. Construída; aguarda conferência na prévia | ramo `feat/orcamento-tesouraria-classe` |
-| Entrega 1D.1 (Contas e saldos) | Orçamento | Plano aprovado em 07/11/2026; construída. Aguarda conferência na prévia e aprovação da Diretoria | ramo `feat/orcamento-tesouraria-contas`; `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos-andamento.md` |
+| Comunicação fase 1 — entregas 4 e 5 | Comunicação | Já planejadas: 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores. A próxima é a Tarefa 9 (entrega 4) | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
 
 ## Agora
 
@@ -69,3 +66,6 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | Comunicação | Entregas 1 e 2 da fase 1: calendário, antecedência mínima, cor do app; pedidos, revisão, aprovação e avisos | #40, #43 |
 | Orçamento | Especificação das entregas 1C, 1D e 1E aprovada | #44 |
 | Documentação | Backlog e roadmap; regras do agente (como trabalhar com a Diretoria, publicação oficial em lote) | #41, #42, #45 |
+| Comunicação | Entrega 3 da fase 1: fotos e documentos no pedido, com o nome original do arquivo | #46 |
+| Orçamento | 1D.1 — Tesouraria: contas, saldos do mês, ajustes de conciliação e totais por classe; troca de classe com escolha | #47, #49 |
+| Documentação | Repositório renomeado para `plataforma-elo`; ADR-017 (hospedagem até cerca de 5 clientes); Rede R4 (pasta única, ADR-018) | #48, #50, #51 |
