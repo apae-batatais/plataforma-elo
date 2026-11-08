@@ -87,7 +87,11 @@ describe('descoberta da instituição pelo endereço', () => {
   it('demonstração: duas instituições fictícias; vale a escolha da pessoa', () => {
     const demo = lerConfigGeral({});
     expect(demo.modo).toBe('demonstracao');
-    expect(demo.instituicoes.map((i) => i.nome)).toEqual(['Apae Exemplo', 'Apae Modelo']);
+    expect(demo.instituicoes.map((i) => i.nome)).toEqual(['Instituição Operadora', 'Instituição Modelo']);
+    const textos = demo.instituicoes.flatMap((i) => [i.nome, i.nomeCompleto ?? '']);
+    expect(textos.some((t) => /apae/i.test(t))).toBe(false);
+    expect(demo.instituicoes.map((i) => i.nomeCompleto)).toEqual(['Instituição Operadora (fictícia)', 'Instituição Modelo (fictícia)']);
+    expect(demo.modo === 'demonstracao' && demo.rede.nome).toBe('Instituição Operadora da Plataforma');
     expect(acharInstituicao(demo, null, 'modelo')?.codigo).toBe('modelo');
     expect(acharInstituicao(demo, null, 'inexistente')?.codigo).toBe('exemplo');
   });
@@ -119,6 +123,6 @@ describe('dados isolados entre instituições', () => {
     expect((await lerTabela(modelo.planilhas, Usuarios)).ativos().some((u) => u.email === 'so.no.exemplo@exemplo.local')).toBe(false);
     // As unidades vêm do cadastro de cada instituição.
     expect((await lerTabela(modelo.planilhas, Unidades)).ativos().map((u) => u.codigo).sort()).toEqual(['rural', 'sede']);
-    expect([exemplo.instituicao.nome, modelo.instituicao.nome, exemplo.unica]).toEqual(['Apae Exemplo', 'Apae Modelo', false]);
+    expect([exemplo.instituicao.nome, modelo.instituicao.nome, exemplo.unica]).toEqual(['Instituição Operadora', 'Instituição Modelo', false]);
   });
 });
