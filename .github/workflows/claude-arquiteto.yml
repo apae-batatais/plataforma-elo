@@ -72,3 +72,5 @@ jobs:
                corpo em português começando com a linha "Especifica #${{ github.event.issue.number }}", resumo,
                decisões tomadas sozinho (com o custo se estiverem erradas) e o que a Diretoria deve conferir.
             7. Comente na issue o link do PR, em uma linha.
+            Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
+            (evita barras invertidas antes das aspas).

@@ -100,3 +100,5 @@ jobs:
                quando houver código. Rode `npm run verificar` e `npm run build` até tudo passar.
             4. Faça commit e push e responda no PR, em poucas linhas, o que mudou em cada ponto pedido.
                Se algum pedido não puder ser atendido, explique e proponha alternativas numeradas.
+            Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
+            (evita barras invertidas antes das aspas).
