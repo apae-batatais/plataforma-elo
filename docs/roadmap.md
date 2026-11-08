@@ -1,6 +1,6 @@
 # Roadmap · Elo
 
-Atualizado em 6 de novembro de 2026 · Diretoria da Apae Batatais
+Atualizado em 7 de novembro de 2026 · Diretoria da Apae Batatais
 
 Registra o que ficou combinado para depois em cada app do Elo. Cada fase ganha a sua própria
 especificação antes de ser construída.
@@ -57,3 +57,13 @@ Fluxo completo sem nenhuma integração externa (especificação:
 - [ ] Considerar feriados no cálculo de dias úteis da antecedência mínima (na fase 1, segunda a
       sexta). Hoje o cadastro de feriados existe só no app Requisições; para usar nos dois, ele
       precisa ir para o núcleo do Elo.
+
+## Plataforma (arquitetura)
+
+### Depois de cerca de 5 clientes · banco relacional (ADR-017, 07/11/2026)
+
+- [ ] Migrar o armazenamento das Google Planilhas para Postgres relacional, app por app.
+- [ ] Hospedagem e banco na região de São Paulo.
+- [ ] Decidir entre banco compartilhado e banco por cliente, com os preços da época (nova ADR).
+- [ ] Copiar os dados reais das planilhas para o banco pelo GitHub Actions, sem acesso do agente.
+- [ ] Decidir onde ficam fotos e vídeos (hoje no Drive, ADR-014).
