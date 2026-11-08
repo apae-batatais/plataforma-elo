@@ -109,8 +109,8 @@ conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
 | 6 | Automações: Arquiteto na issue nova, construção depois da aprovação, merge automático, publicação semanal | Agente → aprovação | feito (PR #54) |
 | 7 | Habilidades do Elo em `.claude/skills/` | Agente → aprovação | feito (PR #54) |
 | 8 | Itens em aberto do `docs/backlog.md` viram issues; o arquivo passa a apontar para o quadro | Agente | feito (issues #53, #55 a #70) |
-| 9 | Teste de ponta a ponta com uma proposta pequena | Diretoria e agente | a fazer |
-| 10 | Conversa "Product Owner" criada com o texto acima | Diretoria | a fazer |
+| 9 | Teste de ponta a ponta com uma proposta pequena | Diretoria e agente | feito (issue #72) |
+| 10 | Conversa "Product Owner" criada com o texto acima | Diretoria | feito |
 
 ### Passo 3 · Quadro (pela Diretoria, no navegador)
 
