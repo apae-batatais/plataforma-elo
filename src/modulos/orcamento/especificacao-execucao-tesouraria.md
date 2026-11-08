@@ -266,8 +266,12 @@ ligação entre módulos (ADR-013).
    e a tela avisa.
 8. Salvar os saldos do mês é tudo ou nada: se outra pessoa alterou algum saldo, nada é gravado e a pessoa é avisada.
 
-**Pergunta aberta:** trocar a classe de uma conta (ex.: de livre disponível para reserva) muda os totais de
-todos os meses passados. Serve para corrigir uma classe errada, mas reescreve o histórico numa mudança real.
+9. **Troca de classe de uma conta (decisão da Diretoria em 08/11/2026):** ao alterar a classe, o Elo avisa que
+   a mudança afeta os totais e a pessoa escolhe:
+   - **Corrigir em todos os meses:** a classe estava errada desde o início; os totais de todos os meses são
+     recalculados com a classe nova.
+   - **Mudou a partir de um mês:** a pessoa escolhe o mês; os meses anteriores continuam somando na classe antiga
+     e, daquele mês em diante, vale a nova. O histórico das classes fica na aba `MudancasClasse` (só inclusões).
 
 ## Decisões pedidas à Diretoria
 
