@@ -1,13 +1,14 @@
 'use client';
 
-/** Alterações da Comunicação durante a revisão: título, descrição, tipo de peça, tema e data. */
+/** Alterações da Comunicação durante a revisão: título, descrição, tipo de peça, tema, data e anexos. */
 import { startTransition, useActionState, useState, type FormEvent } from 'react';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { NOME_TIPO_PECA, TIPOS_PECA, type TipoPeca } from '../dominio/pedido';
 import { CamposDeData } from './campos-de-data';
-import type { EstadoPedido, ItemEscolha } from './formulario-pedido';
+import { AnexosDoPedido, type AnexoNaFicha } from './anexos';
+import type { EstadoPedido, IniciarEnvioAnexo, ItemEscolha } from './formulario-pedido';
 
 export function EditarNaRevisao({
   acao,
@@ -15,12 +16,17 @@ export function EditarNaRevisao({
   versao,
   itens,
   inicial,
+  iniciarEnvio,
+  anexosIniciais = [],
 }: {
   acao: (estado: EstadoPedido, f: FormData) => Promise<EstadoPedido>;
   id: string;
   versao: number;
   itens: ItemEscolha[];
   inicial: { titulo: string; descricao: string; tipoPeca: TipoPeca; calendarioId: string | null; calendarioTema: string | null; dataDesejada: string };
+  /** Presente quando a instituição ativou a pasta de anexos. */
+  iniciarEnvio?: IniciarEnvioAnexo;
+  anexosIniciais?: AnexoNaFicha[];
 }) {
   const [estado, enviar, enviando] = useActionState(acao, {});
   // Sem "action" no formulário, o React não limpa os campos quando o servidor devolve um erro.
@@ -30,6 +36,8 @@ export function EditarNaRevisao({
     startTransition(() => enviar(f));
   };
   const [tema, setTema] = useState(inicial.calendarioId ?? '');
+  const [anexos, setAnexos] = useState<AnexoNaFicha[]>(anexosIniciais);
+  const enviandoArquivo = anexos.some((a) => !a.arquivoId && !a.erro);
   const lista = [...itens];
   if (inicial.calendarioId && !lista.some((i) => i.id === inicial.calendarioId))
     lista.unshift({ id: inicial.calendarioId, tema: inicial.calendarioTema ?? 'Tema do pedido', inicio: '', fim: '', tipos: [] });
@@ -37,6 +45,9 @@ export function EditarNaRevisao({
     <form onSubmit={aoEnviar} className="space-y-6">
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="versao" value={versao} />
+      {iniciarEnvio && (
+        <input type="hidden" name="anexos" value={JSON.stringify(anexos.filter((a) => a.arquivoId).map((a) => ({ arquivoId: a.arquivoId, tipo: a.tipo, nome: a.nome })))} />
+      )}
       {estado.erro && (
         <Aviso tipo="erro" titulo="Não foi possível salvar">
           {estado.erro}
@@ -93,7 +104,8 @@ export function EditarNaRevisao({
           </fieldset>
         </fieldset>
       )}
-      <BotaoEnviar enviando="Salvando…" pendente={enviando}>
+      {iniciarEnvio && <AnexosDoPedido anexos={anexos} mudar={setAnexos} iniciar={iniciarEnvio} />}
+      <BotaoEnviar enviando="Salvando…" pendente={enviando} disabled={enviandoArquivo}>
         Salvar alterações
       </BotaoEnviar>
     </form>

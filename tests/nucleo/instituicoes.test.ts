@@ -75,13 +75,13 @@ describe('descoberta da instituição pelo endereço', () => {
   it('acha pelo endereço (sem diferenciar maiúsculas, com ou sem porta); endereço desconhecido não acha nada', () => {
     expect(acharInstituicao(duas, 'elo.apaefranca.org.br')?.codigo).toBe('franca');
     expect(acharInstituicao(duas, 'ELO.apaebatatais.org.br:443')?.codigo).toBe('batatais');
-    expect(acharInstituicao(duas, 'plataforma-apae.netlify.app')).toBeNull();
+    expect(acharInstituicao(duas, 'plataforma-elo.netlify.app')).toBeNull();
     expect(acharInstituicao(duas, null)).toBeNull();
   });
 
   it('com uma instituição só, qualquer endereço serve (como antes)', () => {
     const uma = lerConfigGeral({ ...CREDENCIAIS, PLANILHAS: JSON.stringify(plan(1)), DOMINIO: 'apaeexemplo.org.br' });
-    expect(acharInstituicao(uma, 'plataforma-apae.netlify.app')?.dominio).toBe('apaeexemplo.org.br');
+    expect(acharInstituicao(uma, 'plataforma-elo.netlify.app')?.dominio).toBe('apaeexemplo.org.br');
   });
 
   it('demonstração: duas instituições fictícias; vale a escolha da pessoa', () => {

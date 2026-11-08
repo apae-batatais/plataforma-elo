@@ -199,7 +199,7 @@ async function arquivoFicticio(opcoes: { abaRateio?: boolean } = {}): Promise<Ar
 
 beforeEach(async () => {
   p = {
-    armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha']),
+    armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria', 'orcamento', 'orcamento_folha', 'orcamento_execucao']),
     idDe: (c) => c,
   };
   await prepararEstrutura(p, {

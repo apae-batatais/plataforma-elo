@@ -9,7 +9,7 @@ A Diretoria não quer manter cópia do código nem ferramentas de
 desenvolvimento (Node.js, Git) no computador.
 
 ## Decisão
-- O GitHub (`apae-batatais/plataforma-apae`) é a única cópia oficial.
+- O GitHub (`apae-batatais/plataforma-elo`, chamado `plataforma-apae` até 7/11/2026) é a única cópia oficial.
 - Todo o desenvolvimento acontece em sessões do Claude na nuvem ligadas ao
   repositório, em ambientes descartáveis.
 - A Diretoria revisa e aprova pelo navegador: Pull Request, verificação

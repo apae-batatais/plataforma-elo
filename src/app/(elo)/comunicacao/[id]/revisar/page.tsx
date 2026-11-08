@@ -7,7 +7,7 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { CabecalhoPagina } from '@/ui/pagina';
-import { acaoEditarNaRevisao } from '../../acoes';
+import { acaoEditarNaRevisao, acaoIniciarEnvioAnexo } from '../../acoes';
 
 export const metadata: Metadata = { title: 'Editar pedido na revisão' };
 
@@ -15,7 +15,7 @@ export default async function EditarPedidoNaRevisao({ params }: { params: Promis
   const { id } = await params;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
-  const { planilhas } = await obterAplicacao();
+  const { planilhas, arquivos } = await obterAplicacao();
   let d;
   try {
     d = await detalharPedido(planilhas, usuario.autorizador, id);
@@ -44,6 +44,16 @@ export default async function EditarPedidoNaRevisao({ params }: { params: Promis
         id={id}
         versao={r.versao}
         itens={opcoes.itens}
+        iniciarEnvio={arquivos ? acaoIniciarEnvioAnexo : undefined}
+        anexosIniciais={d.anexos.map((a) => ({
+          chave: a.id,
+          tipo: a.tipo,
+          nome: a.nome,
+          arquivoId: a.id,
+          previa: a.tipo === 'foto' ? `/comunicacao/anexos/${a.id}` : null,
+          progresso: 100,
+          erro: null,
+        }))}
         inicial={{
           titulo: r.titulo,
           descricao: r.descricao,
