@@ -3,12 +3,11 @@ import { redirect } from 'next/navigation';
 import { lerSaldosDoMes, listarContas } from '@/modulos/orcamento/aplicacao/tesouraria';
 import { mesAnterior, mesAtualBrasilia, mesValido } from '@/modulos/orcamento/dominio/tesouraria';
 import { rotuloMes } from '@/modulos/orcamento/telas/formato';
+import { SeletorMes } from '@/modulos/orcamento/telas/seletor-mes';
 import { SaldosDoMes, type LinhaTela } from '@/modulos/orcamento/telas/saldos-do-mes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
-import { Botao } from '@/ui/botao';
-import { Campo, estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina } from '@/ui/pagina';
 import { acaoIncluirAjuste, acaoSalvarSaldos, acaoTirarAjuste } from './acoes';
 
@@ -20,7 +19,12 @@ export default async function SaldosDoMesPagina({ searchParams }: { searchParams
   if (!usuario) redirect('/entrar');
   const atual = mesAtualBrasilia();
   // Padrão: o mês anterior, porque o extrato do mês fecha no último dia.
-  const mes = pedido && mesValido(pedido) && pedido <= atual ? pedido : mesAnterior(atual);
+  // Lista: o mês atual e os 23 anteriores.
+  const opcoes = [atual];
+  while (opcoes.length < 24) opcoes.push(mesAnterior(opcoes[opcoes.length - 1]));
+  const padrao = mesAnterior(atual);
+  const disponivel = !!pedido && mesValido(pedido) && opcoes.includes(pedido);
+  const mes = disponivel ? pedido : padrao;
   const app = await obterAplicacao();
   const s = await lerSaldosDoMes(app.planilhas, usuario.autorizador, mes);
   const podeEditar = usuario.autorizador.temPermissao('orcamento.tesouraria.editar');
@@ -50,16 +54,15 @@ export default async function SaldosDoMesPagina({ searchParams }: { searchParams
         titulo={`Saldos de ${rotuloMes(mes)}`}
         descricao="O saldo de cada conta no último dia do mês, conforme o extrato. O Elo soma por classe: livre disponível, reserva e vinculada."
         acoes={
-          <form method="get" className="flex flex-wrap items-end gap-2">
-            <Campo rotulo="Mês">
-              <input type="month" name="mes" defaultValue={mes} max={atual} required className={`${estiloEntrada} !mt-1`} />
-            </Campo>
-            <Botao type="submit" variante="secundario">
-              Ver mês
-            </Botao>
-          </form>
+          <SeletorMes mes={mes} opcoes={opcoes.map((m) => ({ valor: m, rotulo: rotuloMes(m) }))} />
         }
       />
+
+      {pedido && !disponivel && (
+        <div className="mb-6">
+          <Aviso tipo="info">Esse mês não está disponível; mostramos {rotuloMes(mes)}.</Aviso>
+        </div>
+      )}
 
       {s.linhas.length > 0 &&
         (n > 0 ? (
