@@ -52,8 +52,8 @@ caminhos: trocar só essa camada, ou redesenhar os dados como banco relacional, 
   Netlify rodam nos EUA e as planilhas ficam no Google Drive. Isso precisa constar da análise de
   LGPD (transferência internacional) antes do primeiro cliente com dados reais, e deve ser
   revisto pelo jurídico.
-- A Netlify permite trocar a região das funções para São Paulo (`gru`). A Diretoria vai conferir
-  no painel se a troca está disponível no plano atual.
+- A Netlify permite trocar a região das funções para São Paulo (`gru`), mas a Diretoria conferiu
+  (07/11/2026) que o plano gratuito não oferece a troca. Ela só fica disponível com plano pago.
 - Com mais clientes, acompanhar o consumo de créditos em "Usage & billing" da Netlify. Se faltar,
   o plano Personal (US$ 9) cabe no orçamento.
 - Novas abas e módulos continuam seguindo a ADR-011, mas devem evitar depender do número da
