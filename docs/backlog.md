@@ -14,6 +14,7 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | --- | --- | --- | --- |
 | Comunicação fase 1 — entrega 3 de 5 | Comunicação | Fotos e documentos no pedido. Pronta; aguarda conferência na prévia e aprovação da Diretoria (há uma pergunta no PR sobre o nome dos documentos) | PR #46 |
 | Comunicação fase 1 — entregas 4 e 5 | Comunicação | Já planejadas: 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores. Começam depois da conferência da entrega 3 | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
+| Troca de classe da conta com escolha | Orçamento | Decisão da Diretoria em 08/11/2026: corrigir todos os meses ou valer a partir de um mês. Construída; aguarda conferência na prévia | ramo `feat/orcamento-tesouraria-classe` |
 | Entrega 1D.1 (Contas e saldos) | Orçamento | Plano aprovado em 07/11/2026; construída. Aguarda conferência na prévia e aprovação da Diretoria | ramo `feat/orcamento-tesouraria-contas`; `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos-andamento.md` |
 
 ## Agora
