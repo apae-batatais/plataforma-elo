@@ -3,7 +3,8 @@
 # - Versão oficial: AGENDADA toda sexta-feira às 18h (Brasília), só se houver mudança desde a
 #   última publicação oficial; também pode ser disparada à mão (Actions → Publicar → Run workflow).
 #   Cada publicação oficial gasta créditos da Netlify (ADR-019).
-# - Pull Request:   publica uma prévia (demonstração) e comenta o link no PR.
+# - Pull Request:   publica uma prévia (demonstração) e comenta o link no PR; PR só de
+#   documentos (arquivos .md) não tem prévia.
 #
 # Precisa de dois Secrets no repositório (Settings → Secrets and variables → Actions):
 #   NETLIFY_AUTH_TOKEN  chave pessoal de acesso da Netlify
@@ -15,6 +16,10 @@ name: Publicar
 on:
   workflow_dispatch:
   pull_request:
+    # PR que só mexe em documentos (especificação, ADR, metodologia) não ganha prévia:
+    # o site seria igual ao atual (decisão da Diretoria, 08/11/2026).
+    paths-ignore:
+      - '**/*.md'
   schedule:
     - cron: '0 21 * * 5' # sexta-feira, 18h em Brasília (21h UTC)
 

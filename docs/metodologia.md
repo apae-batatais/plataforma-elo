@@ -76,6 +76,8 @@ repositório: habilidades da conta da Diretoria no Claude não vão junto.
   última. Correção urgente pode ser publicada na hora, se a Diretoria pedir.
 - **Aprovar ou pedir ajuste**: "Approve" no PR faz o merge (e, na especificação, começa a
   construção). "Request changes", com comentários, faz o Claude Code ajustar o próprio PR.
+- **Prévia só na entrega**: PR que só mexe em documentos (especificação, ADR, metodologia) não
+  tem prévia, porque o site seria igual ao atual. A prévia aparece no PR de entrega.
 - **Pedido livre**: "@claude" e o pedido num comentário de issue ou PR (por exemplo, "@claude
   atualize este PR com a main").
 - **Fontes únicas**: proposta na issue; regras do app na especificação (`src/modulos/<id>/
