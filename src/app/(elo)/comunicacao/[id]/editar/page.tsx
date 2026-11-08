@@ -8,7 +8,7 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { CabecalhoPagina } from '@/ui/pagina';
-import { acaoReenviarPedido } from '../../acoes';
+import { acaoIniciarEnvioAnexo, acaoReenviarPedido } from '../../acoes';
 
 export const metadata: Metadata = { title: 'Ajustar pedido' };
 
@@ -16,7 +16,7 @@ export default async function AjustarPedido({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
-  const { planilhas } = await obterAplicacao();
+  const { planilhas, arquivos } = await obterAplicacao();
   let d;
   try {
     d = await detalharPedido(planilhas, usuario.autorizador, id);
@@ -52,6 +52,17 @@ export default async function AjustarPedido({ params }: { params: Promise<{ id: 
         acao={acaoReenviarPedido}
         {...opcoes}
         rotuloEnviar="Reenviar pedido"
+        iniciarEnvio={arquivos ? acaoIniciarEnvioAnexo : undefined}
+        anexosIniciais={d.anexos.map((a) => ({
+          chave: a.id,
+          tipo: a.tipo,
+          nome: a.nome,
+          // O código do arquivo não sai do servidor: o anexo que fica é indicado pelo id dele.
+          arquivoId: a.id,
+          previa: a.tipo === 'foto' ? `/comunicacao/anexos/${a.id}` : null,
+          progresso: 100,
+          erro: null,
+        }))}
         oculto={{ id: r.id, versao: r.versao }}
         inicial={{
           area: r.area,

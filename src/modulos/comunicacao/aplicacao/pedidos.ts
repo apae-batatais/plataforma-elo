@@ -12,6 +12,7 @@
  */
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas } from '@/nucleo/estrutura/tabelas';
@@ -38,6 +39,7 @@ import {
   type TipoPeca,
 } from '../dominio/pedido';
 import { diaEmBrasilia, ehUrgente } from '../dominio/prazos';
+import { conferirAnexosDoPedido, gravarAnexos, type AnexoPedido } from './anexos';
 import { dataValida, itensParaPedido, salvarItemCalendario, type DadosItemCalendario } from './calendario';
 import { lerAntecedencia } from './configuracoes';
 
@@ -50,6 +52,8 @@ const PERM = {
 
 interface Opcoes {
   agora?: Date;
+  /** Pasta de anexos da instituição; sem ela, pedido com anexo é recusado. */
+  arquivos?: ArmazenamentoArquivos | null;
 }
 
 export interface DadosPedido {
@@ -61,6 +65,8 @@ export interface DadosPedido {
   dataDesejada: string;
   linkVideo: string | null;
   imagemConfirmada: boolean;
+  /** Fotos e documentos do pedido. Sem a lista, os anexos que já existem ficam como estão. */
+  anexos?: AnexoPedido[];
 }
 
 export type Visao = 'meus' | 'revisar' | 'aprovar' | 'agendar' | 'agendados' | 'todos';
@@ -118,6 +124,7 @@ async function conferirDados(
   temaAtual: { id: string | null; tema: string | null } | null,
   permitirPassado = false,
   areaAtual: string | null = null,
+  temFoto = false,
 ) {
   const titulo = d.titulo.trim().replace(/\s+/g, ' ');
   const descricao = d.descricao.trim();
@@ -147,8 +154,10 @@ async function conferirDados(
   const link = d.linkVideo?.trim() || null;
   if (link) {
     if (!link.startsWith('https://')) throw new ErroComunicacao('Cole o link completo da pasta do vídeo (começando com https://).');
-    if (!d.imagemConfirmada) throw new ErroComunicacao('Confirme que as pessoas que aparecem têm autorização de uso de imagem.');
   }
+  // Regra 8: foto anexada ou link de vídeo só seguem com a confirmação de uso de imagem.
+  const comImagem = Boolean(link) || temFoto;
+  if (comImagem && !d.imagemConfirmada) throw new ErroComunicacao('Confirme que as pessoas que aparecem têm autorização de uso de imagem.');
 
   return {
     hoje,
@@ -162,8 +171,8 @@ async function conferirDados(
       data_desejada: d.dataDesejada,
       urgente: ehUrgente(d.dataDesejada, hoje, await lerAntecedencia(p)),
       link_video: link,
-      imagem_confirmada_em: link ? agora.toISOString() : null,
-      imagem_confirmada_por: link ? quem.email : null,
+      imagem_confirmada_em: comImagem ? agora.toISOString() : null,
+      imagem_confirmada_por: comImagem ? quem.email : null,
     },
   };
 }
@@ -176,7 +185,8 @@ export async function enviarPedido(
 ): Promise<{ id: string; numero: string; urgente: boolean }> {
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   const agora = opcoes.agora ?? new Date();
-  const { hoje, campos } = await conferirDados(p, quem, d, agora, null);
+  const plano = await conferirAnexosDoPedido(p, opcoes.arquivos ?? null, d.anexos, null);
+  const { hoje, campos } = await conferirDados(p, quem, d, agora, null, false, null, plano.finais.some((a) => a.tipo === 'foto'));
   const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
   // O número é lido e depois gravado: dois envios no mesmo instante podem repetir o número (risco aceito na fase 1).
   const numero = proximoNumero(
@@ -197,7 +207,8 @@ export async function enviarPedido(
     publicado_em: null,
   };
   const novo = await inserir(p, PedidosComunicacao, dados, autoriaDe(quem, agora));
-  await registrarMudanca(p, quem, { id: novo.id, situacao: null }, 'enviar', 'aguardando_revisao', null, agora, Object.keys(dados));
+  await gravarAnexos(p, quem, plano, novo.id, agora);
+  await registrarMudanca(p, quem, { id: novo.id, situacao: null }, 'enviar', 'aguardando_revisao', null, agora, [...Object.keys(dados), ...(plano.mudou ? ['anexos'] : [])]);
   return { id: novo.id, numero, urgente: campos.urgente };
 }
 
@@ -216,9 +227,11 @@ export async function reenviarPedido(p: Planilhas, quem: Autorizador, id: string
   const r = await acharComVersao(p, id, versao);
   if (r.solicitante !== quem.email) throw new ErroPermissao('Só quem fez o pedido pode ajustá-lo.');
   const para = conferirTransicao(r.situacao, 'reenviar', r.tipo_peca);
-  const { campos } = await conferirDados(p, quem, d, agora, { id: r.calendario_id, tema: r.calendario_tema });
+  const plano = await conferirAnexosDoPedido(p, opcoes.arquivos ?? null, d.anexos, id);
+  const { campos } = await conferirDados(p, quem, d, agora, { id: r.calendario_id, tema: r.calendario_tema }, false, null, plano.finais.some((a) => a.tipo === 'foto'));
   const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { ...campos, situacao: para }, autoriaDe(quem, agora));
-  await registrarMudanca(p, quem, r, 'reenviar', para, null, agora, colunasAlteradas);
+  await gravarAnexos(p, quem, plano, id, agora);
+  await registrarMudanca(p, quem, r, 'reenviar', para, null, agora, [...colunasAlteradas, ...(plano.mudou ? ['anexos'] : [])]);
 }
 
 /** Cancelar (só quem pediu, em Aguardando revisão ou Devolvido). */
@@ -335,7 +348,7 @@ export async function editarNaRevisao(
   quem: Autorizador,
   id: string,
   versao: number,
-  m: Partial<Pick<DadosPedido, 'titulo' | 'descricao' | 'tipoPeca' | 'calendarioId' | 'dataDesejada'>> & {
+  m: Partial<Pick<DadosPedido, 'titulo' | 'descricao' | 'tipoPeca' | 'calendarioId' | 'dataDesejada' | 'anexos'>> & {
     /** Cria este tema no calendário e liga o pedido a ele (pede a permissão de gerenciar o calendário). */
     novoTema?: Omit<DadosItemCalendario, 'id' | 'versao'>;
   },
@@ -345,6 +358,10 @@ export async function editarNaRevisao(
   const agora = opcoes.agora ?? new Date();
   const r = await acharComVersao(p, id, versao);
   if (r.situacao !== 'em_revisao') throw new ErroComunicacao(`Esta ação não vale para um pedido em "${NOME_SITUACAO[r.situacao]}".`);
+  const plano = await conferirAnexosDoPedido(p, opcoes.arquivos ?? null, m.anexos, id);
+  // A Comunicação não confirma o uso de imagem por quem pediu: foto nova só entra se a confirmação já existe.
+  if (plano.novos.some((a) => a.tipo === 'foto') && !r.imagem_confirmada_em)
+    throw new ErroComunicacao('Quem pediu ainda não confirmou o uso de imagem. Para incluir uma foto, devolva o pedido para ela ajustar com a confirmação.');
   const dataMudou = m.dataDesejada !== undefined && m.dataDesejada !== r.data_desejada;
   const dadosCom = (calendarioId: string | null): DadosPedido => ({
     area: r.area,
@@ -376,9 +393,12 @@ export async function editarNaRevisao(
     ...(dataMudou ? { urgente: campos.urgente } : {}),
   };
   // Sem nada de novo, não grava (nem muda a versão).
-  if (Object.entries(mudancas).every(([c, v]) => v === (r as unknown as Record<string, unknown>)[c]))
+  if (!plano.mudou && Object.entries(mudancas).every(([c, v]) => v === (r as unknown as Record<string, unknown>)[c]))
     throw new ErroComunicacao('Nenhuma alteração para salvar.');
-  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, mudancas, autoriaDe(quem, agora));
+  // Só anexos mudando também sobe a versão do pedido, para duas pessoas não editarem ao mesmo tempo.
+  const { colunasAlteradas: alteradas } = await atualizar(p, PedidosComunicacao, id, versao, mudancas, autoriaDe(quem, agora));
+  await gravarAnexos(p, quem, plano, id, agora);
+  const colunasAlteradas = [...alteradas, ...(plano.mudou ? ['anexos'] : [])];
   await registrarMudanca(p, quem, r, 'editar', 'em_revisao', `Colunas alteradas: ${colunasAlteradas.join(', ')}`, agora, colunasAlteradas);
 }
 

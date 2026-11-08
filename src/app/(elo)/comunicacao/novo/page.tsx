@@ -5,7 +5,7 @@ import { FormularioPedido } from '@/modulos/comunicacao/telas/formulario-pedido'
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { CabecalhoPagina } from '@/ui/pagina';
-import { acaoEnviarPedido } from '../acoes';
+import { acaoEnviarPedido, acaoIniciarEnvioAnexo } from '../acoes';
 
 export const metadata: Metadata = { title: 'Novo pedido' };
 
@@ -13,7 +13,7 @@ export default async function NovoPedido() {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissaoAlgumEscopo('comunicacao.solicitar')) redirect('/comunicacao');
-  const { planilhas } = await obterAplicacao();
+  const { planilhas, arquivos } = await obterAplicacao();
   const opcoes = await opcoesDoPedido(planilhas, usuario.autorizador);
   return (
     <div className="max-w-3xl">
@@ -22,7 +22,7 @@ export default async function NovoPedido() {
         titulo="Novo pedido"
         descricao="Depois de enviado, o pedido vai para a revisão da Comunicação. Você acompanha cada etapa em Meus pedidos."
       />
-      <FormularioPedido acao={acaoEnviarPedido} {...opcoes} rotuloEnviar="Enviar pedido" />
+      <FormularioPedido acao={acaoEnviarPedido} {...opcoes} rotuloEnviar="Enviar pedido" iniciarEnvio={arquivos ? acaoIniciarEnvioAnexo : undefined} />
     </div>
   );
 }

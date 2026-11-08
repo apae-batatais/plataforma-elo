@@ -12,9 +12,11 @@ import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { IconeAtencao, IconeBusca, IconeCerto, IconeErro, IconeInfo } from '@/ui/icones';
 import { Etiqueta } from '@/ui/pagina';
+import type { TipoAnexo } from '../dominio/anexos';
 import { NOME_TIPO_PECA, TIPOS_PECA, type TipoPeca } from '../dominio/pedido';
 import { ehUrgente, somarDiasUteis } from '../dominio/prazos';
 import { IconePeca } from './icones-pecas';
+import { AnexosDoPedido, type AnexoNaFicha } from './anexos';
 import { dataCurta, quandoCai } from './mes';
 import { dataPorExtenso, distanciaDoTema, sugerirTemas } from './temas';
 
@@ -33,6 +35,9 @@ export interface ValoresPedido {
   dataDesejada: string;
   linkVideo: string | null;
 }
+
+/** Abre o envio de um arquivo (ação do servidor): devolve o endereço para onde o navegador manda o arquivo. */
+export type IniciarEnvioAnexo = (a: { tipo: TipoAnexo; mime: string; tamanho: number }) => Promise<{ url?: string; erro?: string }>;
 
 export interface ItemEscolha {
   id: string;
@@ -82,6 +87,8 @@ export function FormularioPedido({
   inicial,
   oculto,
   rotuloEnviar,
+  iniciarEnvio,
+  anexosIniciais = [],
 }: {
   acao: (estado: EstadoPedido, f: FormData) => Promise<EstadoPedido>;
   itens: ItemEscolha[];
@@ -92,6 +99,10 @@ export function FormularioPedido({
   inicial?: ValoresPedido;
   oculto?: Record<string, string | number>;
   rotuloEnviar: string;
+  /** Presente quando a instituição ativou a pasta de anexos; sem ele, o bloco de anexos não aparece. */
+  iniciarEnvio?: IniciarEnvioAnexo;
+  /** Anexos já guardados (ao ajustar um pedido devolvido). */
+  anexosIniciais?: AnexoNaFicha[];
 }) {
   const [estado, enviar, enviando] = useActionState(acao, {});
 
@@ -107,6 +118,9 @@ export function FormularioPedido({
   const [verTodos, setVerTodos] = useState(false);
   const [busca, setBusca] = useState('');
   const [link, setLink] = useState(inicial?.linkVideo ?? '');
+  const [anexos, setAnexos] = useState<AnexoNaFicha[]>(anexosIniciais);
+  const enviandoArquivo = anexos.some((a) => !a.arquivoId && !a.erro);
+  const temFoto = anexos.some((a) => a.tipo === 'foto' && a.arquivoId);
 
   // O tema já gravado no pedido continua na lista, mesmo desativado ou encerrado.
   const lista = useMemo(() => {
@@ -134,6 +148,10 @@ export function FormularioPedido({
       ))}
       {/* Um único campo leva o tema: a lista na tela pode estar resumida ou filtrada pela busca. */}
       <input type="hidden" name="calendario_id" value={tema} />
+      {/* Só os arquivos já enviados; sem a pasta de anexos ativa, o campo não existe e os anexos ficam como estão. */}
+      {iniciarEnvio && (
+        <input type="hidden" name="anexos" value={JSON.stringify(anexos.filter((a) => a.arquivoId).map((a) => ({ arquivoId: a.arquivoId, tipo: a.tipo, nome: a.nome })))} />
+      )}
       {estado.erro && (
         <Aviso tipo="erro" titulo="Não foi possível enviar">
           {estado.erro}
@@ -253,6 +271,8 @@ export function FormularioPedido({
         </fieldset>
       </Bloco>
 
+      {iniciarEnvio && <AnexosDoPedido anexos={anexos} mudar={setAnexos} iniciar={iniciarEnvio} />}
+
       <Bloco id="bloco-area" titulo="Área e vídeo">
         <Campo rotulo="Área" obrigatorio dica="A área de onde vem o assunto.">
           <select name="area" required defaultValue={inicial?.area ?? ''} className={`${estiloEntrada} sm:max-w-sm`}>
@@ -269,21 +289,22 @@ export function FormularioPedido({
         <Campo rotulo="Link da pasta do vídeo" dica="Opcional. Cole o link completo da pasta do Drive (começando com https://).">
           <input type="url" name="link_video" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" className={estiloEntrada} />
         </Campo>
-        {link.trim() && (
+        {(link.trim() || temFoto) && (
           <label className="flex min-h-11 items-start gap-3 rounded-xl border border-aviso/40 bg-aviso-fundo p-3 text-sm">
             <input type="checkbox" name="imagem_confirmada" className="mt-0.5 accent-destaque" />
             <span>
               <span className="font-semibold text-texto">As pessoas que aparecem têm autorização de uso de imagem</span>
-              <span className="block text-texto-suave">Obrigatório quando há link de vídeo, a cada envio e reenvio. O Elo guarda quando e por quem foi confirmado.</span>
+              <span className="block text-texto-suave">Obrigatório quando há foto ou link de vídeo, a cada envio e reenvio. O Elo guarda quando e por quem foi confirmado.</span>
             </span>
           </label>
         )}
       </Bloco>
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
-        <BotaoEnviar enviando="Enviando…" pendente={enviando}>
+        <BotaoEnviar enviando="Enviando…" pendente={enviando} disabled={enviandoArquivo}>
           {rotuloEnviar}
         </BotaoEnviar>
+        {enviandoArquivo && <p className="text-sm text-texto-suave">Aguarde o envio dos arquivos terminar.</p>}
         {urgente && (
           <p className="flex items-center gap-1.5 text-sm font-semibold text-aviso">
             <IconeAtencao tamanho={16} /> Vai como urgente

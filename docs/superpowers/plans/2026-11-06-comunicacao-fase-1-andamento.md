@@ -1,15 +1,15 @@
 # Andamento — Comunicação (fase 1)
 
 Registro de execução do plano `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md`.
-Atualizado em 06/11/2026, 21h, ao fim da Entrega 2.
+Atualizado em 07/11/2026, ao fim da Entrega 3.
 Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao.md`.
 
 ## Como retomar (para o agente)
 
 1. Leia, nesta ordem: o `CLAUDE.md` da raiz, a especificação, o plano e este arquivo.
-2. **Tarefas concluídas** (não refazer): 1 a 4 (Entrega 1, PR #40, ramo `feat/comunicacao-base`) e 5 a 7 (Entrega 2, ramo `feat/comunicacao-pedidos`, criado a partir de `feat/comunicacao-base`).
-3. **Próxima:** Tarefa 8 (Entrega 3, ramo `feat/comunicacao-anexos`), só depois de a Diretoria conferir a Entrega 2.
-   - Crie o ramo a partir da `main` se os PRs das Entregas 1 e 2 já tiverem ido para ela; senão, a partir de `feat/comunicacao-pedidos`.
+2. **Tarefas concluídas** (não refazer): 1 a 4 (Entrega 1, PR #40), 5 a 7 (Entrega 2, PR #43), ambas já na `main`, e 8 (Entrega 3, ramo `feat/comunicacao-anexos`, criado da `main`).
+3. **Próxima:** Tarefa 9 (Entrega 4, ramo `feat/comunicacao-agendamento`), só depois de a Diretoria conferir a Entrega 3.
+   - Crie o ramo a partir da `main` se o PR da Entrega 3 já tiver ido para ela; senão, a partir de `feat/comunicacao-anexos`.
 4. **Método escolhido pela Diretoria:** um agente por tarefa, com revisão independente depois de cada uma (skill superpowers:subagent-driven-development).
    - Há uma revisão final de todo o ramo antes de cada PR, uma entrega por vez.
    - Ao fim de cada entrega, pare para a Diretoria conferir a prévia.
@@ -31,7 +31,8 @@ Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao
 | 7 · Avisos no início e no menu | concluída, revisão limpa | 0d02b27 |
 | Revisão final da Entrega 2 | concluída após 1 rodada de correção e 1 ajuste pontual | 1dbd3de, 1fe2a99 |
 | Conferência no navegador (build de produção, demonstração) | enviar (urgente) → começar revisão → enviar para aprovação → aprovar; todas as telas abrem com os três perfis | — |
-| 8 a 11 | a fazer | — |
+| 8 · Anexos no pedido (fotos e documentos) | concluída após revisão da tarefa (limpa) e revisão final com 1 rodada de correção | f146c5e, b2bc29f |
+| 9 a 11 | a fazer | — |
 
 ## Decisões tomadas durante a execução
 
@@ -64,6 +65,13 @@ Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao
     - O número do menu não inclui "para publicar hoje". Rever na Tarefa 10.
     - No `next dev` local, o detalhe de pedido da demonstração pode dar 404, porque cada rota monta a própria memória. No build de produção (prévia) funciona.
 
+11. **Entrega 3 (07/11/2026):**
+    - `DadosPedido.anexos` é opcional: sem o campo, os anexos ficam como estão.
+    - Para manter um anexo no Ajustar e no Revisar, o formulário manda o id do anexo (não o código do arquivo no Drive, que é sensível e não sai do servidor).
+    - Mudança só de anexos na revisão também sobe a versão do pedido (proteção contra edição simultânea).
+    - Sem pedido de faixa (Range), a rota de leitura entrega o arquivo inteiro em partes de 4 MB (streaming). A Netlify aceita 20 MB por partes e 6 MB de uma vez. *Custo se errado:* documento acima de 6 MB falharia na Netlify; o plano B é baixar o limite para 4 MB, com aprovação da Diretoria.
+    - Decisões de regra para a Diretoria conferir estão na especificação ("Decisões tomadas na construção").
+
 ## Pendências pequenas (para as próximas tarefas)
 
 **Da Entrega 2 (podem esperar):**
@@ -83,6 +91,12 @@ Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao
 **Na Tarefa 6:**
 - completar a matriz de transições inválidas;
 - fazer o teste "situações finais não têm saída" conferir de fato que nenhuma ação sai delas.
+
+**Da Entrega 3 (podem esperar):**
+- a regra "quem vê o pedido" está repetida em `aplicacao/anexos.ts` (importar `pedidos.ts` criaria ciclo);
+- a conferência "arquivo já pertence a outro pedido" não alcança arquivos de Requisições na mesma pasta;
+- um pedido com faixa que não começa no zero (`Range: bytes=1-`) lê o arquivo sem registro na auditoria, e o erro 502 repassa o texto do Google (pode trazer o código do arquivo). As duas lacunas existem também nas Requisições: corrigir no Núcleo, com pedido da Diretoria (item no backlog);
+- o pedido é gravado antes dos anexos: uma falha no meio deixa o pedido sem a mudança de anexos, que dá para refazer.
 
 **Quando alguém mexer no arquivo:**
 - o `aria-live` do título do mês não tem efeito;
