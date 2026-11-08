@@ -14,19 +14,18 @@ Os itens seguem o ciclo de trabalho: especificar, aprovar, construir e conferir 
 | --- | --- | --- | --- |
 | Comunicação fase 1 — entrega 3 de 5 | Comunicação | Fotos e documentos no pedido. Pronta; aguarda conferência na prévia e aprovação da Diretoria (há uma pergunta no PR sobre o nome dos documentos) | PR #46 |
 | Comunicação fase 1 — entregas 4 e 5 | Comunicação | Já planejadas: 4) contatos, agendamento, e-mail pronto e publicação; 5) indicadores. Começam depois da conferência da entrega 3 | `docs/superpowers/plans/2026-11-06-comunicacao-fase-1.md` |
-| Plano da Entrega 1D.1 (Contas e saldos) | Orçamento | Plano pronto em 07/11/2026; aguarda aprovação da Diretoria antes da construção | `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos.md` |
+| Entrega 1D.1 (Contas e saldos) | Orçamento | Plano aprovado em 07/11/2026; construída. Aguarda conferência na prévia e aprovação da Diretoria | ramo `feat/orcamento-tesouraria-contas`; `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos-andamento.md` |
 
 ## Agora
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Construir a Entrega 1D.1 (Contas e saldos) | Orçamento | Cadastro das contas, saldo do extrato por mês, ajustes de conciliação, total por classe e pendências. Primeira da ordem aprovada (1D.1 → 1E → 1C.1 → 1C.2 → 1D.2); começa depois da aprovação do plano | `docs/superpowers/plans/2026-11-07-orcamento-1d1-contas-e-saldos.md` |
+| Entrega 1E (Histórico) | Orçamento | Anos fechados de 2017 a 2025, indicadores históricos e fontes de receita ano a ano. Próxima da ordem aprovada (1D.1 → 1E → 1C.1 → 1C.2 → 1D.2); precisa de plano | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
 
 ## Próximo
 
 | Item | Frente | O que é | Detalhe |
 | --- | --- | --- | --- |
-| Entrega 1E (Histórico) | Orçamento | Anos fechados de 2017 a 2025, indicadores históricos e fontes de receita ano a ano. Vem depois da 1D.1 | `src/modulos/orcamento/especificacao-execucao-tesouraria.md` |
 | Capacidade de Indicadores | Capacidades | Cálculo e painel de indicadores compartilhados entre os apps. A pasta `src/capacidades/indicadores` ainda está vazia | `docs/especificacao-plataforma.md` (Situação da Fase 0) |
 | Entrega R3 da Rede | Rede | Guia "Como trazer uma instituição para o Elo", termo de adesão (LGPD) e roteiro de transferência da Operadora. É documentação, não código | `docs/especificacao-rede.md` (Entregas) |
 
