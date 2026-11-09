@@ -1,5 +1,5 @@
 /**
- * Manifesto do módulo Orçamento — Entregas 1A (Folha de Pagamento), 1B (Previsão) e 1D.1 (Tesouraria).
+ * Manifesto do módulo Orçamento — Entregas 1A (Folha de Pagamento), 1B (Previsão) 1D.1 (Tesouraria) e 1E (Histórico).
  * As permissões da 1C (lançamentos da execução) entram quando ela for construída.
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
@@ -27,6 +27,9 @@ export const manifesto = defineModulo({
     { rotulo: 'Centros de custo', caminho: '/previsao/centros', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
     { rotulo: 'Saldos do mês', caminho: '/tesouraria', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
     { rotulo: 'Contas', caminho: '/tesouraria/contas', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
+    { rotulo: 'Indicadores', caminho: '/historico', permissao: 'orcamento.historico.ver', secao: 'Histórico' },
+    { rotulo: 'Fontes de receita', caminho: '/historico/fontes', permissao: 'orcamento.historico.ver', secao: 'Histórico' },
+    { rotulo: 'Importar ano fechado', caminho: '/historico/importar', permissao: 'orcamento.historico.editar', secao: 'Histórico' },
     { rotulo: 'Resumo da folha', caminho: '/', permissao: 'orcamento.folha.ver', secao: 'Folha de pagamento' },
     { rotulo: 'Folha completa', caminho: '/folha', permissao: 'orcamento.folha.ver_individual', secao: 'Folha de pagamento' },
     { rotulo: 'Lotação', caminho: '/lotacao', permissao: 'orcamento.folha.editar', secao: 'Folha de pagamento' },
@@ -46,21 +49,23 @@ export const manifesto = defineModulo({
     'orcamento.exercicio.aprovar': 'Aprovar e encerrar o exercício; aprovar remanejamentos e suplementações',
     'orcamento.tesouraria.ver': 'Ver as contas, os saldos e os totais por classe',
     'orcamento.tesouraria.editar': 'Cadastrar contas e informar os saldos do mês e os ajustes de conciliação',
+    'orcamento.historico.ver': 'Ver os indicadores e as fontes de receita dos anos fechados',
+    'orcamento.historico.editar': 'Importar e desfazer a importação de um ano fechado',
   },
   perfis: [
     { codigo: 'departamento_pessoal', nome: 'Departamento Pessoal', descricao: 'Cadastra a folha e a lotação. Vê salários individuais.' },
     { codigo: 'compras', nome: 'Compras', descricao: 'Cota as propostas de despesa das coordenações. Não decide nem vê a folha.' },
   ],
   permissoesPorPerfil: {
-    diretoria: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.painel.ver', 'orcamento.exercicio.aprovar', 'orcamento.tesouraria.ver'],
+    diretoria: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.painel.ver', 'orcamento.exercicio.aprovar', 'orcamento.tesouraria.ver', 'orcamento.historico.ver'],
     financeiro: [
       'orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.folha.editar', 'orcamento.parametros.editar',
       'orcamento.painel.ver', 'orcamento.previsao.editar', 'orcamento.previsao.propor',
-      'orcamento.tesouraria.ver', 'orcamento.tesouraria.editar',
+      'orcamento.tesouraria.ver', 'orcamento.tesouraria.editar', 'orcamento.historico.ver', 'orcamento.historico.editar',
     ],
     departamento_pessoal: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.folha.ver_individual', 'orcamento.folha.editar'],
     coordenacao_servico: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.previsao.propor'],
-    leitura: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.painel.ver'],
+    leitura: ['orcamento.acessar', 'orcamento.folha.ver', 'orcamento.painel.ver', 'orcamento.historico.ver'],
     compras: ['orcamento.acessar', 'orcamento.previsao.cotar'],
   },
   eventos: { publica: [], consome: [] },
