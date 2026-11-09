@@ -38,10 +38,12 @@ import {
   type Situacao,
   type TipoPeca,
 } from '../dominio/pedido';
-import { diaEmBrasilia, ehUrgente } from '../dominio/prazos';
+import { montarEmailPronto } from '../dominio/email-pronto';
+import { dataHoraEmBrasilia, diaEmBrasilia, ehUrgente } from '../dominio/prazos';
 import { conferirAnexosDoPedido, gravarAnexos, type AnexoPedido } from './anexos';
 import { dataValida, itensParaPedido, salvarItemCalendario, type DadosItemCalendario } from './calendario';
 import { lerAntecedencia } from './configuracoes';
+import { destinatariosDe } from './contatos';
 
 const PERM = {
   solicitar: 'comunicacao.solicitar',
@@ -400,6 +402,111 @@ export async function editarNaRevisao(
   await gravarAnexos(p, quem, plano, id, agora);
   const colunasAlteradas = [...alteradas, ...(plano.mudou ? ['anexos'] : [])];
   await registrarMudanca(p, quem, r, 'editar', 'em_revisao', `Colunas alteradas: ${colunasAlteradas.join(', ')}`, agora, colunasAlteradas);
+}
+
+// ---------------------------------------------------------------------------
+// Agendamento, e-mail pronto e publicação
+// ---------------------------------------------------------------------------
+
+/** Peças que saem por e-mail: pedem destinatários ao agendar. */
+const SAI_POR_EMAIL: ReadonlySet<TipoPeca> = new Set<TipoPeca>(['release', 'artigo']);
+
+/** Grupos e contatos gravados no pedido (JSON); texto ilegível vale como vazio. */
+function lerDestinatarios(r: RegPedido): { grupos: string[]; contatos: string[] } {
+  try {
+    const v = JSON.parse(r.destinatarios ?? '{}') as { grupos?: unknown; contatos?: unknown };
+    const lista = (x: unknown) => (Array.isArray(x) ? x.filter((i): i is string => typeof i === 'string') : []);
+    return { grupos: lista(v.grupos), contatos: lista(v.contatos) };
+  } catch {
+    return { grupos: [], contatos: [] };
+  }
+}
+
+/**
+ * Agenda um pedido aprovado ou muda a data de um já agendado. `agendadoPara` é uma data e hora
+ * com fuso (ex.: 2026-11-10T10:00:00-03:00); fica gravada em ISO UTC. Release e artigo pedem
+ * pelo menos um contato ativo (nos grupos ou escolhido).
+ */
+export async function agendarPedido(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  a: { agendadoPara: string; grupos: string[]; contatos: string[] },
+  opcoes: Opcoes = {},
+): Promise<void> {
+  exigirPermissao(quem, PERM.revisar);
+  const agora = opcoes.agora ?? new Date();
+  const r = await acharComVersao(p, id, versao);
+  const acao: Acao = r.situacao === 'agendado' ? 'reagendar' : 'agendar';
+  const { para } = conferirAcao(quem, r, acao, null);
+  const quando = new Date(a.agendadoPara);
+  if (!a.agendadoPara.trim() || Number.isNaN(quando.getTime())) throw new ErroComunicacao('Informe a data e a hora do agendamento.');
+  if (quando.getTime() <= agora.getTime()) throw new ErroComunicacao('Escolha uma data e hora no futuro.');
+  let destinatarios: string | null = null;
+  if (SAI_POR_EMAIL.has(r.tipo_peca)) {
+    const escolha = { grupos: [...new Set(a.grupos)], contatos: [...new Set(a.contatos)] };
+    if ((await destinatariosDe(p, escolha)).length === 0) throw new ErroComunicacao('Escolha pelo menos um contato ativo para receber o e-mail.');
+    destinatarios = JSON.stringify(escolha);
+  }
+  const { colunasAlteradas } = await atualizar(
+    p,
+    PedidosComunicacao,
+    id,
+    versao,
+    { situacao: para, agendado_para: quando.toISOString(), destinatarios },
+    autoriaDe(quem, agora),
+  );
+  const anterior = acao === 'reagendar' && r.agendado_para ? `Data anterior: ${dataHoraEmBrasilia(r.agendado_para)}.` : null;
+  await registrarMudanca(p, quem, r, acao, para, anterior, agora, colunasAlteradas);
+}
+
+/** Dados do e-mail pronto de um release ou artigo agendado (só a Comunicação e quem tem mais permissões). */
+export async function emailProntoDoPedido(p: Planilhas, quem: Autorizador, id: string): Promise<ReturnType<typeof montarEmailPronto>> {
+  exigirPermissao(quem, PERM.revisar);
+  const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
+  const r = pedidos.porId(id);
+  if (!r || !r.ativo) throw new ErroComunicacao('Pedido não encontrado.');
+  if (r.situacao !== 'agendado' || !SAI_POR_EMAIL.has(r.tipo_peca)) throw new ErroComunicacao('O e-mail pronto só existe para release e artigo agendados.');
+  return montarEmailPronto({ destinatarios: await destinatariosDe(p, lerDestinatarios(r)), assunto: r.titulo, corpo: r.descricao });
+}
+
+/** Contagem de quem receberá o e-mail do pedido (para a tela, sem mostrar os endereços). */
+export async function destinatariosDoPedido(p: Planilhas, quem: Autorizador, id: string): Promise<{ grupos: string[]; contatos: string[] }> {
+  exigirPermissao(quem, PERM.revisar);
+  const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
+  const r = pedidos.porId(id);
+  if (!r || !r.ativo) throw new ErroComunicacao('Pedido não encontrado.');
+  return lerDestinatarios(r);
+}
+
+const NOME_REDE: Partial<Record<TipoPeca, string>> = { post_instagram: 'no Instagram', reel_instagram: 'no Instagram' };
+
+/** Marca como publicado (entrevista: realizada) um pedido agendado. Post e reel pedem o link da publicação. */
+export async function publicarPedido(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  x: { link: string | null; comentario: string | null },
+  opcoes: Opcoes = {},
+): Promise<void> {
+  exigirPermissao(quem, PERM.revisar);
+  const agora = opcoes.agora ?? new Date();
+  const r = await acharComVersao(p, id, versao);
+  const { para, motivo } = conferirAcao(quem, r, 'publicar', x.comentario);
+  const link = x.link?.trim() || null;
+  if (NOME_REDE[r.tipo_peca] && !link) throw new ErroComunicacao(`Cole o link da publicação ${NOME_REDE[r.tipo_peca]}.`);
+  if (link && !link.startsWith('https://')) throw new ErroComunicacao('Cole o link completo da publicação (começando com https://).');
+  const { colunasAlteradas } = await atualizar(
+    p,
+    PedidosComunicacao,
+    id,
+    versao,
+    { situacao: para, link_publicacao: link, publicado_em: agora.toISOString() },
+    autoriaDe(quem, agora),
+  );
+  await registrarMudanca(p, quem, r, 'publicar', para, motivo, agora, colunasAlteradas);
 }
 
 // ---------------------------------------------------------------------------

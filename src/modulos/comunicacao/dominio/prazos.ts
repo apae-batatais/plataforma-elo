@@ -44,3 +44,9 @@ export function diasUteisEntre(inicio: string, fim: string): number {
 export function ehUrgente(dataDesejada: string, hoje: string, antecedencia: number): boolean {
   return dataDesejada < somarDiasUteis(hoje, antecedencia);
 }
+
+/** Data e hora no horário de Brasília, como "07/11/2026 10:00". */
+export function dataHoraEmBrasilia(iso: string): string {
+  const t = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000).toISOString();
+  return `${t.slice(8, 10)}/${t.slice(5, 7)}/${t.slice(0, 4)} ${t.slice(11, 16)}`;
+}

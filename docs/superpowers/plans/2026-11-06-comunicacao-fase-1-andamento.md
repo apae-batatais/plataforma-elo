@@ -8,7 +8,7 @@ Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao
 
 1. Leia, nesta ordem: o `CLAUDE.md` da raiz, a especificação, o plano e este arquivo.
 2. **Tarefas concluídas** (não refazer): 1 a 4 (Entrega 1, PR #40), 5 a 7 (Entrega 2, PR #43), ambas já na `main`, e 8 (Entrega 3, ramo `feat/comunicacao-anexos`, criado da `main`).
-3. **Próxima:** Tarefa 9 (Entrega 4, ramo `feat/comunicacao-agendamento`), só depois de a Diretoria conferir a Entrega 3.
+3. **Atualização de 09/11/2026:** as Tarefas 9 a 11 foram feitas num só PR ("Entrega #55"). Nada falta no plano. (Texto antigo: Tarefa 9 (Entrega 4, ramo `feat/comunicacao-agendamento`), só depois de a Diretoria conferir a Entrega 3.
    - Crie o ramo a partir da `main` se o PR da Entrega 3 já tiver ido para ela; senão, a partir de `feat/comunicacao-anexos`.
 4. **Método escolhido pela Diretoria:** um agente por tarefa, com revisão independente depois de cada uma (skill superpowers:subagent-driven-development).
    - Há uma revisão final de todo o ramo antes de cada PR, uma entrega por vez.
@@ -32,7 +32,10 @@ Especificação (aprovada em 06/11/2026): `src/modulos/comunicacao/especificacao
 | Revisão final da Entrega 2 | concluída após 1 rodada de correção e 1 ajuste pontual | 1dbd3de, 1fe2a99 |
 | Conferência no navegador (build de produção, demonstração) | enviar (urgente) → começar revisão → enviar para aprovação → aprovar; todas as telas abrem com os três perfis | — |
 | 8 · Anexos no pedido (fotos e documentos) | concluída após revisão da tarefa (limpa) e revisão final com 1 rodada de correção | f146c5e, b2bc29f |
-| 9 a 11 | a fazer | — |
+| 9 · Contatos e grupos da imprensa | concluída (issue #55) | ver ramo `feat/comunicacao-agendamento` |
+| 10 · Agendar, e-mail pronto e publicar | concluída (issue #55) | idem |
+| 11 · Indicadores | concluída (issue #55) | idem |
+| PR da entrega #55 (Entregas 4 e 5 juntas, a pedido do fluxo da issue) | aberto, aguardando a Diretoria | — |
 
 ## Decisões tomadas durante a execução
 

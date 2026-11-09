@@ -1,9 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
-import { detalharPedido, listarPedidos, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
+import { opcoesDeDestinatarios } from '@/modulos/comunicacao/aplicacao/contatos';
+import { destinatariosDoPedido, detalharPedido, emailProntoDoPedido, listarPedidos, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, NOME_TIPO_PECA, SITUACOES_FINAIS } from '@/modulos/comunicacao/dominio/pedido';
 import { ACOES_DA_EQUIPE } from '@/modulos/comunicacao/telas/acoes-da-equipe';
+import { AcoesDeAgendamento, EmailPronto } from '@/modulos/comunicacao/telas/agendamento';
 import { AcoesPedido } from '@/modulos/comunicacao/telas/acoes-pedido';
 import { dataCurta } from '@/modulos/comunicacao/telas/mes';
 import { dataHoraBR, EtiquetaSituacao, EtiquetaUrgente } from '@/modulos/comunicacao/telas/rotulos';
@@ -13,7 +15,7 @@ import { usuarioLogado } from '@/plataforma/sessao';
 import { LinkBotao } from '@/ui/botao';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, Secao } from '@/ui/pagina';
-import { acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoRevisarPedido } from '../acoes';
+import { acaoAgendarPedido, acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoPublicarPedido, acaoRevisarPedido } from '../acoes';
 
 export const metadata: Metadata = { title: 'Pedido' };
 
@@ -64,6 +66,11 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
         .map((x) => ({ id: x.id, rotulo: `${x.numero} · ${x.titulo}` }))
     : [];
   const daEquipe = d.acoes.some((a) => ACOES_DA_EQUIPE.includes(a));
+  const doAgendamento = d.acoes.some((a) => a === 'agendar' || a === 'reagendar' || a === 'publicar');
+  const sai = r.tipo_peca === 'release' || r.tipo_peca === 'artigo';
+  const destino = doAgendamento && sai ? await opcoesDeDestinatarios(planilhas, usuario.autorizador) : { grupos: [], contatos: [] };
+  const escolhidos = doAgendamento && sai ? await destinatariosDoPedido(planilhas, usuario.autorizador, r.id) : { grupos: [], contatos: [] };
+  const email = r.situacao === 'agendado' && sai && d.acoes.includes('publicar') ? await emailProntoDoPedido(planilhas, usuario.autorizador, r.id) : null;
   const nomeDaArea = (await opcoesDoPedido(planilhas, usuario.autorizador)).areas.find((a) => a.codigo === r.area)?.nome ?? r.area;
   return (
     <div className="max-w-4xl space-y-6">
@@ -79,7 +86,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
         descricao={r.titulo}
       />
 
-      {(d.acoes.includes('reenviar') || d.acoes.includes('cancelar') || daEquipe) && (
+      {(d.acoes.includes('reenviar') || d.acoes.includes('cancelar') || daEquipe || doAgendamento) && (
         <Secao titulo="O que você pode fazer" id="t-acoes">
           <div className="flex flex-wrap items-center gap-3">
             {d.acoes.includes('reenviar') && <LinkBotao href={`/comunicacao/${r.id}/editar`}>Ajustar e reenviar</LinkBotao>}
@@ -99,6 +106,27 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
               <AcoesPedido acoes={d.acoes} situacao={r.situacao} id={r.id} versao={r.versao} destinos={destinos} revisar={acaoRevisarPedido} decidir={acaoDecidirPedido} juntar={acaoJuntarPedido} />
             </div>
           )}
+          {doAgendamento && (
+            <div className="mt-3">
+              <AcoesDeAgendamento
+                acoes={d.acoes}
+                id={r.id}
+                versao={r.versao}
+                tipoPeca={r.tipo_peca}
+                agendadoPara={r.agendado_para}
+                destino={destino}
+                escolhidos={escolhidos}
+                agendar={acaoAgendarPedido}
+                publicar={acaoPublicarPedido}
+              />
+            </div>
+          )}
+        </Secao>
+      )}
+
+      {email && (
+        <Secao titulo="E-mail pronto" id="t-email">
+          <EmailPronto {...email} />
         </Secao>
       )}
 
@@ -117,6 +145,15 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
               </a>
             </Dado>
           )}
+          {r.agendado_para && <Dado rotulo="Agendado para">{dataHoraBR(r.agendado_para)}</Dado>}
+          {r.link_publicacao && (
+            <Dado rotulo="Link da publicação">
+              <a href={r.link_publicacao} className="text-destaque underline" target="_blank" rel="noreferrer">
+                Abrir a publicação
+              </a>
+            </Dado>
+          )}
+          {r.publicado_em && <Dado rotulo={r.situacao === 'realizada' ? 'Realizada em' : 'Publicado em'}>{dataHoraBR(r.publicado_em)}</Dado>}
           {r.juntado_a && <Dado rotulo="Juntado ao pedido">{r.juntado_a}</Dado>}
           {r.imagem_confirmada_em && <Dado rotulo="Uso de imagem confirmado em">{dataHoraBR(r.imagem_confirmada_em)}</Dado>}
         </dl>

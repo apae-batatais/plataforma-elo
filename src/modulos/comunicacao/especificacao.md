@@ -114,9 +114,19 @@ Tipos de peça (fixos na fase 1): Post no Instagram, Reel no Instagram, Release,
 3. Abrir o envio de anexos exige `comunicacao.solicitar` ou `comunicacao.revisar`.
 4. Documentos de até 10 MB são entregues inteiros, em partes, pela rota de leitura. Na prévia isso não pode ser conferido acima de 4 MB, porque a demonstração recusa arquivos maiores que 4 MB.
 
+## Decisões tomadas na construção (Entregas 4 e 5, 09/11/2026) — para conferência da Diretoria
+
+1. Agendar mostra a data e a hora no horário de Brasília. Para release e artigo, os destinatários escolhidos ficam gravados no pedido; ao mudar a data, a escolha anterior já vem marcada.
+2. Post e reel só têm o link da publicação obrigatório; release e artigo aceitam um link opcional. Publicar antes do dia agendado é permitido (a Comunicação pode antecipar).
+3. O e-mail pronto só aparece para release e artigo agendados, para quem tem `comunicacao.revisar`. Os contatos desativados e os grupos desativados ficam de fora na hora de abrir o e-mail, mesmo que estivessem escolhidos quando agendou.
+4. Indicador "publicados com atraso": só entram os pedidos em Publicado; entrevista (Realizada) não entra. Vale o dia da publicação em Brasília contra a data desejada.
+5. Tempo de revisão: conta de cada envio ou reenvio até a Comunicação sair da revisão; se a coordenação pedir ajustes, a volta para a revisão não abre uma nova contagem.
+6. Temas sem publicação: só itens ativos do calendário; item desativado não é cobrado.
+7. Contatos: ao reativar um contato, o e-mail não pode repetir o de outro contato ativo.
+
 ## Critérios de pronto
 
-- [ ] Regras de negócio com testes
-- [ ] Testes de acesso para cada aba (quem vê e quem altera)
-- [ ] `npm run verificar` e `npm run build` verdes
+- [x] Regras de negócio com testes
+- [x] Testes de acesso para cada aba (quem vê e quem altera)
+- [x] `npm run verificar` e `npm run build` verdes
 - [ ] Conferido pela Diretoria na prévia com dados fictícios, com os três perfis
