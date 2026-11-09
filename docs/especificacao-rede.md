@@ -136,7 +136,7 @@ Drive compartilhado "Elo · <instituição>"    (um por instituição, no Worksp
   (detalhe na seção "R3", no fim deste documento; proposta #58).
 - **R4**: pasta única por instituição; o Elo cria as próprias planilhas (ADR-018). Detalhe abaixo.
 
-## R4 · Pasta única (proposta completa, aguarda aprovação)
+## R4 · Pasta única (aprovada em 08/11/2026; construída na proposta #53)
 
 Decisão de arquitetura: ADR-018. Decisão da Diretoria (07/11/2026): um Drive compartilhado por
 instituição, com membros restritos.

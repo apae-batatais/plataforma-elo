@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+import { ENDERECO_DO_ARQUIVO } from '@/nucleo/armazenamento/pastas';
 import { conferirInstituicao, painelDaRede, type ConferenciaInstituicao } from '@/nucleo/rede/rede';
 import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
 import { administradorDaRedeLogado } from '@/plataforma/sessao-rede';
@@ -12,6 +13,7 @@ import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
 import { acaoMudarSituacao, acaoPrepararEstrutura, acaoPrepararEstruturaDeTodas, acaoSalvarInstituicao } from './acoes';
+import { avisoDeEstrutura } from './estrutura-das-instituicoes';
 import { FormularioInstituicao } from './formulario-instituicao';
 import { PLANILHAS_DA_INSTITUICAO } from './planilhas';
 import { planilhasDaInstituicao } from './planilhas-da-instituicao';
@@ -41,9 +43,17 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
   let conferencia: ConferenciaInstituicao | null = null;
   if (aConferir) {
     const { armazenamento, inst } = await planilhasDaInstituicao(adm, aConferir);
-    conferencia = await conferirInstituicao(adm.autorizador, armazenamento, inst, ESTRUTURA_DOS_MODULOS);
+    conferencia = await conferirInstituicao(adm.autorizador, armazenamento, inst, ESTRUTURA_DOS_MODULOS, adm.app.pastas);
   }
-  const podePreparar = conferencia?.planilhas.filter((x) => x.chave === 'nucleo' || x.chave === 'auditoria').every((x) => x.ok) ?? false;
+  const podePreparar =
+    (conferencia?.planilhas.filter((x) => x.chave === 'nucleo' || x.chave === 'auditoria').every((x) => x.ok) ?? false) && (conferencia?.pasta?.ok ?? true);
+  // Aviso "Estrutura desatualizada" na lista (suspensas ficam de fora).
+  const avisos = new Map(
+    await Promise.all(
+      painel.instituicoes.filter((i) => i.situacao !== 'suspensa').map(async (i) => [i.id, await avisoDeEstrutura(adm, i)] as const),
+    ),
+  );
+  const desatualizadas = [...avisos.values()].filter((a) => a.desatualizada).length;
   const contagem = (s: keyof typeof SITUACAO) => painel.instituicoes.filter((i) => i.situacao === s).length;
 
   return (
@@ -99,13 +109,26 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
               Fechar
             </LinkBotao>
           </div>
+          {conferencia.pasta && (
+            <p className="flex gap-2 text-sm">
+              <span aria-hidden="true" className={conferencia.pasta.ok ? 'text-sucesso' : 'text-erro'}>
+                {conferencia.pasta.ok ? '✓' : '✕'}
+              </span>
+              <span>{conferencia.pasta.mensagem}</span>
+            </p>
+          )}
           <ul className="space-y-1.5 text-sm">
             {conferencia.planilhas.map((x) => (
-              <li key={x.chave} className="flex gap-2">
-                <span aria-hidden="true" className={x.ok ? 'text-sucesso' : 'text-erro'}>
-                  {x.ok ? '✓' : '✕'}
+              <li key={x.chave} className="flex flex-wrap gap-2">
+                <span aria-hidden="true" className={x.situacao === 'sera_criada' ? 'text-texto-suave' : x.ok ? 'text-sucesso' : 'text-erro'}>
+                  {x.situacao === 'sera_criada' ? '○' : x.ok ? '✓' : '✕'}
                 </span>
                 <span>{x.mensagem}</span>
+                {x.id && x.situacao === 'criada' && (
+                  <a href={ENDERECO_DO_ARQUIVO(x.id, x.tipo ?? 'planilha')} target="_blank" rel="noreferrer" className="text-destaque hover:underline">
+                    Abrir
+                  </a>
+                )}
               </li>
             ))}
           </ul>
@@ -116,10 +139,11 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
             <form action={acaoPrepararEstrutura} className="flex flex-wrap items-center gap-3">
               <input type="hidden" name="id" value={aConferir.id} />
               <BotaoEnviar variante={conferencia.estrutura === 'em_dia' ? 'secundario' : 'primario'} className={pequeno} enviando="Preparando…">
-                Preparar estrutura
+                {aConferir.pasta && conferencia.estrutura !== 'em_dia' ? 'Tentar de novo' : 'Preparar estrutura'}
               </BotaoEnviar>
               <span className="text-sm text-texto-suave">
-                Cria as abas que faltam e a configuração inicial (unidades do cadastro, áreas, perfis e permissões). Nada é apagado nem alterado.
+                {aConferir.pasta ? 'Cria na pasta o que falta (planilhas e pasta de anexos), as abas e ' : 'Cria as abas que faltam e '}a configuração inicial (unidades do
+                cadastro, áreas, perfis e permissões). Nada é apagado, movido nem alterado.
               </span>
             </form>
           )}
@@ -138,6 +162,11 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
         </Aviso>
       ) : (
         <>
+          {desatualizadas > 0 && (
+            <Aviso tipo="atencao" titulo={`Estrutura desatualizada em ${desatualizadas} ${desatualizadas === 1 ? 'instituição' : 'instituições'}`}>
+              Falta planilha, pasta ou aba. Use <strong>Preparar estrutura de todas</strong> ou abra <strong>Conferir</strong> na instituição.
+            </Aviso>
+          )}
           <dl className="grid gap-3 sm:grid-cols-3">
             {(Object.keys(SITUACAO) as (keyof typeof SITUACAO)[]).map((s) => (
               <div key={s} className="rounded-cartao border border-borda bg-superficie px-4 py-3">
@@ -176,6 +205,12 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
                   <>
                     <span className="font-semibold">{i.nome}</span>
                     <span className="block text-xs text-texto-suave">{i.codigo}</span>
+                    {avisos.get(i.id)?.desatualizada && (
+                      <span className="mt-1 block">
+                        <Etiqueta tipo="atencao">Estrutura desatualizada</Etiqueta>
+                        <span className="block text-xs text-texto-suave">{avisos.get(i.id)?.faltas.join('; ')}</span>
+                      </span>
+                    )}
                   </>
                 ),
                 situacao: <Etiqueta tipo={COR[i.situacao]}>{SITUACAO[i.situacao]}</Etiqueta>,
@@ -239,9 +274,9 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
         <ol className="mt-3 list-decimal space-y-1.5 pl-5">
           <li>Cadastre a instituição aqui (ela começa em preparação).</li>
           <li>A TI da instituição cria o endereço (ex.: elo.apaefranca.org.br) no DNS; a Operadora inclui o endereço na Netlify e no login do Google.</li>
-          <li>A instituição cria as planilhas no próprio Drive, compartilha com a conta de serviço e envia os IDs; cole-os em Alterar.</li>
-          <li>Clique em Conferir: cada planilha precisa aparecer como encontrada e compartilhada.</li>
-          <li>Ainda na conferência, clique em Preparar estrutura: o Elo cria as abas e a configuração inicial.</li>
+          <li>A instituição cria um Drive compartilhado “Elo · nome da instituição”, inclui a conta de serviço como Gerente de conteúdo e envia o link da pasta.</li>
+          <li>Cole o link da pasta ao cadastrar (ou em Alterar). Ao salvar, o Elo confere a pasta e cria sozinho as planilhas, a pasta de anexos e as abas.</li>
+          <li>Se algo falhar, a tela mostra o motivo; corrija e clique em Tentar de novo na conferência.</li>
           <li>Com a estrutura em dia, clique em Ativar. O administrador inicial já entra pelo endereço da instituição com tudo pronto.</li>
           <li>Depois de cada atualização do Elo, use Preparar estrutura de todas.</li>
         </ol>

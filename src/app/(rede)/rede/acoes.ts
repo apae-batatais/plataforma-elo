@@ -10,19 +10,14 @@ import {
   incluirAdministradorRede,
   mudarSituacao,
   painelDaRede,
-  prepararEstruturaDaInstituicao,
   retirarAdministradorRede,
   salvarInstituicao,
-  type PreparacaoInstituicao,
 } from '@/nucleo/rede/rede';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { configGeral } from '@/plataforma/instituicao';
-import { esquecerSituacaoDaEstruturaDe } from '@/plataforma/estrutura';
 import { esquecerInstituicoes } from '@/plataforma/rede';
-import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
 import { administradorDaRedeLogado, aplicacaoDaRedeAtual, encerrarSessaoRede, iniciarSessaoRede } from '@/plataforma/sessao-rede';
-import { PLANILHAS_DA_INSTITUICAO } from './planilhas';
-import { planilhasDaInstituicao } from './planilhas-da-instituicao';
+import { prepararInstituicao, resumoDaPreparacao } from './preparar-instituicao';
 
 const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 const linhas = (t: string) =>
@@ -59,8 +54,9 @@ export async function acaoSalvarInstituicao(
 ): Promise<{ erro?: string; valores?: Record<string, string> }> {
   const a = await adm();
   const id = texto(f, 'id');
+  let salvaId: string;
   try {
-    await salvarInstituicao(
+    salvaId = await salvarInstituicao(
       a.app.planilhas,
       a.autorizador,
       {
@@ -69,11 +65,7 @@ export async function acaoSalvarInstituicao(
         nomeCompleto: texto(f, 'nomeCompleto'),
         dominio: texto(f, 'dominio').replace(/^@/, ''),
         enderecos: linhas(texto(f, 'enderecos')).map((e) => e.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')),
-        planilhas: {
-          ...Object.fromEntries(PLANILHAS_DA_INSTITUICAO.map((p) => [p.chave, texto(f, `planilha_${p.chave}`)])),
-          // Pasta de anexos (ADR-014): fica no mesmo cadastro, com a chave "anexos".
-          anexos: texto(f, 'pasta_anexos'),
-        },
+        pasta: texto(f, 'pasta'),
         administradoresIniciais: linhas(texto(f, 'administradoresIniciais')),
         unidades: texto(f, 'unidades')
           .split('\n')
@@ -99,7 +91,23 @@ export async function acaoSalvarInstituicao(
     throw erro;
   }
   esquecerInstituicoes();
-  redirect(`/rede?ok=${encodeURIComponent(id ? 'Instituição atualizada.' : 'Instituição cadastrada, em preparação.')}`);
+  const salva = id ? 'Instituição atualizada.' : 'Instituição cadastrada, em preparação.';
+
+  // Com a pasta no cadastro, o Elo confere e prepara sozinho, sem outro clique (ADR-018).
+  const instituicao = (await painelDaRede(a.app.planilhas, a.autorizador)).instituicoes.find((x) => x.id === salvaId);
+  const pastaMudou = instituicao?.pasta && (!id || instituicao.pasta !== texto(f, 'pasta_anterior') || !instituicao.planilhas.nucleo);
+  if (!instituicao || !pastaMudou) redirect(`/rede?ok=${encodeURIComponent(salva)}`);
+  let destino: string;
+  try {
+    const r = await prepararInstituicao(a, instituicao);
+    esquecerInstituicoes();
+    destino = `/rede?conferir=${encodeURIComponent(instituicao.id)}&ok=${encodeURIComponent(`${salva} ${resumoDaPreparacao(r)}`)}`;
+  } catch (erro) {
+    if (!conhecido(erro)) throw erro;
+    esquecerInstituicoes();
+    destino = `/rede?conferir=${encodeURIComponent(instituicao.id)}&erro=${encodeURIComponent(`${salva} A estrutura não foi preparada: ${(erro as Error).message}`)}`;
+  }
+  redirect(destino);
 }
 
 export async function acaoMudarSituacao(f: FormData) {
@@ -160,23 +168,6 @@ export async function acaoSairDaRede() {
   redirect('/rede/entrar');
 }
 
-/** Resumo do que "Preparar estrutura" fez, em português simples. */
-function resumo(r: PreparacaoInstituicao) {
-  const feito =
-    r.abasCriadas.length === 0 && r.registrosIniciais === 0
-      ? 'Tudo já estava preparado; nada foi alterado.'
-      : `${r.abasCriadas.length} ${r.abasCriadas.length === 1 ? 'aba criada' : 'abas criadas'} e ${r.registrosIniciais} ${r.registrosIniciais === 1 ? 'registro inicial' : 'registros iniciais'}.`;
-  const pulou = r.planilhasPuladas.length ? ` Sem ID no cadastro, ficaram para depois: ${r.planilhasPuladas.join(', ')}.` : '';
-  return feito + pulou;
-}
-
-async function preparar(a: Awaited<ReturnType<typeof adm>>, i: Awaited<ReturnType<typeof painelDaRede>>['instituicoes'][number]) {
-  const { armazenamento, inst } = await planilhasDaInstituicao(a, i);
-  const r = await prepararEstruturaDaInstituicao(a.app.planilhas, a.autorizador, armazenamento, inst, ESTRUTURA_DOS_MODULOS, i.id);
-  esquecerSituacaoDaEstruturaDe(i.codigo);
-  return r;
-}
-
 /** Prepara a estrutura de uma instituição e volta para a conferência dela. */
 export async function acaoPrepararEstrutura(f: FormData) {
   const id = texto(f, 'id');
@@ -187,7 +178,7 @@ export async function acaoPrepararEstrutura(f: FormData) {
     async (a) => {
       const i = (await painelDaRede(a.app.planilhas, a.autorizador)).instituicoes.find((x) => x.id === id);
       if (!i) throw new ErroRede('Instituição não encontrada.');
-      mensagem = `${i.nome}: ${resumo(await preparar(a, i))}`;
+      mensagem = `${i.nome}: ${resumoDaPreparacao(await prepararInstituicao(a, i))}`;
     },
     () => mensagem,
   );
@@ -204,8 +195,9 @@ export async function acaoPrepararEstruturaDeTodas() {
   const falhas: string[] = [];
   for (const i of instituicoes) {
     try {
-      const r = await preparar(a, i);
-      certas.push(r.abasCriadas.length || r.registrosIniciais ? `${i.nome} (atualizada)` : `${i.nome} (já estava em dia)`);
+      const r = await prepararInstituicao(a, i);
+      const algo = r.estrutura.abasCriadas.length || r.estrutura.registrosIniciais || r.pasta?.criadas.length;
+      certas.push(`${i.nome} (${algo ? 'atualizada' : 'já estava em dia'}${r.pasta?.falhas.length ? `; não deu certo: ${r.pasta.falhas.map((x) => x.nome).join(', ')}` : ''})`);
     } catch (erro) {
       if (!conhecido(erro)) throw erro;
       falhas.push((erro as Error).message);

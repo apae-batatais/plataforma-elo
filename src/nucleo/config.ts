@@ -49,6 +49,8 @@ export interface Instituicao {
   situacao: 'preparacao' | 'ativa' | 'suspensa';
   /** Planilhas no Drive da instituição (vazio na demonstração). */
   planilhas: Record<string, string>;
+  /** Pasta da instituição no Drive compartilhado, onde o Elo cria as planilhas (ADR-018). */
+  pasta?: string;
   administradoresIniciais: string[];
   /** Unidades gravadas por "Preparar estrutura" quando a aba está vazia. */
   unidades: readonly { codigo: string; nome: string }[];

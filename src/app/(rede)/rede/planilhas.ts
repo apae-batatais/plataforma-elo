@@ -9,10 +9,11 @@ const NOMES: Record<string, string> = {
   requisicoes: 'Requisições',
   avaliacao_assistencia: 'Avaliação de Serviços Sociais',
   comunicacao: 'Comunicação',
+  anexos: 'Pasta de anexos (fotos e vídeos)',
 };
 
 /** As planilhas que cada instituição cria no próprio Drive: as do Núcleo e as dos apps ativos. */
-export const PLANILHAS_DA_INSTITUICAO = ['nucleo', 'auditoria', ...new Set((ESTRUTURA_DOS_MODULOS.tabelas ?? []).map((t) => t.planilha))].map((chave) => ({
+export const PLANILHAS_DA_INSTITUICAO = ['nucleo', 'auditoria', ...new Set((ESTRUTURA_DOS_MODULOS.tabelas ?? []).map((t) => t.planilha)), 'anexos'].map((chave) => ({
   chave,
   nome: NOMES[chave] ?? chave,
   obrigatoria: chave === 'nucleo' || chave === 'auditoria',

@@ -452,9 +452,9 @@ export default async function Ajuda() {
             pode.acessos &&
               'Acessos em lote: "Cadastrar em lote" recebe uma lista copiada da planilha com Nome, E-mail, Perfil (opcional, padrão Funcionário) e Vale para (opcional: unidade, área ou serviço). Confira a prévia: quem já tem acesso só ganha o perfil, acesso desativado é reativado e as linhas com problema ficam de fora.',
             pode.organizacao &&
-              'Estrutura das planilhas: "Preparar estrutura" cria as abas, colunas, perfis e permissões que faltam. Rode sempre que o Elo avisar (selo "Atualizar" no menu ou aviso na tela inicial), se a Administração da rede ainda não tiver feito isso; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
+              'Estrutura das planilhas: a Administração da rede cria as planilhas na pasta da instituição e roda "Preparar estrutura" (abas, colunas, perfis e permissões) depois de cada atualização do Elo; por isso a tela Estrutura não aparece no menu. Se o Elo avisar que há atualização esperando, peça a ela; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
             pode.organizacao &&
-              'Fotos e vídeos das requisições: ficam numa pasta de uma unidade compartilhada do Drive da instituição, com a conta de serviço do Elo como Gerente de conteúdo. A Administração da rede informa o ID da pasta no cadastro; a tela Estrutura das planilhas mostra se a pasta está funcionando.',
+              'Fotos e vídeos das requisições: ficam numa pasta de uma unidade compartilhada do Drive da instituição, com a conta de serviço do Elo como Gerente de conteúdo. O Elo cria essa pasta sozinho dentro da pasta da instituição, quando a Administração da rede prepara a estrutura.',
           ]}
         />
       ),

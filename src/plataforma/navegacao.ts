@@ -12,7 +12,12 @@ const ICONE_DO_MODULO: Record<string, NomeIcone> = { calculator: 'orcamento', wa
 export function navegacaoDoUsuario(
   autorizador: Autorizador,
   estruturaPendente: boolean,
-  opcoes: { estruturaDesatualizada?: boolean; alertasApps?: Record<string, string> } = {},
+  opcoes: {
+    estruturaDesatualizada?: boolean;
+    alertasApps?: Record<string, string>;
+    /** Com a Rede (ADR-018), só a Administração da rede prepara a estrutura: a tela sai do menu. */
+    comRede?: boolean;
+  } = {},
 ): GrupoNavegacao[] {
   const grupos: GrupoNavegacao[] = [];
   if (!estruturaPendente) {
@@ -41,7 +46,7 @@ export function navegacaoDoUsuario(
   if (!estruturaPendente && autorizador.temPermissao('core.acessos.gerenciar')) admin.push({ rotulo: 'Acessos', href: '/admin/acessos', icone: 'acessos' });
   if (!estruturaPendente && autorizador.temPermissao('core.organizacao.gerenciar'))
     admin.push({ rotulo: 'Áreas', href: '/admin/areas', icone: 'areas' }, { rotulo: 'Serviços', href: '/admin/servicos', icone: 'servicos' });
-  if (autorizador.temPermissao('core.organizacao.gerenciar'))
+  if (!opcoes.comRede && autorizador.temPermissao('core.organizacao.gerenciar'))
     admin.push({
       rotulo: 'Estrutura das planilhas',
       href: '/admin/estrutura',

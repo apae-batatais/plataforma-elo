@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { situacaoDaEstrutura } from '@/plataforma/estrutura';
+import { configGeral } from '@/plataforma/instituicao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
@@ -26,6 +27,7 @@ export default async function Estrutura({ searchParams }: { searchParams: Promis
   if (!usuario.autorizador.temPermissao('core.organizacao.gerenciar')) redirect('/');
   const app = await obterAplicacao();
   const { resultado } = await searchParams;
+  const comRede = !!configGeral().rede;
   const falhou = resultado?.startsWith('Não foi possível');
   const est = usuario.estruturaPendente ? null : await situacaoDaEstrutura();
   // Pasta de anexos (ADR-014): confere se existe e se a conta de serviço pode gravar.
@@ -61,11 +63,20 @@ export default async function Estrutura({ searchParams }: { searchParams: Promis
         </Aviso>
       )}
 
-      <Secao titulo="Preparar estrutura" descricao="Leva alguns segundos. Você pode continuar usando a plataforma normalmente depois.">
-        <form action={prepararEstruturaAgora}>
-          <BotaoEnviar enviando="Preparando as planilhas…">Preparar estrutura</BotaoEnviar>
-        </form>
-      </Secao>
+      {comRede ? (
+        <Secao titulo="Quem prepara a estrutura" descricao="O Elo cria as planilhas e as abas da instituição a partir da pasta cadastrada na rede.">
+          <p className="text-sm">
+            A estrutura das planilhas é preparada pela <strong>Administração da rede</strong>, depois de cada atualização do Elo. Se aparecer um aviso de
+            atualização esperando, peça a ela para rodar <strong>Preparar estrutura</strong> para esta instituição.
+          </p>
+        </Secao>
+      ) : (
+        <Secao titulo="Preparar estrutura" descricao="Leva alguns segundos. Você pode continuar usando a plataforma normalmente depois.">
+          <form action={prepararEstruturaAgora}>
+            <BotaoEnviar enviando="Preparando as planilhas…">Preparar estrutura</BotaoEnviar>
+          </form>
+        </Secao>
+      )}
 
       {app.config.modo === 'producao' && (
         <Secao titulo="Planilhas ligadas à plataforma" descricao="Configuradas no cadastro da instituição na rede do Elo.">
