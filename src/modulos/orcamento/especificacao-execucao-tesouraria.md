@@ -273,6 +273,20 @@ ligação entre módulos (ADR-013).
    - **Mudou a partir de um mês:** a pessoa escolhe o mês; os meses anteriores continuam somando na classe antiga
      e, daquele mês em diante, vale a nova. O histórico das classes fica na aba `MudancasClasse` (só inclusões).
 
+## Decisões da construção da 1E (09/11/2026)
+
+Tomadas pelo agente durante a construção, sem resposta da Diretoria. Estão na lista do PR com o custo de cada uma.
+
+1. **Duas abas em vez de uma:** `Historico` guarda a receita por linha da planilha de origem (ano, fonte, descrição, valor, linha, observação) e `HistoricoAnos` guarda os totais do ano (despesa total, folha, saldo livre em 1º de janeiro, total das receitas da planilha). A especificação previa uma aba só, com despesa e folha repetidas em cada fonte.
+2. **Despesa total, folha e saldo livre de 1º de janeiro são digitados na importação** (a especificação não diz de onde vêm). Só a receita é lida da planilha, pelo DE-PARA de colunas. O saldo é opcional.
+3. **Saldo livre no fim do ano = saldo livre de 1º de janeiro do ano seguinte.** O último ano importado fica sem saldo no fim, até o ano seguinte ser importado. Não usa os saldos da Tesouraria, porque eles são vistos só por Diretoria e Financeiro.
+4. **Permissões:** `orcamento.historico.ver` para Diretoria, Financeiro e Leitura (os números são agregados, sem dado pessoal); `orcamento.historico.editar` só para o Financeiro. A Coordenação não vê o Histórico.
+5. **Ano fechado:** de 2017 até o ano anterior ao atual (horário de Brasília). Ano em andamento aparece como parcial, mas só entra nos números quando existir realizado (1C).
+6. **Total da planilha:** o Elo procura a linha "Total das receitas"; se não achar, a pessoa digita. A soma das linhas tem de bater em centavos, senão nada é gravado.
+7. **Reimportar um ano substitui** o anterior (as linhas antigas ficam com `ativo = FALSE`); "Desfazer" cancela o ano sem apagar.
+8. **O Painel geral da 1B ainda não usa o Histórico** (fim da seção "Telas"). Ficou no roadmap.
+9. **Histórico vindo do realizado (regra 25)** fica para a 1C, que ainda não existe.
+
 ## Decisões pedidas à Diretoria
 
 1. Execução, Tesouraria e Histórico **dentro do Orçamento** (recomendado) ou num módulo próprio.

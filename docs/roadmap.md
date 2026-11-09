@@ -12,6 +12,14 @@ A ordem de trabalho entre os apps fica no [backlog](backlog.md).
 Especificação de Execução, Tesouraria e Histórico aprovada em 07/11/2026
 (`src/modulos/orcamento/especificacao-execucao-tesouraria.md`). Ordem: 1D.1 → 1E → 1C.1 → 1C.2 → 1D.2.
 
+### Histórico (1E) · pontas que ficaram para depois (09/11/2026)
+
+- [ ] **Painel geral da 1B** usar o Histórico para mostrar todos os anos (hoje mostra até 4 exercícios).
+- [ ] **Histórico vindo do realizado** (regra 25): a partir do primeiro ano com a Execução no app, o histórico
+      desse ano vem do realizado, e não da importação. Depende da 1C.1.
+- [ ] Confirmar com a Diretoria a associação das linhas antigas às fontes (pendência 4 da especificação):
+      hoje a pessoa escolhe a fonte de cada linha na importação.
+
 ### Entrega 1C.1 · importar o realizado do WK Radar (adiada em 07/11/2026)
 
 - [ ] Receber da Diretoria uma amostra da exportação do WK Radar (lançamentos e saldos por conta),

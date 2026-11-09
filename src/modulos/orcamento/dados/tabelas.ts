@@ -291,6 +291,42 @@ export const MudancasClasse = definirTabela({
   esquema: z.object({ conta_id: texto(), classe_anterior: z.enum(CLASSES), fonte_id_anterior: textoOpcional(), a_partir_de: mesAAAAMM() }),
 });
 
+
+/**
+ * Histórico (1E): receita realizada de um ano fechado, uma linha por linha da planilha de origem,
+ * associada a uma fonte. Reimportar o ano cancela as linhas anteriores (ativo = FALSE).
+ */
+export const Historico = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'Historico',
+  esquema: z.object({
+    ano: numero(),
+    fonte_id: texto(),
+    descricao: texto(),
+    receita: numero(),
+    linha_origem: numero(),
+    observacao: textoOpcional(),
+    lote: texto(),
+  }),
+});
+
+/** Totais de um ano fechado: despesa, folha e saldo livre em 1º de janeiro (do mesmo lote do Historico). */
+export const HistoricoAnos = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'HistoricoAnos',
+  esquema: z.object({
+    ano: numero(),
+    despesa_total: numero(),
+    folha: numero(),
+    saldo_livre_inicial: numeroOpcional(),
+    receita_total_planilha: numero(),
+    lote: texto(),
+  }),
+});
+
+export type RegHistorico = Registro<typeof Historico.esquema>;
+export type RegHistoricoAno = Registro<typeof HistoricoAnos.esquema>;
+
 export type RegConta = Registro<typeof Contas.esquema>;
 export type RegMudancaClasse = Registro<typeof MudancasClasse.esquema>;
 export type RegSaldo = Registro<typeof Saldos.esquema>;
@@ -307,4 +343,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos] as const;
