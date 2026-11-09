@@ -132,7 +132,8 @@ Drive compartilhado "Elo · <instituição>"    (um por instituição, no Worksp
   instituição; nome, domínio e dados iniciais vindos do cadastro (sem Apae
   Batatais fixa no código); página de endereço não cadastrado; demonstração.
 - **R2**: planilha `rede` da Operadora, perfil Administração da rede, telas de cadastro e conferência.
-- **R3**: guia de adesão, termo de adesão (LGPD) e roteiro de transferência da Operadora.
+- **R3**: guia de adesão, termo de adesão (LGPD) e roteiro de transferência da Operadora
+  (detalhe na seção "R3", no fim deste documento; proposta #58).
 - **R4**: pasta única por instituição; o Elo cria as próprias planilhas (ADR-018). Detalhe abaixo.
 
 ## R4 · Pasta única (proposta completa, aguarda aprovação)
@@ -245,3 +246,127 @@ Uma só, pequena. Não exige ADR (não muda a arquitetura).
   trocar um texto.
 - **Nomes parecidos ("Instituição Operadora" e "Instituição Operadora da Plataforma")**: foram
   escolhidos pela Diretoria; se atrapalhar a conferência, renomear é uma troca de texto.
+
+## R3 · Guia de adesão, termo de adesão (LGPD) e transferência da Operadora
+
+Proposta #58. É **documentação, não código**: nenhuma tela, aba ou regra do Elo muda.
+Decisões de arquitetura já registradas nas ADR-012 (Operadora, LGPD), ADR-018 (pasta única e
+membros restritos) e ADR-019 (roteiro do quadro). Não exige ADR nova.
+
+**Objetivo**: ter escritos, e conferidos com o sistema, os três documentos que faltam antes da
+primeira instituição nova com dados reais. **Para quem**: a Diretoria (Operadora hoje), a TI e a
+Diretoria de cada instituição que aderir e, no futuro, a empresa que assumir a Operadora.
+
+### Os três documentos (todos em `docs/`)
+
+| Documento | Arquivo | Quem lê |
+| --- | --- | --- |
+| Guia "Como trazer uma instituição para o Elo" | `docs/guia-adesao-instituicao.md` | TI e Diretoria da instituição; Administração da rede |
+| Termo de adesão (modelo, LGPD) | `docs/termo-adesao.md` | Diretoria da instituição e da Operadora; assessoria jurídica |
+| Roteiro de transferência da Operadora | `docs/transferencia-operadora.md` | Operadora de hoje e a empresa de amanhã |
+
+### 1. Guia "Como trazer uma instituição para o Elo"
+Em português simples, na ordem em que as coisas acontecem:
+1. **Antes de começar**: o que a instituição precisa ter (Google Workspace com domínio próprio,
+   alguém da TI, alguém da Diretoria para assinar o termo).
+2. **Termo de adesão**: assinar antes de qualquer dado real.
+3. **Endereço**: criar `elo.<domínio>` no DNS (CNAME); a Operadora inclui o endereço na Netlify e
+   no login do Google.
+4. **Drive compartilhado** "Elo · <instituição>" (ADR-018): criar o drive, incluir a conta de
+   serviço como Gerente de conteúdo, copiar o link da pasta e enviar.
+5. **Restringir os membros do Drive** (pedido da proposta): quem é membro vê todas as planilhas,
+   inclusive a de Avaliação (dado sensível). A TI da instituição deixa como membros só a conta de
+   serviço e uma ou duas pessoas da TI ou da Diretoria; a equipe usa só o Elo. O Elo não confere
+   os membros: a responsabilidade é da TI da instituição, que também revisa a lista quando
+   alguém sair.
+6. **O que a Operadora faz**: cadastra, o Elo confere e prepara sozinho (R4), e a Operadora clica
+   em **Ativar**.
+7. **Primeiro acesso** do administrador inicial: cadastrar organização e acessos.
+8. **Suspensão e saída**: os dados continuam no Drive da instituição; nada é apagado.
+9. **Suporte**: espaço para o contato da Operadora (a Diretoria informa).
+
+O guia segue "Passo a passo para uma instituição nova" e a R4 deste documento; onde divergir do
+sistema, vale o sistema e o guia é corrigido. Quem redigir confere cada passo com a tela
+Rede › Instituições e aponta no PR as melhorias de experiência de uso que encontrar.
+
+### 2. Termo de adesão (modelo)
+É um **modelo para a assessoria jurídica da Diretoria revisar**; o Elo não dá parecer jurídico.
+Conteúdo mínimo, vindo de decisões já tomadas (ADR-012, 017, 018):
+1. **Partes**: instituição (controladora) e Operadora (operadora, pela LGPD). Razão social, CNPJ,
+   representantes e endereço ficam `[a preencher]`.
+2. **Objeto**: uso do Elo; os dados ficam no Drive da própria instituição.
+3. **Papéis LGPD** e obrigações do operador: tratar só conforme as instruções, sigilo,
+   segurança, avisar incidente, apoiar direitos dos titulares, devolver ou eliminar ao fim.
+4. **Segurança**: entrada só com e-mail do domínio; auditoria de leituras sensíveis e alterações
+   (colunas, nunca valores); a Administração da rede **não vê** pessoas, folha nem orçamento.
+5. **Drive compartilhado com membros restritos**: obrigação da TI da instituição (ver guia).
+6. **Transferência internacional**: as funções do servidor rodam fora do Brasil; o termo
+   registra isso (análise de LGPD pedida nas ADR-011 e ADR-017).
+7. **Encarregado (DPO)** da instituição e da Operadora: `[a preencher]`. A definição do DPO da
+   Apae Batatais é a pendência #69 e **não** é resolvida aqui.
+8. **Custo**: rateio ou mensalidade `[a preencher]` (a ADR-012 deixa a Diretoria decidir).
+9. **Suspensão, saída e troca da Operadora**: a empresa assume o papel nos termos, sem mudança
+   para a instituição.
+10. **A Apae Batatais** assina o termo como as demais instituições (ADR-012).
+
+### 3. Roteiro de transferência da Operadora
+Parte da tabela "Transferência para a empresa" da ADR-012, em passos com responsável e conferência:
+1. **Código**: transferir a organização ou o repositório do GitHub.
+2. **Quadro e automações do desenvolvimento**: seguir o roteiro "Migração do quadro na
+   transferência do Elo" da **ADR-019** (só apontar, sem repetir), com `QUADRO_TOKEN`,
+   `QUADRO_NUMERO`, `CLAUDE_CODE_OAUTH_TOKEN` e o usuário da Diretoria nos workflows.
+3. **Publicação**: transferir o site da Netlify e conferir plano e créditos (ADR-019).
+4. **Google Cloud**: transferir o projeto (conta de serviço, cliente OAuth, origens autorizadas),
+   garantindo que a conta de serviço mantém o acesso aos Drives das instituições.
+5. **Planilha da rede** e Drive "Elo · Operadora": transferir a propriedade.
+6. **Variáveis da Netlify**: `GOOGLE_CONTA_SERVICO`, `GOOGLE_CLIENT_ID`, `SESSAO_SEGREDO`, `REDE`.
+7. **Marca Elo e domínio da rede** em nome da empresa.
+8. **Contratos**: termo novo ou aditivo com a empresa como Operadora; avisar cada instituição
+   antes da troca.
+9. **Conferência final**: cada instituição entra, a Administração da rede vê o cadastro,
+   publicação e login funcionam.
+10. A Apae Batatais passa a instituição usuária comum e perde o acesso de operadora.
+
+O roteiro **nunca traz credenciais**: diz onde cada uma é gerada, não o valor (CLAUDE.md, regra 9).
+
+### Regras (conferência por leitura, pois não há código)
+1. Todo passo do guia existe na tela ou no processo descrito nesta especificação (R1, R2, R4).
+2. Escrita sempre **Apae Batatais** (nunca "APAE"); exemplos usam instituições fictícias.
+3. Nenhum documento traz dado real, e-mail de pessoa, ID de planilha ou credencial.
+4. O guia orienta a restringir os membros do Drive (ADR-018).
+5. O roteiro aponta para a ADR-019 no trecho do quadro e das automações.
+6. O que depende da Diretoria fica `[a preencher]`; nada é inventado.
+
+### Telas, manual e Ajuda
+Nenhuma tela muda. Conforme "Manual e Ajuda", a R3 entrega o guia à parte e o termo; o manual em
+PDF não muda.
+
+### Fica de fora
+- Parecer jurídico e assinatura de termos (assessoria da Diretoria).
+- Definir o DPO (#69), o modelo de cobrança e o contato de suporte.
+- Mudança de código, abas ou permissões; link do guia na tela Rede › Instituições (sugestão de
+  melhoria para depois).
+- Executar a transferência: aqui só se escreve o roteiro.
+
+### Frentes
+Sem trabalho de produção em telas nem em regras e dados. Só documentação em `docs/`; a habilidade
+**infraestrutura** orienta os passos de Netlify, Google e GitHub do roteiro.
+
+### Entrega
+Uma só, pequena: três arquivos em `docs/`, ligados a partir deste documento. O PR de entrega
+(`Entrega #58`) só mexe em documentos, então não tem prévia; a Diretoria confere lendo no PR.
+
+### Critérios de pronto
+- Os três arquivos existem em `docs/` e estão ligados a partir de `docs/especificacao-rede.md`.
+- A Diretoria lê o guia de ponta a ponta e entende o que a TI da instituição faz e o que a
+  Operadora faz.
+- O guia tem a orientação de restringir os membros do Drive; o roteiro aponta para a ADR-019.
+- Os campos `[a preencher]` estão listados no PR para a Diretoria decidir.
+
+### Decisões tomadas sozinho
+- **Documentos em `docs/`, não na tela Ajuda**: o público (TI, assessoria jurídica) está fora do
+  Elo e o termo precisa circular em arquivo. Se preferir dentro do Elo, é uma entrega de tela a mais.
+- **Termo como modelo com campos `[a preencher]`**: não invento DPO, custos nem dados das partes.
+  O custo é preencher; o risco real é assinar sem revisão jurídica, por isso o aviso.
+- **Roteiro do quadro por referência à ADR-019**, como a Diretoria pediu no comentário da issue.
+- **Manual em PDF não muda**: o guia é documento à parte.
