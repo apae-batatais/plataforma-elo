@@ -1,7 +1,8 @@
 # Aprovação da Diretoria (docs/metodologia.md, ADR-019).
 #
-# - "Approve" da Diretoria num PR: faz o merge, move o cartão e, se for especificação,
-#   chama o Desenvolvedor.
+# - "Approve" da Diretoria num PR: confere o tipo do PR (etiqueta "PR: especificação" ou
+#   "PR: entrega", conferida com a referência à issue), faz o merge, move o cartão e, se for
+#   especificação, chama o Desenvolvedor. Tipo que não combina: não faz o merge e explica no PR.
 # - "Request changes" da Diretoria num PR: o Claude Code ajusta o PR conforme os comentários.
 #
 # Revisões em PR já fechado (com ou sem merge) são ignoradas.
@@ -46,9 +47,18 @@ jobs:
           QUADRO_NUMERO: ${{ vars.QUADRO_NUMERO }}
         with:
           script: |
-            const { aplicar, mudancas, referencias } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
+            const { aplicar, mudancas, tipoDoPR } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
+            const texto = `${pr.title}\n${pr.body ?? ''}`;
+            const etiquetas = pr.labels.map((l) => l.name);
+            const tipo = tipoDoPR({ etiquetas, texto });
+            if (tipo.erro) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number,
+                body: `Não fiz o merge: ${tipo.erro} Depois de corrigir, aprove de novo.` });
+              core.setFailed(tipo.erro);
+              return;
+            }
             try {
               await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'squash', commit_title: `${pr.title} (#${pr.number})` });
             } catch (e) {
@@ -57,11 +67,10 @@ jobs:
               core.setFailed(e.message);
               return;
             }
-            const texto = `${pr.title}\n${pr.body ?? ''}`;
             await aplicar({ github, context, core,
               tokenQuadro: process.env.QUADRO_TOKEN, numeroQuadro: process.env.QUADRO_NUMERO,
-              lista: mudancas({ tipo: 'pr_merge', texto }) });
-            for (const issue of referencias(texto).especifica) {
+              lista: mudancas({ tipo: 'pr_merge', texto, etiquetas }) });
+            for (const issue of tipo.tipo === 'especificacao' ? tipo.issues : []) {
               await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'claude-desenvolvedor.yml', ref: 'main', inputs: { issue: String(issue) } });
               core.info(`Desenvolvedor chamado para a issue #${issue}`);
             }

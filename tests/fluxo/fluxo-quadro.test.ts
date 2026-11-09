@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, referencias, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
+import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, podeConstruir, referencias, tipoDoPR, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
 
 type Issue = { number: number; state: string; labels: { name: string }[]; node_id: string; pull_request?: unknown };
 
@@ -40,8 +40,14 @@ describe('fluxo do quadro', () => {
   });
 
   it('acha as issues citadas no PR, sem repetir', () => {
-    expect(referencias('Especifica #12\nEntrega #7 e entrega #7; Especifica #3')).toEqual({ especifica: [12, 3], entrega: [7] });
+    expect(referencias('Especifica #12\nEntrega #7\nentrega #7\n  Especifica #3')).toEqual({ especifica: [12, 3], entrega: [7] });
     expect(referencias('Fecha #4')).toEqual({ especifica: [], entrega: [] });
+  });
+
+  it('só conta a referência no começo da linha, não citada no meio do texto (PR #83)', () => {
+    const corpo = 'Entrega #55\n\n- **Não havia PR "Especifica #55"**: usei a especificação aprovada.\nVeja a Entrega #9.';
+    expect(referencias(corpo)).toEqual({ especifica: [], entrega: [55] });
+    expect(mudancas({ tipo: 'pr_merge', texto: corpo, etiquetas: ['PR: entrega'] })).toEqual([{ issue: 55, etapa: 'Aprovada', fechar: true }]);
   });
 
   it('issue nova entra em Proposta, menos pendência da Diretoria ou issue que já tem etapa', () => {
@@ -52,18 +58,58 @@ describe('fluxo do quadro', () => {
 
   it('PR de especificação: aberto, aprovado e fechado sem merge', () => {
     const texto = 'Especifica #9';
-    expect(mudancas({ tipo: 'pr_aberto', texto })).toEqual([{ issue: 9, etapa: 'Especificação em aprovação' }]);
-    expect(mudancas({ tipo: 'pr_merge', texto })).toEqual([{ issue: 9, etapa: 'Pronta para construir' }]);
-    expect(mudancas({ tipo: 'pr_fechado', texto })).toEqual([{ issue: 9, etapa: 'Proposta' }]);
+    const etiquetas = ['PR: especificação'];
+    expect(mudancas({ tipo: 'pr_aberto', texto, etiquetas })).toEqual([{ issue: 9, etapa: 'Especificação em aprovação' }]);
+    expect(mudancas({ tipo: 'pr_merge', texto, etiquetas })).toEqual([{ issue: 9, etapa: 'Pronta para construir' }]);
+    expect(mudancas({ tipo: 'pr_fechado', texto, etiquetas })).toEqual([{ issue: 9, etapa: 'Proposta' }]);
   });
 
   it('PR de entrega: rascunho, pronto, aprovado (fecha a issue) e fechado sem merge', () => {
     const texto = 'Entrega #9';
-    expect(mudancas({ tipo: 'pr_aberto', texto, rascunho: true })).toEqual([{ issue: 9, etapa: 'Em construção' }]);
-    expect(mudancas({ tipo: 'pr_aberto', texto, rascunho: false })).toEqual([{ issue: 9, etapa: 'Entrega em aprovação' }]);
-    expect(mudancas({ tipo: 'pr_merge', texto })).toEqual([{ issue: 9, etapa: 'Aprovada', fechar: true }]);
-    expect(mudancas({ tipo: 'pr_fechado', texto })).toEqual([{ issue: 9, etapa: 'Pronta para construir' }]);
+    const etiquetas = ['PR: entrega'];
+    expect(mudancas({ tipo: 'pr_aberto', texto, etiquetas, rascunho: true })).toEqual([{ issue: 9, etapa: 'Em construção' }]);
+    expect(mudancas({ tipo: 'pr_aberto', texto, etiquetas, rascunho: false })).toEqual([{ issue: 9, etapa: 'Entrega em aprovação' }]);
+    expect(mudancas({ tipo: 'pr_merge', texto, etiquetas })).toEqual([{ issue: 9, etapa: 'Aprovada', fechar: true }]);
+    expect(mudancas({ tipo: 'pr_fechado', texto, etiquetas })).toEqual([{ issue: 9, etapa: 'Pronta para construir' }]);
   });
+
+  it('PR sem etiqueta de tipo, ou com tipo que não combina, não move nenhuma issue', () => {
+    expect(mudancas({ tipo: 'pr_merge', texto: 'Entrega #9', etiquetas: [] })).toEqual([]);
+    expect(mudancas({ tipo: 'pr_merge', texto: 'Entrega #9', etiquetas: ['PR: especificação'] })).toEqual([]);
+  });
+});
+
+describe('tipoDoPR', () => {
+  it('especificação: etiqueta e "Especifica #n"', () => {
+    expect(tipoDoPR({ etiquetas: ['PR: especificação'], texto: 'Especifica #9\nresumo' })).toEqual({ tipo: 'especificacao', issues: [9], erro: null });
+  });
+
+  it('entrega: etiqueta e "Entrega #n"', () => {
+    expect(tipoDoPR({ etiquetas: ['app: rede', 'PR: entrega'], texto: 'Entrega #9' })).toEqual({ tipo: 'entrega', issues: [9], erro: null });
+  });
+
+  it('PR de manutenção, sem etiqueta e sem referência, passa', () => {
+    expect(tipoDoPR({ etiquetas: [], texto: 'Fluxo: ajuste' })).toEqual({ tipo: null, issues: [], erro: null });
+  });
+
+  it('recusa PR com as duas etiquetas', () => {
+    expect(tipoDoPR({ etiquetas: ['PR: especificação', 'PR: entrega'], texto: 'Entrega #9' }).erro).toMatch(/as duas etiquetas/);
+  });
+
+  it('recusa referência sem etiqueta', () => {
+    expect(tipoDoPR({ etiquetas: [], texto: 'Entrega #9' }).erro).toMatch(/falta a etiqueta "PR: entrega"/);
+    expect(tipoDoPR({ etiquetas: [], texto: 'Especifica #9' }).erro).toMatch(/falta a etiqueta "PR: especificação"/);
+  });
+
+  it('recusa etiqueta sem a referência certa', () => {
+    expect(tipoDoPR({ etiquetas: ['PR: entrega'], texto: 'resumo' }).erro).toMatch(/"Entrega #n"/);
+    expect(tipoDoPR({ etiquetas: ['PR: especificação'], texto: 'Entrega #9' }).erro).toMatch(/"Especifica #n"/);
+  });
+
+  it('recusa PR que é especificação e entrega ao mesmo tempo', () => {
+    expect(tipoDoPR({ etiquetas: ['PR: entrega'], texto: 'Entrega #9\nEspecifica #9' }).erro).toMatch(/especificação e entrega/);
+  });
+
 
   it('deixa a issue com uma etapa só e não mexe nas outras etiquetas', () => {
     expect(trocaDeEtiquetas(['app: rede', 'etapa: proposta'], 'Pronta para construir')).toEqual({
@@ -78,7 +124,7 @@ describe('fluxo do quadro', () => {
     const github = githubFalso(issues);
     await executar({
       github, core,
-      context: contexto('pull_request', { action: 'closed', pull_request: { title: 'R4', body: 'Entrega #9', merged: true, state: 'closed' } }),
+      context: contexto('pull_request', { action: 'closed', pull_request: { title: 'R4', body: 'Entrega #9', merged: true, state: 'closed', labels: [{ name: 'PR: entrega' }] } }),
     });
     expect(etiquetas(issues[0])).toEqual(['app: rede', 'etapa: aprovada']);
     expect(issues[0].state).toBe('closed');
@@ -90,7 +136,7 @@ describe('fluxo do quadro', () => {
     const github = githubFalso(issues);
     await executar({
       github, core,
-      context: contexto('pull_request', { action: 'edited', pull_request: { title: 'R4', body: 'Entrega #9', state: 'closed', draft: false } }),
+      context: contexto('pull_request', { action: 'edited', pull_request: { title: 'R4', body: 'Entrega #9', state: 'closed', draft: false, labels: [{ name: 'PR: entrega' }] } }),
     });
     expect(etiquetas(issues[0])).toEqual(['etapa: publicada']);
   });
@@ -160,5 +206,24 @@ describe('fluxo do quadro', () => {
     expect(fetchFalso).toHaveBeenCalledTimes(4);
     const ultima = JSON.parse(fetchFalso.mock.calls[3][1].body);
     expect(ultima.variables).toEqual({ p: 'P', i: 'IT', f: 'F', o: 'O1' });
+  });
+});
+
+describe('podeConstruir', () => {
+  const issue = (state: string, etiquetas: string[]) => ({ state, labels: etiquetas.map((name) => ({ name })) });
+
+  it('constrói issue aberta pronta para construir ou já em construção', () => {
+    expect(podeConstruir(issue('open', ['etapa: pronta para construir', 'app: orçamento']))).toEqual({ pode: true });
+    expect(podeConstruir(issue('open', ['etapa: em construção']))).toEqual({ pode: true });
+  });
+
+  it('não constrói issue fechada (já entregue), mesmo chamada por engano', () => {
+    expect(podeConstruir(issue('closed', ['etapa: aprovada']))).toEqual({ pode: false, motivo: 'a issue está fechada' });
+  });
+
+  it('não constrói issue em outra etapa', () => {
+    expect(podeConstruir(issue('open', ['etapa: proposta']))).toEqual({ pode: false, motivo: 'a issue está na etapa "Proposta"' });
+    expect(podeConstruir(issue('open', ['etapa: entrega em aprovação']))).toEqual({ pode: false, motivo: 'a issue está na etapa "Entrega em aprovação"' });
+    expect(podeConstruir(issue('open', []))).toEqual({ pode: false, motivo: 'a issue não tem etapa' });
   });
 });
