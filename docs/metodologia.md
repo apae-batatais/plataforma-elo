@@ -33,10 +33,10 @@ de cada coluna é a prioridade, decidida pela Diretoria.
 | Coluna | Quando o cartão chega | Quem age |
 | --- | --- | --- |
 | Proposta | Issue aberta | Arquiteto (e a Diretoria, se houver pergunta na issue) |
-| Especificação em aprovação | PR com "Especifica #n" aberto | **Diretoria** |
+| Especificação em aprovação | PR de especificação ("PR: especificação", "Especifica #n") aberto | **Diretoria** |
 | Pronta para construir | Merge do PR de especificação | Desenvolvedor |
 | Em construção | O Desenvolvedor começa a construir | Desenvolvedor (e a Diretoria, se houver pergunta na issue) |
-| Entrega em aprovação | PR com "Entrega #n" aberto, já verificado; a prévia é publicada em seguida | **Diretoria** |
+| Entrega em aprovação | PR de entrega ("PR: entrega", "Entrega #n") aberto, já verificado; a prévia é publicada em seguida | **Diretoria** |
 | Aprovada | Merge do PR de entrega (a issue é fechada) | fila da publicação |
 | Publicada | Publicação oficial semanal com sucesso | — |
 
@@ -64,9 +64,13 @@ repositório: habilidades da conta da Diretoria no Claude não vão junto.
 
 - **Uma proposta = uma issue.** Proposta grande é dividida pelo Arquiteto em entregas; cada entrega
   pode virar uma issue própria ligada à original.
-- **No texto do PR**, sempre a referência à issue:
-  - especificação: `Especifica #12`
-  - construção: `Entrega #12`
+- **Tipo do PR pela etiqueta**, que a Diretoria vê na lista de PRs:
+  - especificação: etiqueta `PR: especificação` e o texto começando com a linha `Especifica #12`;
+  - construção: etiqueta `PR: entrega` e o texto começando com a linha `Entrega #12`;
+  - manutenção da esteira ou da documentação: sem etiqueta de tipo e sem referência.
+
+  A automação decide pela etiqueta. A conferência "Tipo do PR" fica vermelha quando a etiqueta e a
+  referência não combinam, e a aprovação não faz o merge nesse caso (explica no PR o que corrigir).
 - **Etiquetas de app**: `app: orçamento`, `app: requisições`, `app: avaliação`,
   `app: comunicação`, `app: rede`, `app: plataforma`, `app: novo`. O Product Owner põe a do app.
 - **Pendências da Diretoria** fora do código (por exemplo, definir o DPO) são issues com a

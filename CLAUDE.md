@@ -113,10 +113,11 @@ publicação com "Forbidden" até o próximo ciclo. Por isso:
 
 ## Ciclo de trabalho (SDD)
 
-Cada entrega nasce de uma proposta (issue) e segue `docs/metodologia.md`. No texto do PR,
-sempre a referência à issue: `Especifica #n` no PR de especificação e `Entrega #n` no PR de
-código (aberto depois de `npm run verificar` e `npm run build` passarem). É isso que move o
-cartão no quadro. Use as habilidades de `.claude/skills/` (arquiteto, telas, regras-e-dados,
+Cada entrega nasce de uma proposta (issue) e segue `docs/metodologia.md`. Todo PR de proposta
+leva a etiqueta do tipo e, no começo de uma linha do texto, a referência à issue:
+`PR: especificação` com `Especifica #n`, ou `PR: entrega` com `Entrega #n` (este aberto depois de
+`npm run verificar` e `npm run build` passarem). Use `gh pr create --label "PR: entrega"` (ou
+`"PR: especificação"`). É isso que move o cartão no quadro; sem etiqueta, o merge não acontece. Use as habilidades de `.claude/skills/` (arquiteto, telas, regras-e-dados,
 infraestrutura) conforme as frentes da especificação.
 
 1. Especificar e pedir aprovação.

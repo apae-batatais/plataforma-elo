@@ -68,7 +68,7 @@ jobs:
             5. Sem dúvidas pendentes: crie o ramo `spec/${{ github.event.issue.number }}-<assunto>` a partir
                da main, escreva a especificação no lugar indicado pelo CLAUDE.md (com a seção "Frentes")
                e a ADR se houver decisão de arquitetura. Não escreva código de produção.
-            6. Faça commit e push e abra o PR com `gh pr create --base main`: título "Especificação: <assunto>",
+            6. Faça commit e push e abra o PR com `gh pr create --base main --label "PR: especificação"`: título "Especificação: <assunto>",
                corpo em português começando com a linha "Especifica #${{ github.event.issue.number }}", resumo,
                decisões tomadas sozinho (com o custo se estiverem erradas) e o que a Diretoria deve conferir.
                Avise no PR que especificação não tem prévia: as telas mudam só no PR de entrega.

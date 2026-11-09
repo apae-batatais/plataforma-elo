@@ -21,7 +21,8 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
 | `publicar.yml` | Prévia em todo PR; versão oficial agendada (sexta, 18h) ou à mão |
 | `fluxo.yml` | Etapa da proposta (etiqueta `etapa: …`) e cartão no quadro |
 | `claude-arquiteto.yml` | Claude Code especifica quando a proposta é aberta |
-| `aprovacao.yml` | "Approve" da Diretoria: merge, cartão e chamada do Desenvolvedor; "Request changes": ajuste |
+| `aprovacao.yml` | "Approve" da Diretoria: confere o tipo do PR, merge, cartão e chamada do Desenvolvedor; "Request changes": ajuste |
+| `tipo-do-pr.yml` | Confere a etiqueta "PR: especificação" ou "PR: entrega" com a referência à issue |
 | `claude-desenvolvedor.yml` | Claude Code constrói a proposta com especificação aprovada |
 | `claude.yml` | Pedido livre com "@claude" num comentário |
 | `vencimentos.yml` | Aviso semanal de chave perto de vencer (`.github/chaves.json`) |

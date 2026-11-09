@@ -53,6 +53,41 @@ export function referencias(texto) {
  *  - pr_merge / pr_fechado: PR fechado com ou sem merge
  * Devolve [{ issue, etapa, fechar? }].
  */
+export const ETIQUETA_ESPECIFICACAO = 'PR: especificação';
+export const ETIQUETA_ENTREGA = 'PR: entrega';
+
+/**
+ * Tipo do PR pela etiqueta, conferido com a referência à issue.
+ * - "PR: especificação" + linha "Especifica #n" → especificação;
+ * - "PR: entrega" + linha "Entrega #n" → entrega;
+ * - sem etiqueta e sem referência → PR de manutenção (não move proposta);
+ * - qualquer outra combinação → erro, com a explicação para quem abriu o PR.
+ * @param {{ etiquetas?: (string | { name: string })[], texto?: string }} pr
+ * @returns {{ tipo: 'especificacao' | 'entrega' | null, issues: number[], erro: string | null }}
+ */
+export function tipoDoPR({ etiquetas = [], texto = '' }) {
+  const nomes = etiquetas.map((e) => (typeof e === 'string' ? e : e.name));
+  const ehEspecificacao = nomes.includes(ETIQUETA_ESPECIFICACAO);
+  const ehEntrega = nomes.includes(ETIQUETA_ENTREGA);
+  const ref = referencias(texto);
+  const falha = (/** @type {string} */ erro) => ({ tipo: null, issues: [], erro });
+
+  if (ehEspecificacao && ehEntrega) return falha(`O PR tem as duas etiquetas ("${ETIQUETA_ESPECIFICACAO}" e "${ETIQUETA_ENTREGA}"); deixe só uma.`);
+  if (ref.especifica.length && ref.entrega.length)
+    return falha('O PR se diz especificação e entrega ao mesmo tempo; abra um PR para cada.');
+  if (ehEspecificacao) {
+    if (!ref.especifica.length) return falha(`Com a etiqueta "${ETIQUETA_ESPECIFICACAO}", o texto do PR precisa começar uma linha com "Especifica #n".`);
+    return { tipo: 'especificacao', issues: ref.especifica, erro: null };
+  }
+  if (ehEntrega) {
+    if (!ref.entrega.length) return falha(`Com a etiqueta "${ETIQUETA_ENTREGA}", o texto do PR precisa começar uma linha com "Entrega #n".`);
+    return { tipo: 'entrega', issues: ref.entrega, erro: null };
+  }
+  if (ref.especifica.length) return falha(`O PR cita "Especifica #${ref.especifica[0]}", mas falta a etiqueta "${ETIQUETA_ESPECIFICACAO}".`);
+  if (ref.entrega.length) return falha(`O PR cita "Entrega #${ref.entrega[0]}", mas falta a etiqueta "${ETIQUETA_ENTREGA}".`);
+  return { tipo: null, issues: [], erro: null };
+}
+
 /**
  * O Desenvolvedor só constrói issue aberta, em "Pronta para construir" ou "Em construção".
  * Evita reconstruir proposta já entregue quando é chamado por engano.
@@ -71,14 +106,14 @@ export function mudancas(evento) {
     if (etiquetas.some((e) => e.startsWith(PREFIXO)) || etiquetas.includes('pendência da diretoria')) return [];
     return [{ issue: evento.numero, etapa: 'Proposta' }];
   }
-  const ref = referencias(evento.texto);
+  const pr = tipoDoPR({ etiquetas: evento.etiquetas, texto: evento.texto });
   const saida = [];
-  for (const issue of ref.especifica) {
+  for (const issue of pr.tipo === 'especificacao' ? pr.issues : []) {
     if (evento.tipo === 'pr_aberto') saida.push({ issue, etapa: 'Especificação em aprovação' });
     if (evento.tipo === 'pr_merge') saida.push({ issue, etapa: 'Pronta para construir' });
     if (evento.tipo === 'pr_fechado') saida.push({ issue, etapa: 'Proposta' });
   }
-  for (const issue of ref.entrega) {
+  for (const issue of pr.tipo === 'entrega' ? pr.issues : []) {
     if (evento.tipo === 'pr_aberto') saida.push({ issue, etapa: evento.rascunho ? 'Em construção' : 'Entrega em aprovação' });
     if (evento.tipo === 'pr_merge') saida.push({ issue, etapa: 'Aprovada', fechar: true });
     if (evento.tipo === 'pr_fechado') saida.push({ issue, etapa: 'Pronta para construir' });
@@ -170,10 +205,11 @@ export async function executar({ github, context, core, tokenQuadro, numeroQuadr
     if (etapaDaEtiqueta(p.label?.name ?? '')) sincronizar.push(p.issue.number);
   } else if (nome === 'pull_request') {
     const texto = `${p.pull_request.title}\n${p.pull_request.body ?? ''}`;
+    const etiquetas = (p.pull_request.labels ?? []).map((l) => l.name);
     if (p.action === 'closed') {
-      lista = mudancas({ tipo: p.pull_request.merged ? 'pr_merge' : 'pr_fechado', texto });
+      lista = mudancas({ tipo: p.pull_request.merged ? 'pr_merge' : 'pr_fechado', texto, etiquetas });
     } else if (p.pull_request.state === 'open') {
-      lista = mudancas({ tipo: 'pr_aberto', texto, rascunho: p.pull_request.draft });
+      lista = mudancas({ tipo: 'pr_aberto', texto, etiquetas, rascunho: p.pull_request.draft });
     }
   } else if (nome === 'workflow_run') {
     const run = p.workflow_run;

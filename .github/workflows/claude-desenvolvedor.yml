@@ -110,7 +110,7 @@ jobs:
                andamento em docs/superpowers/plans/, construa com testes e faça commit e push ao fim
                de cada tarefa.
             6. Rode `npm run verificar` e `npm run build` até tudo passar.
-            7. Abra o PR com `gh pr create --base main`: corpo em português começando com a linha
+            7. Abra o PR com `gh pr create --base main --label "PR: entrega"`: corpo em português começando com a linha
                "Entrega #${{ env.ISSUE }}", o que mudou, roteiro de conferência na prévia e as decisões
                tomadas sozinho (com o custo se estiverem erradas). A prévia é publicada sozinha.
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
