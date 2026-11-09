@@ -39,3 +39,25 @@ substitui o Scrum Master. As sessões do Claude só têm acesso ao repositório,
   estar nele.
 - A regra de publicação do `CLAUDE.md` muda quando a publicação agendada entrar no ar (passo 6
   da implantação).
+
+## Migração do quadro na transferência do Elo (registrado em 08/11/2026)
+
+No GitHub, um projeto (quadro) pertence sempre a uma organização ou conta pessoal, nunca ao
+repositório; ele só fica vinculado ao repositório (o quadro "Elo" foi vinculado ao
+`plataforma-elo` em 08/11/2026). Ao transferir o repositório para outra conta, o repositório vai
+inteiro (issues, PRs, histórico, etiquetas e workflows), mas o quadro fica na conta de origem.
+
+Como a etapa de cada proposta fica na etiqueta `etapa: …` da issue, o quadro é só um espelho e
+se refaz sozinho. Roteiro para o novo dono:
+
+1. Criar o quadro na conta nova (Board), com as 7 opções do campo Status na ordem da
+   `docs/metodologia.md`, ou copiar o quadro atual; desligar as automações próprias do quadro.
+2. Vincular o quadro ao repositório (aba Projects → Link a project).
+3. Criar a chave de acesso na conta nova (Projects: Read and write; Issues: Read no repositório)
+   e atualizar os Secrets e variáveis do repositório: `QUADRO_TOKEN` e `QUADRO_NUMERO`.
+4. Gerar o token do Claude Code de quem vai manter o desenvolvimento e atualizar
+   `CLAUDE_CODE_OAUTH_TOKEN`; instalar o app do Claude no repositório na conta nova.
+5. Trocar o usuário da Diretoria nos workflows (`diretoria823`) pelo de quem aprova na conta nova.
+6. Rodar Actions → Fluxo → Run workflow: todas as issues com etapa voltam às colunas certas.
+
+Perde-se apenas a ordem manual dentro de cada coluna, que a Diretoria refaz no quadro novo.
