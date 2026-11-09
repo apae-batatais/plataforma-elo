@@ -89,7 +89,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <Documento>
       <Casca
-        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente, { estruturaDesatualizada, alertasApps: usuario.estruturaPendente ? {} : await alertasDoMenu(usuario.autorizador) })}
+        grupos={navegacaoDoUsuario(usuario.autorizador, usuario.estruturaPendente, { estruturaDesatualizada, comRede: !!configGeral().rede, alertasApps: usuario.estruturaPendente ? {} : await alertasDoMenu(usuario.autorizador) })}
         usuario={{ nome: usuario.nome, email: usuario.email, perfis: usuario.perfis.map((p) => p.nome) }}
         sair={sair}
         faixa={demonstracao ? faixaDemonstracao : undefined}

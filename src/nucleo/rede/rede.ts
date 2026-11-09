@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { Autorizador, ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroArmazenamento, ErroEstruturaAusente, type Armazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { atualizar, cabecalhoDe, inserir, lerTabela, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { idDaPasta, type ArmazenamentoPastas } from '@/nucleo/armazenamento/pastas';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import type { Instituicao } from '@/nucleo/config';
 import { UNIDADES_PADRAO } from '@/nucleo/estrutura/dados-iniciais';
@@ -121,6 +122,7 @@ export function instituicaoDoRegistro(r: RegInstituicao): Instituicao {
     enderecos: lista(r.enderecos),
     situacao: r.situacao,
     planilhas,
+    pasta: r.pasta ?? undefined,
     administradoresIniciais: lista(r.administradores_iniciais),
     unidades: unidades.length ? unidades : UNIDADES_PADRAO,
   };
@@ -183,7 +185,10 @@ export const esquemaCadastro = z.object({
   nomeCompleto: z.string().trim().optional(),
   dominio: z.string().trim().toLowerCase().regex(DOMINIO, 'Informe o domínio dos e-mails, sem @ (ex.: apaefranca.org.br).'),
   enderecos: z.array(z.string().trim().toLowerCase().regex(DOMINIO, 'Endereço inválido: use só o endereço, sem https:// (ex.: elo.apaefranca.org.br).')),
-  planilhas: z.record(z.string(), z.string().trim()),
+  /** IDs das planilhas atuais (instituições antigas). Sem a pasta, Núcleo e Auditoria são obrigatórias. */
+  planilhas: z.record(z.string(), z.string().trim()).optional(),
+  /** Link da pasta no Drive compartilhado (ou o ID): o Elo cria as planilhas dentro dela (ADR-018). */
+  pasta: z.string().trim().optional(),
   administradoresIniciais: z.array(z.email('E-mail de administrador inválido.')),
   unidades: z.array(z.object({ codigo: z.string(), nome: z.string() })),
 });
@@ -194,8 +199,14 @@ export async function salvarInstituicao(p: Planilhas, quem: Autorizador, dados: 
   const r = esquemaCadastro.safeParse(dados);
   if (!r.success) throw new ErroRede(r.error.issues[0]?.message ?? 'Confira os dados da instituição.');
   const d = r.data;
-  const planilhas = Object.fromEntries(Object.entries(d.planilhas).filter(([, id]) => id));
-  if (!planilhas.nucleo || !planilhas.auditoria) throw new ErroRede('Informe pelo menos as planilhas Núcleo e Auditoria.');
+  const pasta = d.pasta ? idDaPasta(d.pasta) : null;
+  if (d.pasta && !pasta) throw new ErroRede('O link da pasta não parece válido: abra a pasta no Drive e copie o endereço da barra do navegador (ou só o trecho depois de /folders/).');
+  const tabela = await lerTabela(p, Instituicoes);
+  const alvo = existente ? tabela.porId(existente.id) : undefined;
+  // Sem IDs no formulário, valem os que o cadastro já tem (o Elo os grava ao criar as planilhas).
+  const atuais = alvo ? instituicaoDoRegistro(alvo as RegInstituicao).planilhas : {};
+  const planilhas = d.planilhas ? Object.fromEntries(Object.entries(d.planilhas).filter(([, id]) => id)) : atuais;
+  if (!pasta && (!planilhas.nucleo || !planilhas.auditoria)) throw new ErroRede('Informe o link da pasta da instituição no Drive compartilhado.');
   for (const [chave, id] of Object.entries(planilhas)) {
     if (!ID_PLANILHA.test(id)) throw new ErroRede(`O ID da planilha "${chave}" não parece válido: copie o trecho do link entre /d/ e /edit.`);
   }
@@ -203,13 +214,13 @@ export async function salvarInstituicao(p: Planilhas, quem: Autorizador, dados: 
     if (!e.toLowerCase().endsWith(`@${d.dominio}`)) throw new ErroRede(`O administrador ${e} precisa ter e-mail @${d.dominio}.`);
   }
 
-  const tabela = await lerTabela(p, Instituicoes);
   const outras = tabela
     .ativos()
     .filter((x) => x.id !== existente?.id)
     .map((x) => instituicaoDoRegistro(x as RegInstituicao));
   if (outras.some((o) => o.codigo === d.codigo)) throw new ErroRede(`Já existe uma instituição com o código "${d.codigo}".`);
   if (outras.some((o) => o.dominio === d.dominio)) throw new ErroRede(`O domínio ${d.dominio} já é de outra instituição.`);
+  if (pasta && outras.some((o) => o.pasta === pasta)) throw new ErroRede('Essa pasta já é de outra instituição.');
   const repetido = d.enderecos.find((e) => outras.some((o) => o.enderecos.includes(e)));
   if (repetido) throw new ErroRede(`O endereço ${repetido} já é de outra instituição.`);
 
@@ -220,6 +231,7 @@ export async function salvarInstituicao(p: Planilhas, quem: Autorizador, dados: 
     dominio: d.dominio,
     enderecos: d.enderecos.join(', ') || null,
     planilhas: JSON.stringify(planilhas),
+    pasta,
     administradores_iniciais: d.administradoresIniciais.map((e) => e.toLowerCase()).join(', ') || null,
     unidades: d.unidades.map((u) => `${u.codigo}=${u.nome}`).join('; ') || null,
   };
@@ -233,7 +245,6 @@ export async function salvarInstituicao(p: Planilhas, quem: Autorizador, dados: 
     });
     return novo.id;
   }
-  const alvo = tabela.porId(existente.id);
   if (!alvo || !alvo.ativo) throw new ErroRede('Instituição não encontrada.');
   if (alvo.codigo !== d.codigo) throw new ErroRede('O código de uma instituição não muda depois do cadastro.');
   const { colunasAlteradas } = await atualizar(p, Instituicoes, existente.id, existente.versao, campos as never, { email: quem.email });
@@ -322,9 +333,16 @@ export interface ConferenciaPlanilha {
   chave: string;
   ok: boolean;
   mensagem: string;
+  /** Com pasta: "criada" (já existe), "sera_criada" (nasce em Preparar estrutura) ou "lixeira". */
+  situacao?: 'criada' | 'sera_criada' | 'lixeira';
+  /** ID da planilha ou da pasta de anexos, quando já existe (para o botão Abrir). */
+  id?: string;
+  tipo?: 'planilha' | 'pasta';
 }
 
 export interface ConferenciaInstituicao {
+  /** Só quando a instituição tem pasta no cadastro. */
+  pasta?: { ok: boolean; mensagem: string };
   planilhas: ConferenciaPlanilha[];
   estrutura: 'em_dia' | 'desatualizada' | 'nao_preparada' | 'sem_acesso';
   mensagemEstrutura: string;
@@ -339,6 +357,7 @@ const NOME_DA_PLANILHA: Record<string, string> = {
   requisicoes: 'Requisições',
   avaliacao_assistencia: 'Avaliação de Serviços Sociais',
   comunicacao: 'Comunicação',
+  anexos: 'Pasta de anexos',
 };
 
 /**
@@ -351,13 +370,34 @@ export async function conferirInstituicao(
   armazenamento: Armazenamento,
   inst: Instituicao,
   modulos: EstruturaDosModulos,
+  pastas?: ArmazenamentoPastas,
 ): Promise<ConferenciaInstituicao> {
   exigir(quem);
-  const esperadas = ['nucleo', 'auditoria', ...new Set((modulos.tabelas ?? []).map((t) => t.planilha))];
+  const comPasta = !!(inst.pasta && pastas);
+  const esperadas = ['nucleo', 'auditoria', ...new Set((modulos.tabelas ?? []).map((t) => t.planilha)), ...(comPasta ? ['anexos'] : [])];
   const planilhas: ConferenciaPlanilha[] = [];
+  let pasta: ConferenciaInstituicao['pasta'];
+  if (comPasta) {
+    const c = await pastas!.conferirPasta(inst.pasta!);
+    pasta = c.ok ? { ok: true, mensagem: `Pasta "${c.nome}": encontrada, num Drive compartilhado, e a conta de serviço pode criar arquivos nela.` } : { ok: false, mensagem: c.motivo };
+  }
   for (const chave of esperadas) {
     const nome = NOME_DA_PLANILHA[chave] ?? chave;
     const id = inst.planilhas[chave];
+    const tipo = chave === 'anexos' ? ('pasta' as const) : ('planilha' as const);
+    if (comPasta && !id) {
+      planilhas.push({ chave, ok: true, situacao: 'sera_criada', tipo, mensagem: `${nome}: será criada ao preparar a estrutura.` });
+      continue;
+    }
+    if (comPasta && id && (await pastas!.situacao(id)) === 'lixeira') {
+      planilhas.push({ chave, ok: false, situacao: 'lixeira', id, tipo, mensagem: `${nome}: está na lixeira do Drive. Restaure o arquivo (o Elo nunca apaga nem recupera sozinho).` });
+      continue;
+    }
+    if (chave === 'anexos') {
+      // A pasta de anexos é conferida pelo Drive, não pelo Google Planilhas.
+      if (id) planilhas.push({ chave, ok: true, situacao: 'criada', id, tipo, mensagem: `${nome}: criada.` });
+      continue;
+    }
     if (!id) {
       planilhas.push({
         chave,
@@ -371,7 +411,8 @@ export async function conferirInstituicao(
       planilhas.push({
         chave,
         ok: true,
-        mensagem: `${nome}: encontrada e compartilhada (${abas.length} ${abas.length === 1 ? 'aba' : 'abas'}).`,
+        ...(comPasta ? { situacao: 'criada' as const, id, tipo } : {}),
+        mensagem: `${nome}: ${comPasta ? 'criada' : 'encontrada e compartilhada'} (${abas.length} ${abas.length === 1 ? 'aba' : 'abas'}).`,
       });
     } catch (erro) {
       if (!(erro instanceof ErroArmazenamento)) throw erro;
@@ -384,8 +425,16 @@ export async function conferirInstituicao(
   }
 
   const nucleo = planilhas.find((x) => x.chave === 'nucleo');
+  if (nucleo?.situacao === 'sera_criada')
+    return {
+      pasta,
+      planilhas,
+      estrutura: 'nao_preparada',
+      mensagemEstrutura: 'As planilhas ainda não existem: use Preparar estrutura para o Elo criá-las na pasta, com as abas e a configuração inicial.',
+    };
   if (!nucleo?.ok)
     return {
+      pasta,
       planilhas,
       estrutura: 'sem_acesso',
       mensagemEstrutura: 'Sem acesso à planilha Núcleo: a estrutura não pôde ser conferida.',
@@ -395,11 +444,13 @@ export async function conferirInstituicao(
     const est = await conferirEstrutura(p, modulos);
     return est.desatualizada
       ? {
+          pasta,
           planilhas,
           estrutura: 'desatualizada',
           mensagemEstrutura: 'Há perfis ou permissões novos nesta versão do Elo: use Preparar estrutura.',
         }
       : {
+          pasta,
           planilhas,
           estrutura: 'em_dia',
           mensagemEstrutura: 'Estrutura em dia.',
@@ -407,14 +458,16 @@ export async function conferirInstituicao(
   } catch (erro) {
     if (erro instanceof ErroEstruturaAusente) {
       return {
-        planilhas,
+        pasta,
+          planilhas,
         estrutura: 'nao_preparada',
         mensagemEstrutura: 'As planilhas ainda estão em branco: use Preparar estrutura para criar as abas e a configuração inicial.',
       };
     }
     if (erro instanceof ErroArmazenamento)
       return {
-        planilhas,
+        pasta,
+          planilhas,
         estrutura: 'sem_acesso',
         mensagemEstrutura: erro.message,
       };
@@ -484,4 +537,114 @@ export async function prepararEstruturaDaInstituicao(
     ...r,
     planilhasPuladas: [...puladas].map((c) => NOME_DA_PLANILHA[c] ?? c),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Criar as planilhas na pasta da instituição (ADR-018)
+// ---------------------------------------------------------------------------
+
+export interface ItemDaPasta {
+  chave: string;
+  nome: string;
+  id: string;
+  tipo: 'planilha' | 'pasta';
+}
+
+export interface ResultadoDaPasta {
+  criadas: ItemDaPasta[];
+  jaExistiam: ItemDaPasta[];
+  falhas: { chave: string; nome: string; motivo: string }[];
+  /** A instituição com os IDs gravados, para a etapa seguinte. */
+  inst: Instituicao;
+  versao: number;
+}
+
+/**
+ * Para cada planilha necessária (Núcleo, Auditoria e as dos apps) e para a pasta
+ * de anexos: usa a que o cadastro já tem; senão procura na pasta uma com a marca
+ * do Elo; senão cria. Grava os IDs no cadastro, com auditoria (colunas, nunca
+ * valores). Nunca apaga nem move nada, nem usa item marcado de outra instituição.
+ */
+export async function garantirPlanilhasDaPasta(
+  rede: Planilhas,
+  quem: Autorizador,
+  pastas: ArmazenamentoPastas,
+  inst: Instituicao,
+  registro: { id: string; versao: number },
+  modulos: EstruturaDosModulos,
+): Promise<ResultadoDaPasta> {
+  exigir(quem);
+  if (!inst.pasta) throw new ErroRede('Informe o link da pasta da instituição antes de preparar a estrutura.');
+  let conferida;
+  try {
+    conferida = await pastas.conferirPasta(inst.pasta);
+  } catch (erro) {
+    if (!(erro instanceof ErroArmazenamento)) throw erro;
+    throw new ErroRede(`${inst.nome}: ${erro.message}`);
+  }
+  if (!conferida.ok) throw new ErroRede(`${inst.nome}: ${conferida.motivo}`);
+
+  const chaves = ['nucleo', 'auditoria', ...new Set((modulos.tabelas ?? []).map((t) => t.planilha)), 'anexos'];
+  const ids = { ...inst.planilhas };
+  const criadas: ItemDaPasta[] = [];
+  const jaExistiam: ItemDaPasta[] = [];
+  const falhas: ResultadoDaPasta['falhas'] = [];
+  for (const chave of chaves) {
+    const nome = NOME_DA_PLANILHA[chave] ?? chave;
+    const tipo = chave === 'anexos' ? ('pasta' as const) : ('planilha' as const);
+    const marca = `${inst.codigo}/${chave}`;
+    try {
+      const atual = ids[chave];
+      if (atual) {
+        const situacao = await pastas.situacao(atual);
+        if (situacao === 'lixeira') {
+          falhas.push({ chave, nome, motivo: 'está na lixeira do Drive. Restaure o arquivo; o Elo não cria outro no lugar.' });
+          continue;
+        }
+        if (situacao === 'existe') {
+          // A marca protege contra duplicata mesmo que o arquivo seja renomeado ou movido.
+          await pastas.marcar(atual, marca).catch(() => undefined);
+          jaExistiam.push({ chave, nome, id: atual, tipo });
+          continue;
+        }
+      }
+      const achada = await pastas.procurar(inst.pasta, marca);
+      if (achada) {
+        ids[chave] = achada;
+        jaExistiam.push({ chave, nome, id: achada, tipo });
+        continue;
+      }
+      const id = await pastas.criar(inst.pasta, { nome: `Elo · ${inst.nome} · ${nome}`, tipo, marca });
+      ids[chave] = id;
+      criadas.push({ chave, nome, id, tipo });
+    } catch (erro) {
+      if (!(erro instanceof ErroArmazenamento)) throw erro;
+      falhas.push({ chave, nome, motivo: erro.message });
+    }
+  }
+
+  let versao = registro.versao;
+  const mudou = chaves.some((c) => ids[c] !== inst.planilhas[c]);
+  if (mudou) {
+    const { registro: novo, colunasAlteradas } = await atualizar(rede, Instituicoes, registro.id, registro.versao, { planilhas: JSON.stringify(ids) } as never, {
+      email: quem.email,
+    });
+    versao = novo.versao;
+    await registrarAuditoria(rede, { usuario: quem.email, acao: 'alteracao', entidade: 'Instituicoes', registroId: registro.id, detalhes: { colunas: colunasAlteradas, origem: 'pasta' } });
+  }
+  await registrarAuditoria(rede, {
+    usuario: quem.email,
+    acao: 'estrutura',
+    entidade: 'Instituicoes',
+    registroId: registro.id,
+    detalhes: {
+      origem: 'pasta',
+      criadas: criadas.map((x) => x.chave),
+      jaExistiam: jaExistiam.map((x) => x.chave),
+      falhas: falhas.map((x) => x.chave),
+    },
+  });
+  const critica = falhas.filter((f) => f.chave === 'nucleo' || f.chave === 'auditoria');
+  if (critica.length) throw new ErroRede(`${inst.nome}: ${critica.map((f) => `${f.nome} ${f.motivo}`).join(' ')}`);
+  return { criadas, jaExistiam, falhas, inst: { ...inst, planilhas: ids }, versao };
 }

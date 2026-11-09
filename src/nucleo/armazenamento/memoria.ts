@@ -11,6 +11,11 @@ export class ArmazenamentoMemoria implements Armazenamento {
     for (const p of planilhasConhecidas) this.planilhas.set(p, new Map());
   }
 
+  /** Cria uma planilha vazia (usado quando a pasta simulada "cria" uma planilha). */
+  adicionarPlanilha(id: string) {
+    if (!this.planilhas.has(id)) this.planilhas.set(id, new Map());
+  }
+
   private planilha(id: string) {
     const p = this.planilhas.get(id);
     if (!p) throw new ErroArmazenamento(`Planilha "${id}" não encontrada ou sem acesso.`);

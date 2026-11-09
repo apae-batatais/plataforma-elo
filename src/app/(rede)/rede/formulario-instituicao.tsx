@@ -8,6 +8,7 @@ import { useActionState } from 'react';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
+import { ENDERECO_DO_ARQUIVO } from '@/nucleo/armazenamento/pastas';
 import type { LinhaInstituicao } from '@/nucleo/rede/rede';
 
 type Estado = { erro?: string; valores?: Record<string, string> };
@@ -80,29 +81,48 @@ export function FormularioInstituicao({
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="font-semibold">Planilhas no Drive da instituição</legend>
+        <legend className="font-semibold">Pasta no Drive da instituição</legend>
         <p className="text-sm text-texto-suave">
-          Cole o ID de cada planilha: o trecho do link entre <code>/d/</code> e <code>/edit</code>. Cada planilha deve estar compartilhada com a conta de
-          serviço do Elo.
+          A instituição cria um Drive compartilhado, inclui a conta de serviço do Elo como <strong>Gerente de conteúdo</strong> e envia o link da pasta. Cole-o
+          aqui: ao salvar, o Elo confere a pasta e cria sozinho as planilhas, a pasta de anexos e as abas.
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {planilhas.map((p) => (
-            <Campo key={p.chave} rotulo={p.nome} obrigatorio={p.obrigatoria}>
-              <input
-                name={`planilha_${p.chave}`}
-                required={p.obrigatoria}
-                defaultValue={v(`planilha_${p.chave}`, i?.planilhas[p.chave])}
-                className={`${estiloEntrada} font-mono text-xs`}
-              />
-            </Campo>
-          ))}
-        </div>
-        <Campo
-          rotulo="Pasta de anexos (fotos e vídeos)"
-          dica="Opcional. Uma pasta numa unidade compartilhada do Drive da instituição, com a conta de serviço como Gerente de conteúdo. Cole o trecho do link depois de /folders/. Sem ela, as requisições não aceitam foto nem vídeo."
-        >
-          <input name="pasta_anexos" defaultValue={v('pasta_anexos', i?.planilhas.anexos)} className={`${estiloEntrada} font-mono text-xs`} />
+        <input type="hidden" name="pasta_anterior" value={i?.pasta ?? ''} />
+        <Campo rotulo="Link da pasta" obrigatorio={!i || !!i.pasta || !i.planilhas.nucleo} dica="Pode colar o link copiado do Drive ou só o ID da pasta.">
+          <input
+            name="pasta"
+            required={!i || !!i.pasta || !i.planilhas.nucleo}
+            defaultValue={v('pasta', i?.pasta)}
+            placeholder="https://drive.google.com/drive/folders/…"
+            className={`${estiloEntrada} font-mono text-xs`}
+          />
         </Campo>
+        {i && (
+          <ul className="space-y-1.5 text-sm" aria-label="Planilhas do Elo nesta instituição">
+            {planilhas.map((p) => {
+              const id = i.planilhas[p.chave];
+              return (
+                <li key={p.chave} className="flex flex-wrap items-center gap-2">
+                  <span aria-hidden="true" className={id ? 'text-sucesso' : 'text-texto-suave'}>
+                    {id ? '✓' : '○'}
+                  </span>
+                  <span>
+                    {p.nome}: {id ? 'criada' : 'será criada ao preparar a estrutura'}
+                  </span>
+                  {id && (
+                    <a
+                      href={ENDERECO_DO_ARQUIVO(id, p.chave === 'anexos' ? 'pasta' : 'planilha')}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-destaque hover:underline"
+                    >
+                      Abrir
+                    </a>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </fieldset>
 
       <Campo

@@ -5,6 +5,7 @@ import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { configGeral } from '@/plataforma/instituicao';
 import { esquecerSituacaoDaEstrutura } from '@/plataforma/estrutura';
 import { ESTRUTURA_DOS_MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -12,6 +13,8 @@ import { usuarioLogado } from '@/plataforma/sessao';
 export async function prepararEstruturaAgora() {
   const usuario = await usuarioLogado();
   if (!usuario?.autorizador.temPermissao('core.organizacao.gerenciar')) redirect('/');
+  // Com a Rede (ADR-018), só a Administração da rede prepara a estrutura.
+  if (configGeral().rede) redirect('/admin/estrutura');
   const app = await obterAplicacao();
 
   // Planilhas de módulos ainda sem ID no cadastro da instituição ficam para depois,

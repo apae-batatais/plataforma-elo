@@ -1,6 +1,6 @@
 # ADR-018 · Uma pasta por instituição: o Elo cria as próprias planilhas
 
-- Situação: proposta (aguarda aprovação da Diretoria)
+- Situação: aprovada pela Diretoria em 08/11/2026; implementada na proposta #53
 - Data: 2026-11-07
 - Complementa: ADR-011 (planilhas), ADR-012 (várias Apaes) e ADR-014 (anexos no Drive)
 

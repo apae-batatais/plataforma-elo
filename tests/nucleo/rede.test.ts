@@ -104,7 +104,7 @@ describe('cadastro de instituições', () => {
     await expect(salvarInstituicao(rede, op, outra({ codigo: 'apae-franca' }))).rejects.toThrow(/código/);
     await expect(salvarInstituicao(rede, op, outra({ dominio: 'apaefranca.org.br' }))).rejects.toThrow(/domínio/);
     await expect(salvarInstituicao(rede, op, outra({ enderecos: ['elo.apaefranca.org.br'] }))).rejects.toThrow(/endereço/);
-    await expect(salvarInstituicao(rede, op, outra({ planilhas: { nucleo: ID(3) } }))).rejects.toThrow(/Núcleo e Auditoria/);
+    await expect(salvarInstituicao(rede, op, outra({ planilhas: { nucleo: ID(3) } }))).rejects.toThrow(/link da pasta/);
     await expect(salvarInstituicao(rede, op, outra({ planilhas: { nucleo: 'abc', auditoria: ID(4) } }))).rejects.toThrow(/ID da planilha/);
     await expect(salvarInstituicao(rede, op, outra({ administradoresIniciais: ['ti@gmail.com'] }))).rejects.toThrow(/@apaebatatais.org.br/);
     await expect(salvarInstituicao(rede, op, outra({ enderecos: ['https://elo.x.org.br/'] }))).rejects.toThrow(/sem https/);

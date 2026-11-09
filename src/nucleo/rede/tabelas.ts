@@ -21,6 +21,8 @@ export const Instituicoes = definirTabela({
     situacao: z.enum(SITUACOES_INSTITUICAO),
     /** IDs das planilhas no Drive da instituição, em JSON ({"nucleo":"…","auditoria":"…"}). */
     planilhas: texto(),
+    /** ID da pasta da instituição no Drive compartilhado, onde o Elo cria as planilhas (ADR-018). */
+    pasta: textoOpcional(),
     /** E-mails dos administradores iniciais, separados por vírgula. */
     administradores_iniciais: textoOpcional(),
     /** Unidades iniciais, "codigo=Nome" separadas por ponto e vírgula. */
