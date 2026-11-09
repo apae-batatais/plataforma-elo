@@ -8,6 +8,7 @@ import { ErroArquivo } from '@/nucleo/armazenamento/arquivos';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { iniciarEnvioAnexoComunicacao, type AnexoPedido } from '@/modulos/comunicacao/aplicacao/anexos';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
+import { mudarSituacaoContato, mudarSituacaoGrupo, salvarContato, salvarGrupo } from '@/modulos/comunicacao/aplicacao/contatos';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
 import {
   ACOES_DA_DECISAO,
@@ -324,4 +325,67 @@ export async function acaoEditarNaRevisao(_: EstadoPedido, f: FormData): Promise
   esquecerAlertas();
   revalidatePath('/', 'layout');
   redirect(`/comunicacao/${id}?ok=${encodeURIComponent('Alterações salvas no histórico do pedido.')}`);
+}
+
+// ---------------------------------------------------------------------------
+// Contatos da imprensa
+// ---------------------------------------------------------------------------
+
+const CONTATOS = '/comunicacao/contatos';
+
+export async function acaoSalvarContato(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => CONTATOS,
+    `${CONTATOS}${id ? `?contato=${id}` : ''}`,
+    id ? 'Contato salvo.' : 'Contato adicionado.',
+    ({ usuario, app }) =>
+      salvarContato(app.planilhas, usuario.autorizador, {
+        id: id || undefined,
+        versao: id ? Number(texto(f, 'versao')) : undefined,
+        nome: texto(f, 'nome'),
+        veiculo: texto(f, 'veiculo') || null,
+        email: texto(f, 'email'),
+        grupos: f.getAll('grupos').map(String),
+      }),
+  );
+}
+
+export async function acaoSalvarGrupo(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => CONTATOS,
+    `${CONTATOS}${id ? `?grupo=${id}` : ''}`,
+    id ? 'Grupo salvo.' : 'Grupo adicionado.',
+    ({ usuario, app }) =>
+      salvarGrupo(app.planilhas, usuario.autorizador, { id: id || undefined, versao: id ? Number(texto(f, 'versao')) : undefined, nome: texto(f, 'nome') }),
+  );
+}
+
+const situacaoContato = (ativo: boolean, mensagem: string) => async (f: FormData) =>
+  executar(
+    () => CONTATOS,
+    CONTATOS,
+    mensagem,
+    ({ usuario, app }) => mudarSituacaoContato(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), ativo),
+  );
+const situacaoGrupo = (ativo: boolean, mensagem: string) => async (f: FormData) =>
+  executar(
+    () => CONTATOS,
+    CONTATOS,
+    mensagem,
+    ({ usuario, app }) => mudarSituacaoGrupo(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), ativo),
+  );
+
+export async function acaoDesativarContato(f: FormData) {
+  await situacaoContato(false, 'Contato desativado. Ele fica guardado e pode ser reativado.')(f);
+}
+export async function acaoReativarContato(f: FormData) {
+  await situacaoContato(true, 'Contato reativado.')(f);
+}
+export async function acaoDesativarGrupo(f: FormData) {
+  await situacaoGrupo(false, 'Grupo desativado. Ele fica guardado e pode ser reativado.')(f);
+}
+export async function acaoReativarGrupo(f: FormData) {
+  await situacaoGrupo(true, 'Grupo reativado.')(f);
 }
