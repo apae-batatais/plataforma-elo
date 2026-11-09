@@ -370,3 +370,8 @@ Uma só, pequena: três arquivos em `docs/`, ligados a partir deste documento. O
   O custo é preencher; o risco real é assinar sem revisão jurídica, por isso o aviso.
 - **Roteiro do quadro por referência à ADR-019**, como a Diretoria pediu no comentário da issue.
 - **Manual em PDF não muda**: o guia é documento à parte.
+
+### Documentos entregues
+- `docs/guia-adesao-instituicao.md` — guia "Como trazer uma instituição para o Elo".
+- `docs/termo-adesao.md` — modelo do termo de adesão (LGPD).
+- `docs/transferencia-operadora.md` — roteiro de transferência da Operadora.
