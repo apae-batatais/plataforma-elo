@@ -11,5 +11,5 @@ Continue da primeira tarefa não concluída; nunca refaça tarefa marcada como c
 | 1 · Regras puras | concluída |
 | 2 · Abas, permissões e menu | concluída |
 | 3 · Casos de uso | concluída (22 testes) |
-| 4 · Telas | em andamento |
-| 5 · Fictícios, docs e PR | pendente |
+| 4 · Telas | concluída |
+| 5 · Fictícios, docs e PR | em andamento (falta build e PR) |

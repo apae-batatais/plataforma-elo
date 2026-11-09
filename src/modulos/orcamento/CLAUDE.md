@@ -19,3 +19,6 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   pessoais. Saldos só para quem tem `orcamento.tesouraria.ver` (Diretoria e Financeiro); editar é do Financeiro.
   Totais por classe são sempre somas calculadas pelo Elo; o mês atual é o de Brasília.
 - Permissões: `orcamento.<recurso>.<acao>`, declaradas no manifesto.
+- Histórico (1E): abas `Historico` e `HistoricoAnos` na planilha `orcamento_execucao`, sem dados pessoais.
+  Importar ano fechado só confere e grava se o total bater em centavos com o da planilha; reimportar ou
+  desfazer cancela (`ativo = FALSE`). Ver: `orcamento.historico.ver`; importar: `orcamento.historico.editar`.

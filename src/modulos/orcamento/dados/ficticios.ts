@@ -5,9 +5,10 @@
 import { Faker, base, pt_BR } from '@faker-js/faker';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { componentesZerados, dividirIgualmente } from '../dominio/folha';
+import { anoAtualBrasilia } from '../dominio/historico';
 import { distribuir, valorDoItem } from '../dominio/previsao';
 import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
-import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Receitas, Saldos } from './tabelas';
+import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -358,6 +359,50 @@ export async function popularTesourariaFicticia(p: Planilhas): Promise<void> {
         return [{ conta_id: c.id, mes, saldo: Math.round(base[i] * (1 + (m - 2) * 0.03) * 100) / 100 }];
       }),
     ),
+    autor,
+  );
+}
+
+/** Histórico FICTÍCIO: os quatro últimos anos fechados, com receita nas fontes da demonstração. */
+export async function popularHistoricoFicticia(p: Planilhas): Promise<void> {
+  const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const [historico, totais, fontes] = await lerTabelas(p, [Historico, HistoricoAnos, Fontes] as const);
+  const lista = fontes.ativos();
+  if (lista.length === 0) return;
+  const ultimo = anoAtualBrasilia() - 1;
+  const anos = [ultimo - 3, ultimo - 2, ultimo - 1, ultimo];
+  const base = [420000, 310000, 260000, 180000, 95000, 70000, 40000];
+  await inserirRegistros(
+    p,
+    historico,
+    anos.flatMap((ano, a) =>
+      lista.map((f, i) => ({
+        ano,
+        fonte_id: f.id,
+        descricao: `${f.nome} (histórico fictício)`,
+        receita: Math.round((base[i % base.length] * (1 + a * 0.06 + (i % 3) * 0.01)) * 100) / 100,
+        linha_origem: i + 3,
+        observacao: null,
+        lote: `demo-${ano}`,
+      })),
+    ),
+    autor,
+  );
+  const receitaDe = (a: number) => lista.reduce((s, _f, i) => s + Math.round(base[i % base.length] * (1 + a * 0.06 + (i % 3) * 0.01) * 100) / 100, 0);
+  await inserirRegistros(
+    p,
+    totais,
+    anos.map((ano, a) => {
+      const receita = Math.round(receitaDe(a) * 100) / 100;
+      return {
+        ano,
+        despesa_total: Math.round(receita * (0.93 + a * 0.01) * 100) / 100,
+        folha: Math.round(receita * 0.58 * 100) / 100,
+        saldo_livre_inicial: 150000 + a * 12000,
+        receita_total_planilha: receita,
+        lote: `demo-${ano}`,
+      };
+    }),
     autor,
   );
 }

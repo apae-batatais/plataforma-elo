@@ -1,4 +1,4 @@
 /** Interface pública do módulo Orçamento (usada só pela composição e pelas rotas). */
 export { manifesto } from './manifesto';
 export { TABELAS_ORCAMENTO } from './dados/tabelas';
-export { popularFolhaFicticia, popularPrevisaoFicticia, popularTesourariaFicticia } from './dados/ficticios';
+export { popularFolhaFicticia, popularHistoricoFicticia, popularPrevisaoFicticia, popularTesourariaFicticia } from './dados/ficticios';

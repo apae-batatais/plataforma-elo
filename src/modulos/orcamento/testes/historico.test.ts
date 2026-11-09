@@ -245,3 +245,15 @@ describe('quem vê e quem altera', () => {
     expect(itens.map((i) => i.permissao)).toEqual(['orcamento.historico.ver', 'orcamento.historico.ver', 'orcamento.historico.editar']);
   });
 });
+
+describe('demonstração', () => {
+  it('os dados fictícios geram indicadores sem erro', async () => {
+    const { popularHistoricoFicticia, popularPrevisaoFicticia } = await import('../dados/ficticios');
+    await popularPrevisaoFicticia(p);
+    await popularHistoricoFicticia(p);
+    const h = await lerHistorico(p, await fin());
+    expect(h.anos).toHaveLength(4);
+    expect(h.indicadores.at(-1)!.crescimentoReceita).toBeGreaterThan(0);
+    expect(h.indicadores[0].saldoLivreFim).not.toBeNull();
+  });
+});
