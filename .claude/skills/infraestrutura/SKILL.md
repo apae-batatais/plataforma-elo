@@ -24,26 +24,28 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
 | `aprovacao.yml` | "Approve" da Diretoria: merge, cartão e chamada do Desenvolvedor; "Request changes": ajuste |
 | `claude-desenvolvedor.yml` | Claude Code constrói a proposta com especificação aprovada |
 | `claude.yml` | Pedido livre com "@claude" num comentário |
+| `vencimentos.yml` | Aviso semanal de chave perto de vencer (`.github/chaves.json`) |
 
 Cuidados:
 
 - Ações feitas com o `GITHUB_TOKEN` não disparam outros workflows (exceto `workflow_dispatch`).
   Quem precisa encadear passos chama o próximo direto (veja `aprovacao.yml`).
-- Funções do fluxo ficam em `.github/scripts/fluxo-quadro.mjs`, com teste em `tests/fluxo/`.
+- Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`), com teste em `tests/fluxo/`.
 
 ## Secrets e variáveis (nomes; os valores você nunca recebe nem pede)
 
-| Nome | Tipo | Para quê | Vence em | Onde a Diretoria confere e renova |
-| --- | --- | --- | --- | --- |
-| `QUADRO_TOKEN` | Secret | Quadro do GitHub Projects | 06/02/2027 | github.com/settings/personal-access-tokens (lista "Fine-grained tokens") |
-| `CLAUDE_CODE_OAUTH_TOKEN` | Secret | Claude Code no GitHub (token da assinatura) | 08/11/2027 (gerado em 08/11/2026; vale um ano) | Não aparece em nenhuma tela; renova com `claude setup-token` num computador |
-| `NETLIFY_AUTH_TOKEN` | Secret | Publicação na Netlify | sem vencimento | app.netlify.com → User settings → Applications → Personal access tokens |
-| `NETLIFY_SITE_ID` | Secret | Publicação na Netlify | não vence (é o identificador do site) | — |
-| `QUADRO_NUMERO` | Variable | Número do quadro "Elo" | não vence | — |
+| Nome | Tipo | Para quê |
+| --- | --- | --- |
+| `QUADRO_TOKEN` | Secret | Quadro do GitHub Projects |
+| `CLAUDE_CODE_OAUTH_TOKEN` | Secret | Claude Code no GitHub (token da assinatura; vale um ano) |
+| `NETLIFY_AUTH_TOKEN` | Secret | Publicação na Netlify |
+| `NETLIFY_SITE_ID` | Secret | Publicação na Netlify (identificador do site; não vence) |
+| `QUADRO_NUMERO` | Variable | Número do quadro "Elo" (não vence) |
 
 - Credenciais do Google: só na Netlify.
-- Vencimentos informados pela Diretoria em 08/11/2026. Avise a Diretoria 30 dias antes de cada
-  vencimento; ao renovar, atualize esta tabela.
+- **Vencimentos: `.github/chaves.json`** (fonte única; datas informadas pela Diretoria, nunca
+  valores). Toda segunda às 9h o workflow `vencimentos.yml` abre uma issue "pendência da
+  Diretoria" para cada chave que vence em até 30 dias. Ao renovar, atualize a data no arquivo.
 - Chave vencida faz o workflow falhar por falta de acesso: não rode de novo, peça a renovação.
 
 ## Regras

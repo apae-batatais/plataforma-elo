@@ -1,0 +1,17 @@
+[
+  {
+    "nome": "QUADRO_TOKEN",
+    "vence": "2027-02-06",
+    "renovar": "Gere uma chave nova em github.com/settings/personal-access-tokens (mesmas permissões: Projects em Read and write na organização e Issues em Read no plataforma-elo) e troque o valor em plataforma-elo → Settings → Secrets and variables → Actions → QUADRO_TOKEN."
+  },
+  {
+    "nome": "CLAUDE_CODE_OAUTH_TOKEN",
+    "vence": "2027-11-08",
+    "renovar": "Gere uma chave nova com o comando claude setup-token num computador com o Claude Code (vale um ano) e troque o valor em plataforma-elo → Settings → Secrets and variables → Actions → CLAUDE_CODE_OAUTH_TOKEN."
+  },
+  {
+    "nome": "NETLIFY_AUTH_TOKEN",
+    "vence": null,
+    "renovar": "app.netlify.com → User settings → Applications → Personal access tokens; troque o valor em plataforma-elo → Settings → Secrets and variables → Actions → NETLIFY_AUTH_TOKEN."
+  }
+]
