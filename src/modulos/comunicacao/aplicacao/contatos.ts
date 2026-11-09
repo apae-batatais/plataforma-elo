@@ -179,3 +179,20 @@ export async function destinatariosDe(p: Planilhas, d: { grupos: string[]; conta
     .map((c) => normalizarEmail(c.email));
   return [...new Set(emails)].sort();
 }
+
+/** Grupos e contatos ativos para escolher ao agendar (quem agenda, não só quem gerencia a lista). */
+export async function opcoesDeDestinatarios(
+  p: Planilhas,
+  quem: Autorizador,
+): Promise<{ grupos: Array<{ id: string; nome: string }>; contatos: Array<{ id: string; rotulo: string }> }> {
+  if (!quem.temPermissao('comunicacao.revisar')) throw new ErroPermissao();
+  const [contatos, grupos] = await lerTabelas(p, [ContatosComunicacao, GruposComunicacao] as const);
+  const porNome = (a: { nome: string }, b: { nome: string }) => a.nome.localeCompare(b.nome, 'pt-BR');
+  return {
+    grupos: grupos.ativos().sort(porNome).map((g) => ({ id: g.id, nome: g.nome })),
+    contatos: contatos
+      .ativos()
+      .sort(porNome)
+      .map((c) => ({ id: c.id, rotulo: c.veiculo ? `${c.nome} · ${c.veiculo}` : c.nome })),
+  };
+}

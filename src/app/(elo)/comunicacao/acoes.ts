@@ -17,7 +17,9 @@ import {
   decidirPedido,
   editarNaRevisao,
   enviarPedido,
+  agendarPedido,
   juntarPedido,
+  publicarPedido,
   reenviarPedido,
   revisarPedido,
   type DadosPedido,
@@ -388,4 +390,38 @@ export async function acaoDesativarGrupo(f: FormData) {
 }
 export async function acaoReativarGrupo(f: FormData) {
   await situacaoGrupo(true, 'Grupo reativado.')(f);
+}
+
+// ---------------------------------------------------------------------------
+// Agendamento e publicação
+// ---------------------------------------------------------------------------
+
+export async function acaoAgendarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  const quando = texto(f, 'quando');
+  // O campo do navegador manda AAAA-MM-DDTHH:mm, sem fuso: vale o horário de Brasília.
+  const comFuso = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(quando) ? `${quando}:00-03:00` : '';
+  const reagendando = texto(f, 'reagendando') === '1';
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    reagendando ? 'Data do agendamento alterada.' : 'Pedido agendado.',
+    ({ usuario, app }) =>
+      agendarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), {
+        agendadoPara: comFuso,
+        grupos: f.getAll('grupos').map(String),
+        contatos: f.getAll('contatos').map(String),
+      }),
+  );
+}
+
+export async function acaoPublicarPedido(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    'Publicação registrada.',
+    ({ usuario, app }) =>
+      publicarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), { link: texto(f, 'link') || null, comentario: texto(f, 'comentario') || null }),
+  );
 }
