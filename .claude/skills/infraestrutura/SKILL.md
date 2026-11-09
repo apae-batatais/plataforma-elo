@@ -17,7 +17,7 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
 
 | Workflow | Para quê |
 | --- | --- |
-| `verificar.yml` | Tipos, lint, fronteiras, testes e build em todo PR e na main |
+| `verificar.yml` | Tipos, lint, fronteiras, testes e build em todo PR e na main (também chamado pela Aprovação depois de cada merge) |
 | `publicar.yml` | Prévia em todo PR; versão oficial agendada (sexta, 18h) ou à mão |
 | `fluxo.yml` | Etapa da proposta (etiqueta `etapa: …`) e cartão no quadro |
 | `claude-arquiteto.yml` | Claude Code especifica quando a proposta é aberta |

@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Chamado pelo workflow Aprovação depois de cada merge: o merge feito pela automação não
+  # dispara o "push" acima, e a main precisa ser verificada com as entregas juntas.
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -15,9 +15,8 @@ permissions:
   contents: read
   pull-requests: read
 
-concurrency:
-  group: tipo-do-pr-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+# Sem fila: cada evento confere as etiquetas atuais do PR (lidas na hora), então rodadas
+# seguidas dão o mesmo resultado e nenhuma aparece como cancelada no PR.
 
 jobs:
   conferir:
@@ -32,7 +31,8 @@ jobs:
         with:
           script: |
             const { tipoDoPR } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
-            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: context.payload.pull_request.number });
             const r = tipoDoPR({ etiquetas: pr.labels.map((l) => l.name), texto: `${pr.title}\n${pr.body ?? ''}` });
             if (r.erro) core.setFailed(r.erro);
             else core.notice(r.tipo ? `PR de ${r.tipo === 'especificacao' ? 'especificação' : 'entrega'} da issue #${r.issues.join(', #')}.` : 'PR de manutenção (não move proposta).');
