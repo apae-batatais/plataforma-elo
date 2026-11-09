@@ -12,4 +12,4 @@ Continue da primeira tarefa não concluída; nunca refaça tarefa marcada como c
 | 2 · Abas, permissões e menu | concluída |
 | 3 · Casos de uso | concluída (22 testes) |
 | 4 · Telas | concluída |
-| 5 · Fictícios, docs e PR | em andamento (falta build e PR) |
+| 5 · Fictícios, docs e PR | concluída; PR aberto, falta a conferência da Diretoria na prévia |
