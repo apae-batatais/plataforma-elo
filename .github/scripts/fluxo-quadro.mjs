@@ -33,10 +33,11 @@ export function etapaDaEtiqueta(etiqueta) {
 /**
  * Issues citadas no texto de um PR.
  * "Especifica #12" → PR de especificação; "Entrega #12" → PR de construção.
+ * Só vale no começo de uma linha: citação no meio do texto não conta (PR #83).
  */
 export function referencias(texto) {
   const r = { especifica: [], entrega: [] };
-  for (const m of (texto ?? '').matchAll(/\b(especifica|entrega)\s+#(\d+)/gi)) {
+  for (const m of (texto ?? '').matchAll(/^[ \t]*(especifica|entrega)\s+#(\d+)/gim)) {
     const lista = m[1].toLowerCase() === 'especifica' ? r.especifica : r.entrega;
     const n = Number(m[2]);
     if (!lista.includes(n)) lista.push(n);
@@ -52,6 +53,18 @@ export function referencias(texto) {
  *  - pr_merge / pr_fechado: PR fechado com ou sem merge
  * Devolve [{ issue, etapa, fechar? }].
  */
+/**
+ * O Desenvolvedor só constrói issue aberta, em "Pronta para construir" ou "Em construção".
+ * Evita reconstruir proposta já entregue quando é chamado por engano.
+ */
+export function podeConstruir(issue) {
+  if (issue.state !== 'open') return { pode: false, motivo: 'a issue está fechada' };
+  const etapa = (issue.labels ?? []).map((l) => etapaDaEtiqueta(typeof l === 'string' ? l : l.name)).find(Boolean);
+  if (!etapa) return { pode: false, motivo: 'a issue não tem etapa' };
+  if (etapa === 'Pronta para construir' || etapa === 'Em construção') return { pode: true };
+  return { pode: false, motivo: `a issue está na etapa "${etapa}"` };
+}
+
 export function mudancas(evento) {
   if (evento.tipo === 'issue_aberta') {
     const etiquetas = (evento.etiquetas ?? []).map((e) => e.toLowerCase());

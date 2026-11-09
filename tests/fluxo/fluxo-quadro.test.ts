@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, referencias, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
+import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, podeConstruir, referencias, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
 
 type Issue = { number: number; state: string; labels: { name: string }[]; node_id: string; pull_request?: unknown };
 
@@ -40,8 +40,14 @@ describe('fluxo do quadro', () => {
   });
 
   it('acha as issues citadas no PR, sem repetir', () => {
-    expect(referencias('Especifica #12\nEntrega #7 e entrega #7; Especifica #3')).toEqual({ especifica: [12, 3], entrega: [7] });
+    expect(referencias('Especifica #12\nEntrega #7\nentrega #7\n  Especifica #3')).toEqual({ especifica: [12, 3], entrega: [7] });
     expect(referencias('Fecha #4')).toEqual({ especifica: [], entrega: [] });
+  });
+
+  it('só conta a referência no começo da linha, não citada no meio do texto (PR #83)', () => {
+    const corpo = 'Entrega #55\n\n- **Não havia PR "Especifica #55"**: usei a especificação aprovada.\nVeja a Entrega #9.';
+    expect(referencias(corpo)).toEqual({ especifica: [], entrega: [55] });
+    expect(mudancas({ tipo: 'pr_merge', texto: corpo })).toEqual([{ issue: 55, etapa: 'Aprovada', fechar: true }]);
   });
 
   it('issue nova entra em Proposta, menos pendência da Diretoria ou issue que já tem etapa', () => {
@@ -160,5 +166,24 @@ describe('fluxo do quadro', () => {
     expect(fetchFalso).toHaveBeenCalledTimes(4);
     const ultima = JSON.parse(fetchFalso.mock.calls[3][1].body);
     expect(ultima.variables).toEqual({ p: 'P', i: 'IT', f: 'F', o: 'O1' });
+  });
+});
+
+describe('podeConstruir', () => {
+  const issue = (state: string, etiquetas: string[]) => ({ state, labels: etiquetas.map((name) => ({ name })) });
+
+  it('constrói issue aberta pronta para construir ou já em construção', () => {
+    expect(podeConstruir(issue('open', ['etapa: pronta para construir', 'app: orçamento']))).toEqual({ pode: true });
+    expect(podeConstruir(issue('open', ['etapa: em construção']))).toEqual({ pode: true });
+  });
+
+  it('não constrói issue fechada (já entregue), mesmo chamada por engano', () => {
+    expect(podeConstruir(issue('closed', ['etapa: aprovada']))).toEqual({ pode: false, motivo: 'a issue está fechada' });
+  });
+
+  it('não constrói issue em outra etapa', () => {
+    expect(podeConstruir(issue('open', ['etapa: proposta']))).toEqual({ pode: false, motivo: 'a issue está na etapa "Proposta"' });
+    expect(podeConstruir(issue('open', ['etapa: entrega em aprovação']))).toEqual({ pode: false, motivo: 'a issue está na etapa "Entrega em aprovação"' });
+    expect(podeConstruir(issue('open', []))).toEqual({ pode: false, motivo: 'a issue não tem etapa' });
   });
 });
