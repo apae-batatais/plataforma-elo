@@ -31,6 +31,9 @@ Cuidados:
 
 - Ações feitas com o `GITHUB_TOKEN` não disparam outros workflows (exceto `workflow_dispatch`).
   Quem precisa encadear passos chama o próximo direto (veja `aprovacao.yml`).
+- Sessões que agem com o usuário da Diretoria (DevOps, `arquiteto-conversa`): o GitHub não deixa ela
+  dar "Approve" nos PRs delas; o merge vem do "aprovado" na conversa e não passa pelo workflow
+  Aprovação, então quem fez o merge chama o próximo passo (por exemplo, o Desenvolvedor).
 - Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`), com teste em `tests/fluxo/`.
 
 ## Secrets e variáveis (nomes; os valores você nunca recebe nem pede)

@@ -21,7 +21,7 @@ GitHub avisa por e-mail sempre que alguma coisa depende dela.
 | --- | --- | --- | --- |
 | Diretoria | — | Dona do produto: decide, prioriza e aprova | Ideias, respostas e aprovações |
 | Product Owner | Conversa "Product Owner" no Claude | Discute ideias com a Diretoria e registra a proposta, sem detalhe técnico | Issue com o modelo "Proposta" |
-| Arquiteto de Soluções | Claude Code no GitHub, sozinho quando a issue é aberta | Lê a proposta, o código e os documentos; pergunta na issue o que não souber; escreve a especificação (e a ADR, se houver decisão de arquitetura); aponta melhorias | PR de especificação |
+| Arquiteto de Soluções | Claude Code no GitHub, sozinho quando a issue é aberta; ou sessão "Arquiteto" (Claude Code na web) quando a Diretoria prefere conversar | Lê a proposta, o código e os documentos; pergunta o que não souber (na issue ou na conversa); escreve a especificação (e a ADR, se houver decisão de arquitetura); aponta melhorias | PR de especificação |
 | Desenvolvedor | Claude Code no GitHub, sozinho quando a especificação é aprovada | Constrói seguindo o `CLAUDE.md`, com testes, verificação e prévia | PR de entrega |
 | Automação | GitHub Actions | Move os cartões, faz o merge depois da aprovação e publica toda semana | — |
 | DevOps | Sessão do Claude Code (web) apontada para o repositório | Cuida da esteira: acompanha falhas, corrige e melhora as automações e os agentes, controla custos, chaves e segurança; não constrói funcionalidade | PRs de infraestrutura e raio-x da esteira |
@@ -53,6 +53,7 @@ carrega cada uma sozinho quando o trabalho combina com a descrição dela. As ha
 | Habilidade | Para quê |
 | --- | --- |
 | Arquiteto | Como especificar, perguntar na issue e escrever ADR |
+| Arquiteto em conversa | Sessão "Arquiteto" com a Diretoria: arquivo real só para ler o formato, PR sem atrapalhar a esteira |
 | Telas | Identidade visual, acessibilidade e componentes |
 | Regras e dados | Camada de aplicação, planilhas, permissões, auditoria e testes |
 | Infraestrutura | Netlify, GitHub Actions e Google |
@@ -101,6 +102,24 @@ conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
 > (problema, para quem, resultado esperado, app, observações) e a etiqueta do app. Sem detalhe
 > técnico: a especificação é do Arquiteto. Antes de abrir, procure issues parecidas para não
 > duplicar. Leia `docs/metodologia.md`. Converse só em português, sem formalidade.
+
+## Sessão Arquiteto
+
+Para especificar conversando, em vez de responder nos comentários da issue (por exemplo, quando a
+Diretoria quer mostrar uma planilha ou exportação real como modelo). Abra uma sessão do Claude Code
+na web apontada para o repositório `apae-batatais/plataforma-elo` e mande como primeira mensagem:
+
+> Use a habilidade `arquiteto-conversa`. Quero especificar a proposta #<número>.
+
+Combinados desta sessão (estão na habilidade):
+
+- Arquivo real serve só para o Arquiteto ler o formato (colunas, tipos, datas). Nada dele vai para
+  o repositório; a especificação e os testes usam uma amostra inventada com a mesma estrutura, e a
+  cópia é apagada no fim.
+- O PR de especificação é aberto pelo usuário da Diretoria, então a aprovação é "aprovado" na
+  conversa: a sessão faz o merge e chama o Desenvolvedor.
+- A sessão não comenta em issue que está em "Proposta", para não chamar o Arquiteto do GitHub ao
+  mesmo tempo.
 
 ## Sessão DevOps
 
