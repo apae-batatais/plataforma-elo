@@ -9,6 +9,134 @@
   provisório "Análise financeira da Apae Batatais" e a proposta de acompanhamento, revisão 3.
 - Arquitetura: ADR-011. Planilha é só armazenamento; contas, regras, permissões e auditoria ficam no app.
 
+## Revisão de 10/11/2026 — realizado informado à mão (issue #59)
+
+Decisão da Diretoria (comentário de 09/11/2026): **a primeira versão da Execução não importa o WK Radar.
+O realizado é informado manualmente.** A importação por modelo (ou por uma ferramenta que mapeia as colunas
+com base na estrutura do Elo) fica no roadmap. Esta seção **substitui** a 1C.1 e ajusta a 1C.2 e a 1D.2;
+onde houver conflito com o texto mais abaixo, vale esta seção. A pendência 1 (amostra do WK Radar) deixa de
+bloquear a entrega.
+
+### Entregas (substituem as linhas 1C.1, 1C.2 e 1D.2 da tabela "Entregas")
+
+| Entrega | Conteúdo | Depende de |
+| --- | --- | --- |
+| **1C.1 — Informar o realizado** | Digitação do realizado por mês, em grade montada pela Previsão; tabela do ano | Previsão aprovada e Fontes (já existem) |
+| **1C.2 — Painel de execução e recursos livres** | Orçado × realizado; recurso livre por serviço; adiantamentos e ressarcimentos; comparação com o ano anterior | 1C.1 |
+| **1D.2 — Fim do ano e reserva** | Como na especificação; a conferência dos termos e do recurso livre (regras 16 e 17) entra aqui | 1D.1 e 1C.1 |
+
+Sugestão: uma issue por entrega (1C.1, 1C.2, 1D.2), ligadas à #59, nesta ordem.
+
+### Como o realizado é informado
+
+O realizado é guardado **por mês, serviço, grupo de gasto, fonte e natureza** (totais mensais), não por
+lançamento. O WK Radar tem milhares de lançamentos por ano e digitá-los um a um seria inviável; o Orçamento
+já trabalha com totais por serviço, grupo e fonte (a Previsão e o Resumo da folha são assim).
+
+A tela **Execução › Informar realizado** abre no mês anterior ao atual (como a tela Saldos do mês; lista dos
+últimos 24 meses; mês futuro não é aceito) e mostra duas grades:
+
+- **Despesas:** uma linha para cada combinação serviço × grupo × fonte da Previsão aprovada do ano, com o
+  previsto do mês ao lado e um campo para o realizado.
+- **Receitas:** uma linha para cada fonte com receita prevista no ano, com o previsto do mês e um campo para o
+  realizado.
+- **Adicionar linha:** para o que foi gasto ou recebido e não estava previsto (serviço, grupo, fonte, natureza).
+  Gasto sem rateio vai para o serviço "Comum" (regra 12).
+- **Observação** opcional por linha. Os totais (despesa, receita, resultado do mês) aparecem calculados
+  enquanto a pessoa digita.
+
+### Regras de negócio da 1C.1 (substituem as regras 1 a 4 e 7 originais; a 5 e a 6 continuam)
+
+- R1. **Uma linha de realizado por mês, tipo (despesa ou receita), serviço, grupo, fonte e natureza.** Salvar de
+  novo o mesmo mês **atualiza** a linha (com a versão lida); não cria linha duplicada. Valor zerado é aceito.
+- R2. **Salvar o mês é tudo ou nada**, como nos saldos (decisões 7 e 8 da 1D.1): se outra pessoa alterou alguma
+  linha desde que a tela abriu, nada é gravado e a pessoa é avisada. O que foi digitado e não salvo volta depois
+  de um erro.
+- R3. **Valor não pode ser negativo.** Estorno ou devolução é informado como valor menor, com observação.
+- R4. **Natureza** de despesa: RH, encargos, custeio, investimento/obras, tarifas, adiantamento a termo. De
+  receita: receita comum ou ressarcimento. O Elo sugere a natureza pelo grupo (campo `rh` do cadastro de
+  Grupos); a pessoa pode trocar.
+- R5. **Recurso livre** é todo realizado cuja fonte tem uso **livre** no cadastro de Fontes (1B).
+- R6. **Não recorrente** (reforma da quadra, PIS recuperado etc.): marcação por linha, com motivo obrigatório.
+  Continua nos totais, mas é separado nas comparações entre anos e nos cenários.
+- R7. **Nenhum total é digitado:** resultado, execução e recurso livre são somas das linhas.
+- R8. **Correção depois de salvar:** a pessoa altera o valor; a alteração é auditada (colunas alteradas, nunca
+  valores). Nada é apagado: "Remover linha" encerra o registro (`ativo = FALSE`).
+- R9. **Realizado de RH** é informado agregado por serviço (naturezas RH e encargos). Valor por pessoa nunca
+  entra aqui; continua só na planilha `orcamento_folha`.
+- R10. **O mês só pode ser informado se o exercício existe.** Sem Previsão aprovada, a tela avisa e só aceita
+  linhas adicionadas à mão.
+- R11. **Pendência na tela inicial do Orçamento:** mês fechado sem nenhum realizado informado ("Falta informar o
+  realizado de outubro").
+- R12. **Comparação com o ano anterior** só usa meses informados nos dois anos; mês não informado aparece como
+  "sem dado", nunca como zero.
+- R13. **Histórico vindo do realizado** (regra 25 original): o ano que passa a ter realizado no app usa o
+  realizado, e não a importação do Histórico (1E).
+
+As regras 8 a 12 (1C.2), 13 a 15 (1D.1) e 18 a 22 (1D.2) continuam, lendo as linhas de realizado em vez de
+lançamentos. A conferência dos termos e do recurso livre (16 e 17) compara os saldos com o **realizado
+informado** por fonte e só é confiável com todos os meses informados: a tela mostra "faltam meses" em vez de
+uma diferença falsa.
+
+### Permissões (1C.1)
+
+| Perfil | Pode | Permissão |
+| --- | --- | --- |
+| Financeiro | Informar e corrigir o realizado | `orcamento.realizado.editar` (já existe) |
+| Diretoria | Ver tudo | `orcamento.execucao.ver` |
+| Coordenação de área | Ver só o realizado dos serviços do seu escopo (área ou serviço) | `orcamento.execucao.ver` (com escopo) |
+| Leitura | Não vê a grade; vê só totais agregados | `orcamento.painel.ver` |
+
+### Dados (1C.1)
+
+Planilha `orcamento_execucao` (já existe). Aba nova **`Realizado`**, declarada com `definirTabela` e registrada
+em "Preparar estrutura": `ano`, `mes` (AAAA-MM), `tipo`, `servico`, `grupo_id` (só despesa), `fonte_id`,
+`natureza`, `valor`, `nao_recorrente`, `motivo_nao_recorrente`, `observacao`. Sem coluna pessoal (não há
+fornecedor nem histórico de lançamento), portanto sem `sigilo`. As abas `Importacoes`, `Lancamentos` e
+`RegrasClassificacao` **não são criadas nesta versão**; `Adiantamentos` fica para a 1C.2.
+
+### Telas (1C.1)
+
+1. **Execução › Informar realizado:** descrita acima, com o botão **Salvar mês** e aviso claro se o mês já
+   tinha valores.
+2. **Execução › Realizado do ano:** tabela mês a mês (despesa, receita, resultado) com "Ver os números" e
+   marcação dos meses sem informação.
+3. A Visão geral (1D.2) e o Painel geral (1B) só passam a mostrar números da Execução a partir da 1C.2.
+
+Melhorias de experiência: a grade já vem montada pela Previsão, então a pessoa só digita valores; **Copiar
+previsto** preenche o campo com o previsto do mês, para corrigir só o que diferiu; cada campo mostra a
+diferença para o previsto em %.
+
+### Fica de fora (desta revisão)
+
+- Qualquer importação do WK Radar ou de planilha de realizado. **Vai para o roadmap**: importar o realizado a
+  partir de um modelo, ou criar uma ferramenta que mapeia as colunas com base na estrutura do Elo. Quando
+  existir, as linhas entram na mesma aba `Realizado`.
+- Lançamento por lançamento (fornecedor, documento, histórico), fila "A classificar", regras de classificação
+  e auditoria de leitura de fornecedor pessoa física (regras 3 e 29 originais).
+
+### Frentes
+
+`telas` (grade de digitação, tabela do ano) e `regras e dados` (aba `Realizado`, casos de uso, permissões,
+auditoria, testes). Sem `infraestrutura` na 1C.1: a planilha `orcamento_execucao` e a chave em `PLANILHAS`
+já existem.
+
+### Critérios de pronto (1C.1)
+
+- [ ] Testes das regras R1 a R13, incluindo quem vê e quem altera (Coordenação só o seu escopo; Leitura não vê a grade)
+- [ ] Salvar o mesmo mês duas vezes não duplica linhas; alteração concorrente não grava nada
+- [ ] "Preparar estrutura" cria a aba `Realizado`
+- [ ] Na prévia, com a demonstração: o Financeiro informa um mês, vê os totais calculados e altera um valor
+- [ ] `npm run verificar` e `npm run build` verdes
+
+### Decisões tomadas sozinho nesta revisão
+
+1. **Realizado por totais mensais, não por lançamento.** Se a Diretoria quiser o detalhe (fornecedor,
+   documento), é preciso a aba `Lancamentos` e a importação: custa uma entrega nova, sem perder o digitado.
+2. **Valor negativo não é aceito.** Se errada, basta trocar a validação.
+3. **Natureza obrigatória em cada linha**, sugerida pelo grupo. Se não for útil, vira coluna opcional.
+4. **Sem aba `Adiantamentos` na 1C.1**; ela chega na 1C.2, quando o painel precisar.
+
 ## Objetivo
 
 Hoje o acompanhamento financeiro depende de quatro planilhas redigitadas a partir do WK Radar:
