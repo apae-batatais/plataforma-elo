@@ -446,7 +446,9 @@ Sem mudança no Orçamento. Cria o app, a planilha `parcerias`, os perfis e `cat
 **Regras (com teste)**
 1. Folha: rateio de fonte por linha de lotação soma 100%; funcionário ativo sem rateio usa a fonte do serviço.
 2. Comprometido = Σ custo mensal × % da fonte, nos meses do exercício dentro da vigência do termo.
-3. Valor de referência = valor da fonte em Parcerias (valor inicial + aportes ativos) na data da consulta.
+3. Valor de referência = valor da fonte em Parcerias (valor inicial, global ou per capita × vagas ×
+   meses, + aportes ativos) na data da consulta; o **previsto por mês** de Parcerias mostra se o
+   comprometido vem antes do recebimento (necessidade de caixa).
 4. Valores individuais nunca aparecem a quem só tem `orcamento.folha.ver`; leitura individual é auditada.
 5. Se Parcerias estiver desligado, o catálogo é vazio e só existe recurso próprio.
 6. Contrapartida do serviço = custo total − parcela coberta pelas fontes dos termos.

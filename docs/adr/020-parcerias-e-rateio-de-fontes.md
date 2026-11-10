@@ -34,6 +34,11 @@ Outras OSCs que usarem o Elo (ex.: Apae de Franca) têm muitos financiadores e o
 6. A decisão de 28/10/2026 ("uma fonte por item") deixa de valer (aprovado pela Diretoria na
    issue #91).
 
+7. **Valor da fonte: global ou per capita × vagas × meses** (decisão da Diretoria, 10/11/2026),
+   com meses de recebimento escolhidos. Parcerias também mostra **per capita** contra vagas e contra
+   atendidos reais, ocupação e alerta de vagas ociosas. Os atendidos reais vêm do cadastro de
+   pessoas do Núcleo (só contagem, sem nomes); Parcerias não importa outro módulo.
+
 ## Consequências
 - Mudar o termo (novo aporte) não exige mexer no Orçamento: o comprometido é calculado na hora.
 - Cada fonte nova de um termo precisa ser ligada a uma Fonte do cadastro antes de ser usada no
@@ -42,5 +47,6 @@ Outras OSCs que usarem o Elo (ex.: Apae de Franca) têm muitos financiadores e o
   rateio de 100% (ver especificação do Orçamento).
 - Parcerias poderá receber, no futuro, a prestação de contas por termo e a conferência da
   Tesouraria sem mexer no Orçamento.
+- O Núcleo ganha uma função de contagem de vínculos ativos por serviço e mês (sem dados pessoais).
 - Para cada OSC: nova chave `parcerias` em `PLANILHAS` (Netlify) e permissões novas ligadas aos
   perfis por "Preparar estrutura".

@@ -35,6 +35,8 @@ Especificação de Execução, Tesouraria e Histórico aprovada em 07/11/2026
 - [ ] Ligar a receita do termo à fonte do termo no Orçamento.
 - [ ] Conferência dos termos da Tesouraria usando as fontes de Parcerias.
 - [ ] Anexar o arquivo do termo em Parcerias.
+- [ ] Despesas que cada fonte não pode pagar, com aviso no rateio de fonte: aguarda a lista dos
+      termos atuais da Diretoria (issue #91).
 
 ## Comunicação
 
