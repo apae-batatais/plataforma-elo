@@ -45,6 +45,74 @@ A tela **Execução › Informar realizado** abre no mês anterior ao atual (com
 - **Observação** opcional por linha. Os totais (despesa, receita, resultado do mês) aparecem calculados
   enquanto a pessoa digita.
 
+### Estudo da exportação do WK Radar (revisão da Diretoria de 10/11/2026)
+
+Fonte: arquivo `REALIZADO DE 01-01 À 30-09-26.xlsx` (abas OFICIAL e POR ÁREA), lido fora do repositório; aqui
+ficam só a estrutura, nomes de contas e de centros de custo e contagens, sem lançamentos. Nada disso muda o que
+a 1C.1 constrói (digitação à mão); serve de base para a importação futura e para a grade falar a língua do
+Financeiro.
+
+**Aba OFICIAL (a exportação)**
+- Sem linha de nomes de colunas. As linhas 1 a 6 trazem o período (texto) e os totais "Resultado" e "Entrada de
+  Recursos". Colunas: A código reduzido, B classificação (`3.6.02.01`), C descrição, D valor (pode ser negativo).
+- Duas seções: "Entrada de Recursos" e "Saída de Recursos" (marcadores sem A e B). Os mesmos códigos aparecem nas
+  duas; **quem diz se é entrada ou saída é a seção**.
+- Plano de contas em até 8 níveis (1 Ativo, 2 Passivo, 3 Despesas, 4 Receitas, 5 Produção da unidade agrícola).
+  **Valores acumulados**: a conta-pai soma as filhas (somar tudo duplicaria).
+- **Centro de custo é uma linha logo abaixo da conta de último nível**, classificação `8.xx.yy`, descrição com
+  espaços à esquerda e código reduzido próprio. Há 179 contas detalhadas por centro; em 178 a soma bate com a
+  conta e em 1 há R$ 0,01 de arredondamento. Toda conta de último nível de despesa (3) e receita (4) tem centro
+  de custo; ativo, passivo e produção não têm.
+- **Folha não aparece como despesa (3)**: está nas obrigações pagas, conta `2.1.03` (salários, previdência, FGTS,
+  consignado), e a **área vem no código e no nome da conta** (ex.: `2.1.03.01.00018` Assistência Social, `.00019`
+  Educação Especial, `.00020` Saúde, `.00021` Unidade de Vivências Ambientais, `.00022` Atividade Meio
+  Sustentável, `.00023` Atividades Operacionais Administrativas, `.00024` Centro de Formação Profissional).
+- Também saem como "saída de recursos": créditos e adiantamentos (`1.1.02`), imobilizado (`1.2.01`), impostos
+  retidos (`2.1.02`) e projetos (`2.1.05` e `2.1.08`, com PRONAS), às vezes com valor negativo.
+
+**Grupos de despesa (conta 3.6)**
+- `3.6.01` Despesas Operacionais Administrativas: `.01` Recursos Humanos, `.02` Ordinárias, `.03` Financeiras,
+  `.05` Eventos beneficentes, campanhas e ações.
+- `3.6.02` Custos Operacionais de Programas e Atividades, por área: `.01` Assistência Social, `.02` Educação
+  Especial, `.03` Saúde, `.04` Unidade de Vivências Ambientais, `.05` Projeto Centro de Formação Profissional.
+- Abaixo disso há contas de natureza do gasto (ex.: "Alimentação") que **se repetem dentro de cada área**.
+- `5.1.03` Produtos agrícolas: milho, soja e mudas.
+
+**Centros de custo (58, em 8 grupos)**: `8.01` Assistência Social (4), `8.02` Educação (8), `8.03` Saúde (7),
+`8.04` Unidade de Vivências/Apae Rural (produtivas `01.xx`, administrativo e manutenção `02.xx`, apoio à
+Assistência Social `03.04`), `8.05` Associados e captação (associados, campanhas `04.xx`, comunicação), `8.06`
+Administrativo (12), `8.10.01` Despesas a Classificar, `8.11` Formação Profissional (2). Os nomes têm erros de
+digitação e espaços no começo: **o que identifica cada centro é a classificação `8.xx.yy` ou o código reduzido,
+nunca o nome**.
+
+**Aba POR ÁREA (feita à mão)**: reorganiza as saídas por área, separando **folha** e **custeio**, com subtotais,
+um ajuste manual (reembolso de plano de saúde), despesas gerais com uma conta única para várias áreas (inclui
+imobilizado) e projeções (provisão de dezembro, aumento de 15%, 2027 sem PRONAS). Seu total de saídas é **cerca de
+R$ 166 mil maior** que o da OFICIAL; a origem **não foi esclarecida** e precisa ser explicada pela Diretoria antes
+de a aba servir de referência. **Não serve de modelo de importação** (não segue estrutura fixa), mas mostra como a
+Diretoria lê o realizado: por área, folha separada de custeio.
+
+**O que o estudo muda na 1C.1**
+1. A grade já traz serviço, grupo e fonte, que é o nível em que a Previsão e o Resumo da folha trabalham; o
+   estudo confirma que o realizado do WK Radar só chega a esse nível passando por duas **tabelas de
+   correspondência** (centro `8.xx.yy` → Serviço; conta de despesa → Grupo de gasto). Nenhuma das duas existe
+   hoje e nenhuma é construída na 1C.1; ficam para a importação (roadmap).
+2. Na digitação, a pessoa informa o realizado **por Serviço** (o centro de custo do Elo). Para a folha, o realizado
+   do WK Radar vem **por área** (conta `2.1.03`), não por serviço: ver pendência abaixo.
+3. Período: a exportação é acumulada (01/01 a 30/09), sem mês. A grade da 1C.1 é mensal; quem digitar a partir do
+   WK Radar precisa de um relatório por mês ou da diferença entre dois acumulados.
+
+**Pontos que dependem de decisão da Diretoria** (perguntados um por vez no PR e registrados aqui conforme
+respondidos; ainda não decididos):
+- P1. Correspondência centro de custo do WK Radar ↔ Serviço do Núcleo (os nomes não batem um a um; ex.: `8.01.07`
+  "Assistência Social" é genérico da área).
+- P2. Nível da conta `3.6` que vira Grupo de gasto (natureza, como "Alimentação", ou o nível 4).
+- P3. Realizado da folha: informado por serviço (como a folha prevista) ou por área (como o WK Radar)?
+- P4. "Despesas a Classificar" (`8.10.01`) ↔ serviço "Comum" ou fila "a classificar" da 1C.2.
+- P5. O que conta como realizado: só despesas (3) e produção (5), ou também folha (`2.1.03`), imobilizado
+  (`1.2.01`) e projetos (`2.1.05`, `2.1.08`), como faz a aba POR ÁREA.
+- P6. Origem da diferença de cerca de R$ 166 mil entre as abas OFICIAL e POR ÁREA.
+
 ### Regras de negócio da 1C.1 (substituem as regras 1 a 4 e 7 originais; a 5 e a 6 continuam)
 
 - R1. **Uma linha de realizado por mês, tipo (despesa ou receita), serviço, grupo, fonte e natureza.** Salvar de
