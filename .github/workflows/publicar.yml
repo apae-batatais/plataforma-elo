@@ -18,8 +18,14 @@ on:
   pull_request:
     # PR que só mexe em documentos (especificação, ADR, metodologia) não ganha prévia:
     # o site seria igual ao atual (decisão da Diretoria, 08/11/2026).
-    paths-ignore:
-      - '**/*.md'
+    # Também sem prévia: PR só de automação (.github) ou de testes, que não muda o site.
+    # A exceção é o próprio publicar.yml, que só se testa rodando.
+    paths:
+      - '**'
+      - '!**/*.md'
+      - '!.github/**'
+      - '!tests/**'
+      - '.github/workflows/publicar.yml'
   schedule:
     - cron: '0 21 * * 5' # sexta-feira, 18h em Brasília (21h UTC)
 
@@ -78,8 +84,14 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - uses: actions/cache@v4
+        id: modulos
         if: steps.config.outputs.pronto == 'sim'
+        with:
+          path: node_modules
+          key: modulos-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
+      - run: npm ci
+        if: steps.config.outputs.pronto == 'sim' && steps.modulos.outputs.cache-hit != 'true'
 
       - name: Publicar versão oficial
         if: steps.config.outputs.pronto == 'sim' && steps.mudou.outputs.pular != 'sim' && (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')

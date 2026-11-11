@@ -1,15 +1,24 @@
 name: Verificar
 
+# Economia de minutos (11/11/2026): PR ou push só de documentos (.md) não roda; no PR, o build
+# fica para a prévia (workflow Publicar, que monta o mesmo site); na main, o build continua.
 on:
   pull_request:
+    paths-ignore: ['**/*.md']
   push:
     branches: [main]
+    paths-ignore: ['**/*.md']
   # Chamado pelo workflow Aprovação depois de cada merge: o merge feito pela automação não
   # dispara o "push" acima, e a main precisa ser verificada com as entregas juntas.
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# Commit novo no mesmo PR cancela a verificação do commit anterior.
+concurrency:
+  group: verificar-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verificar:
@@ -20,7 +29,13 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: actions/cache@v4
+        id: modulos
+        with:
+          path: node_modules
+          key: modulos-${{ runner.os }}-node22-${{ hashFiles('package-lock.json') }}
       - run: npm ci
+        if: steps.modulos.outputs.cache-hit != 'true'
       - name: Tipos
         run: npm run typecheck
       - name: Lint
@@ -30,4 +45,5 @@ jobs:
       - name: Testes (inclui acesso por perfil no banco)
         run: npm run test
       - name: Build de produção
+        if: github.event_name != 'pull_request'
         run: npm run build

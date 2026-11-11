@@ -2,7 +2,7 @@
 #
 # - "Approve" da Diretoria num PR: confere o tipo do PR (etiqueta "PR: especificação" ou
 #   "PR: entrega", conferida com a referência à issue), faz o merge, move o cartão e, se for
-#   especificação, chama o Desenvolvedor. Depois do merge, chama o Verificar na main. Tipo que não combina: não faz o merge e explica no PR.
+#   especificação, chama o Desenvolvedor. Depois do merge de uma entrega, chama o Verificar na main. Tipo que não combina: não faz o merge e explica no PR.
 # - "Request changes" da Diretoria num PR: o Claude Code ajusta o PR conforme os comentários.
 #
 # Revisões em PR já fechado (com ou sem merge) são ignoradas.
@@ -71,8 +71,11 @@ jobs:
               tokenQuadro: process.env.QUADRO_TOKEN, numeroQuadro: process.env.QUADRO_NUMERO,
               lista: mudancas({ tipo: 'pr_merge', texto, etiquetas }) });
             // O merge feito com o GITHUB_TOKEN não dispara o Verificar na main; chama direto.
-            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'verificar.yml', ref: 'main' });
-            core.info('Verificar chamado para a main');
+            // Só nas entregas: especificação é só documento e não muda o que é verificado.
+            if (tipo.tipo === 'entrega') {
+              await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'verificar.yml', ref: 'main' });
+              core.info('Verificar chamado para a main');
+            }
             for (const issue of tipo.tipo === 'especificacao' ? tipo.issues : []) {
               await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'claude-desenvolvedor.yml', ref: 'main', inputs: { issue: String(issue) } });
               core.info(`Desenvolvedor chamado para a issue #${issue}`);

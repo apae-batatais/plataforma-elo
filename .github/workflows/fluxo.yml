@@ -34,10 +34,16 @@ concurrency:
 jobs:
   fluxo:
     runs-on: ubuntu-latest
-    # PRs de cópias externas (forks) não mexem nas propostas.
+    # Só roda quando o evento pode mudar uma etapa (job pulado não gasta minutos):
+    # - issue aberta, ou etiqueta "etapa: …" posta ou tirada;
+    # - PR com etiqueta de tipo ("PR: especificação" ou "PR: entrega"), fora de forks;
+    # - publicação oficial (não as prévias); sincronização à mão.
     if: >-
-      github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+      (github.event_name == 'issues' && (github.event.action == 'opened' || startsWith(github.event.label.name, 'etapa: '))) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
+        (contains(github.event.pull_request.labels.*.name, 'PR: especificação') || contains(github.event.pull_request.labels.*.name, 'PR: entrega'))) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event != 'pull_request') ||
+      github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v5
         with:
