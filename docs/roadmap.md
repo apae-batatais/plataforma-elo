@@ -20,14 +20,20 @@ Especificação de Execução, Tesouraria e Histórico aprovada em 07/11/2026
 - [ ] Confirmar com a Diretoria a associação das linhas antigas às fontes (pendência 4 da especificação):
       hoje a pessoa escolhe a fonte de cada linha na importação.
 
-### Entrega 1C.1 · importar o realizado do WK Radar (adiada em 07/11/2026)
+### Entrega 1C · realizado informado à mão (especificado em 10/11/2026, issue #59)
 
-- [ ] Receber da Diretoria uma amostra da exportação do WK Radar (lançamentos e saldos por conta),
-      com dados fictícios ou anonimizados. A amostra define o DE-PARA das colunas e as planilhas de teste.
-- [ ] Depois da amostra: planejar e construir a importação, a fila "A classificar" e as regras de
-      classificação; em seguida a 1C.2 (orçado × realizado e recursos livres).
-- [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): saíram da 1D.1
-      porque comparam os saldos com o realizado, que só existe depois da 1C.1.
+A primeira versão não importa o WK Radar: o realizado é digitado por mês, serviço, grupo, fonte e natureza
+(`src/modulos/orcamento/especificacao-execucao-tesouraria.md`, seção "Revisão de 10/11/2026").
+Ordem: 1C.1 → 1C.2 → 1D.2.
+
+- [ ] **Importar o realizado a partir de um modelo**, ou criar uma ferramenta que mapeia as colunas da
+      planilha de origem com base na estrutura do Elo (decisão da Diretoria em 09/11/2026). As linhas entram
+      na mesma aba `Realizado`. Depende de a Diretoria definir o modelo ou de uma amostra da exportação do
+      WK Radar (com dados fictícios ou anonimizados).
+- [ ] Realizado por lançamento (fornecedor, documento, fila "A classificar", regras de classificação), se a
+      Diretoria quiser o detalhe.
+- [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
+      comparam os saldos com o realizado.
 
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
