@@ -195,7 +195,9 @@ describe('salvar o mês', () => {
     expect(aud.map((x) => x.acao)).toEqual(['inclusao', 'alteracao', 'alteracao']);
     expect(JSON.parse(aud[1].detalhes as string)).toEqual({ colunas: ['valor'] });
     expect(JSON.parse(aud[2].detalhes as string)).toEqual({ colunas: ['ativo'] });
-    expect(JSON.stringify(aud)).not.toMatch(/123|200|sigilosa/);
+    // Só os campos de conteúdo: id, registro_id e ocorrido_em são aleatórios ou do relógio e podem
+    // conter "123" ou "200" por acaso (falha intermitente na main em 11/11/2026).
+    expect(JSON.stringify(aud.map((x) => [x.usuario, x.acao, x.entidade, x.detalhes]))).not.toMatch(/123|200|sigilosa/);
   });
 
   it('R9: a grade guarda RH só agregado por serviço (sem coluna de pessoa)', async () => {
