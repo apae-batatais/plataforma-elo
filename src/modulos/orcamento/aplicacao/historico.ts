@@ -13,12 +13,13 @@ import { z } from 'zod';
 import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizarVarios, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
-import { Fontes, Historico, HistoricoAnos } from '../dados/tabelas';
+import { Fontes, Historico, HistoricoAnos, Realizado } from '../dados/tabelas';
 import {
   anoAtualBrasilia, calcularIndicadores, conferirMapeamentoHistorico, conferirTotal, fontesPorAno, lerReceitasHistorico,
   mapeamentoSugeridoHistorico, PRIMEIRO_ANO, somaReceitas,
   type AnoHistorico, type IndicadoresAno, type LinhaReceitaLida, type MapeamentoHistorico,
 } from '../dominio/historico';
+import { anoUsaRealizado } from '../dominio/realizado';
 import { resumirAbas, type AbaImportada, type AbaResumida } from '../dominio/importacao';
 import { nomeComparavel } from '../dominio/previsao';
 import { ErroValidacaoFolha } from './folha';
@@ -161,7 +162,11 @@ export async function importarHistorico(p: Planilhas, quem: Autorizador, bruta: 
   const erroTotal = conferirTotal(dados.linhas, dados.totalPlanilha);
   if (erroTotal) throw new ErroHistorico(erroTotal);
 
-  const [fontes, historico, totais] = await lerTabelas(p, [Fontes, Historico, HistoricoAnos] as const);
+  const [fontes, historico, totais, realizado] = await lerTabelas(p, [Fontes, Historico, HistoricoAnos, Realizado] as const);
+  // R13 (1C.1): o ano que já tem realizado informado no Elo usa o realizado, não a importação.
+  if (anoUsaRealizado(new Set(realizado.ativos().map((r) => r.ano)), dados.ano)) {
+    throw new ErroHistorico(`O ano ${dados.ano} já tem o realizado informado no Elo, que vale no lugar da importação do histórico.`);
+  }
   const validas = new Set(fontes.ativos().map((f) => f.id));
   if (dados.linhas.some((l) => !validas.has(l.fonteId!))) throw new ErroHistorico('Há fonte escolhida que não existe mais. Envie o arquivo de novo.');
 
