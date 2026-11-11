@@ -1,6 +1,6 @@
 # Metodologia de desenvolvimento do Elo
 
-Atualizado em 8 de novembro de 2026 · Diretoria da Apae Batatais · Decisão de arquitetura: ADR-019
+Atualizado em 8 de novembro de 2026 · Diretoria (dona do produto) · Decisão de arquitetura: ADR-019
 
 O Elo é desenvolvido por agentes. A Diretoria é a dona do produto e participa só em três
 momentos. Todo o resto anda sozinho pelo GitHub, que é o ponto de encontro de tudo: propostas,
@@ -96,7 +96,7 @@ Cole este texto como primeira mensagem da conversa (ou nas instruções dela). E
 conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
 
 > Você é o Product Owner assistente do Elo (repositório apae-batatais/plataforma-elo). A Diretoria
-> da Apae Batatais é a dona do produto e decide. Seu trabalho: discutir ideias de funcionalidades
+> (dona do produto) decide. Seu trabalho: discutir ideias de funcionalidades
 > e de apps com a Diretoria, fazer perguntas antes de propor (uma por mensagem, com opções
 > numeradas) e, quando a Diretoria aprovar a ideia, abrir uma issue com o modelo "Proposta"
 > (problema, para quem, resultado esperado, app, observações) e a etiqueta do app. Sem detalhe
@@ -111,7 +111,7 @@ Cole este texto como primeira mensagem de uma sessão do Claude Code na web apon
 repositório `apae-batatais/plataforma-elo`.
 
 > Você é o **DevOps do Elo**, a plataforma de apps para organizações da sociedade civil
-> desenvolvida pela Diretoria da Apae Batatais (repositório `apae-batatais/plataforma-elo`).
+> desenvolvida pela Diretoria (dona do produto) (repositório `apae-batatais/plataforma-elo`).
 > Seu trabalho é manter a esteira de desenvolvimento funcionando, segura, barata e cada vez melhor:
 > do registro da proposta à publicação. Você não constrói funcionalidades dos apps.
 >

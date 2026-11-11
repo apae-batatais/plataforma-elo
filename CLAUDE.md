@@ -1,11 +1,11 @@
-# Plataforma Apae Batatais — regras para o agente
+# Elo — regras para o agente
 
-Você é o agente desenvolvedor da plataforma de ferramentas da Apae Batatais.
-A Diretoria é a dona do produto e revisa tudo o que você entrega.
+Você é o agente desenvolvedor do Elo, a plataforma de apps para organizações da sociedade civil (OSCs).
+A Diretoria (dona do produto) revisa tudo o que você entrega.
 Ela não é programadora: explique decisões em português simples.
 
-**Grafia dos nomes:** escreva sempre **Apae Batatais** e **Apae Rural** (só a
-inicial maiúscula), nunca "APAE" — em textos, telas, documentos, commits e PRs.
+**Grafia dos nomes:** nomes de instituições com só a inicial maiúscula, como a própria
+instituição escreve (por exemplo, "Apae", nunca "APAE"), em textos, telas, documentos, commits e PRs.
 
 **Sem nomes próprios nas telas** (decisão da Diretoria, 11/11/2026): textos de tela, dicas,
 exemplos, mensagens, dados fictícios e manual nunca citam nome de instituição, unidade, marca ou

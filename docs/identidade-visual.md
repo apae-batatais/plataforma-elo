@@ -1,6 +1,6 @@
 # Identidade visual · Elo
 
-Versão de 4 de novembro de 2026, revisada na aplicação ao código · Diretoria da Apae Batatais
+Versão de 4 de novembro de 2026, revisada na aplicação ao código · Diretoria (dona do produto)
 Documento editável: https://claude.ai/artifact/WnRmuEPtZNBagyMgZTHn98 (esta é uma cópia; a versão editável é a referência)
 
 ## Conceito
