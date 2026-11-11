@@ -354,3 +354,124 @@ Cada gráfico tem "Ver os números" em tabela.
   (`ativo = FALSE`, ficam no histórico). Itens lançados à mão e propostas não são tocados.
 - **Núcleo:** `gravarLinhas` (armazenamento) e `atualizarVarios` (tabela) gravam muitas linhas
   numa só chamada ao Google, para o cancelamento caber no tempo da hospedagem.
+
+## Rateio dos custos comuns e rateio de fontes (revisão 5, proposta #91, 10/11/2026)
+
+Muda a decisão de 28/10/2026 ("uma fonte por item"; uma fonte por serviço na folha), aprovada pela
+Diretoria na issue #91. Arquitetura: ADR-020. Quem não configurar nada continua com o
+funcionamento atual. O app **Parcerias** (`src/modulos/parcerias/especificacao.md`) guarda termos,
+fontes e aportes.
+
+### Entrega R1 — Regras de rateio dos custos comuns (só Orçamento; não depende das outras)
+
+**Conceitos**
+- **Regra de rateio:** diz *quem participa* (áreas e/ou serviços) e *por qual base* ratear.
+- **Bases:** partes iguais, m², profissionais (lotação da folha), atendidos, **vagas** (campo novo em
+  Centros de custo), custo direto, ou **base própria** cadastrada pela OSC (nome + um valor por serviço).
+- **Dois níveis (opcional):** quando os participantes são **áreas**, o valor é dividido entre as áreas
+  pela base do nível 1 e, dentro de cada área, entre os serviços diretos pela base do nível 2 (se não
+  houver, repete o nível 1). Quando os participantes são **serviços**, há um nível só.
+- **Onde a regra vale:** padrão no **Grupo de gasto**; o **item de despesa** pode trocar. Serviços de
+  **apoio** e o **administrativo** têm regra própria no cadastro de Centros de custo, e ela vale
+  também para a folha de quem trabalha neles. Sem regra, vale a base escolhida no painel (hoje).
+
+**Abas novas** (planilha `orcamento`, sem dados pessoais): `RegrasRateio` (nome único, base do nível 1
+e do nível 2, `ativo`), `RegrasRateioParticipantes` (regra × área ou serviço), `BasesRateio` (bases
+próprias: nome, `ativo`) e `BasesRateioValores` (base × serviço × exercício × valor).
+Colunas novas: `regra_rateio_id` em `GruposGasto`, `Despesas` e `CentrosCusto`; `vagas` em `CentrosCusto`.
+
+**Regras de negócio (com teste)**
+1. Nome de regra e de base própria único (sem diferença de acento ou maiúscula).
+2. Regra tem ao menos um participante; participantes são todos áreas ou todos serviços, sem repetir.
+3. **Ordem de cálculo, sem ciclo:** custos comuns → serviços de apoio → administrativo. Regra de
+   apoio só tem serviços diretos como participantes; a do administrativo, áreas ou diretos; a de
+   custo comum pode incluir qualquer serviço, e o que apoio ou administrativo receberem segue a regra
+   deles.
+4. Valor do participante = valor × base do participante ÷ soma das bases dos participantes. A soma
+   dos rateios é **exatamente** o valor (centavos ajustados no maior participante).
+5. Base da área = soma da base dos seus serviços diretos (50% de profissional conta 0,5).
+6. Soma das bases zero → usa o custo direto; se também zero → partes iguais (como hoje).
+7. **Precedência:** regra do item > regra do grupo > regra do serviço de origem > base do painel.
+8. Item com regra própria pode ficar sem serviço ("Comum"); a área e o serviço do item só valem
+   para a regra padrão.
+9. O total do orçamento não muda por causa do rateio; só a distribuição entre serviços.
+10. Excluir regra ou base própria só se não houver grupo, item ou serviço ativo usando (avisa quantos);
+    fica em "excluídos" e pode ser reativada.
+11. Regras e bases só se alteram por `orcamento.parametros.editar` (Financeiro); alteração auditada.
+    Todos que veem o painel veem o resultado (`orcamento.painel.ver`).
+
+**Telas:** Cadastros › **Regras de rateio** (lista, formulário com participantes e bases, **Dividir
+igualmente**, prévia "como ficaria com os valores atuais", exemplo em reais); Cadastros › **Bases
+próprias**; campo de regra em Grupo de gasto, Despesa e Centro de custo; na Análise por área, a coluna
+"regra usada" em cada rateio e o detalhamento "de onde veio" (comum, apoio, administrativo).
+
+### Entrega R2 — App Parcerias (ver `src/modulos/parcerias/especificacao.md`)
+
+Sem mudança no Orçamento. Cria o app, a planilha `parcerias`, os perfis e `catalogos.ts` (ADR-020).
+
+### Entrega R3 — Fontes dos termos e rateio de fonte nas despesas (depende de R2)
+
+- **Ligar fontes dos termos** (Cadastros › Fontes dos termos): para cada fonte de termo lida de
+  Parcerias, escolher a **Fonte do cadastro** (natureza e uso). Aba `FontesTermo` (fonte do termo →
+  Fonte do cadastro). Fonte de termo sem ligação não aparece no rateio. Os indicadores
+  `dependencia_recursos_publicos` e `recursos_livres` leem natureza e uso por essa ligação.
+- **Rateio de fonte da despesa:** aba `RateioFonte` (despesa, serviço da linha de custo, fonte do termo
+  **ou** Fonte própria do cadastro, percentual). A fonte do item continua existindo: sem rateio, vale
+  100% nela (nenhum dado antigo muda). **Recurso próprio** = Fonte do cadastro de natureza própria.
+
+**Regras (com teste)**
+1. Cada linha de custo (item × serviço rateado) tem rateio de fonte que soma **exatamente 100%**.
+2. Só oferece as fontes dos termos **que atendem aquele serviço** na data do item, mais o recurso próprio.
+3. Com rateio de fonte, a fonte do item mostra "Várias" e o painel por fonte soma pelas linhas.
+4. "A definir" continua permitido só em elaboração; o exercício só se aprova sem "a definir".
+5. Fonte de termo encerrada ou fora da vigência não entra em item novo; os já rateados continuam.
+6. Rateio em aba com vigência: só inclusões; a linha mais recente vale (como a lotação).
+7. Alteração auditada (colunas, não valores). Quem edita: `orcamento.previsao.editar`.
+
+### Entrega R4 — Rateio de fonte na folha e painel de comprometimento (depende de R3)
+
+- **Folha:** `RateioFonteFolha` na planilha `orcamento_folha` (funcionário, serviço da lotação, fonte,
+  percentual, vigência), por **linha de lotação**: soma 100% por funcionário × serviço. Sigilo: liga
+  pessoa a fonte, então só quem tem `orcamento.folha.ver_individual` vê por pessoa; os demais veem só
+  totais por fonte. Quem edita: `orcamento.folha.editar` (Financeiro e Departamento Pessoal).
+  `FontesFolha` (fonte por serviço) vira rateio de 100% para quem ainda não tiver rateio próprio.
+- **Painel "Comprometimento das fontes"** (Orçamento › Planejamento), para quem tem `orcamento.painel.ver`:
+  por fonte de termo, valor atual (de Parcerias), comprometido no exercício (despesas + folha pelo rateio,
+  mês a mês, até o fim da vigência), saldo e %. **Alerta** quando o comprometido passa do valor
+  (risco de glosa). Por serviço: custo total (direto + rateios), cobertura por termo e fonte e
+  **contrapartida em recurso próprio**. Cada tela com "Ver os números".
+- **Indicadores novos:** `fonte_acima_do_valor` (alerta se maior que zero), `contrapartida_por_servico`
+  (informativo).
+
+**Regras (com teste)**
+1. Folha: rateio de fonte por linha de lotação soma 100%; funcionário ativo sem rateio usa a fonte do serviço.
+2. Comprometido = Σ custo mensal × % da fonte, nos meses do exercício dentro da vigência do termo.
+3. Valor de referência = valor da fonte em Parcerias (valor inicial, global ou per capita × vagas ×
+   meses, + aportes ativos) na data da consulta; o **previsto por mês** de Parcerias mostra se o
+   comprometido vem antes do recebimento (necessidade de caixa).
+4. Valores individuais nunca aparecem a quem só tem `orcamento.folha.ver`; leitura individual é auditada.
+5. Se Parcerias estiver desligado, o catálogo é vazio e só existe recurso próprio.
+6. Contrapartida do serviço = custo total − parcela coberta pelas fontes dos termos.
+
+### Fica de fora
+
+Prestação de contas por termo; ligar receita do termo à fonte do termo; conferência dos termos da
+Tesouraria com as fontes de Parcerias (regras 16 e 17, já adiadas); anexos.
+
+### Frentes
+
+R1: `telas`, `regras e dados`. R2: ver Parcerias. R3 e R4: `telas`, `regras e dados`.
+"Preparar estrutura" acrescenta as abas e colunas novas sem mexer nos dados.
+
+### Fora do módulo (precisa de aprovação)
+
+- **Núcleo / plataforma (R2):** perfis ganham as permissões `parcerias.*`; módulo ativo em
+  `src/plataforma`; `catalogos.ts` recriado (ADR-013 e ADR-020). **Netlify:** `PLANILHAS` ganha `parcerias`.
+- **Drive:** planilha nova e em branco `parcerias` na pasta da plataforma.
+
+### Critérios de pronto
+
+- [ ] R1: regras 1 a 11 com testes; a prévia mostra a mesma soma do orçamento antes e depois
+- [ ] R3 e R4: testes de acesso (quem vê por pessoa, quem vê totais, quem altera)
+- [ ] Dados antigos (fonte do item, fonte da folha por serviço) dão o mesmo resultado nos painéis
+- [ ] `npm run verificar` e `npm run build` verdes; Diretoria confere na prévia com dados fictícios

@@ -29,6 +29,15 @@ Especificação de Execução, Tesouraria e Histórico aprovada em 07/11/2026
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): saíram da 1D.1
       porque comparam os saldos com o realizado, que só existe depois da 1C.1.
 
+### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
+
+- [ ] Prestação de contas por termo (no app Parcerias).
+- [ ] Ligar a receita do termo à fonte do termo no Orçamento.
+- [ ] Conferência dos termos da Tesouraria usando as fontes de Parcerias.
+- [ ] Anexar o arquivo do termo em Parcerias.
+- [ ] Despesas que cada fonte não pode pagar, com aviso no rateio de fonte: aguarda a lista dos
+      termos atuais da Diretoria (issue #91).
+
 ## Comunicação
 
 App para gerenciar os pedidos de publicação: calendário de temas, pedidos de qualquer
