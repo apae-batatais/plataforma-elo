@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { painelPorArea } from '@/modulos/orcamento/aplicacao/analise-area';
 import { BASE_RATEIO, type BaseRateio, type Matriz } from '@/modulos/orcamento/dominio/analise-area';
+import { ORIGEM_RATEIO } from '@/modulos/orcamento/dominio/rateio-custos';
 import { CATEGORIA, type Categoria } from '@/modulos/orcamento/dominio/previsao';
 import { reais } from '@/modulos/orcamento/telas/formato';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -137,6 +138,12 @@ export default async function AnalisePorArea({
             <Aviso tipo="atencao">A área não tem centro de custo direto: {reais(a.indiretoSemRateio)} de custo indireto ficaram sem rateio.</Aviso>
           )}
 
+          {painel.avisosRegras.map((m) => (
+            <Aviso key={m} tipo="atencao">
+              {m}
+            </Aviso>
+          ))}
+
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {cards.map((c) => (
               <div key={c.rotulo} className={`rounded-cartao border px-4 py-3 ${c.forte && c.valor < 0 ? 'border-erro bg-erro-fundo' : 'border-borda bg-superficie'}`}>
@@ -156,7 +163,7 @@ export default async function AnalisePorArea({
 
           <Secao
             titulo="Rateio e custo total por centro"
-            descricao={`A = custo direto · B = custo indireto da área · C = A + B · D = despesas administrativas. Base: ${BASE_RATEIO[a.baseUsada === 'igual' ? 'custo' : a.baseUsada]}${a.baseUsada === 'igual' ? ' (partes iguais)' : ''}.`}
+            descricao={`A = custo direto · R = recebido por regra de rateio · B = custo indireto da área · C = A + R + B · D = despesas administrativas. Base: ${BASE_RATEIO[a.baseUsada === 'igual' ? 'custo' : a.baseUsada]}${a.baseUsada === 'igual' ? ' (partes iguais)' : ''}.`}
           >
             <TabelaDados
               legenda="Rateio por centro de custo"
@@ -165,6 +172,7 @@ export default async function AnalisePorArea({
                 { chave: 'nome', rotulo: 'Centro' },
                 { chave: 'peso', rotulo: 'Rateio %', tipo: 'numero' },
                 { chave: 'A', rotulo: 'A · Direto', tipo: 'moeda', somar: true },
+                { chave: 'R', rotulo: 'R · Por regra', tipo: 'moeda', somar: true },
                 { chave: 'B', rotulo: 'B · Indireto', tipo: 'moeda', somar: true },
                 { chave: 'C', rotulo: 'C · Custo', tipo: 'moeda', somar: true },
                 { chave: 'D', rotulo: 'D · Despesa', tipo: 'moeda', somar: true },
@@ -180,6 +188,7 @@ export default async function AnalisePorArea({
                   nome: r.nome,
                   peso: arred1(r.peso),
                   A: r.A,
+                  R: r.R,
                   B: r.B,
                   C: r.C,
                   D: r.D,
@@ -191,6 +200,7 @@ export default async function AnalisePorArea({
                 },
                 celulas: {
                   nome: <span className="font-semibold">{r.nome}</span>,
+                  R: r.R > 0 ? <span title={r.regras.map((x) => `${x.nome} (${ORIGEM_RATEIO[x.origem]}): ${reais(x.valor)}`).join('\n')}>{reais(r.R)}<span className="block text-xs text-texto-suave">{r.regras.map((x) => x.nome).join(', ')}</span></span> : reais(0),
                   peso: <span className="text-texto-suave">{pct(r.peso)}</span>,
                   total: <strong>{reais(r.total)}</strong>,
                   perCapita: r.perCapitaMensal === null ? <span className="text-texto-suave">sem atendidos</span> : reais(r.perCapitaMensal),

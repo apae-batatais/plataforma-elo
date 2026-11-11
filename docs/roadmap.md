@@ -31,6 +31,7 @@ Especificação de Execução, Tesouraria e Histórico aprovada em 07/11/2026
 
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
+- [ ] Rateio R1: item de despesa sem serviço ("Comum"), botão "Dividir igualmente" e prévia com os custos reais lançados.
 - [ ] Prestação de contas por termo (no app Parcerias).
 - [ ] Ligar a receita do termo à fonte do termo no Orçamento.
 - [ ] Conferência dos termos da Tesouraria usando as fontes de Parcerias.

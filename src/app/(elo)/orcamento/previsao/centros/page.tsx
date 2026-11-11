@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { listarCentros } from '@/modulos/orcamento/aplicacao/analise-area';
+import { listarRegras } from '@/modulos/orcamento/aplicacao/regras-rateio';
 import { TIPO_CENTRO, type TipoCentro } from '@/modulos/orcamento/dominio/analise-area';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -17,12 +18,15 @@ import { acaoSalvarCentro } from '../acoes';
 export const metadata: Metadata = { title: 'Centros de custo' };
 const COR_TIPO: Record<TipoCentro, 'info' | 'neutro' | 'atencao'> = { direto: 'info', indireto: 'neutro', despesa: 'atencao' };
 
+const podeVerRegras = (a: { temPermissao: (p: string) => boolean }) => a.temPermissao('orcamento.painel.ver');
+
 export default async function Centros({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
   const { editar } = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
   const centros = await listarCentros(app.planilhas, usuario.autorizador);
+  const regras = podeVerRegras(usuario.autorizador) ? (await listarRegras(app.planilhas, usuario.autorizador)).regras.ativas : [];
   const podeEditar = usuario.autorizador.temPermissao('orcamento.previsao.editar');
   const emEdicao = podeEditar && editar ? centros.find((c) => c.codigo === editar) : undefined;
   const semClassificacao = centros.filter((c) => !c.classificado).length;
@@ -71,6 +75,21 @@ export default async function Centros({ searchParams }: { searchParams: Promise<
                 <input name="area_m2" inputMode="decimal" defaultValue={emEdicao.m2 ?? ''} className={estiloEntrada} />
               </Campo>
             </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Campo rotulo="Vagas" dica="Base de rateio “vagas”">
+                <input name="vagas" inputMode="numeric" defaultValue={emEdicao.vagas ?? ''} className={estiloEntrada} />
+              </Campo>
+              <Campo rotulo="Regra de rateio" dica="Só para serviço de apoio ou administrativo: como o custo dele se divide entre os serviços diretos.">
+                <select name="regra_rateio_id" defaultValue={emEdicao.regraId ?? ''} className={estiloEntrada}>
+                  <option value="">Sem regra (base do painel)</option>
+                  {regras.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.nome}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </div>
             <p className="text-sm text-texto-suave">Profissionais (pela lotação): {emEdicao.profissionais.toLocaleString('pt-BR')}</p>
             <BotaoEnviar enviando="Salvando…" className="w-full">
               Salvar
@@ -88,6 +107,8 @@ export default async function Centros({ searchParams }: { searchParams: Promise<
           { chave: 'atendidos', rotulo: 'Atendidos', tipo: 'numero', somar: true },
           { chave: 'sessoes', rotulo: 'Sessões/ano', tipo: 'numero', secundaria: true },
           { chave: 'm2', rotulo: 'Área (m²)', tipo: 'numero', secundaria: true },
+          { chave: 'vagas', rotulo: 'Vagas', tipo: 'numero', secundaria: true },
+          { chave: 'regra', rotulo: 'Regra de rateio', secundaria: true },
           { chave: 'profissionais', rotulo: 'Profissionais', tipo: 'numero', somar: true },
           ...(podeEditar ? [{ chave: 'acoes', rotulo: '', fixa: true, largura: 'w-12' }] : []),
         ]}
@@ -100,6 +121,8 @@ export default async function Centros({ searchParams }: { searchParams: Promise<
             atendidos: c.atendidos,
             sessoes: c.sessoes,
             m2: c.m2,
+            vagas: c.vagas,
+            regra: regras.find((r) => r.id === c.regraId)?.nome ?? (c.tipo === 'direto' ? '' : 'Base do painel'),
             profissionais: c.profissionais,
           },
           celulas: {

@@ -471,7 +471,7 @@ R1: `telas`, `regras e dados`. R2: ver Parcerias. R3 e R4: `telas`, `regras e da
 
 ### Critérios de pronto
 
-- [ ] R1: regras 1 a 11 com testes; a prévia mostra a mesma soma do orçamento antes e depois
+- [x] R1 (11/11/2026, exceto regra 8, item sem serviço, adiada): regras com testes; o total do orçamento é o mesmo antes e depois
 - [ ] R3 e R4: testes de acesso (quem vê por pessoa, quem vê totais, quem altera)
 - [ ] Dados antigos (fonte do item, fonte da folha por serviço) dão o mesmo resultado nos painéis
 - [ ] `npm run verificar` e `npm run build` verdes; Diretoria confere na prévia com dados fictícios

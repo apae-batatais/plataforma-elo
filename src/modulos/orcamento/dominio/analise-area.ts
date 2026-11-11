@@ -49,6 +49,15 @@ export interface CustoLancado {
   valor: number;
 }
 
+/** Custo que chegou a um serviço direto por uma regra de rateio (R1). */
+export interface CustoPorRegra {
+  servico: string;
+  grupo: string;
+  valor: number;
+  regraNome: string;
+  origem: 'comum' | 'apoio' | 'administrativo';
+}
+
 export interface ReceitaAnalise {
   area: string | null;
   restrita: boolean;
@@ -67,6 +76,10 @@ export interface RateioCentro {
   nome: string;
   peso: number;
   A: number;
+  /** Recebido por regra de rateio (comum, apoio ou administrativo). */
+  R: number;
+  /** Regras que alimentaram este serviço, com o valor de cada uma. */
+  regras: { nome: string; origem: CustoPorRegra['origem']; valor: number }[];
   B: number;
   C: number;
   D: number;
@@ -87,6 +100,8 @@ export interface AnaliseArea {
   rateio: RateioCentro[];
   /** Custo indireto que não pôde ser rateado (área sem centro direto). */
   indiretoSemRateio: number;
+  /** Total recebido por regras nos serviços diretos desta área. */
+  rateadoPorRegra: number;
   cards: { receitaRestrita: number; custos: number; despesas: number; gastos: number; resultado: number };
   totais: { custoGeral: number; despesaGeral: number; orcamento: number; percentualCustoArea: number; percentualOrcamento: number };
   despesasAdministrativas: Matriz;
@@ -153,14 +168,17 @@ export function analisarArea(dados: {
   custos: CustoLancado[];
   receitas: ReceitaAnalise[];
   ordemGrupos?: string[];
+  /** Custos já distribuídos por regra para serviços diretos (somam ao custo, sem passar pela base do painel). */
+  porRegra?: CustoPorRegra[];
 }): AnaliseArea {
   const { area, base, centros, custos } = dados;
+  const porRegra = dados.porRegra ?? [];
   const ordem = dados.ordemGrupos ?? [];
   const tipo = new Map(centros.map((c) => [c.codigo, c]));
   const soma = (f: (c: CustoLancado) => boolean) => arred(custos.filter(f).reduce((s, c) => s + c.valor, 0));
   const tipoDe = (servico: string): TipoCentro => tipo.get(servico)?.tipo ?? 'direto';
 
-  const custoGeral = soma((c) => tipoDe(c.servico) !== 'despesa');
+  const custoGeral = arred(soma((c) => tipoDe(c.servico) !== 'despesa') + porRegra.reduce((t, c) => t + c.valor, 0));
   const despesaGeral = soma((c) => tipoDe(c.servico) === 'despesa');
 
   const diretos = centros.filter((c) => c.area === area && c.tipo === 'direto');
@@ -168,21 +186,27 @@ export function analisarArea(dados: {
   const direta = montarMatriz(diretos, custos, ordem);
   const indireta = montarMatriz(indiretos, custos, ordem);
 
-  const custoArea = arred(direta.total + indireta.total);
+  const recebido = (codigo: string) => porRegra.filter((r) => r.servico === codigo);
+  const R = diretos.map((c) => arred(recebido(c.codigo).reduce((t, r) => t + r.valor, 0)));
+  const rateadoArea = arred(R.reduce((t, v) => t + v, 0));
+  const custoArea = arred(direta.total + indireta.total + rateadoArea);
   const despesaArea = custoGeral > 0 ? arred((despesaGeral * custoArea) / custoGeral) : 0;
-  const { pesos, usada } = pesosDeRateio(diretos, direta.totais, base);
+  const { pesos, usada } = pesosDeRateio(diretos, direta.totais.map((v, i) => arred(v + R[i])), base);
   const B = distribuirPorPeso(indireta.total, pesos);
   const D = distribuirPorPeso(despesaArea, pesos);
 
   const rateio: RateioCentro[] = diretos.map((c, i) => {
     const A = direta.totais[i];
-    const C = arred(A + (B[i] ?? 0));
+    const regras = [...recebido(c.codigo).reduce((m, r) => m.set(`${r.regraNome}|${r.origem}`, { nome: r.regraNome, origem: r.origem, valor: arred((m.get(`${r.regraNome}|${r.origem}`)?.valor ?? 0) + r.valor) }), new Map<string, { nome: string; origem: CustoPorRegra['origem']; valor: number }>()).values()];
+    const C = arred(A + R[i] + (B[i] ?? 0));
     const total = arred(C + (D[i] ?? 0));
     return {
       codigo: c.codigo,
       nome: c.nome,
       peso: pesos[i] ?? 0,
       A,
+      R: R[i],
+      regras,
       B: B[i] ?? 0,
       C,
       D: D[i] ?? 0,
@@ -207,6 +231,7 @@ export function analisarArea(dados: {
     indireta,
     rateio,
     indiretoSemRateio: diretos.length === 0 ? indireta.total : 0,
+    rateadoPorRegra: rateadoArea,
     cards: { receitaRestrita, custos: custoArea, despesas: despesaArea, gastos, resultado: arred(receitaRestrita - gastos) },
     totais: {
       custoGeral,

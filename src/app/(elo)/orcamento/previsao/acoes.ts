@@ -11,6 +11,8 @@ import {
   salvarDespesa, salvarFonte, salvarGrupo, salvarReceita, type DadosDistribuicao,
 } from '@/modulos/orcamento/aplicacao/previsao';
 import type { Captacao, Cotacao, Distribuicao, Prioridade } from '@/modulos/orcamento/dominio/previsao';
+import { encerrarBase, encerrarRegra, salvarBase, salvarRegra, salvarValoresDaBase } from '@/modulos/orcamento/aplicacao/regras-rateio';
+import type { BaseRegra, TipoParticipante } from '@/modulos/orcamento/dominio/rateio-custos';
 import { salvarCentro } from '@/modulos/orcamento/aplicacao/analise-area';
 import { lerXlsx } from '@/modulos/orcamento/aplicacao/importacao';
 import { analisarImportacaoItens, descreverArquivoItens, importarItens, lerMapeamentoItens, type AnaliseItens } from '@/modulos/orcamento/aplicacao/importacao-itens';
@@ -71,6 +73,7 @@ export async function acaoSalvarGrupo(f: FormData) {
       versao: id ? Number(texto(f, 'versao')) : undefined,
       nome: texto(f, 'nome'),
       rh: texto(f, 'rh') === 'sim',
+      regra_rateio_id: f.has('regra_rateio_id') ? texto(f, 'regra_rateio_id') || null : undefined,
     }),
   );
 }
@@ -181,6 +184,7 @@ export async function acaoSalvarDespesa(_: EstadoItem, f: FormData): Promise<Est
         prioridade: (texto(f, 'prioridade') || null) as Prioridade | null,
         cotacao: (texto(f, 'cotacao') || null) as Cotacao | null,
         observacao: texto(f, 'observacao') || null,
+        regra_rateio_id: f.has('regra_rateio_id') ? texto(f, 'regra_rateio_id') || null : undefined,
         ...distribuicaoDe(f),
       },
       existente,
@@ -236,6 +240,8 @@ export async function acaoSalvarCentro(f: FormData) {
       atendidos: opcional('atendidos'),
       sessoes: opcional('sessoes'),
       area_m2: opcional('area_m2'),
+      vagas: opcional('vagas'),
+      regra_rateio_id: texto(f, 'regra_rateio_id') || null,
     }),
   );
 }
@@ -411,4 +417,64 @@ export async function acaoConfirmarItens(_: { erro?: string; analise?: AnaliseIt
     r.substituidos ? `; ${r.substituidos} da importação anterior foram para o histórico` : ''
   }.`;
   redirect(`/orcamento/previsao/${tipo}?ok=${encodeURIComponent(texto2)}`);
+}
+
+// ---------------------------------------------------------------------------
+// Regras de rateio e bases próprias (R1, proposta #91)
+// ---------------------------------------------------------------------------
+
+export async function acaoSalvarRegra(f: FormData) {
+  const id = texto(f, 'id');
+  await executar('/orcamento/previsao/regras', id ? 'Regra alterada.' : 'Regra cadastrada.', ({ usuario, app }) =>
+    salvarRegra(app.planilhas, usuario.autorizador, {
+      id: id || undefined,
+      versao: id ? Number(texto(f, 'versao')) : undefined,
+      nome: texto(f, 'nome'),
+      tipo: texto(f, 'tipo') as TipoParticipante,
+      base1: texto(f, 'base1') as BaseRegra,
+      base2: (texto(f, 'base2') || null) as BaseRegra | null,
+      participantes: f.getAll('participantes').map(String),
+    }),
+  );
+}
+
+export async function acaoExcluirRegra(f: FormData) {
+  await executar('/orcamento/previsao/regras', 'Regra excluída. Ela fica guardada em “Regras excluídas”.', ({ usuario, app }) =>
+    encerrarRegra(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), false),
+  );
+}
+
+export async function acaoReativarRegra(f: FormData) {
+  await executar('/orcamento/previsao/regras', 'Regra reativada.', ({ usuario, app }) =>
+    encerrarRegra(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true),
+  );
+}
+
+export async function acaoSalvarBase(f: FormData) {
+  const id = texto(f, 'id');
+  await executar('/orcamento/previsao/bases', id ? 'Base alterada.' : 'Base cadastrada.', ({ usuario, app }) =>
+    salvarBase(app.planilhas, usuario.autorizador, { id: id || undefined, versao: id ? Number(texto(f, 'versao')) : undefined, nome: texto(f, 'nome') }),
+  );
+}
+
+export async function acaoExcluirBase(f: FormData) {
+  await executar('/orcamento/previsao/bases', 'Base excluída. Ela fica guardada em “Bases excluídas”.', ({ usuario, app }) =>
+    encerrarBase(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), false),
+  );
+}
+
+export async function acaoReativarBase(f: FormData) {
+  await executar('/orcamento/previsao/bases', 'Base reativada.', ({ usuario, app }) =>
+    encerrarBase(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true),
+  );
+}
+
+export async function acaoSalvarValoresBase(f: FormData) {
+  const base = texto(f, 'base');
+  const ano = Number(texto(f, 'ano'));
+  const lista = f.getAll('servico').map((s) => {
+    const v = numero(f, `valor_${String(s)}`);
+    return { servico: String(s), valor: Number.isFinite(v) ? v : null };
+  });
+  await executar('/orcamento/previsao/bases', 'Valores da base salvos.', ({ usuario, app }) => salvarValoresDaBase(app.planilhas, usuario.autorizador, base, ano, lista));
 }
