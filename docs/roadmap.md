@@ -1,6 +1,6 @@
 # Roadmap · Elo
 
-Atualizado em 7 de novembro de 2026 · Diretoria da Apae Batatais
+Atualizado em 7 de novembro de 2026 · Diretoria (dona do produto)
 
 Registra o que ficou combinado para depois em cada app do Elo. Cada fase ganha a sua própria
 especificação antes de ser construída.
