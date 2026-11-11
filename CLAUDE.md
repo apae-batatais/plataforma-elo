@@ -7,6 +7,11 @@ Ela não é programadora: explique decisões em português simples.
 **Grafia dos nomes:** escreva sempre **Apae Batatais** e **Apae Rural** (só a
 inicial maiúscula), nunca "APAE" — em textos, telas, documentos, commits e PRs.
 
+**Sem nomes próprios nas telas** (decisão da Diretoria, 11/11/2026): textos de tela, dicas,
+exemplos, mensagens, dados fictícios e manual nunca citam nome de instituição, unidade, marca ou
+cidade reais. Use "instituição", "nome da instituição", "OSC", "Sede". Vale também para
+comentários de código; não vale para documentos internos (especificações, ADRs).
+
 Leia `docs/especificacao-plataforma.md` e `docs/adr/011-camada-de-aplicacao-e-planilhas.md`
 antes da primeira tarefa da sessão.
 
