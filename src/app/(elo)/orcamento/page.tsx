@@ -184,7 +184,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
                 rotulo: 'Total remuneração + FGTS',
                 v: m.quadros.totalRemuneracaoMaisFgts,
                 ano: a.quadros.totalRemuneracaoMaisFgts,
-                dica: 'Total geral menos o Total CEBAS: o que a Apae efetivamente desembolsa.',
+                dica: 'Total geral menos o Total CEBAS: o que a instituição efetivamente desembolsa.',
               },
             ].map((q) => (
               <div key={q.rotulo} className={`rounded-cartao border px-5 py-4 ${q.destaque ? 'border-lateral bg-lateral text-white' : 'border-borda bg-superficie'}`}>

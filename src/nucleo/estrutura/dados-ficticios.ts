@@ -5,12 +5,12 @@
  */
 import { Faker, base, pt_BR } from '@faker-js/faker';
 import { inserir, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { Atribuicoes, Papeis, Pessoas, Servicos, Usuarios, VinculosFamiliares, VinculosServico } from './tabelas';
+import { Areas, Atribuicoes, Papeis, Pessoas, Servicos, Usuarios, VinculosFamiliares, VinculosServico } from './tabelas';
 
 /** Unidades das instituições fictícias (demonstração e testes). */
 export const UNIDADES_FICTICIAS = [
   { codigo: 'sede', nome: 'Sede (exemplo)' },
-  { codigo: 'rural', nome: 'Unidade Rural (Filial)' },
+  { codigo: 'filial', nome: 'Unidade Filial (exemplo)' },
 ];
 
 export const SERVICOS_FICTICIOS = [
@@ -22,7 +22,7 @@ export const SERVICOS_FICTICIOS = [
   // Serviços sem atendidos: também são centros de custo da folha.
   { codigo: 'transporte', nome: 'Transporte escolar (exemplo)', unidade: 'sede', area: 'educacao', vagas: null, atendidos: 0 },
   { codigo: 'administracao', nome: 'Administração (exemplo)', unidade: 'sede', area: 'administrativo', vagas: null, atendidos: 0 },
-  { codigo: 'rural_viveiro', nome: 'Viveiro de mudas (exemplo)', unidade: 'rural', area: 'rural', vagas: null, atendidos: 0 },
+  { codigo: 'producao_viveiro', nome: 'Viveiro de mudas (exemplo)', unidade: 'filial', area: 'producao', vagas: null, atendidos: 0 },
   { codigo: 'comunicacao', nome: 'Comunicação e Mobilização (exemplo)', unidade: 'sede', area: 'comunicacao', vagas: null, atendidos: 0 },
 ] as const;
 
@@ -53,6 +53,9 @@ export async function popularDadosFicticios(p: Planilhas): Promise<{ atendidos: 
   const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
   const data = (d: Date) => d.toISOString().slice(0, 10);
 
+  // Área só da demonstração (não faz parte da configuração inicial de uma instituição nova).
+  await inserir(p, Areas, { codigo: 'producao', nome: 'Produção (exemplo)' }, autor);
+
   for (const s of SERVICOS_FICTICIOS) {
     await inserir(p, Servicos, { codigo: s.codigo, nome: s.nome, unidade: s.unidade, area: s.area, vagas: s.vagas, inicio: '2026-01-01', fim: null }, autor);
   }
@@ -66,7 +69,7 @@ export async function popularDadosFicticios(p: Planilhas): Promise<{ atendidos: 
         {
           nome: f.person.fullName({ sex: f.helpers.arrayElement(['female', 'male'] as const) }),
           data_nascimento: data(f.date.birthdate({ min: 3, max: 80, mode: 'age', refDate: '2026-10-01' })),
-          cidade: 'Batatais',
+          cidade: 'Cidade Exemplo',
           bairro: f.location.street(),
         },
         autor,

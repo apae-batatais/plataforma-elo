@@ -25,9 +25,9 @@ beforeEach(async () => {
 describe('editar serviço', () => {
   it('altera nome, área, unidade e vagas, mantém o código e audita só as colunas', async () => {
     const s = await servico('oficina');
-    await editarServico(p, await admin(), s.id, s.versao, { nome: 'Oficina de Artes', unidade: 'rural', area: 'rural', vagas: null });
+    await editarServico(p, await admin(), s.id, s.versao, { nome: 'Oficina de Artes', unidade: 'filial', area: 'educacao', vagas: null });
     const depois = await servico('oficina');
-    expect([depois.nome, depois.unidade, depois.area, depois.vagas, depois.codigo]).toEqual(['Oficina de Artes', 'rural', 'rural', null, 'oficina']);
+    expect([depois.nome, depois.unidade, depois.area, depois.vagas, depois.codigo]).toEqual(['Oficina de Artes', 'filial', 'educacao', null, 'oficina']);
     const a = (await lerTabela(p, RegistrosAuditoria)).todos().filter((x) => x.entidade === 'Servicos' && x.acao === 'alteracao');
     expect(a).toHaveLength(1);
     expect(JSON.stringify(a[0].detalhes)).not.toContain('Oficina de Artes');
@@ -67,7 +67,7 @@ describe('excluir e reativar serviço', () => {
     const s = await servico('oficina');
     await expect(excluirServico(p, adm, s.id, s.versao)).rejects.toThrow(/perfil de acesso/);
 
-    await cadastrarServico(p, adm, { codigo: 'horta', nome: 'Horta', unidade: 'rural', area: 'rural', vagas: null });
+    await cadastrarServico(p, adm, { codigo: 'horta', nome: 'Horta', unidade: 'filial', area: 'educacao', vagas: null });
     await inserir(p, VinculosServico, { pessoa_id: 'pessoa-ficticia', servico: 'horta', entrada: '2026-01-01' }, { email: 'teste' });
     const h = await servico('horta');
     await expect(excluirServico(p, adm, h.id, h.versao)).rejects.toThrow(/vinculada/);

@@ -60,7 +60,7 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
     <div className="space-y-6">
       <CabecalhoPagina
         titulo="Instituições"
-        descricao="As Apaes e entidades que usam o Elo. Cada uma acessa pelo próprio endereço, entra só com e-mails do próprio domínio e guarda os dados no próprio Drive."
+        descricao="As instituições que usam o Elo. Cada uma acessa pelo próprio endereço, entra só com e-mails do próprio domínio e guarda os dados no próprio Drive."
         acoes={
           <div className="flex flex-wrap gap-2">
             {painel.instituicoes.some((i) => i.situacao !== 'suspensa') && (
@@ -273,7 +273,7 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
         <summary className="cursor-pointer font-semibold">Como trazer uma instituição para o Elo</summary>
         <ol className="mt-3 list-decimal space-y-1.5 pl-5">
           <li>Cadastre a instituição aqui (ela começa em preparação).</li>
-          <li>A TI da instituição cria o endereço (ex.: elo.apaefranca.org.br) no DNS; a Operadora inclui o endereço na Netlify e no login do Google.</li>
+          <li>A TI da instituição cria o endereço (ex.: elo.instituicao.org.br) no DNS; a Operadora inclui o endereço na Netlify e no login do Google.</li>
           <li>A instituição cria um Drive compartilhado “Elo · nome da instituição”, inclui a conta de serviço como Gerente de conteúdo e envia o link da pasta.</li>
           <li>Cole o link da pasta ao cadastrar (ou em Alterar). Ao salvar, o Elo confere a pasta e cria sozinho as planilhas, a pasta de anexos e as abas.</li>
           <li>Se algo falhar, a tela mostra o motivo; corrija e clique em Tentar de novo na conferência.</li>

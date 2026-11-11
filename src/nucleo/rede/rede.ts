@@ -180,11 +180,11 @@ export const esquemaCadastro = z.object({
     .string()
     .trim()
     .toLowerCase()
-    .regex(/^[a-z0-9_-]{2,40}$/, 'O código usa só letras minúsculas, números, - e _ (ex.: apae-franca).'),
-  nome: z.string().trim().min(3, 'Informe o nome curto (ex.: Apae Franca).'),
+    .regex(/^[a-z0-9_-]{2,40}$/, 'O código usa só letras minúsculas, números, - e _ (ex.: instituicao-exemplo).'),
+  nome: z.string().trim().min(3, 'Informe o nome curto (ex.: Instituição Exemplo).'),
   nomeCompleto: z.string().trim().optional(),
-  dominio: z.string().trim().toLowerCase().regex(DOMINIO, 'Informe o domínio dos e-mails, sem @ (ex.: apaefranca.org.br).'),
-  enderecos: z.array(z.string().trim().toLowerCase().regex(DOMINIO, 'Endereço inválido: use só o endereço, sem https:// (ex.: elo.apaefranca.org.br).')),
+  dominio: z.string().trim().toLowerCase().regex(DOMINIO, 'Informe o domínio dos e-mails, sem @ (ex.: instituicao.org.br).'),
+  enderecos: z.array(z.string().trim().toLowerCase().regex(DOMINIO, 'Endereço inválido: use só o endereço, sem https:// (ex.: elo.instituicao.org.br).')),
   /** IDs das planilhas atuais (instituições antigas). Sem a pasta, Núcleo e Auditoria são obrigatórias. */
   planilhas: z.record(z.string(), z.string().trim()).optional(),
   /** Link da pasta no Drive compartilhado (ou o ID): o Elo cria as planilhas dentro dela (ADR-018). */

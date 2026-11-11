@@ -38,10 +38,10 @@ export function FormularioInstituicao({
       <fieldset className="space-y-3">
         <legend className="font-semibold">Instituição</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Campo rotulo="Nome curto" obrigatorio dica="Como aparece no Elo (ex.: Apae Franca).">
+          <Campo rotulo="Nome curto" obrigatorio dica="Como aparece no Elo (ex.: Instituição Exemplo).">
             <input name="nome" required defaultValue={v('nome', i?.nome)} className={estiloEntrada} />
           </Campo>
-          <Campo rotulo="Código" obrigatorio dica={i ? 'Não muda depois do cadastro.' : 'Minúsculas, sem espaço (ex.: apae-franca).'}>
+          <Campo rotulo="Código" obrigatorio dica={i ? 'Não muda depois do cadastro.' : 'Minúsculas, sem espaço (ex.: instituicao-exemplo).'}>
             <input
               name="codigo"
               required
@@ -60,10 +60,10 @@ export function FormularioInstituicao({
       <fieldset className="space-y-3">
         <legend className="font-semibold">Acesso</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Campo rotulo="Domínio dos e-mails" obrigatorio dica="Só e-mails desse domínio entram (ex.: apaefranca.org.br).">
-            <input name="dominio" required defaultValue={v('dominio', i?.dominio)} placeholder="apaefranca.org.br" className={estiloEntrada} />
+          <Campo rotulo="Domínio dos e-mails" obrigatorio dica="Só e-mails desse domínio entram (ex.: instituicao.org.br).">
+            <input name="dominio" required defaultValue={v('dominio', i?.dominio)} placeholder="instituicao.org.br" className={estiloEntrada} />
           </Campo>
-          <Campo rotulo="Endereços de acesso" dica="Um por linha, sem https:// (ex.: elo.apaefranca.org.br).">
+          <Campo rotulo="Endereços de acesso" dica="Um por linha, sem https:// (ex.: elo.instituicao.org.br).">
             <textarea name="enderecos" rows={2} defaultValue={v('enderecos', i?.enderecos.join('\n'))} className={estiloEntrada} />
           </Campo>
         </div>
@@ -127,7 +127,7 @@ export function FormularioInstituicao({
 
       <Campo
         rotulo="Unidades iniciais"
-        dica="Uma por linha, no formato codigo=Nome (ex.: sede=Apae Franca (Sede)). Usadas só quando a aba de unidades está vazia."
+        dica="Uma por linha, no formato codigo=Nome (ex.: sede=Sede). Usadas só quando a aba de unidades está vazia."
       >
         <textarea
           name="unidades"

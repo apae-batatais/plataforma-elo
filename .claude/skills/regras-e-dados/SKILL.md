@@ -35,3 +35,9 @@ Planilhas, que são só armazenamento.
 - Toda regra de negócio nova vem com teste, inclusive quem vê e quem altera.
 - Teste o caso negado (perfil sem permissão, escopo de outro serviço), não só o permitido.
 - Antes de entregar: `npm run verificar` e `npm run build`, tudo verde.
+
+## Sem nomes próprios (decisão da Diretoria, 11/11/2026)
+
+Textos de tela, dicas, exemplos, mensagens, dados fictícios, manual e comentários de código nunca citam nome
+de instituição, unidade, marca ou cidade reais. Use "instituição", "nome da instituição", "OSC", "Sede".
+O teste `tests/nucleo/sem-nomes-proprios.test.ts` barra "Apae", "Batatais", "Franca" e "Rural" em `src/`.

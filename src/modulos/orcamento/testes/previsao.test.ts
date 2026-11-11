@@ -170,11 +170,11 @@ describe('painel da previsão', () => {
   it('a fonte da folha de um serviço muda com uma linha nova', async () => {
     const f = await fin();
     const antes = await lerPrevisao(p, f);
-    const linha = antes.folha!.linhas.find((l) => l.servico === 'rural_viveiro')!;
+    const linha = antes.folha!.linhas.find((l) => l.servico === 'producao_viveiro')!;
     expect(linha.fonteNome).toBe('A definir');
-    const vendas = antes.opcoes.fontes.find((x) => x.nome.startsWith('Vendas'))!;
-    await definirFonteDaFolha(p, f, 2027, 'rural_viveiro', vendas.id);
-    expect((await lerPrevisao(p, f)).folha!.linhas.find((l) => l.servico === 'rural_viveiro')!.fonteNome).toBe(vendas.nome);
+    const vendas = antes.opcoes.fontes.find((x) => x.nome.startsWith('Venda'))!;
+    await definirFonteDaFolha(p, f, 2027, 'producao_viveiro', vendas.id);
+    expect((await lerPrevisao(p, f)).folha!.linhas.find((l) => l.servico === 'producao_viveiro')!.fonteNome).toBe(vendas.nome);
   });
 
   it('quem vê e quem altera', async () => {

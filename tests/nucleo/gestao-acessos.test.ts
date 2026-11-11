@@ -59,7 +59,7 @@ describe('validações', () => {
     const adm = await admin();
     await expect(cadastrarServico(p, adm, { codigo: 'Centro Dia', nome: 'Centro Dia', unidade: 'sede', area: 'assistencia_social', vagas: null })).rejects.toThrow(/minúsculas/);
     await cadastrarServico(p, adm, { codigo: 'centro_dia', nome: 'Centro Dia', unidade: 'sede', area: 'assistencia_social', vagas: 80 });
-    await expect(cadastrarServico(p, adm, { codigo: 'centro_dia', nome: 'Outro', unidade: 'rural', area: 'saude', vagas: null })).rejects.toThrow(/Já existe/);
+    await expect(cadastrarServico(p, adm, { codigo: 'centro_dia', nome: 'Outro', unidade: 'filial', area: 'saude', vagas: null })).rejects.toThrow(/Já existe/);
     await expect(cadastrarServico(p, adm, { codigo: 'y', nome: 'Y', unidade: 'sede', area: 'lua', vagas: null })).rejects.toThrow(/área/);
     await expect(cadastrarServico(p, adm, { codigo: 'x', nome: 'X', unidade: 'lua', area: 'saude', vagas: null })).rejects.toThrow(/Unidade/);
   });
@@ -104,7 +104,7 @@ describe('permissões e auditoria', () => {
     const ana = await como(`ana@${DOMINIO}`);
     await expect(cadastrarUsuario(p, ana, { email: `x@${DOMINIO}`, nome: 'X' }, DOMINIO)).rejects.toBeInstanceOf(ErroPermissao);
     await expect(painelDeAcessos(p, ana)).rejects.toBeInstanceOf(ErroPermissao);
-    await expect(cadastrarServico(p, ana, { codigo: 'x', nome: 'X', unidade: 'rural', area: 'saude', vagas: null })).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(cadastrarServico(p, ana, { codigo: 'x', nome: 'X', unidade: 'filial', area: 'saude', vagas: null })).rejects.toBeInstanceOf(ErroPermissao);
   });
 
   it('cada alteração fica na auditoria, com autor e sem dados pessoais', async () => {

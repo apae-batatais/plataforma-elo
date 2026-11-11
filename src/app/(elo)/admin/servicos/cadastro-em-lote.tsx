@@ -13,7 +13,7 @@ import { Etiqueta } from '@/ui/pagina';
 type Estado = { erro?: string; linhas?: LinhaServicoLote[]; texto?: string };
 type Acao = (estado: Estado, f: FormData) => Promise<Estado>;
 
-const EXEMPLO = 'Centro Dia Intergeracional\tAssistência Social\tSede\t80\nViveiro de mudas\tRural\tFilial';
+const EXEMPLO = 'Centro Dia Intergeracional\tAssistência Social\tSede\t80\nOficina de artes\tEducação\tSede';
 
 export function CadastroEmLote({ conferir, cadastrar }: { conferir: Acao; cadastrar: Acao }) {
   const [previa, enviarLista, conferindo] = useActionState(conferir, {});

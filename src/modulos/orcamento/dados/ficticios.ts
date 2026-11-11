@@ -20,10 +20,10 @@ const CARGOS_FICTICIOS = [
   { codigo: 'psicologo', nome: 'Psicólogo(a) (exemplo)', carga: 150, base: 4000, centros: ['cer_reabilitacao', 'ur'] },
   { codigo: 'assistente_social', nome: 'Assistente social (exemplo)', carga: 150, base: 4000, centros: ['ur', 'centro_dia_intergeracional', 'servico_domicilio'] },
   { codigo: 'cuidador', nome: 'Cuidador(a) (exemplo)', carga: 200, base: 1950, centros: ['centro_dia_intergeracional', 'servico_domicilio'] },
-  { codigo: 'tecnico_agricola', nome: 'Técnico agrícola (exemplo)', carga: 200, base: 3000, centros: ['rural_viveiro'] },
+  { codigo: 'tecnico_agricola', nome: 'Técnico agrícola (exemplo)', carga: 200, base: 3000, centros: ['producao_viveiro'] },
   { codigo: 'analista_comunicacao', nome: 'Analista de comunicação (exemplo)', carga: 200, base: 3300, centros: ['comunicacao'] },
 ];
-const DEPARTAMENTOS = ['Administrativo', 'Educação', 'Saúde', 'Assistência Social', 'Apae Rural', null];
+const DEPARTAMENTOS = ['Administrativo', 'Educação', 'Saúde', 'Assistência Social', 'Produção (exemplo)', null];
 
 export async function popularFolhaFicticia(p: Planilhas): Promise<{ postos: number }> {
   const f = new Faker({ locale: [pt_BR, base], seed: 2027 });
@@ -120,7 +120,7 @@ const FONTES_FICTICIAS = [
   { nome: 'Projeto Incentivado (exemplo)', natureza: 'publica', uso: 'restrita' },
   { nome: 'Leilão anual (exemplo)', natureza: 'propria', uso: 'livre' },
   { nome: 'Doações e contribuições (exemplo)', natureza: 'propria', uso: 'livre' },
-  { nome: 'Vendas da Rural (exemplo)', natureza: 'propria', uso: 'livre' },
+  { nome: 'Venda de mudas (exemplo)', natureza: 'propria', uso: 'livre' },
 ] as const;
 
 export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
@@ -169,7 +169,7 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       item('administracao', 2, 5, 'Contabilidade (exemplo)', 1, 12, 5200),
       item('administracao', 3, 4, 'Reforma do telhado (exemplo)', 1, 1, 38000, [4]),
       item('administracao', 6, 4, 'Provisão para rescisões (exemplo)', 1, 1, 60000, [12]),
-      item('rural_viveiro', 0, 6, 'Insumos do viveiro (exemplo)', 1, 12, 1800),
+      item('producao_viveiro', 0, 6, 'Insumos do viveiro (exemplo)', 1, 12, 1800),
       item('comunicacao', 2, null, 'Impressão de materiais (exemplo)', 1, 2, 4500, [5, 10]),
   ];
   await inserirRegistros(p, despesas, itens2027, autor);
@@ -196,7 +196,7 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
     autor,
   );
 
-  const AREA_DA_FONTE = ['assistencia_social', 'educacao', 'saude', 'saude', null, null, 'rural'];
+  const AREA_DA_FONTE = ['assistencia_social', 'educacao', 'saude', 'saude', null, null, 'producao'];
   const receita = (fonte: number, descricao: string, valor: number, captacao: 'garantida' | 'negociacao' | 'a_captar', meses?: number[]) => ({
     ano: 2027,
     area: AREA_DA_FONTE[fonte],
@@ -216,7 +216,7 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       receita(3, 'Projeto Incentivado 2027 (exemplo)', 300000, 'a_captar', [6, 7, 8, 9, 10, 11, 12]),
       receita(4, 'Leilão 2027 (exemplo)', 420000, 'negociacao', [8]),
       receita(5, 'Doações mensais (exemplo)', 96000, 'garantida'),
-      receita(6, 'Vendas Vem da Rural (exemplo)', 72000, 'a_captar'),
+      receita(6, 'Vendas da produção (exemplo)', 72000, 'a_captar'),
   ];
   await inserirRegistros(p, receitas, receitas2027, autor);
 
@@ -226,7 +226,7 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
   const grupoFolha = await inserirRegistros(p, gruposAgora, [{ nome: 'Folha de pagamento – anos anteriores (exemplo)', rh: true }], autor);
   const FOLHA_POR_SERVICO: [string, number, number][] = [
     ['administracao', 199000, 5], ['centro_dia_intergeracional', 212000, 0], ['servico_domicilio', 74000, 0], ['ur', 253000, 0],
-    ['comunicacao', 79500, 5], ['escola', 324000, 1], ['transporte', 67600, 1], ['rural_viveiro', 123000, 6], ['cer_reabilitacao', 187000, 2],
+    ['comunicacao', 79500, 5], ['escola', 324000, 1], ['transporte', 67600, 1], ['producao_viveiro', 123000, 6], ['cer_reabilitacao', 187000, 2],
   ];
   const variacao = (i: number, ano: number) => 1 + (((i * 7 + ano) % 9) - 4) / 100;
   for (const [ano, fator] of [[2025, 0.84], [2026, 0.92]] as const) {
@@ -300,7 +300,7 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
       { servico: 'centro_dia_intergeracional', tipo: 'direto', atendidos: 80, sessoes: null, area_m2: 400 },
       { servico: 'servico_domicilio', tipo: 'direto', atendidos: 40, sessoes: null, area_m2: 30 },
       { servico: 'cer_reabilitacao', tipo: 'direto', atendidos: 120, sessoes: 9600, area_m2: 600 },
-      { servico: 'rural_viveiro', tipo: 'direto', atendidos: 25, sessoes: null, area_m2: 5000 },
+      { servico: 'producao_viveiro', tipo: 'direto', atendidos: 25, sessoes: null, area_m2: 5000 },
     ],
     autor,
   );

@@ -5,7 +5,7 @@
 /**
  * Unidades de uma instituição nova quando o cadastro dela não diz quais são.
  * Nada de uma instituição específica fica no código (ADR-012): as unidades de
- * cada Apae vêm do cadastro dela.
+ * cada instituição vêm do cadastro dela.
  */
 export const UNIDADES_PADRAO: readonly { codigo: string; nome: string }[] = [{ codigo: 'sede', nome: 'Sede' }];
 
@@ -17,7 +17,6 @@ export const AREAS_INICIAIS = [
   { codigo: 'mobilizacao', nome: 'Mobilização' },
   { codigo: 'projetos_intersetoriais', nome: 'Projetos Intersetoriais' },
   { codigo: 'comunicacao', nome: 'Comunicação' },
-  { codigo: 'rural', nome: 'Rural' },
 ];
 
 export const PERFIS_INICIAIS = [

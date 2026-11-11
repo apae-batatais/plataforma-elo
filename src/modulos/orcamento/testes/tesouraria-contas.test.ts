@@ -109,7 +109,7 @@ describe('cadastro de contas', () => {
     const f = await fin();
     const id = await salvarConta(p, f, conta());
     const [{ versao }] = (await listarContas(p, f)).ativas;
-    await expect(salvarConta(p, f, conta({ unidade: 'rural' }), { id, versao })).resolves.toBe(id);
+    await expect(salvarConta(p, f, conta({ unidade: 'filial' }), { id, versao })).resolves.toBe(id);
   });
 
   it('recusa dados inválidos com as mensagens juntas numa linha', async () => {
@@ -178,7 +178,7 @@ describe('troca de classe da conta', () => {
 
   it('classe igual: a escolha é ignorada e nada entra no histórico', async () => {
     const { f, id, versao } = await criar();
-    await salvarConta(p, f, conta({ unidade: 'rural' }), { id, versao }, { modo: 'a_partir_de', mes: MES });
+    await salvarConta(p, f, conta({ unidade: 'filial' }), { id, versao }, { modo: 'a_partir_de', mes: MES });
     expect((await lerTabela(p, MudancasClasse)).todos()).toHaveLength(0);
   });
 

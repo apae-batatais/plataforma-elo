@@ -190,7 +190,7 @@ async function arquivoFicticio(opcoes: { abaRateio?: boolean } = {}): Promise<Ar
   est.addRow([null, 'TOTAL GERAL', 99999]);
   if (opcoes.abaRateio) {
     const rat = livro.addWorksheet('Rateio');
-    rat.addRow(['Código', 'Nome', 'escola', 'Centro Dia Intergeracional', 'Apae Rural › Viveiro de mudas']);
+    rat.addRow(['Código', 'Nome', 'escola', 'Centro Dia Intergeracional', 'Produção (exemplo) › Viveiro de mudas']);
     rat.addRow([102, 'JOÃO', 0.5, 0.5, null]);
     rat.addRow([104, 'PAULO', 0.63, 0.5, null]); // 113%: não pode ser gravado
   }
