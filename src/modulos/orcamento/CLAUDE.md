@@ -22,3 +22,6 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Histórico (1E): abas `Historico` e `HistoricoAnos` na planilha `orcamento_execucao`, sem dados pessoais.
   Importar ano fechado só confere e grava se o total bater em centavos com o da planilha; reimportar ou
   desfazer cancela (`ativo = FALSE`). Ver: `orcamento.historico.ver`; importar: `orcamento.historico.editar`.
+- Rateio dos custos comuns (R1, ADR-020): regras e bases próprias na planilha `orcamento`; só `orcamento.parametros.editar`
+  altera, quem vê o painel vê o resultado. Cálculo puro em `dominio/rateio-custos.ts` (comuns → apoio → administrativo;
+  precedência item > grupo > serviço > base do painel). O total do orçamento nunca muda pelo rateio.

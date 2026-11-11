@@ -119,6 +119,18 @@ export function FormularioItem({
               ))}
             </select>
           </Campo>
+          {!proposta && (opcoes.regras?.length ?? 0) > 0 && (
+            <Campo rotulo="Regra de rateio do item" dica="Deixe em “Regra do grupo” para seguir o padrão do grupo (ou do serviço).">
+              <select name="regra_rateio_id" defaultValue={d?.regra_rateio_id ?? ''} className={estiloEntrada}>
+                <option value="">Regra do grupo</option>
+                {opcoes.regras!.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          )}
           <Campo rotulo="Fonte de recurso" dica="Pode ficar “a definir” durante a elaboração.">
             <select name="fonte_id" defaultValue={d?.fonte_id ?? ''} className={estiloEntrada}>
               <option value="">A definir</option>

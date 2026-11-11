@@ -21,7 +21,7 @@ import {
 } from '../dominio/previsao';
 import { deltasDosAjustes, mesesComAjuste } from '../dominio/ajustes';
 import {
-  Ajustes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Receitas, Parametros,
+  Ajustes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Receitas, Parametros, RegrasRateio,
   type RegDespesa, type RegFonte, type RegGrupo, type RegReceita,
 } from '../dados/tabelas';
 import { parametrosCom } from '../dominio/folha';
@@ -120,19 +120,20 @@ function conferirNome(lista: { id: string; nome: string; ativo: boolean }[], nom
 }
 const limparNome = (t: string) => t.trim().replace(/\s+/g, ' ');
 
-export async function salvarGrupo(p: Planilhas, quem: Autorizador, dados: { id?: string; versao?: number; nome: string; rh: boolean }): Promise<void> {
+export async function salvarGrupo(p: Planilhas, quem: Autorizador, dados: { id?: string; versao?: number; nome: string; rh: boolean; regra_rateio_id?: string | null }): Promise<void> {
   exigir(quem, PERM.editar);
   const nome = limparNome(dados.nome);
-  const [grupos] = await lerTabelas(p, [GruposGasto] as const);
+  const [grupos, regras] = await lerTabelas(p, [GruposGasto, RegrasRateio] as const);
   conferirNome(grupos.todos(), nome, 'do grupo', dados.id);
+  if (dados.regra_rateio_id && !regras.ativos().some((r) => r.id === dados.regra_rateio_id)) throw new ErroPrevisao('Regra de rateio não encontrada.');
   if (!dados.id) {
-    const g = await inserir(p, GruposGasto, { nome, rh: dados.rh }, { email: quem.email });
+    const g = await inserir(p, GruposGasto, { nome, rh: dados.rh, regra_rateio_id: dados.regra_rateio_id || null }, { email: quem.email });
     await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'GruposGasto', registroId: g.id });
     return;
   }
   const alvo = grupos.porId(dados.id);
   if (!alvo || !alvo.ativo) throw new ErroPrevisao('Grupo não encontrado.');
-  const { colunasAlteradas } = await atualizar(p, GruposGasto, dados.id, dados.versao ?? alvo.versao, { nome, rh: dados.rh }, { email: quem.email });
+  const { colunasAlteradas } = await atualizar(p, GruposGasto, dados.id, dados.versao ?? alvo.versao, { nome, rh: dados.rh, regra_rateio_id: dados.regra_rateio_id === undefined ? alvo.regra_rateio_id : dados.regra_rateio_id || null }, { email: quem.email });
   if (colunasAlteradas.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'GruposGasto', registroId: dados.id, detalhes: { colunas: colunasAlteradas } });
 }
 
@@ -212,6 +213,8 @@ export interface DadosDespesa extends DadosDistribuicao {
   quantidade: number;
   ocorrencias: number;
   valor_unitario: number;
+  /** Regra de rateio do item (vazio = a do grupo). undefined mantém a atual. */
+  regra_rateio_id?: string | null;
   categoria?: Categoria;
   prioridade?: Prioridade | null;
   cotacao?: Cotacao | null;
@@ -229,8 +232,9 @@ function mesesDaDistribuicao(valor: number, d: DadosDistribuicao): number[] {
 
 export async function salvarDespesa(p: Planilhas, quem: Autorizador, dados: DadosDespesa, existente?: { id: string; versao: number }): Promise<string> {
   exigir(quem, PERM.editar);
-  const [exercicios, servicos, grupos, fontes, despesas] = await lerTabelas(p, [Exercicios, Servicos, GruposGasto, Fontes, Despesas] as const);
+  const [exercicios, servicos, grupos, fontes, despesas, regras] = await lerTabelas(p, [Exercicios, Servicos, GruposGasto, Fontes, Despesas, RegrasRateio] as const);
   exigirEmElaboracao(exercicios, dados.ano);
+  if (dados.regra_rateio_id && !regras.ativos().some((r) => r.id === dados.regra_rateio_id)) throw new ErroPrevisao('Regra de rateio não encontrada.');
   if (!servicos.ativos().some((s) => s.codigo === dados.servico)) throw new ErroPrevisao('Escolha o serviço (centro de custo).');
   if (!grupos.ativos().some((g) => g.id === dados.grupo_id)) throw new ErroPrevisao('Escolha o grupo de gasto.');
   if (dados.fonte_id && !fontes.ativos().some((f) => f.id === dados.fonte_id)) throw new ErroPrevisao('Escolha a fonte de recurso (ou "a definir").');
@@ -248,6 +252,7 @@ export async function salvarDespesa(p: Planilhas, quem: Autorizador, dados: Dado
     grupo_id: dados.grupo_id,
     fonte_id: dados.fonte_id || null,
     descricao,
+    regra_rateio_id: dados.regra_rateio_id === undefined ? (existente ? (despesas.porId(existente.id)?.regra_rateio_id ?? null) : null) : dados.regra_rateio_id || null,
     quantidade: dados.quantidade,
     ocorrencias: dados.ocorrencias,
     valor_unitario: dados.valor_unitario,
@@ -367,6 +372,8 @@ export interface LinhaDespesa {
   areaNome: string;
   grupo_id: string;
   grupoNome: string;
+  /** Regra de rateio do item (vazio = a do grupo). */
+  regra_rateio_id?: string | null;
   rh: boolean;
   fonte_id: string | null;
   fonteNome: string;
@@ -434,7 +441,8 @@ export interface Previsao {
   opcoes: {
     servicos: { codigo: string; nome: string; areaNome: string }[];
     areas: { codigo: string; nome: string }[];
-    grupos: { id: string; nome: string; rh: boolean }[];
+    grupos: { id: string; nome: string; rh: boolean; regra_rateio_id?: string | null }[];
+    regras?: { id: string; nome: string }[];
     fontes: { id: string; nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita' }[];
   };
   despesas: LinhaDespesa[];
@@ -474,8 +482,8 @@ function agrupar<T>(lista: T[], chave: (x: T) => string, nome: (x: T) => string,
 
 export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?: number): Promise<Previsao> {
   exigirVer(quem);
-  const [exercicios, despesasT, receitasT, gruposT, fontesT, fontesFolhaT, servicosT, areasT, ajustesT] = await lerTabelas(p, [
-    Exercicios, Despesas, Receitas, GruposGasto, Fontes, FontesFolha, Servicos, Areas, Ajustes,
+  const [exercicios, despesasT, receitasT, gruposT, fontesT, fontesFolhaT, servicosT, areasT, ajustesT, regrasT] = await lerTabelas(p, [
+    Exercicios, Despesas, Receitas, GruposGasto, Fontes, FontesFolha, Servicos, Areas, Ajustes, RegrasRateio,
   ] as const);
   const anos = [...new Set(exercicios.ativos().map((e) => e.ano))].sort();
   const ano = anoEscolhido && Number.isInteger(anoEscolhido) ? anoEscolhido : (anos.at(-1) ?? (await anoPadrao(p)));
@@ -505,6 +513,7 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         areaNome: s?.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área',
         grupo_id: d.grupo_id,
         grupoNome: g?.nome ?? '?',
+        regra_rateio_id: d.regra_rateio_id ?? null,
         rh: g?.rh ?? false,
         fonte_id: d.fonte_id,
         fonteNome: nomeFonte(d.fonte_id),
@@ -620,7 +629,8 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         .ativos()
         .map((s) => ({ codigo: s.codigo, nome: s.nome, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
         .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
-      grupos: gruposT.ativos().map((g) => ({ id: g.id, nome: g.nome, rh: g.rh })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      grupos: gruposT.ativos().map((g) => ({ id: g.id, nome: g.nome, rh: g.rh, regra_rateio_id: g.regra_rateio_id ?? null })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      regras: regrasT.ativos().map((r) => ({ id: r.id, nome: r.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       fontes: fontesT.ativos().map((f) => ({ id: f.id, nome: f.nome, natureza: f.natureza, uso: f.uso })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     },
     despesas,

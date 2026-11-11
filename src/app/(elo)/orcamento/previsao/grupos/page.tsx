@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { listarCadastros } from '@/modulos/orcamento/aplicacao/previsao';
+import { listarRegras } from '@/modulos/orcamento/aplicacao/regras-rateio';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { LinkBotao, pequeno } from '@/ui/botao';
@@ -17,7 +18,7 @@ import { acaoExcluirGrupo, acaoReativarGrupo, acaoSalvarGrupo, acaoCadastrarGrup
 
 export const metadata: Metadata = { title: 'Grupos de gasto' };
 
-function CamposGrupo({ valor }: { valor?: { nome: string; rh: boolean } }) {
+function CamposGrupo({ valor, regras }: { valor?: { nome: string; rh: boolean; regra_rateio_id?: string | null }; regras: { id: string; nome: string }[] }) {
   return (
     <>
       <Campo rotulo="Nome" obrigatorio dica="Não pode repetir o nome de outro grupo.">
@@ -32,6 +33,16 @@ function CamposGrupo({ valor }: { valor?: { nome: string; rh: boolean } }) {
           <input type="radio" name="rh" value="sim" defaultChecked={valor?.rh} /> Recursos Humanos (fora da folha)
         </label>
       </fieldset>
+      <Campo rotulo="Regra de rateio" dica="Como este gasto comum se divide entre as áreas ou serviços. Cada item pode trocar. Sem regra, vale a base escolhida na Análise por área.">
+        <select name="regra_rateio_id" defaultValue={valor?.regra_rateio_id ?? ''} className={estiloEntrada}>
+          <option value="">Sem regra (base do painel)</option>
+          {regras.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.nome}
+            </option>
+          ))}
+        </select>
+      </Campo>
     </>
   );
 }
@@ -43,6 +54,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
   if (!usuario.autorizador.temPermissao('orcamento.previsao.editar')) redirect('/orcamento/previsao');
   const app = await obterAplicacao();
   const { grupos } = await listarCadastros(app.planilhas, usuario.autorizador);
+  const regras = (await listarRegras(app.planilhas, usuario.autorizador)).regras.ativas;
   const emEdicao = editar ? grupos.ativos.find((g) => g.id === editar) : undefined;
 
   return (
@@ -73,7 +85,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
             titulo="Adicionar grupo de gasto"
           >
             <form action={acaoSalvarGrupo} className="space-y-4">
-              <CamposGrupo />
+              <CamposGrupo regras={regras} />
               <BotaoEnviar enviando="Salvando…" className="w-full">
                 Adicionar grupo
               </BotaoEnviar>
@@ -88,7 +100,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
           <form action={acaoSalvarGrupo} className="space-y-4">
             <input type="hidden" name="id" value={emEdicao.id} />
             <input type="hidden" name="versao" value={emEdicao.versao} />
-            <CamposGrupo valor={emEdicao} />
+            <CamposGrupo valor={emEdicao} regras={regras} />
             <BotaoEnviar enviando="Salvando…" className="w-full">
               Salvar alterações
             </BotaoEnviar>
@@ -102,6 +114,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
         colunas={[
           { chave: 'nome', rotulo: 'Grupo' },
           { chave: 'tipo', rotulo: 'Tipo' },
+          { chave: 'regra', rotulo: 'Regra de rateio' },
           { chave: 'itens', rotulo: 'Itens no orçamento', tipo: 'numero' },
           { chave: 'acoes', rotulo: '', fixa: true, largura: 'w-20' },
         ]}
@@ -109,7 +122,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
           const n = grupos.uso[g.id] ?? 0;
           return {
             id: g.id,
-            valores: { nome: g.nome, tipo: g.rh ? 'Recursos Humanos' : 'Despesa geral', itens: n },
+            valores: { nome: g.nome, tipo: g.rh ? 'Recursos Humanos' : 'Despesa geral', regra: regras.find((r) => r.id === g.regra_rateio_id)?.nome ?? 'Base do painel', itens: n },
             celulas: {
               nome: <span className="font-semibold">{g.nome}</span>,
               tipo: g.rh ? <Etiqueta tipo="info">Recursos Humanos</Etiqueta> : <span className="text-texto-suave">Despesa geral</span>,

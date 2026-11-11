@@ -11,8 +11,10 @@ import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
 import { analisarArea, type AnaliseArea, type BaseRateio, type CentroAnalise, type CustoLancado, type TipoCentro } from '../dominio/analise-area';
 import type { Categoria } from '../dominio/previsao';
-import { CentrosCusto } from '../dados/tabelas';
+import { CentrosCusto, Despesas, GruposGasto, RegrasRateio, RegrasRateioParticipantes } from '../dados/tabelas';
+import { aplicarRegras, conferirRegra, ErroRegra, type CentroRateio, type CustoRateado } from '../dominio/rateio-custos';
 import { ErroValidacaoFolha, profissionaisPorServico } from './folha';
+import { regrasParaCalculo } from './regras-rateio';
 import { lerPrevisao } from './previsao';
 
 const ErroCentro = ErroValidacaoFolha;
@@ -27,6 +29,8 @@ export interface LinhaCentro extends CentroAnalise {
   areaNome: string;
   /** Vagas cadastradas no serviço (sugestão para "atendidos"). */
   vagas: number | null;
+  /** Regra de rateio do serviço (apoio e administrativo). */
+  regraId: string | null;
   classificado: boolean;
 }
 
@@ -52,7 +56,8 @@ export async function listarCentros(p: Planilhas, quem: Autorizador): Promise<Li
         sessoes: c?.sessoes ?? null,
         m2: c?.area_m2 ?? null,
         profissionais: prof.get(s.codigo) ?? 0,
-        vagas: s.vagas ?? null,
+        vagas: c?.vagas ?? s.vagas ?? null,
+        regraId: c?.regra_rateio_id ?? null,
         classificado: Boolean(c),
       };
     })
@@ -62,16 +67,31 @@ export async function listarCentros(p: Planilhas, quem: Autorizador): Promise<Li
 export async function salvarCentro(
   p: Planilhas,
   quem: Autorizador,
-  dados: { servico: string; tipo: TipoCentro; atendidos: number | null; sessoes: number | null; area_m2: number | null },
+  dados: { servico: string; tipo: TipoCentro; atendidos: number | null; sessoes: number | null; area_m2: number | null; vagas?: number | null; regra_rateio_id?: string | null },
 ): Promise<void> {
   if (!quem.temPermissao('orcamento.previsao.editar')) throw new ErroPermissao();
   const [servicos, centros] = await lerTabelas(p, [Servicos, CentrosCusto] as const);
   if (!servicos.ativos().some((s) => s.codigo === dados.servico)) throw new ErroCentro('Serviço não encontrado.');
   if (!['direto', 'indireto', 'despesa'].includes(dados.tipo)) throw new ErroCentro('Escolha o tipo do centro de custo.');
-  for (const [v, nome] of [[dados.atendidos, 'Atendidos'], [dados.sessoes, 'Sessões'], [dados.area_m2, 'Área (m²)']] as const) {
+  for (const [v, nome] of [[dados.atendidos, 'Atendidos'], [dados.sessoes, 'Sessões'], [dados.area_m2, 'Área (m²)'], [dados.vagas ?? null, 'Vagas']] as const) {
     if (v !== null && (!Number.isFinite(v) || v < 0)) throw new ErroCentro(`${nome}: informe um número positivo ou deixe em branco.`);
   }
-  const campos = { servico: dados.servico, tipo: dados.tipo, atendidos: dados.atendidos, sessoes: dados.sessoes, area_m2: dados.area_m2 };
+  const regraId = dados.regra_rateio_id || null;
+  if (regraId) {
+    if (dados.tipo === 'direto') throw new ErroCentro('Só serviço de apoio ou administrativo tem regra própria de rateio.');
+    const [regrasT, partT] = await lerTabelas(p, [RegrasRateio, RegrasRateioParticipantes] as const);
+    const regra = regrasT.ativos().find((r) => r.id === regraId);
+    if (!regra) throw new ErroCentro('Regra de rateio não encontrada.');
+    const todos = servicos.ativos().map((s) => ({ codigo: s.codigo, area: s.area ?? null, tipo: (centros.ativos().find((c) => c.servico === s.codigo)?.tipo ?? 'direto') as TipoCentro }));
+    const parts = partT.ativos().filter((x) => x.regra_id === regraId).map((x) => x.participante);
+    try {
+      conferirRegra({ tipo: regra.tipo, participantes: parts }, todos, { apoio: dados.tipo === 'indireto', administrativo: dados.tipo === 'despesa' });
+    } catch (e) {
+      if (e instanceof ErroRegra) throw new ErroCentro(e.message);
+      throw e;
+    }
+  }
+  const campos = { servico: dados.servico, tipo: dados.tipo, atendidos: dados.atendidos, sessoes: dados.sessoes, area_m2: dados.area_m2, vagas: dados.vagas ?? null, regra_rateio_id: regraId };
   const existente = centros.ativos().find((c) => c.servico === dados.servico);
   if (!existente) {
     const c = await inserir(p, CentrosCusto, campos, { email: quem.email });
@@ -95,6 +115,8 @@ export interface PainelArea {
   base: BaseRateio;
   analise: AnaliseArea | null;
   semClassificacao: number;
+  /** Avisos do cálculo das regras de rateio. */
+  avisosRegras: string[];
 }
 
 export async function painelPorArea(
@@ -120,6 +142,28 @@ export async function painelPorArea(
     ...(categorias.includes('operacional') ? (prev.folha?.linhas ?? []).map((l) => ({ servico: l.servico, grupo: GRUPO_FOLHA, valor: l.anual })) : []),
   ];
 
+  // Regras de rateio (R1): o que tem regra vai direto aos serviços; o resto segue a base do painel.
+  const [regrasCalc, despesasT, gruposT] = await Promise.all([regrasParaCalculo(p), lerTabelas(p, [Despesas] as const), lerTabelas(p, [GruposGasto] as const)]);
+  const regraDoItem = new Map(despesasT[0].ativos().map((d) => [d.id, d.regra_rateio_id]));
+  const regraDoGrupo = new Map(gruposT[0].ativos().map((g) => [g.id, g.regra_rateio_id]));
+  const profPorServico = new Map(centros.map((c) => [c.codigo, c.profissionais]));
+  const centrosRateio: CentroRateio[] = centros.map((c) => ({
+    codigo: c.codigo, area: c.area, tipo: c.tipo, atendidos: c.atendidos, vagas: c.vagas, m2: c.m2,
+    profissionais: profPorServico.get(c.codigo) ?? 0, regraId: c.regraId,
+  }));
+  const regraAplicada = aplicarRegras({
+    centros: centrosRateio,
+    regras: regrasCalc.regras,
+    basesProprias: regrasCalc.basesDoAno(prev.ano),
+    custos: [
+      ...prev.despesas.filter((d) => categorias.includes(d.categoria)).map((d) => ({ servico: d.servico, grupo: d.grupoNome, valor: d.valor, regraItem: regraDoItem.get(d.id) ?? null, regraGrupo: regraDoGrupo.get(d.grupo_id) ?? null })),
+      ...(categorias.includes('operacional') ? (prev.folha?.linhas ?? []).map((l) => ({ servico: l.servico, grupo: GRUPO_FOLHA, valor: l.anual })) : []),
+    ],
+  });
+  const custosFinais: CustoLancado[] = regraAplicada.mantidos;
+  const porRegra = regraAplicada.rateados.map((r: CustoRateado) => ({ servico: r.servico, grupo: r.grupo, valor: r.valor, regraNome: r.regraNome, origem: r.origem }));
+  void custos;
+
   return {
     ano: prev.ano,
     anos: prev.anos,
@@ -132,11 +176,13 @@ export async function painelPorArea(
           area: area.codigo,
           base,
           centros,
-          custos,
+          custos: custosFinais,
+          porRegra,
           receitas: prev.receitas.map((r) => ({ area: r.area, restrita: r.uso === 'restrita', valor: r.valor })),
           ordemGrupos: [GRUPO_FOLHA, ...prev.opcoes.grupos.map((g) => g.nome)],
         })
       : null,
     semClassificacao: centros.filter((c) => !c.classificado).length,
+    avisosRegras: regraAplicada.avisos,
   };
 }

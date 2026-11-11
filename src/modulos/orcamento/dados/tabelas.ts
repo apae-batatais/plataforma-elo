@@ -102,7 +102,7 @@ const distribuicao = () => z.preprocess((v) => (vazio(v) ? 'igual' : v), z.enum(
 export const GruposGasto = definirTabela({
   planilha: PLANILHA_ORCAMENTO,
   aba: 'GruposGasto',
-  esquema: z.object({ nome: texto(), rh: booleano() }),
+  esquema: z.object({ nome: texto(), rh: booleano(), regra_rateio_id: textoOpcional() }),
 });
 
 /** Fontes de recurso. Natureza e uso alimentam os indicadores. */
@@ -138,6 +138,8 @@ export const Despesas = definirTabela({
     /** Vazio = "a definir" (só durante a elaboração). */
     fonte_id: textoOpcional(),
     descricao: texto(),
+    /** Regra de rateio própria do item (vence a do grupo). */
+    regra_rateio_id: textoOpcional(),
     quantidade: numero(),
     ocorrencias: numero(),
     valor_unitario: numero(),
@@ -216,6 +218,9 @@ export const CentrosCusto = definirTabela({
     atendidos: numeroOpcional(),
     sessoes: numeroOpcional(),
     area_m2: numeroOpcional(),
+    vagas: numeroOpcional(),
+    /** Regra de rateio do serviço (apoio e administrativo). */
+    regra_rateio_id: textoOpcional(),
   }),
 });
 
@@ -324,6 +329,49 @@ export const HistoricoAnos = definirTabela({
   }),
 });
 
+
+// ---------------------------------------------------------------------------
+// Regras de rateio dos custos comuns (R1, proposta #91) — planilha "orcamento"
+// ---------------------------------------------------------------------------
+
+const baseRegra = () => z.string().regex(/^(igual|m2|profissionais|atendidos|vagas|custo|propria:.+)$/, 'base de rateio inválida');
+
+/** Regra de rateio: base do nível 1 e, opcionalmente, do nível 2 (dentro de cada área). */
+export const RegrasRateio = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'RegrasRateio',
+  esquema: z.object({
+    nome: texto(),
+    tipo: z.enum(['area', 'servico']),
+    base1: baseRegra(),
+    base2: z.preprocess((v) => (vazio(v) ? null : v), baseRegra().nullable()),
+  }),
+});
+
+/** Quem participa de uma regra: uma área ou um serviço (código do Núcleo). */
+export const RegrasRateioParticipantes = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'RegrasRateioParticipantes',
+  esquema: z.object({ regra_id: texto(), participante: texto() }),
+});
+
+/** Bases próprias da OSC (ex.: nº de refeições). */
+export const BasesRateio = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'BasesRateio',
+  esquema: z.object({ nome: texto() }),
+});
+
+/** Valor de uma base própria em cada serviço, por exercício. */
+export const BasesRateioValores = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'BasesRateioValores',
+  esquema: z.object({ base_id: texto(), servico: texto(), ano: numero(), valor: numero() }),
+});
+
+export type RegRegraRateio = Registro<typeof RegrasRateio.esquema>;
+export type RegBaseRateio = Registro<typeof BasesRateio.esquema>;
+
 export type RegHistorico = Registro<typeof Historico.esquema>;
 export type RegHistoricoAno = Registro<typeof HistoricoAnos.esquema>;
 
@@ -343,4 +391,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores] as const;

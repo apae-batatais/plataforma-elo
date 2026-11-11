@@ -24,6 +24,8 @@ export const manifesto = defineModulo({
     { rotulo: 'Importar despesas e receitas', caminho: '/previsao/importar', permissao: 'orcamento.previsao.editar', secao: 'Planejamento' },
     { rotulo: 'Grupos de gasto', caminho: '/previsao/grupos', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Fontes de recurso', caminho: '/previsao/fontes', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
+    { rotulo: 'Regras de rateio', caminho: '/previsao/regras', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
+    { rotulo: 'Bases próprias de rateio', caminho: '/previsao/bases', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
     { rotulo: 'Centros de custo', caminho: '/previsao/centros', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
     { rotulo: 'Saldos do mês', caminho: '/tesouraria', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
     { rotulo: 'Contas', caminho: '/tesouraria/contas', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
