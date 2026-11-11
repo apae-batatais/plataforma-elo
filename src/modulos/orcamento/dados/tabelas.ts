@@ -298,6 +298,29 @@ export const MudancasClasse = definirTabela({
 
 
 /**
+ * Realizado (1C.1): totais mensais informados à mão, uma linha por mês, tipo, serviço, grupo, fonte e natureza.
+ * Receita não tem serviço nem grupo. Sem coluna pessoal (não há fornecedor). "Remover linha" encerra (ativo = FALSE).
+ */
+export const Realizado = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'Realizado',
+  esquema: z.object({
+    ano: numero(),
+    mes: mesAAAAMM(),
+    tipo: z.enum(['despesa', 'receita']),
+    servico: textoOpcional(),
+    grupo_id: textoOpcional(),
+    fonte_id: texto(),
+    natureza: z.enum(['rh', 'encargos', 'custeio', 'investimento', 'tarifas', 'adiantamento_termo', 'receita_comum', 'ressarcimento']),
+    valor: numero(),
+    nao_recorrente: booleano(),
+    motivo_nao_recorrente: textoOpcional(),
+    observacao: textoOpcional(),
+  }),
+});
+export type RegRealizado = Registro<typeof Realizado.esquema>;
+
+/**
  * Histórico (1E): receita realizada de um ano fechado, uma linha por linha da planilha de origem,
  * associada a uma fonte. Reimportar o ano cancela as linhas anteriores (ativo = FALSE).
  */
@@ -391,4 +414,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado] as const;

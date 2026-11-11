@@ -5,9 +5,10 @@ import { Fragment } from 'react';
 import { manifesto } from '@/modulos/orcamento';
 import { veResumoDaFolha } from '@/modulos/orcamento/aplicacao/entrada';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
+import { pendenciaDeRealizado } from '@/modulos/orcamento/aplicacao/realizado';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
 import type { GrupoResumo } from '@/modulos/orcamento/dominio/folha';
-import { MESES, reais } from '@/modulos/orcamento/telas/formato';
+import { MESES, reais, rotuloMes } from '@/modulos/orcamento/telas/formato';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -26,6 +27,8 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
   }
   const app = await obterAplicacao();
   const r = await resumoFolha(app.planilhas, usuario.autorizador, Number((await searchParams).mes) || undefined);
+  // R11: lembrete de realizado do último mês fechado (some se a aba ainda não foi preparada).
+  const faltaRealizado = await pendenciaDeRealizado(app.planilhas, usuario.autorizador).catch(() => null);
   const i = r.mes - 1;
   const podeCorrigir = usuario.autorizador.temPermissao('orcamento.folha.editar');
   const pendentes = (r.alertas?.semRateio ?? 0) + (r.alertas?.foraDe100 ?? 0);
@@ -90,6 +93,15 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
           acao={podeCorrigir ? <LinkBotao href="/orcamento/lotacao?atalho=pendentes" variante="secundario">Corrigir na Lotação</LinkBotao> : undefined}
         >
           Eles entram no total da folha, mas não aparecem em nenhum serviço na tabela por serviço.
+        </Aviso>
+      )}
+
+      {faltaRealizado && (
+        <Aviso tipo="atencao" titulo="Falta informar o realizado">
+          O realizado de {rotuloMes(faltaRealizado)} ainda não foi informado.{' '}
+          <Link href={`/orcamento/execucao/realizado?mes=${faltaRealizado}`} className="underline">
+            Informar agora
+          </Link>
         </Aviso>
       )}
 
