@@ -1,5 +1,5 @@
 /**
- * Qual instituição (Apae ou entidade) está sendo usada nesta requisição.
+ * Qual instituição está sendo usada nesta requisição.
  * Em produção, pelo endereço acessado; na demonstração, pela escolha feita na
  * tela de entrada (cookie). Somente servidor.
  */

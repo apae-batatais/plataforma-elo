@@ -8,7 +8,7 @@
  *   fictício nunca chegue perto de dados reais.
  * - Produção: planilhas reais pela conta de serviço; login Google institucional.
  *
- * Instituições (ADR-012): o Elo atende uma ou várias instituições (Apaes ou
+ * Instituições (ADR-012): o Elo atende uma ou várias instituições (OSCs ou
  * entidades). Cada uma tem nome, domínio de e-mail, endereços de acesso e as
  * próprias planilhas. Nada de uma instituição específica fica no código.
  * - Várias: variável INSTITUICOES (lista em JSON).
@@ -39,11 +39,11 @@ const esquemaInstituicao = z.object({
 
 export interface Instituicao {
   codigo: string;
-  /** Nome curto, como aparece na interface (ex.: "Apae Franca"). */
+  /** Nome curto, como aparece na interface (ex.: "Instituição Exemplo"). */
   nome: string;
   /** Razão social. */
   nomeCompleto: string;
-  /** Domínio dos e-mails que podem entrar (ex.: apaefranca.org.br). */
+  /** Domínio dos e-mails que podem entrar (ex.: instituicao.org.br). */
   dominio: string;
   enderecos: string[];
   situacao: 'preparacao' | 'ativa' | 'suspensa';
@@ -124,8 +124,8 @@ export type Config =
 export const INSTITUICOES_DEMONSTRACAO: Instituicao[] = [
   {
     codigo: 'exemplo',
-    nome: 'Instituição Operadora',
-    nomeCompleto: 'Instituição Operadora (fictícia)',
+    nome: 'Instituição Exemplo A',
+    nomeCompleto: 'Instituição Exemplo A (fictícia)',
     dominio: 'exemplo.local',
     enderecos: [],
     situacao: 'ativa',
@@ -135,8 +135,8 @@ export const INSTITUICOES_DEMONSTRACAO: Instituicao[] = [
   },
   {
     codigo: 'modelo',
-    nome: 'Instituição Modelo',
-    nomeCompleto: 'Instituição Modelo (fictícia)',
+    nome: 'Instituição Exemplo B',
+    nomeCompleto: 'Instituição Exemplo B (fictícia)',
     dominio: 'exemplo.local',
     enderecos: [],
     situacao: 'ativa',

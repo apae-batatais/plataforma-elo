@@ -16,7 +16,7 @@ export const Instituicoes = definirTabela({
     nome: texto(),
     nome_completo: textoOpcional(),
     dominio: texto(),
-    /** Endereços de acesso, separados por vírgula (ex.: elo.apaefranca.org.br). */
+    /** Endereços de acesso, separados por vírgula (ex.: elo.instituicao.org.br). */
     enderecos: textoOpcional(),
     situacao: z.enum(SITUACOES_INSTITUICAO),
     /** IDs das planilhas no Drive da instituição, em JSON ({"nucleo":"…","auditoria":"…"}). */

@@ -341,7 +341,7 @@ export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
     'ur',
     {
       servico: 'hidraulica',
-      local: 'Apae Rural, banheiro do pátio',
+      local: 'Sede, banheiro do pátio',
       problema: 'Torneira da pia vazando sem parar desde ontem; o chão fica molhado.',
       urgencia: 'media',
       equipamento: null,

@@ -654,7 +654,7 @@ export function FormularioRequisicao({
             </div>
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Campo rotulo="Onde é o serviço" obrigatorio dica="Unidade, sala ou setor. Ex.: Apae Rural, banheiro do pátio." className="sm:col-span-2">
+            <Campo rotulo="Onde é o serviço" obrigatorio dica="Unidade, sala ou setor. Ex.: Sede, banheiro do pátio." className="sm:col-span-2">
               <input value={man.local} onChange={(e) => setMan({ ...man, local: e.target.value })} className={estiloEntrada} />
             </Campo>
             <Campo rotulo="Contato" dica="Ramal ou telefone.">

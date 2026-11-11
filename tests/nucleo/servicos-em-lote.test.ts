@@ -19,10 +19,10 @@ const LISTA = [
   'Nome\tÁrea\tUnidade\tVagas',
   'Centro Dia Intergeracional\tAssistência Social\tSede\t80',
   'Serviço no Domicílio\tassistencia social\t\t40',
-  'Viveiro de Mudas\tRural\tFilial',
+  'Viveiro de Mudas\tEducação\tFilial',
   'Reabilitação Física\tSaúde',
   'Oficina de Costura\tOficinas',
-  'Viveiro de mudas\tRural\tRural',
+  'Viveiro de mudas\tEducação\tFilial',
   '',
 ].join('\n');
 
@@ -36,10 +36,10 @@ describe('serviços em lote', () => {
     expect(r.map((l) => [l.nome, l.codigo, l.area, l.unidade, l.vagas, l.situacao])).toEqual([
       ['Centro Dia Intergeracional', 'centro_dia_intergeracional', 'assistencia_social', 'sede', 80, 'ok'],
       ['Serviço no Domicílio', 'servico_no_domicilio', 'assistencia_social', 'sede', 40, 'ok'],
-      ['Viveiro de Mudas', 'viveiro_de_mudas', 'rural', 'rural', null, 'ok'],
+      ['Viveiro de Mudas', 'viveiro_de_mudas', 'educacao', 'filial', null, 'ok'],
       ['Reabilitação Física', 'reabilitacao_fisica', 'saude', 'sede', null, 'ok'],
       ['Oficina de Costura', '', null, 'sede', null, 'erro'],
-      ['Viveiro de mudas', '', 'rural', 'rural', null, 'ja_existe'],
+      ['Viveiro de mudas', '', 'educacao', 'filial', null, 'ja_existe'],
     ]);
     expect(r[4].problema).toMatch(/Área "Oficinas" não encontrada/);
   });

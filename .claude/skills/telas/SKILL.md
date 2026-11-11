@@ -48,3 +48,9 @@ Nada de fonte, biblioteca ou ícone de CDN. Ícones e gráficos em SVG no própr
 
 Rode a demonstração (`npm run dev`) e confira a tela nos dois temas, pelo teclado e em largura de
 celular. No PR, descreva o roteiro de conferência na prévia.
+
+## Sem nomes próprios (decisão da Diretoria, 11/11/2026)
+
+Textos de tela, dicas, exemplos, mensagens, dados fictícios, manual e comentários de código nunca citam nome
+de instituição, unidade, marca ou cidade reais. Use "instituição", "nome da instituição", "OSC", "Sede".
+O teste `tests/nucleo/sem-nomes-proprios.test.ts` barra "Apae", "Batatais", "Franca" e "Rural" em `src/`.

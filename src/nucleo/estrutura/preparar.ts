@@ -63,7 +63,7 @@ export async function prepararEstrutura(
     (await inserirVarios(p, perfis, novosPerfis as Entrada<typeof Perfis.esquema>[], { email: autor })) +
     (await inserirVarios(p, permissoes, novasPermissoes as Entrada<typeof PerfilPermissoes.esquema>[], { email: autor }));
 
-  // Ajustes de versões antigas (renomear unidades da Apae Batatais, desativar o CER) já
+  // Ajustes de versões antigas (renomear unidades de uma instituição, desativar o CER) já
   // foram aplicados em 30/10/2026 e saíram daqui: o Elo não guarda regra de uma instituição só.
   const ajustes: string[] = [];
   const retirar = new Set((modulos.permissoesRetiradas ?? []).map((x) => `${x.perfil}|${x.permissao}`));

@@ -39,7 +39,7 @@ export default async function ContasDaTesouraria({ searchParams }: { searchParam
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento' }, { rotulo: 'Tesouraria' }, { rotulo: 'Contas' }]}
         titulo="Contas"
-        descricao="As contas da Apae Batatais e da Apae Rural onde o dinheiro fica guardado. Cada conta é livre disponível, reserva ou vinculada a um termo."
+        descricao="As contas da instituição onde o dinheiro fica guardado. Cada conta é livre disponível, reserva ou vinculada a um termo."
         acoes={
           podeEditar && (
             <JanelaFormulario
