@@ -29,6 +29,10 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
 
 Cuidados:
 
+- **Minutos do Actions** (plano gratuito: 2.000/mês em repositório privado; cada execução é cobrada
+  arredondando para cima, no mínimo 1 minuto): job pulado por `if` não gasta; PR só de `.md` não roda
+  Verificar nem prévia; no PR o build fica só na prévia; `node_modules` em cache. Ao criar workflow,
+  filtre no `if` do job os eventos que não fazem nada.
 - Ações feitas com o `GITHUB_TOKEN` não disparam outros workflows (exceto `workflow_dispatch`).
   Quem precisa encadear passos chama o próximo direto (veja `aprovacao.yml`).
 - Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`), com teste em `tests/fluxo/`.
