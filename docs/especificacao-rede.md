@@ -62,8 +62,8 @@ leva "Apae"):
 
 | O que | Nome | Nome por extenso (tela de entrada) |
 | --- | --- | --- |
-| Instituição fictícia 1 (código `exemplo`) | Instituição Operadora | Instituição Operadora (fictícia) |
-| Instituição fictícia 2 (código `modelo`) | Instituição Modelo | Instituição Modelo (fictícia) |
+| Instituição fictícia 1 (código `exemplo`) | Instituição Exemplo A | Instituição Exemplo A (fictícia) |
+| Instituição fictícia 2 (código `modelo`) | Instituição Exemplo B | Instituição Exemplo B (fictícia) |
 | Operadora fictícia (Administração da rede) | Instituição Operadora da Plataforma | — |
 
 Valem só para a demonstração e as prévias; as instituições reais não mudam.
