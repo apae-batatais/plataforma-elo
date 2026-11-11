@@ -38,12 +38,13 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
 - [ ] Rateio R1: item de despesa sem serviço ("Comum"), botão "Dividir igualmente" e prévia com os custos reais lançados.
-- [ ] Prestação de contas por termo (no app Parcerias).
+- [ ] Prestação de contas por termo (no app Parcerias): prazos de prestação parcial (antes de cada
+      parcela), anual e final; regras do financiador que suspendem o pagamento (ex.: aluno sem
+      frequência acima de 30 dias); gestores e fiscais da parceria (decisão de 11/11/2026, issue #95).
+- [ ] Renovar termo copiando o do ano anterior em Parcerias (sugestão, issue #95).
 - [ ] Ligar a receita do termo à fonte do termo no Orçamento.
 - [ ] Conferência dos termos da Tesouraria usando as fontes de Parcerias.
 - [ ] Anexar o arquivo do termo em Parcerias.
-- [ ] Despesas que cada fonte não pode pagar, com aviso no rateio de fonte: aguarda a lista dos
-      termos atuais da Diretoria (issue #91).
 
 ## Comunicação
 

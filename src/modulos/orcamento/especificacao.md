@@ -412,9 +412,15 @@ Sem mudança no Orçamento. Cria o app, a planilha `parcerias`, os perfis e `cat
 ### Entrega R3 — Fontes dos termos e rateio de fonte nas despesas (depende de R2)
 
 - **Ligar fontes dos termos** (Cadastros › Fontes dos termos): para cada fonte de termo lida de
-  Parcerias, escolher a **Fonte do cadastro** (natureza e uso). Aba `FontesTermo` (fonte do termo →
-  Fonte do cadastro). Fonte de termo sem ligação não aparece no rateio. Os indicadores
-  `dependencia_recursos_publicos` e `recursos_livres` leem natureza e uso por essa ligação.
+  Parcerias, escolher (a) a **Fonte do cadastro** (natureza e uso) e (b) a **conta vinculada** da
+  Tesouraria (aba `Contas`, classe "vinculada"). Aba `FontesTermo` (fonte do termo → Fonte do
+  cadastro e conta). Fonte de termo sem ligação não aparece no rateio. Os indicadores
+  `dependencia_recursos_publicos` e `recursos_livres` leem natureza e uso por essa ligação. O aporte
+  usa a conta da fonte a que pertence. Há termos com 3 contas (municipal, estadual e federal) e termo
+  federal com 2 contas (custeio e piso da enfermagem): cada conta é uma fonte do termo.
+- **Categorias do plano de aplicação** (mesma tela): para cada categoria do plano de uma fonte (lida de
+  Parcerias), dizer **de onde vem**: um ou mais Grupos de gasto e/ou "Folha de pessoal". Aba
+  `CategoriasPlanoOrigens` (fonte do termo, categoria, origem).
 - **Rateio de fonte da despesa:** aba `RateioFonte` (despesa, serviço da linha de custo, fonte do termo
   **ou** Fonte própria do cadastro, percentual). A fonte do item continua existindo: sem rateio, vale
   100% nela (nenhum dado antigo muda). **Recurso próprio** = Fonte do cadastro de natureza própria.
@@ -427,6 +433,16 @@ Sem mudança no Orçamento. Cria o app, a planilha `parcerias`, os perfis e `cat
 5. Fonte de termo encerrada ou fora da vigência não entra em item novo; os já rateados continuam.
 6. Rateio em aba com vigência: só inclusões; a linha mais recente vale (como a lotação).
 7. Alteração auditada (colunas, não valores). Quem edita: `orcamento.previsao.editar`.
+8. **Conta vinculada:** a conta escolhida tem classe "vinculada"; a mesma conta não serve a duas fontes
+   de termo ativas ao mesmo tempo (aviso, não bloqueia); se a Fonte da conta na Tesouraria for diferente
+   da Fonte do cadastro ligada, aparece o aviso "conta e fonte não combinam" (pega erro como fundo
+   errado no cabeçalho de um documento). Só `orcamento.parametros.editar` liga fontes e categorias.
+9. **Plano de aplicação (aviso, nunca bloqueia):** no rateio de fonte, a despesa é conferida contra o
+   plano da fonte. Aviso quando (a) a categoria da despesa (pela origem do grupo de gasto) **não existe**
+   no plano da fonte; (b) o comprometido na categoria, no exercício, passa do **valor da categoria**.
+   Se a fonte permite remanejar, (b) vale só para o **total da fonte** e a categoria vira informação.
+   Despesa cujo grupo não tem origem ligada a categoria alguma aparece como "sem categoria no plano".
+   Isso substitui a pendência "despesas que a fonte não pode pagar".
 
 ### Entrega R4 — Rateio de fonte na folha e painel de comprometimento (depende de R3)
 
@@ -440,18 +456,33 @@ Sem mudança no Orçamento. Cria o app, a planilha `parcerias`, os perfis e `cat
   mês a mês, até o fim da vigência), saldo e %. **Alerta** quando o comprometido passa do valor
   (risco de glosa). Por serviço: custo total (direto + rateios), cobertura por termo e fonte e
   **contrapartida em recurso próprio**. Cada tela com "Ver os números".
+- **Horas como base de rateio (R4):** na lotação e no rateio de fonte da folha, cada linha pode ter
+  **horas semanais dedicadas** (campo opcional `horas_semanais`, mesma tabela e mesmo sigilo da linha).
+  O botão **Calcular pelas horas** preenche os percentuais = horas da linha ÷ soma das horas do
+  funcionário (diferença de arredondamento na maior linha). A regra de rateio dos custos comuns ganha a
+  base **horas dedicadas** (soma das horas da lotação dos funcionários do serviço; altera o código
+  da R1, por isso entra aqui). A equipe do termo em Parcerias (função e horas) aparece como
+  referência, sem ligar a pessoa.
+- **Contrapartida prevista:** o painel compara o **recurso próprio previsto** do termo e da fonte
+  (Parcerias) com o recurso próprio realmente rateado (regra 6).
+- **Cronograma e caixa:** o painel mostra, mês a mês, o comprometido contra o **previsto a receber por
+  mês** (cronograma de Parcerias, com aportes), indicando meses em que o gasto vem antes do repasse.
+- **Plano de aplicação na folha:** a folha entra na categoria "Folha de pessoal" (R3, regra 9).
 - **Indicadores novos:** `fonte_acima_do_valor` (alerta se maior que zero), `contrapartida_por_servico`
   (informativo).
 
 **Regras (com teste)**
 1. Folha: rateio de fonte por linha de lotação soma 100%; funcionário ativo sem rateio usa a fonte do serviço.
 2. Comprometido = Σ custo mensal × % da fonte, nos meses do exercício dentro da vigência do termo.
-3. Valor de referência = valor da fonte em Parcerias (valor inicial, global ou per capita × vagas ×
-   meses, + aportes ativos) na data da consulta; o **previsto por mês** de Parcerias mostra se o
+3. Valor de referência = valor da fonte em Parcerias (valor inicial, global ou per capita × vagas
+   custeadas × fator de cobertura, + aportes ativos) na data da consulta; o **previsto por mês** de Parcerias mostra se o
    comprometido vem antes do recebimento (necessidade de caixa).
 4. Valores individuais nunca aparecem a quem só tem `orcamento.folha.ver`; leitura individual é auditada.
 5. Se Parcerias estiver desligado, o catálogo é vazio e só existe recurso próprio.
 6. Contrapartida do serviço = custo total − parcela coberta pelas fontes dos termos.
+7. Horas: o percentual calculado soma 100%; sem horas informadas o botão avisa e não muda nada; base
+   "horas" sem horas em nenhum serviço da regra cai no custo direto (regra 6 da R1).
+8. Comprometido do mês acima do previsto a receber do mês é aviso, nunca bloqueio.
 
 ### Fica de fora
 
@@ -472,6 +503,8 @@ R1: `telas`, `regras e dados`. R2: ver Parcerias. R3 e R4: `telas`, `regras e da
 ### Critérios de pronto
 
 - [x] R1 (11/11/2026, exceto regra 8, item sem serviço, adiada): regras com testes; o total do orçamento é o mesmo antes e depois
+- [ ] R3: conta ligada à fonte, aviso "conta e fonte não combinam" e aviso quando a despesa sai do plano
+      de aplicação (com e sem remanejamento), com os termos fictícios no formato dos termos reais
 - [ ] R3 e R4: testes de acesso (quem vê por pessoa, quem vê totais, quem altera)
 - [ ] Dados antigos (fonte do item, fonte da folha por serviço) dão o mesmo resultado nos painéis
 - [ ] `npm run verificar` e `npm run build` verdes; Diretoria confere na prévia com dados fictícios
