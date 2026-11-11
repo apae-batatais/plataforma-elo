@@ -39,6 +39,21 @@ Outras OSCs que usarem o Elo (ex.: Apae de Franca) têm muitos financiadores e o
    atendidos reais, ocupação e alerta de vagas ociosas. Os atendidos reais vêm do cadastro de
    pessoas do Núcleo (só contagem, sem nomes); Parcerias não importa outro módulo.
 
+8. **Revisão de 11/11/2026 (issue #95), a partir dos planos de trabalho reais:**
+   - O valor per capita pode ser **mensal ou anual**, e o cálculo usa os **meses de cobertura**
+     (vigência), nunca o número de parcelas. Isso corrige a decisão 7, que multiplicava pelos meses
+     de recebimento (o per capita anual pago em 4 parcelas daria 1/3 do valor real).
+   - O recebimento vira **cronograma de desembolso** (partes iguais ou digitado mês a mês), também
+     nos aportes, que têm vigência própria. A soma é conferida com aviso.
+   - **A conta vinculada fica no Orçamento**, em `FontesTermo` (junto da Fonte do cadastro), porque
+     as contas são da Tesouraria e Parcerias não conhece o Orçamento.
+   - **O plano de aplicação (categorias e valor por fonte) fica em Parcerias**, e o aviso quando a
+     despesa sai dele fica no Orçamento, que lê o plano pelo catálogo. A decisão 3 passa a incluir no
+     catálogo: cronograma, plano, recursos próprios previstos, equipe com horas e tipo de instrumento.
+   - Vagas **custeadas** (usadas no valor e na ocupação) e **oferecidas** são separadas, e a meta
+     tem unidade própria. Ocupação por contagem de pessoas só existe para unidades que são pessoas.
+   - **Horas** dedicadas viram base de rateio (lotação e fonte) na folha, com o sigilo da lotação.
+
 ## Consequências
 - Mudar o termo (novo aporte) não exige mexer no Orçamento: o comprometido é calculado na hora.
 - Cada fonte nova de um termo precisa ser ligada a uma Fonte do cadastro antes de ser usada no
