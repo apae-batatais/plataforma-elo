@@ -6,6 +6,7 @@ const NOMES: Record<string, string> = {
   orcamento: 'Orçamento',
   orcamento_folha: 'Folha de pagamento',
   orcamento_execucao: 'Orçamento — execução e tesouraria',
+  parcerias: 'Parcerias',
   requisicoes: 'Requisições',
   avaliacao_assistencia: 'Avaliação de Serviços Sociais',
   comunicacao: 'Comunicação',
