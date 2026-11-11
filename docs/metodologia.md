@@ -20,7 +20,7 @@ GitHub avisa por e-mail sempre que alguma coisa depende dela.
 | Papel | Quem | O que faz | O que entrega |
 | --- | --- | --- | --- |
 | Diretoria | — | Dona do produto: decide, prioriza e aprova | Ideias, respostas e aprovações |
-| Product Owner | Conversa "Product Owner" no Claude | Discute ideias com a Diretoria e registra a proposta, sem detalhe técnico | Issue com o modelo "Proposta" |
+| Product Owner | Conversa "Product Owner" no Claude, com a habilidade `product-owner` | Discute ideias com a Diretoria, estuda material de apoio, prioriza e registra a proposta, sem detalhe técnico | Issue com o modelo "Proposta" |
 | Arquiteto de Soluções | Claude Code no GitHub, sozinho quando a issue é aberta | Lê a proposta, o código e os documentos; pergunta na issue o que não souber; escreve a especificação (e a ADR, se houver decisão de arquitetura); aponta melhorias | PR de especificação |
 | Desenvolvedor | Claude Code no GitHub, sozinho quando a especificação é aprovada | Constrói seguindo o `CLAUDE.md`, com testes, verificação e prévia | PR de entrega |
 | Automação | GitHub Actions | Move os cartões, faz o merge depois da aprovação e publica toda semana | — |
@@ -56,6 +56,7 @@ carrega cada uma sozinho quando o trabalho combina com a descrição dela. As ha
 | Telas | Identidade visual, acessibilidade e componentes |
 | Regras e dados | Camada de aplicação, planilhas, permissões, auditoria e testes |
 | Infraestrutura | Netlify, GitHub Actions e Google |
+| Product Owner | Conversa com a Diretoria: competências, material de apoio e como registrar propostas |
 
 Toda especificação diz quais **frentes** a entrega tem (telas, regras e dados, infraestrutura), e
 o Desenvolvedor usa as habilidades dessas frentes. No GitHub, o Claude Code só enxerga o que está no
@@ -100,7 +101,9 @@ conectado, com acesso ao repositório `apae-batatais/plataforma-elo`.
 > numeradas) e, quando a Diretoria aprovar a ideia, abrir uma issue com o modelo "Proposta"
 > (problema, para quem, resultado esperado, app, observações) e a etiqueta do app. Sem detalhe
 > técnico: a especificação é do Arquiteto. Antes de abrir, procure issues parecidas para não
-> duplicar. Leia `docs/metodologia.md`. Converse só em português, sem formalidade.
+> duplicar. Leia `docs/metodologia.md` e siga a habilidade `.claude/skills/product-owner/SKILL.md`
+> (competências, material de apoio sem dado real no GitHub e como registrar decisões depois que a
+> proposta foi aberta). Converse só em português, sem formalidade.
 
 ## Sessão DevOps
 
