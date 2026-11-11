@@ -7,7 +7,7 @@ import { menuDoUsuario } from '@/nucleo/modulos/registro';
 import type { GrupoNavegacao, NomeIcone } from '@/ui/casca';
 import { MODULOS } from './registro-modulos';
 
-const ICONE_DO_MODULO: Record<string, NomeIcone> = { calculator: 'orcamento', wallet: 'orcamento', clipboard: 'requisicoes', stethoscope: 'avaliacao', megaphone: 'comunicacao' };
+const ICONE_DO_MODULO: Record<string, NomeIcone> = { calculator: 'orcamento', wallet: 'orcamento', handshake: 'orcamento', clipboard: 'requisicoes', stethoscope: 'avaliacao', megaphone: 'comunicacao' };
 
 export function navegacaoDoUsuario(
   autorizador: Autorizador,

@@ -17,6 +17,7 @@ const NOME_PLANILHA: Record<string, string> = {
   orcamento: 'Orçamento',
   orcamento_folha: 'Folha de pagamento',
   orcamento_execucao: 'Orçamento — execução e tesouraria',
+  parcerias: 'Parcerias',
   requisicoes: 'Requisições',
   comunicacao: 'Comunicação',
 };

@@ -151,20 +151,23 @@
  * a casca marca o app aberto, e o menu e os cartões do início marcam cada app.
  * App novo: escolher a cor na identidade visual antes de declarar aqui.
  */
-[data-app='orcamento'] {
+[data-app='orcamento'],
+[data-app='parcerias'] {
   --destaque: #0e7c86;
   --destaque-forte: #0b666e;
   --destaque-suave: #f1f7f8;
 }
 
-:root[data-tema='escuro'] [data-app='orcamento'] {
+:root[data-tema='escuro'] [data-app='orcamento'],
+:root[data-tema='escuro'] [data-app='parcerias'] {
   --destaque: #3cc8c8;
   --destaque-forte: #6dd6d6;
   --destaque-suave: #1d3844;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-tema='claro']) [data-app='orcamento'] {
+  :root:not([data-tema='claro']) [data-app='orcamento'],
+  :root:not([data-tema='claro']) [data-app='parcerias'] {
     --destaque: #3cc8c8;
     --destaque-forte: #6dd6d6;
     --destaque-suave: #1d3844;
