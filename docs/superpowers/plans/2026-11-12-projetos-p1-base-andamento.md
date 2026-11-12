@@ -4,6 +4,6 @@
 - [x] 2 Abas
 - [x] 3 Casos de uso
 - [x] 4 Manifesto, composição e dados fictícios
-- [ ] 5 Telas e ações
-- [ ] 6 Testes e documentação
-- [ ] 7 Verificar, build e PR
+- [x] 5 Telas e ações
+- [x] 6 Testes e documentação
+- [x] 7 Verificar, build e PR

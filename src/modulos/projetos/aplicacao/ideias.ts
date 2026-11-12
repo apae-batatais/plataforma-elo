@@ -169,3 +169,8 @@ export async function listarProjetos(p: Planilhas, quem: Autorizador, filtro: Fi
     .sort((a, b) => b.criado_em.localeCompare(a.criado_em))
     .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo, tipo: r.tipo, porte: r.porte, etapa: r.etapa, proponente: r.proponente, responsavel: r.responsavel, valorEstimado: r.valor_estimado }));
 }
+
+/** Serviços para a pessoa escolher (opcional) ao cadastrar a ideia. */
+export async function servicosParaEscolher(p: Planilhas): Promise<{ codigo: string; nome: string }[]> {
+  return (await lerTabela(p, Servicos)).ativos().map((s) => ({ codigo: s.codigo, nome: s.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}

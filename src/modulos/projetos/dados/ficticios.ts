@@ -6,7 +6,7 @@ import { Autorizador } from '@/nucleo/acesso/autorizador';
 import { lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { salvarConfig } from '../aplicacao/configuracoes';
-import { assumirIdeia, cadastrarIdeia, enviarParaAssumir } from '../aplicacao/ideias';
+import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
 import { CONFIG_PADRAO } from '../dominio/projeto';
 
