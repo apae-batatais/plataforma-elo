@@ -8,6 +8,7 @@
  * valores ao passar o mouse (ou tocar) e "Ver os números" em tabela.
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export type Formato = 'moeda' | 'pct' | 'numero';
 export interface Serie {
@@ -383,7 +384,7 @@ export function Indicadores({ itens }: { itens: Indicador[] }) {
           <li key={i.nome} className="space-y-2">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
               <span className="font-semibold">{i.nome}</span>
-              <span className="text-2xl font-bold tabular-nums">{v === null ? '—' : formatarValor(v, 'pct')}</span>
+              <span className="text-2xl font-bold tabular-nums">{v === null ? '—' : <NumeroQueConta texto={formatarValor(v, 'pct')} />}</span>
             </div>
             <div className="relative h-3 rounded-full bg-superficie-2 ring-1 ring-inset ring-borda" role="img" aria-label={`${i.nome}: ${v === null ? 'sem dado' : formatarValor(v, 'pct')}${i.referencia ? `; referência ${i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} ${i.referencia.valor}%` : ''}`}>
               {v !== null && (

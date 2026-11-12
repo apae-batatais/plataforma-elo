@@ -14,6 +14,7 @@ import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { LinkBotao } from '@/ui/botao';
 import { CabecalhoPagina, EstadoVazio, tabela } from '@/ui/pagina';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Resumo da folha' };
 
@@ -191,7 +192,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
                 <p className={`text-sm ${q.destaque ? 'text-lateral-texto' : 'text-texto-suave'}`}>
                   {q.rotulo} · {MESES[i].toLowerCase()}
                 </p>
-                <p className="mt-0.5 text-2xl font-bold tabular-nums">{reais(q.v)}</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(q.v)} /></p>
                 <p className={`text-sm tabular-nums ${q.destaque ? 'text-lateral-texto' : 'text-texto-suave'}`}>{reais(q.ano)} no ano</p>
                 {q.dica && <p className="mt-1.5 text-xs text-texto-suave">{q.dica}</p>}
               </div>

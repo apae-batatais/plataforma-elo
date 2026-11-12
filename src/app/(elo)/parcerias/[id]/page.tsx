@@ -15,6 +15,7 @@ import { IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
 import { acaoAdicionarFonte, acaoCancelarAporte, acaoEncerrarTermo, acaoLimiteOcupacao, acaoRegistrarAporte } from '../acoes';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Ficha do termo' };
 const dataBR = (d: string) => d.split('-').reverse().join('/');
@@ -96,7 +97,7 @@ export default async function FichaDoTermo({ params, searchParams }: { params: P
       {q.erro && <Aviso tipo="erro">{q.erro}</Aviso>}
 
       <Secao titulo="Valor do termo" descricao="Calculado pelo Elo: valor inicial das fontes mais os aportes. Nunca é digitado.">
-        <p className="text-2xl font-bold tabular-nums">{dinheiro(t.valorGlobal)}</p>
+        <p className="text-2xl font-bold tabular-nums"><NumeroQueConta texto={dinheiro(t.valorGlobal)} /></p>
         {t.recursosProprios !== null && <p className="mt-1 text-sm text-texto-suave">Recursos próprios previstos do termo: {dinheiro(t.recursosProprios)}</p>}
       </Secao>
 

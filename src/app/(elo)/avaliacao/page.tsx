@@ -8,6 +8,7 @@ import { LinkBotao, pequeno } from '@/ui/botao';
 import { estiloEntrada } from '@/ui/campo';
 import { IconeMais } from '@/ui/icones';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, tabela } from '@/ui/pagina';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Avaliações' };
 
@@ -69,7 +70,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                   href="/avaliacao?ver=atrasadas"
                   className="rounded-cartao border border-erro bg-superficie px-4 py-2.5 hover:shadow-[0_0_0_3px_var(--erro-fundo)]"
                 >
-                  <span className="block text-2xl font-bold text-erro tabular-nums">{atrasadas}</span>
+                  <span className="block text-2xl font-bold text-erro tabular-nums"><NumeroQueConta texto={String(atrasadas)} /></span>
                   <span className="text-sm">{atrasadas === 1 ? 'pessoa com reavaliação anual atrasada' : 'pessoas com reavaliação anual atrasada'}</span>
                 </Link>
               )}
@@ -78,7 +79,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                   href="/avaliacao?ver=vencem"
                   className="rounded-cartao border border-aviso bg-superficie px-4 py-2.5 hover:shadow-[0_0_0_3px_var(--aviso-fundo)]"
                 >
-                  <span className="block text-2xl font-bold text-aviso tabular-nums">{vencem}</span>
+                  <span className="block text-2xl font-bold text-aviso tabular-nums"><NumeroQueConta texto={String(vencem)} /></span>
                   <span className="text-sm">{vencem === 1 ? 'reavaliação vence em até 30 dias' : 'reavaliações vencem em até 30 dias'}</span>
                 </Link>
               )}

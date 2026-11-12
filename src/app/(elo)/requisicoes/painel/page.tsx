@@ -12,6 +12,7 @@ import { Campo, estiloEntrada } from '@/ui/campo';
 import { Linhas } from '@/ui/graficos';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao, tabela } from '@/ui/pagina';
 import { TabelaDados, type LinhaDados } from '@/ui/tabela-dados';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Painel de prazos' };
 
@@ -23,7 +24,7 @@ function Cartao({ rotulo, valor, detalhe, alerta = false }: { rotulo: string; va
   return (
     <div className={`rounded-cartao border bg-superficie px-5 py-4 ${alerta ? 'border-erro' : 'border-borda'}`}>
       <dt className="text-sm text-texto-suave">{rotulo}</dt>
-      <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${alerta ? 'text-erro' : ''}`}>{valor}</dd>
+      <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${alerta ? 'text-erro' : ''}`}><NumeroQueConta texto={valor} /></dd>
       <dd className="mt-1 text-sm text-texto-suave">{detalhe}</dd>
     </div>
   );

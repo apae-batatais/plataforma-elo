@@ -21,6 +21,7 @@ import {
 import { CAPTACAO } from '../dominio/previsao';
 import { reais } from './formato';
 import { colunasDe, EscolhaCabecalho, ocupado, SeletorColuna } from './importar-folha';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 type EstadoArquivo = { erro?: string; abas?: AbaResumida[]; sugestao?: MapeamentoItens | null };
 type EstadoAnalise = { erro?: string; analise?: AnaliseItens };
@@ -351,11 +352,11 @@ function RelatorioItens({ analise }: { analise: AnaliseItens }) {
       <dl className="grid gap-3 text-sm sm:grid-cols-3">
         <div>
           <dt className="text-texto-suave">{despesa ? 'Despesas' : 'Receitas'} prontas</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{r.itens}</dd>
+          <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={String(r.itens)} /></dd>
         </div>
         <div>
           <dt className="text-texto-suave">Total no ano</dt>
-          <dd className="text-2xl font-semibold tabular-nums">{reais(r.total)}</dd>
+          <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={reais(r.total)} /></dd>
         </div>
         <div>
           <dt className="text-texto-suave">Exercício</dt>

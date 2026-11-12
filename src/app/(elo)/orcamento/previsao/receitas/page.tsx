@@ -15,6 +15,7 @@ import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from '@/ui/tabela-dados';
 import { acaoCancelarItem, acaoSalvarReceita } from '../acoes';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Receitas' };
 const TIPO_CAPTACAO: Record<Captacao, 'sucesso' | 'info' | 'atencao'> = { garantida: 'sucesso', negociacao: 'info', a_captar: 'atencao' };
@@ -85,7 +86,7 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
                 <dt>
                   <Etiqueta tipo={TIPO_CAPTACAO[c]}>{CAPTACAO[c]}</Etiqueta>
                 </dt>
-                <dd className="mt-1 text-xl font-bold tabular-nums">{reais(prev.totais.porCaptacao[c])}</dd>
+                <dd className="mt-1 text-xl font-bold tabular-nums"><NumeroQueConta texto={reais(prev.totais.porCaptacao[c])} /></dd>
                 <dd className="text-sm text-texto-suave">{total > 0 ? `${Math.round((prev.totais.porCaptacao[c] / total) * 1000) / 10}% da receita` : '—'}</dd>
               </div>
             ))}

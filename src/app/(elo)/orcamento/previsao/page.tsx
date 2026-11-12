@@ -15,6 +15,7 @@ import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { IconeCerto } from '@/ui/icones';
 import { acaoAbrirExercicio, acaoAprovarExercicio, acaoEncerrarExercicio } from './acoes';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 const ETAPAS = [
   { chave: 'elaboracao', rotulo: 'Em elaboração', dica: 'Financeiro lança; coordenações propõem' },
@@ -217,7 +218,7 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
               <dt className="text-sm text-texto-suave">Despesa prevista</dt>
-              <dd className="mt-0.5 text-2xl font-bold tabular-nums">{reais(t.despesa.anual)}</dd>
+              <dd className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(t.despesa.anual)} /></dd>
               <dd className="text-sm text-texto-suave">
                 <Link href={`/orcamento/previsao/despesas?ano=${prev.ano}`} className="underline">
                   {prev.despesas.length} itens
@@ -227,7 +228,7 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
             </div>
             <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
               <dt className="text-sm text-texto-suave">Receita prevista</dt>
-              <dd className="mt-0.5 text-2xl font-bold tabular-nums">{reais(t.receita.anual)}</dd>
+              <dd className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(t.receita.anual)} /></dd>
               <dd className="text-sm text-texto-suave">
                 <Link href={`/orcamento/previsao/receitas?ano=${prev.ano}`} className="underline">
                   {prev.receitas.length} receitas
@@ -236,14 +237,14 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
             </div>
             <div className={`rounded-cartao border px-5 py-4 ${i.resultado < 0 ? 'border-erro bg-erro-fundo' : 'border-borda bg-superficie'}`}>
               <dt className="text-sm text-texto-suave">Resultado previsto</dt>
-              <dd className={`mt-0.5 text-2xl font-bold tabular-nums ${i.resultado < 0 ? 'text-erro' : ''}`}>{reais(i.resultado)}</dd>
+              <dd className={`mt-0.5 text-2xl font-bold tabular-nums ${i.resultado < 0 ? 'text-erro' : ''}`}><NumeroQueConta texto={reais(i.resultado)} /></dd>
               <dd className="mt-1">
                 {i.resultado < 0 ? <Etiqueta tipo="erro">Déficit: despesa maior que a receita</Etiqueta> : <Etiqueta tipo="sucesso">Receita cobre a despesa</Etiqueta>}
               </dd>
             </div>
             <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
               <dt className="text-sm text-texto-suave">Recursos Humanos</dt>
-              <dd className="mt-0.5 text-2xl font-bold tabular-nums">{reais(t.rh)}</dd>
+              <dd className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(t.rh)} /></dd>
               <dd className="text-sm text-texto-suave">{t.despesa.anual > 0 ? `${pct(Math.round((t.rh / t.despesa.anual) * 1000) / 10)} da despesa` : '—'}</dd>
             </div>
           </dl>

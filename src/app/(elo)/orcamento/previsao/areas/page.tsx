@@ -13,6 +13,7 @@ import { Botao } from '@/ui/botao';
 import { estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
 import { TabelaDados, type ColunaDados } from '@/ui/tabela-dados';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Análise por área' };
 const pct = (v: number) => `${(v * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
@@ -148,7 +149,7 @@ export default async function AnalisePorArea({
             {cards.map((c) => (
               <div key={c.rotulo} className={`rounded-cartao border px-4 py-3 ${c.forte && c.valor < 0 ? 'border-erro bg-erro-fundo' : 'border-borda bg-superficie'}`}>
                 <dt className="text-sm text-texto-suave">{c.rotulo}</dt>
-                <dd className={`mt-0.5 text-xl font-bold tabular-nums ${c.forte && c.valor < 0 ? 'text-erro' : ''}`}>{reais(c.valor)}</dd>
+                <dd className={`mt-0.5 text-xl font-bold tabular-nums ${c.forte && c.valor < 0 ? 'text-erro' : ''}`}><NumeroQueConta texto={reais(c.valor)} /></dd>
                 <dd className="text-xs text-texto-suave">{c.nota}</dd>
                 {c.forte && (
                   <dd className="mt-1">{c.valor < 0 ? <Etiqueta tipo="erro">Déficit na área</Etiqueta> : <Etiqueta tipo="sucesso">Receita cobre os gastos</Etiqueta>}</dd>
