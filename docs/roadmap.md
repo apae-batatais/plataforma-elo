@@ -106,3 +106,15 @@ Fluxo completo sem nenhuma integração externa (especificação:
 - [ ] Decidir entre banco compartilhado e banco por cliente, com os preços da época (nova ADR).
 - [ ] Copiar os dados reais das planilhas para o banco pelo GitHub Actions, sem acesso do agente.
 - [ ] Decidir onde ficam fotos e vídeos (hoje no Drive, ADR-014).
+
+## Projetos
+
+App novo (issue #107; especificação em `src/modulos/projetos/especificacao.md`), em 7 entregas (P1 a P7).
+Ficou para depois (12/11/2026):
+
+- [ ] Avisos por e-mail quando a pessoa precisa agir (depende da ligação com o Gmail, Comunicação fase 2).
+- [ ] Anexos (edital, contratos) e assinatura eletrônica.
+- [ ] Gantt interativo e caminho crítico.
+- [ ] Exportar o marco lógico e o Termo de Abertura em PDF.
+- [ ] Modelos de projeto por tipo e cópia de projeto.
+- [ ] Conferir a licença do Guia Project DPro (Creative Commons não comercial) se o Elo vier a ser cobrado.
