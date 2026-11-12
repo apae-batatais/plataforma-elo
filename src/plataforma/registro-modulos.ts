@@ -17,12 +17,13 @@ import { manifesto as comunicacao, popularComunicacaoFicticia, TABELAS_COMUNICAC
 import { manifesto as requisicoes, popularRequisicoesFicticias, TABELAS_REQUISICOES } from '@/modulos/requisicoes';
 import { manifesto as parcerias, popularParceriasFicticias, TABELAS_PARCERIAS } from '@/modulos/parcerias';
 import { manifesto as avaliacao, popularAvaliacoesFicticias, TABELAS_AVALIACAO } from '@/modulos/avaliacao';
+import { manifesto as projetos, popularProjetosFicticios, TABELAS_PROJETOS } from '@/modulos/projetos';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 
-export const MODULOS: readonly Manifesto[] = [orcamento, parcerias, requisicoes, comunicacao, avaliacao];
+export const MODULOS: readonly Manifesto[] = [orcamento, parcerias, requisicoes, comunicacao, avaliacao, projetos];
 
 /** Tabelas (abas) de todos os módulos ativos, usadas por "Preparar estrutura". */
-export const TABELAS_DOS_MODULOS: readonly DefinicaoTabela<z.ZodObject>[] = [...TABELAS_ORCAMENTO, ...TABELAS_PARCERIAS, ...TABELAS_REQUISICOES, ...TABELAS_COMUNICACAO, ...TABELAS_AVALIACAO] as DefinicaoTabela<z.ZodObject>[];
+export const TABELAS_DOS_MODULOS: readonly DefinicaoTabela<z.ZodObject>[] = [...TABELAS_ORCAMENTO, ...TABELAS_PARCERIAS, ...TABELAS_REQUISICOES, ...TABELAS_COMUNICACAO, ...TABELAS_AVALIACAO, ...TABELAS_PROJETOS] as DefinicaoTabela<z.ZodObject>[];
 
 /** Abas, perfis e permissões que os módulos acrescentam em "Preparar estrutura". */
 export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
@@ -44,6 +45,7 @@ export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void>
   await popularRequisicoesFicticias(p);
   await popularComunicacaoFicticia(p);
   await popularAvaliacoesFicticias(p);
+  await popularProjetosFicticios(p);
 }
 
 validarRegistro(MODULOS);
