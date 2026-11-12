@@ -1,6 +1,6 @@
 # Especificação — Módulo Projetos
 
-- Situação: rascunho, aguardando aprovação da Diretoria
+- Situação: aprovada pela Diretoria; entrega P1 (base) construída, P2 a P7 pendentes
 - Dono do produto: Diretoria
 - Proposta de origem: issue #107. Arquitetura: ADR-011, ADR-013 e ADR-021.
 - Referência do método: Guia Project DPro (PMD Pro), 2ª edição, PM4NGOs, 2020 (licença Creative
