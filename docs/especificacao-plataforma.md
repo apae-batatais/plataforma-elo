@@ -146,3 +146,131 @@ Uma só (cabe num PR): textos, dados fictícios, nomes da demonstração e manua
 - Orçamento, Tesouraria › Contas, Requisições, Comunicação e atendidos fictícios sem nomes
   próprios; o teste de guarda passa.
 - Ajuda e manual chamam-se "Manual do Elo".
+
+## Efeitos de acabamento (proposta #109)
+
+**Objetivo**: criar como peças reutilizáveis em `src/ui/` os quatro efeitos de "Efeitos de
+acabamento" da identidade visual (`docs/identidade-visual.md`) que hoje não existem, e aplicá-los
+em todos os apps de uma vez (decisão da Diretoria, 12/11/2026). **Para quem**: todas as pessoas que
+usam o Elo e a Diretoria, que confere nas prévias. **Frentes**: telas. Mexe em `src/ui/`, no
+`globals.css` e nas telas dos apps só para trocar elementos existentes pelas peças; nenhuma regra,
+aba, permissão ou número muda (a identidade é só a aparência). Sem ADR: não há decisão de
+arquitetura, e as peças seguem a regra "sem biblioteca de fora".
+
+### O que já existe (conferido no código)
+- Regra global de "menos movimento" (`prefers-reduced-motion` em `globals.css`): reduz a duração
+  das animações e transições para 0,01 ms. Ela **não** impede que um contador JavaScript conte; as
+  peças novas precisam tratar isso por conta própria (regra 2).
+- Entrada da notificação (`entrar-de-cima`, 0,2 s), giro do `BotaoEnviar`, esmaecer de cor na
+  troca de tema e de app, e o brilho simples do cartão de app da tela inicial (borda e sombra
+  `destaque-suave` ao passar o mouse, em `src/app/(elo)/page.tsx`).
+- **Não existem**: números que contam, anel que pulsa, brilho padronizado em todos os cartões
+  clicáveis, pisca onde mudou. Também não existem (e ficam fora desta proposta): grade que acende
+  em sequência, janela que desliza com fundo desfocado (a `Janela` só escurece o fundo), esmaecer
+  ao trocar de aba ou filtro, dicas em ícones e botões. O Arquiteto sugere à Diretoria uma
+  próxima proposta com estes.
+
+### As quatro peças (`src/ui/`)
+1. **`NumeroQueConta`** (cliente): recebe o valor já formatado pelo servidor mais o número e o
+   formato (`moeda`, `pct`, `numero`, de `formatarValor` em `graficos.tsx`). Ao aparecer na tela,
+   sobe de 0 até o valor em 0,6 s, com desaceleração; usa algarismos tabulares e largura fixa
+   para o texto não "pular". Se o valor for nulo, texto ("—") ou negativo, mostra direto o valor,
+   sem contar. Quando o valor muda depois (nova gravação), não recomeça do zero: vai do número
+   atual ao novo em 0,3 s.
+2. **`AnelPulsante`** (CSS em `globals.css` + classe usada pelo cartão): anel de 2 px na cor de
+   alerta (`--negativo`/aviso do tema) com brilho suave que respira em 2,4 s, sem fim enquanto a
+   pendência existir. É decoração: o alerta continua com ícone e texto dentro do cartão (regra 4).
+3. **`CartaoBrilho`** (classe/peça): ao passar o mouse **ou receber foco pelo teclado**, a borda do
+   cartão ganha brilho leve na cor do app (`--destaque`), em 0,2 s. Substitui o brilho avulso do
+   cartão da tela inicial e vale para todo cartão que é clicável como um todo.
+4. **`PiscaOndeMudou`** (cliente): envolve o trecho da tela que uma gravação pode alterar
+   (um número, uma linha de tabela, um cartão) e recebe uma `chave` estável. Depois de uma
+   gravação, se o conteúdo desse trecho for diferente do que a pessoa tinha visto, ele recebe um
+   fundo `destaque-suave` que some em 0,6 s, uma vez só. Não pisca na primeira abertura da tela,
+   nem ao voltar mais tarde sem ter gravado, nem para o que não mudou.
+
+### Regras de negócio (com teste)
+1. **Contagem**: `NumeroQueConta` termina sempre exatamente no valor recebido (nunca arredondado
+   diferente de `formatarValor`); a conta é uma função pura testável (valor, progresso → texto).
+2. **Menos movimento**: com `prefers-reduced-motion: reduce`, o número já aparece no valor final
+   (sem contar), o anel não pulsa e fica como anel fixo, o brilho aparece sem transição e o
+   "pisca" vira destaque fixo e discreto que some depois de 3 s, sem animação. Nada se perde.
+3. **Leitor de tela e impressão**: o texto final do número está no HTML desde o servidor (o
+   leitor de tela lê o valor final, não os números intermediários, que ficam `aria-hidden`), e na
+   impressão os números saem no valor final. Nenhum efeito retira o foco, atrasa clique ou muda o
+   tamanho do elemento.
+4. **Alerta nunca só pelo efeito**: o app com pendência vencida tem, além do anel, um
+   `Etiqueta` com ícone e texto ("Pendência vencida") no próprio cartão.
+5. **Duração**: todo efeito dura entre 0,2 e 0,6 s (exceto o anel, que repete devagar), sem
+   dependência de internet e sem biblioteca de fora.
+6. **Pisca só depois de gravar e só onde mudou**: a peça guarda o último conteúdo visto de cada
+   `chave` por página e só pisca quando a tela chega após uma gravação (a mesma marca `?ok=` que a
+   `Notificacao` já usa; a marca precisa ser lida de um modo que não dependa da ordem em que a
+   `Notificacao` limpa o endereço). Sem `?ok=`, nunca pisca.
+7. **Pendência vencida na tela inicial**: o cartão do app ganha o anel quando a pessoa tem, nesse
+   app, pendência com prazo vencido. Conta como vencida: requisição atrasada (além do prazo
+   combinado do app) e avaliação atrasada. A tela inicial lê isso pelos mesmos casos de uso que
+   os painéis do app já usam, sempre pelo `Autorizador`: quem não vê o app ou o dado não vê o
+   anel. Teste de quem vê: perfil sem acesso ao app não recebe o anel; perfil com acesso recebe
+   só pelos itens que pode ver.
+8. **Sem mudança de dados**: nenhuma peça lê ou grava planilha; as peças só recebem valores já
+   calculados e autorizados pela tela.
+
+### Telas (onde se aplica; "todas as telas de todos os apps")
+- **Números que contam**: todo número grande (`text-2xl` ou maior em `dd`, `p` ou `span` de
+  painel e cartão de topo) de Orçamento (painel, previsão, previsão geral, importações), Requisições
+  (painel), Avaliação (início, painel, ficha, formulário), Parcerias, Rede e os valores de
+  `Indicadores` em `graficos.tsx`. O Desenvolvedor faz a lista completa com
+  `grep -rn "tabular-nums"` e registra no PR o que ficou de fora e por quê (por exemplo, número
+  dentro de formulário que muda a cada tecla, como o índice ao vivo do formulário de avaliação:
+  ali não conta).
+- **Brilho**: cartão de app e atalhos da tela inicial, cartões de topo clicáveis dos apps e
+  qualquer cartão que seja um link inteiro. Cartão que não é clicável não ganha brilho (brilho
+  promete clique).
+- **Anel**: só no cartão de app da tela inicial (as seções de pendência listam o texto, sem
+  anel). Cartões de Núcleo (Pessoas, Acessos, Áreas, Serviços) nunca recebem anel.
+- **Pisca onde mudou**: depois de salvar, o trecho que mudou: o valor do cartão e do painel afetados,
+  a linha da tabela alterada (folha, lotação, itens da previsão, lançamentos, pedidos,
+  requisições, avaliações, acessos), o item de lista. O Desenvolvedor passa por todas as ações que
+  terminam em `?ok=` (`grep -rn "ok=" src`) e envolve o que cada uma altera; a `chave` é o id do
+  registro (nunca nome de pessoa na chave guardada) e o conteúdo comparado é só texto da tela, que
+  fica no navegador da própria pessoa (`sessionStorage`, some ao fechar a aba).
+- Melhoria apontada: a tela inicial mostra pendências só como lista; com o anel, o app que
+  concentra o problema fica visível sem ler a lista.
+
+### Fica de fora
+- Grade que acende em sequência, janela que desliza, esmaecer ao trocar aba ou filtro, pontos de
+  gráfico que se movem, dicas em ícones e botões (já existem só em parte; próxima proposta).
+- Qualquer mudança de regra, permissão, aba ou número; som; biblioteca de animação.
+- Efeito em tabela inteira que recarrega (só pisca a linha ou o valor que mudou).
+
+### Frentes
+`telas` (peças, aplicação nas telas, `globals.css`). Para a tela inicial, a leitura da pendência
+vencida usa casos de uso que já existem (`regras e dados`, só leitura, sem aba nova).
+
+### Entrega
+Uma entrega, como a Diretoria pediu, feita em passos com commits separados: (1) peças e testes;
+(2) tela inicial (anel e brilho); (3) números nos apps; (4) brilho nos cartões; (5) pisca nas
+gravações. No fim, o Desenvolvedor atualiza a tabela "Movimento" da habilidade `telas` (as quatro
+peças passam a existir) e a seção de efeitos de `docs/identidade-visual.md`, se algum valor
+mudou. Se a entrega ficar grande demais para conferir, o PR diz onde cortar.
+
+### Decisões tomadas sozinho (custo se estiverem erradas)
+- **O que é "pendência vencida"**: requisição e avaliação atrasadas, únicas com prazo hoje. Se a
+  Diretoria quiser outras (por exemplo, pedido de comunicação urgente), é um ajuste pequeno.
+- **Tempos**: contagem 0,6 s, brilho 0,2 s, pisca 0,6 s, anel 2,4 s por ciclo. Ajuste de número.
+- **Anel só na tela inicial**; dentro do app o alerta continua como hoje.
+- **Não contar números que mudam a cada tecla** (índices ao vivo de formulário).
+- **`sessionStorage` para o pisca**: simples e sem servidor; custo: se a pessoa abrir a tela em
+  outra aba logo depois de gravar, não pisca. Aceitável.
+
+### Critérios de pronto (na prévia)
+1. Em qualquer app, ao abrir o painel, os números grandes sobem de zero e terminam no valor certo.
+2. Na tela inicial, passar o mouse (e navegar pelo Tab) em qualquer cartão faz a borda brilhar na
+   cor do app.
+3. Com um perfil que tenha requisição ou avaliação atrasada, o cartão desse app pulsa e mostra a
+   etiqueta "Pendência vencida"; sem atraso, não pulsa.
+4. Salvar uma alteração (por exemplo, a lotação de um funcionário) mostra a confirmação em verde
+   e faz pulsar de leve só a linha ou o valor que mudou; recarregar a página não pisca de novo.
+5. Com "reduzir movimento" ligado no computador, nada anima e todas as informações aparecem.
+6. Tema claro e escuro, celular e impressão conferidos; `npm run verificar` e `npm run build` verdes.
