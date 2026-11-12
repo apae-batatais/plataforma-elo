@@ -14,7 +14,8 @@ import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { IconeAreas, IconeAtencao, IconeAvaliacao, IconeChave, IconeCerto, IconeComunicacao, IconeOrcamento, IconePessoas, IconeRequisicao, IconeSeta, IconeServicos } from '@/ui/icones';
 import { appDoCaminho } from '@/ui/cor-do-app';
-import { CabecalhoPagina } from '@/ui/pagina';
+import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
+import { appsComPendenciaVencida } from '@/plataforma/pendencias-vencidas';
 
 interface Pendencia {
   texto: ReactNode;
@@ -34,15 +35,18 @@ function CartaoApp({
   nome,
   descricao,
   atalhos,
+  vencida = false,
 }: {
   href: string;
   icone: ReactNode;
   nome: string;
   descricao: string;
   atalhos?: { rotulo: string; href: string }[];
+  /** Pendência com prazo vencida neste app: anel que pulsa (o alerta também vai escrito, com ícone). */
+  vencida?: boolean;
 }) {
   return (
-    <li data-app={appDoCaminho(href)} className="flex flex-col rounded-cartao border border-borda bg-superficie transition-[border-color,box-shadow] hover:border-destaque/60 hover:shadow-[0_0_0_3px_var(--destaque-suave)]">
+    <li data-app={appDoCaminho(href)} className={`cartao-brilho flex flex-col rounded-cartao border border-borda bg-superficie ${vencida ? 'anel-pulsante' : ''}`}>
       <Link href={href} className="group flex flex-1 gap-4 rounded-t-cartao p-5">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-destaque-suave text-destaque">{icone}</span>
         <span className="min-w-0">
@@ -51,6 +55,14 @@ function CartaoApp({
             <IconeSeta tamanho={18} className="transition-transform group-hover:translate-x-0.5" />
           </span>
           <span className="mt-0.5 block text-sm text-texto-suave">{descricao}</span>
+          {vencida && (
+            <span className="mt-2 block">
+              <Etiqueta tipo="erro">
+                <IconeAtencao tamanho={14} />
+                <span className="ml-1">Pendência vencida</span>
+              </Etiqueta>
+            </span>
+          )}
         </span>
       </Link>
       {atalhos && atalhos.length > 0 && (
@@ -77,6 +89,7 @@ export default async function Portal() {
 
   const apps = menuDoUsuario(MODULOS, a.permissoes());
   const ativos = new Set(MODULOS.map((m) => m.nome));
+  const vencidas = await appsComPendenciaVencida(app.planilhas, a);
   const planejados = APPS_PLANEJADOS.filter((x) => !ativos.has(x.nome));
 
   // O que precisa da atenção desta pessoa, conforme o perfil dela.
@@ -273,6 +286,7 @@ export default async function Portal() {
               nome={x.nome}
               descricao={x.descricao}
               atalhos={x.itens.slice(1, 4)}
+              vencida={vencidas.has(x.id)}
             />
           ))}
           {a.temPermissao('core.acessos.gerenciar') && (
