@@ -8,11 +8,18 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { acharNumero, textoDaContagem } from './contagem';
+import { PiscaOndeMudou } from './pisca-onde-mudou';
 
 const DURACAO_PRIMEIRA = 600;
 const DURACAO_MUDANCA = 300;
 
-export function NumeroQueConta({ texto }: { texto: string }) {
+/** Com `chave`, o número também pisca depois de uma gravação que o altere (veja `PiscaOndeMudou`). */
+export function NumeroQueConta({ texto, chave }: { texto: string; chave?: string }) {
+  const numero = <Contador texto={texto} />;
+  return chave ? <PiscaOndeMudou chave={chave}>{numero}</PiscaOndeMudou> : numero;
+}
+
+function Contador({ texto }: { texto: string }) {
   const [mostrado, setMostrado] = useState(texto);
   const caixa = useRef<HTMLSpanElement>(null);
   const atual = useRef<number | null>(null); // número visto agora; null = ainda não contou

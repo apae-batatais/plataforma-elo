@@ -30,6 +30,7 @@ import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, Secao } from '@/ui/pagina';
 import { acaoCancelar, acaoConcluir, acaoDecidir, acaoReceber } from '../acoes';
 import { BotaoImprimir } from './imprimir';
+import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
 export const metadata: Metadata = { title: 'Requisição' };
 
@@ -259,7 +260,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
               </thead>
               <tbody>
                 {d.itens.map((i) => (
-                  <tr key={i.id} className="border-t border-borda">
+                  <PiscaOndeMudou key={i.id} chave={`item:${i.id}`} como="tr" className="border-t border-borda">
                     <td className="px-3 py-2 text-right tabular-nums">{numeroBR(i.quantidade)}</td>
                     <td className="px-3 py-2">{i.unidade}</td>
                     <td className="px-3 py-2">{i.descricao}</td>
@@ -268,7 +269,7 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                         {i.atendido !== null ? numeroBR(i.atendido) : '—'}
                       </td>
                     )}
-                  </tr>
+                  </PiscaOndeMudou>
                 ))}
               </tbody>
             </table>

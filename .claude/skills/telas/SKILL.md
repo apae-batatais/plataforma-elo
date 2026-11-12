@@ -77,11 +77,14 @@ movimento" no computador, nada anima (a regra já está em `src/app/globals.css`
 | Gravou | Confirmação em verde (`Notificacao`) e o que mudou pisca uma vez |
 | Trocar de aba ou filtro | Conteúdo esmaece; pontos do gráfico vão até a nova posição |
 
-Já existem: a animação `entrar-de-cima` e as transições de cor em `globals.css`, o giro do
-`BotaoEnviar` e as transições pontuais de alguns cartões. **Números que contam, anel que pulsa,
-brilho na borda e "pisca onde mudou" ainda não têm peça pronta em `src/ui/`.** Não crie uma versão
-só dentro do app: escreva no PR de entrega qual efeito ficou de fora por falta da peça, para a
-Diretoria levar à conversa Product Owner.
+Peças prontas em `src/ui/` (proposta #109): **`NumeroQueConta`** (número grande que sobe; passe o texto
+já formatado, com `chave` para também piscar ao gravar), **`PiscaOndeMudou`** (envolva o que uma
+gravação altera, com `chave` estável = id do registro, nunca nome; `TabelaDados` já pisca as linhas),
+classe **`cartao-brilho`** (cartão clicável como um todo) e classe **`anel-pulsante`** (só o cartão de
+app da tela inicial com pendência vencida, sempre com a `Etiqueta` de texto). Não crie versão própria
+dentro do app. Número que muda a cada tecla (índice ao vivo de formulário) não conta. Ainda sem peça:
+grade que acende em sequência, janela que desliza com fundo desfocado, esmaecer ao trocar aba ou
+filtro e dicas em ícones; avise no PR de entrega se a tela precisar de um deles.
 
 ## Textos
 

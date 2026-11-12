@@ -97,7 +97,7 @@ export default async function FichaDoTermo({ params, searchParams }: { params: P
       {q.erro && <Aviso tipo="erro">{q.erro}</Aviso>}
 
       <Secao titulo="Valor do termo" descricao="Calculado pelo Elo: valor inicial das fontes mais os aportes. Nunca é digitado.">
-        <p className="text-2xl font-bold tabular-nums"><NumeroQueConta texto={dinheiro(t.valorGlobal)} /></p>
+        <p className="text-2xl font-bold tabular-nums"><NumeroQueConta texto={dinheiro(t.valorGlobal)} chave="valor-global" /></p>
         {t.recursosProprios !== null && <p className="mt-1 text-sm text-texto-suave">Recursos próprios previstos do termo: {dinheiro(t.recursosProprios)}</p>}
       </Secao>
 

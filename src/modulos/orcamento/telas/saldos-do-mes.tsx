@@ -18,6 +18,7 @@ import { Etiqueta, tabela } from '@/ui/pagina';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { CLASSES, lerValorEmReais, ROTULO_CLASSE, ROTULO_TIPO, type Classe, type TipoConta } from '../dominio/tesouraria';
 import { reais } from './formato';
+import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
 export interface AjusteTela {
   id: string;
@@ -241,7 +242,7 @@ export function SaldosDoMes({
                     const invalido = v === 'invalido';
                     const idCampo = `saldo-${l.contaId}`;
                     return (
-                      <tr key={l.contaId} className={tabela.linha}>
+                      <PiscaOndeMudou key={l.contaId} chave={`saldo:${l.contaId}`} como="tr" className={tabela.linha}>
                         <th scope="row" className={`${tabela.td} font-normal`}>
                           <span className="font-semibold">{l.descricao}</span>
                           <span className="mt-0.5 block text-xs text-texto-suave">
@@ -342,7 +343,7 @@ export function SaldosDoMes({
                           )}
                           {!podeEditar && l.ajustes.length === 0 && <span className="text-texto-suave">—</span>}
                         </td>
-                      </tr>
+                      </PiscaOndeMudou>
                     );
                   })}
                 </tbody>

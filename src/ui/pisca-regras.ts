@@ -4,7 +4,7 @@
  */
 
 /** Por quanto tempo a marca "acabou de gravar" vale (milissegundos). */
-export const VALIDADE_DA_MARCA = 8000;
+export const VALIDADE_DA_MARCA = 4000;
 export const MARCA_DE_GRAVACAO = 'elo.gravou';
 
 /** A tela chegou de uma gravação? Vale o `?ok=` no endereço ou a marca guardada há pouco. */

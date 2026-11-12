@@ -15,6 +15,7 @@ import { Aviso } from '@/ui/aviso';
 import { LinkBotao } from '@/ui/botao';
 import { CabecalhoPagina, EstadoVazio, tabela } from '@/ui/pagina';
 import { NumeroQueConta } from '@/ui/numero-que-conta';
+import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
 export const metadata: Metadata = { title: 'Resumo da folha' };
 
@@ -192,7 +193,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
                 <p className={`text-sm ${q.destaque ? 'text-lateral-texto' : 'text-texto-suave'}`}>
                   {q.rotulo} · {MESES[i].toLowerCase()}
                 </p>
-                <p className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(q.v)} /></p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(q.v)} chave={`quadro:${q.rotulo}:${i}`} /></p>
                 <p className={`text-sm tabular-nums ${q.destaque ? 'text-lateral-texto' : 'text-texto-suave'}`}>{reais(q.ano)} no ano</p>
                 {q.dica && <p className="mt-1.5 text-xs text-texto-suave">{q.dica}</p>}
               </div>
@@ -238,13 +239,13 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
                       .filter((c) => (c.codigo === '__sem_lotacao__' ? '__sem_lotacao__' : (c.area ?? '')) === ar.codigo)
                       .filter((c) => c.codigo !== '__sem_lotacao__')
                       .map((c) => (
-                        <tr key={c.codigo} className={tabela.linha}>
+                        <PiscaOndeMudou key={c.codigo} chave={`conta:${c.codigo}`} como="tr" className={tabela.linha}>
                           <th scope="row" className="py-2.5 pl-8 pr-4 text-left font-normal">
                             {c.nome}
                           </th>
                           <td className="px-4 py-2.5 text-right tabular-nums">{reais(c.mensal[i])}</td>
                           <td className="px-4 py-2.5 text-right tabular-nums text-texto-suave">{reais(c.anual)}</td>
-                        </tr>
+                        </PiscaOndeMudou>
                       ))}
                   </tbody>
                 </Fragment>

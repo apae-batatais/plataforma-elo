@@ -12,6 +12,7 @@
  * ordem usam o `valor` simples de cada coluna.
  */
 import { useMemo, useState, type ReactNode } from 'react';
+import { PiscaOndeMudou } from './pisca-onde-mudou';
 
 export type Valor = string | number | null;
 
@@ -208,7 +209,7 @@ export function TabelaDados({
               </tr>
             ) : (
               visiveis.map((l) => (
-                <tr key={l.id} className={`group ${l.destaque ? 'bg-destaque-suave' : ''}`}>
+                <PiscaOndeMudou key={l.id} chave={`linha:${l.id}`} como="tr" className={`group ${l.destaque ? 'bg-destaque-suave' : ''}`}>
                   {visiveisColunas.map((c, ci) => {
                     const alinhar = c.tipo === 'numero' || c.tipo === 'moeda' ? 'text-right tabular-nums whitespace-nowrap' : '';
                     return (
@@ -220,7 +221,7 @@ export function TabelaDados({
                       </td>
                     );
                   })}
-                </tr>
+                </PiscaOndeMudou>
               ))
             )}
           </tbody>

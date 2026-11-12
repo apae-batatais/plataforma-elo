@@ -23,7 +23,7 @@ function Cartao({ rotulo, valor, detalhe, alerta = false }: { rotulo: string; va
       className={`rounded-cartao border bg-superficie px-4 py-3 break-inside-avoid print:rounded-lg print:px-3 print:py-2 ${alerta ? 'border-erro' : 'border-borda'}`}
     >
       <dt className="text-sm leading-tight text-texto-suave print:text-[11px]">{rotulo}</dt>
-      <dd className={`text-2xl font-bold leading-tight tabular-nums print:text-xl ${alerta ? 'text-erro' : ''}`}><NumeroQueConta texto={valor} /></dd>
+      <dd className={`text-2xl font-bold leading-tight tabular-nums print:text-xl ${alerta ? 'text-erro' : ''}`}><NumeroQueConta texto={valor} chave={`cartao:${rotulo}`} /></dd>
       <dd className="text-xs text-texto-suave print:text-[11px]">{detalhe}</dd>
     </div>
   );

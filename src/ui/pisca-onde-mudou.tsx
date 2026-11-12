@@ -18,6 +18,8 @@ export function PiscaOndeMudou({ chave, como = 'span', className = '', children 
   const [piscando, setPiscando] = useState(0);
 
   // Sem lista de dependências de propósito: confere a cada vez que o conteúdo é redesenhado.
+  // Não entra em ciclo: depois de piscar, o texto visto é guardado e a próxima conferência dá igual.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -26,7 +28,8 @@ export function PiscaOndeMudou({ chave, como = 'span', className = '', children 
       const guardada = chaveGuardada(caminho, chave);
       const visto = sessionStorage.getItem(guardada);
       const gravou = chegouDeGravacao(window.location.search, sessionStorage.getItem(MARCA_DE_GRAVACAO), Date.now());
-      if (gravou) sessionStorage.setItem(MARCA_DE_GRAVACAO, String(Date.now()));
+      // Guarda a marca só quando o ?ok= ainda está no endereço (a Notificacao o limpa em seguida).
+      if (new URLSearchParams(window.location.search).has('ok') && !sessionStorage.getItem(MARCA_DE_GRAVACAO)) sessionStorage.setItem(MARCA_DE_GRAVACAO, String(Date.now()));
       sessionStorage.setItem(guardada, atual);
       if (deveFicarPiscando(visto, atual, gravou)) setPiscando((n) => n + 1);
     } catch {

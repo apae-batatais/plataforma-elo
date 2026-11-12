@@ -115,7 +115,7 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
         {cartoes.map((c) => (
           <div key={c.rotulo} className={`rounded-cartao border bg-superficie px-5 py-4 ${c.alerta ? 'border-erro' : 'border-borda'}`}>
             <dt className="text-sm text-texto-suave">{c.rotulo}</dt>
-            <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${c.alerta ? 'text-erro' : ''}`}><NumeroQueConta texto={c.valor} /></dd>
+            <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${c.alerta ? 'text-erro' : ''}`}><NumeroQueConta texto={c.valor} chave={`cartao:${c.rotulo}`} /></dd>
             <dd className="mt-1 flex flex-wrap items-center gap-2">
               {c.var}
               {c.alerta && <Etiqueta tipo="erro">{c.alerta}</Etiqueta>}

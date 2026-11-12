@@ -747,7 +747,7 @@ function Relatorio({ analise }: { analise: Analise }) {
           </div>
           <div>
             <dt className="text-texto-suave">Custo mensal calculado</dt>
-            <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={reais(r.custoMensalApp)} /></dd>
+            <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={reais(r.custoMensalApp)} chave="custo-mensal" /></dd>
             {r.custoMensalPlanilha !== null && <dd className="text-texto-suave">Na planilha: {reais(r.custoMensalPlanilha)}</dd>}
           </div>
         </dl>
