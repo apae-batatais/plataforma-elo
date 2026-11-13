@@ -13,6 +13,7 @@ import 'server-only';
 import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-planilhas';
 import type { Armazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
+import { idsPrevisiveis } from '@/nucleo/armazenamento/ids-previsiveis';
 import { PastasGoogleDrive, PastasMemoria, type ArmazenamentoPastas } from '@/nucleo/armazenamento/pastas';
 import { inserir, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { INSTITUICOES_DEMONSTRACAO, type ConfigGeral, type Instituicao, type Rede } from '@/nucleo/config';
@@ -54,7 +55,7 @@ export function aplicacaoDaRede(geral: ConfigGeral): Promise<AplicacaoDaRede | n
 async function montarRede(geral: ConfigGeral): Promise<AplicacaoDaRede | null> {
   if (geral.modo === 'demonstracao') {
     const armazenamento = new ArmazenamentoMemoria(['rede']);
-    const planilhas: Planilhas = { armazenamento, idDe: () => 'rede' };
+    const planilhas: Planilhas = { armazenamento, idDe: () => 'rede', novoId: idsPrevisiveis('rede') };
     await prepararRede(planilhas);
     const autor = { email: 'demonstracao' };
     for (const i of INSTITUICOES_DEMONSTRACAO) {
