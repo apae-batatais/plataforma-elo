@@ -8,6 +8,7 @@ import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 import { ErroArmazenamento } from '@/nucleo/armazenamento/armazenamento';
 import { ArquivosGoogleDrive, ArquivosMemoria, type ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
+import { idsPrevisiveis } from '@/nucleo/armazenamento/ids-previsiveis';
 import { ArmazenamentoGooglePlanilhas } from '@/nucleo/armazenamento/google-planilhas';
 import { configDaInstituicao, type Config, type ConfigGeral, type Instituicao } from '@/nucleo/config';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
@@ -55,7 +56,8 @@ async function montar(geral: ConfigGeral, inst: Instituicao, unica: boolean): Pr
 
   if (config.modo === 'demonstracao') {
     const chaves = ['nucleo', 'auditoria', ...new Set(TABELAS_DOS_MODULOS.map((t) => t.planilha))];
-    const planilhas: Planilhas = { armazenamento: new ArmazenamentoMemoria(chaves), idDe: (c) => c };
+    // ids previsíveis: todas as cópias do servidor montam a demonstração com os mesmos ids.
+    const planilhas: Planilhas = { armazenamento: new ArmazenamentoMemoria(chaves), idDe: (c) => c, novoId: idsPrevisiveis(inst.codigo) };
     await prepararEstrutura(planilhas, ESTRUTURA_DOS_MODULOS, 'sistema', inst.unidades);
     await popularDadosFicticios(planilhas);
     await popularDemonstracaoDosModulos(planilhas);

@@ -184,6 +184,15 @@ export interface Planilhas {
   armazenamento: Armazenamento;
   /** Converte a chave do catálogo no identificador da planilha no Drive. */
   idDe(chave: string): string;
+  /**
+   * Gera o id de um registro novo. Só a demonstração usa (ids previsíveis, iguais em todas as
+   * cópias do servidor); sem ele, o id é sorteado.
+   */
+  novoId?: (aba: string) => string;
+}
+
+function novoIdDe(p: Planilhas, aba: string): string {
+  return p.novoId?.(aba) ?? crypto.randomUUID();
 }
 
 export async function lerTabela<E extends z.ZodObject>(p: Planilhas, def: DefinicaoTabela<E>): Promise<TabelaLida<E>> {
@@ -223,7 +232,7 @@ export async function inserir<E extends z.ZodObject>(
     def.modo === 'somente_inclusao'
       ? campos
       : {
-          id: crypto.randomUUID(),
+          id: novoIdDe(p, def.aba),
           versao: 1,
           ativo: true,
           criado_em: agora,
@@ -265,7 +274,7 @@ export async function inserirRegistros<E extends z.ZodObject>(
     return (
       def.modo === 'somente_inclusao'
         ? campos
-        : { id: crypto.randomUUID(), versao: 1, ativo: true, criado_em: agora, criado_por: autoria.email, atualizado_em: agora, atualizado_por: autoria.email, ...campos }
+        : { id: novoIdDe(p, def.aba), versao: 1, ativo: true, criado_em: agora, criado_por: autoria.email, atualizado_em: agora, atualizado_por: autoria.email, ...campos }
     ) as Registro<E>;
   });
   await p.armazenamento.acrescentar(p.idDe(def.planilha), def.aba, registros.map((r) => tabela.paraLinha(r)));

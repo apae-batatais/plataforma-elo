@@ -11,6 +11,9 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
   publicação oficial; por isso a publicação oficial é semanal e agendada (ADR-019).
 - Dados no Google Planilhas e anexos no Google Drive, por conta de serviço (ADR-011, ADR-014,
   ADR-018). Migração para Postgres só depois de cerca de 5 clientes (ADR-017).
+- Demonstração e prévias: dados na memória de cada cópia do servidor (a Netlify roda várias). Os
+  dados fictícios usam ids previsíveis (`src/nucleo/armazenamento/ids-previsiveis.ts`), iguais em
+  todas as cópias; o que se cadastra na demonstração pode sumir no clique seguinte.
 - Desenvolvimento só na nuvem (ADR-010): a Diretoria não roda nada no computador.
 
 ## Workflows (`.github/workflows/`)
