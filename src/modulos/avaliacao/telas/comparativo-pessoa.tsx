@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { INDICE_MAXIMO } from '../dominio/avaliacao';
 import type { Tendencia } from '../dominio/comparativo';
 import type { HistoricoPessoa } from '../aplicacao/avaliacoes';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 const br = (iso: string) => iso.split('-').reverse().join('/');
 
@@ -60,7 +61,7 @@ export function ComparativoPessoa({ h, links = true }: { h: HistoricoPessoa; lin
         ).map(([r, v, x], i) => (
           <div key={r} className="rounded-lg border border-borda px-3 py-2">
             <p className="text-[11px] text-texto-suave">{r}</p>
-            <p className={`text-xl font-bold tabular-nums ${i === 3 ? SITUACAO[h.reavaliacao.situacao].classe : ''}`}>{v}</p>
+            <p className={`text-xl font-bold tabular-nums ${i === 3 ? SITUACAO[h.reavaliacao.situacao].classe : ''}`}><NumeroQueConta texto={String(v)} /></p>
             <p className={`text-[11px] ${i === 3 ? SITUACAO[h.reavaliacao.situacao].classe : 'text-texto-suave'}`}>{x}</p>
           </div>
         ))}

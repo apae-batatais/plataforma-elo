@@ -15,6 +15,7 @@ import {
   temViolacao,
   type DadosAvaliacao,
 } from '../dominio/avaliacao';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 const br = (iso: string) => (iso ? iso.split('-').reverse().join('/') : '—');
 
@@ -141,7 +142,7 @@ export function FichaAvaliacao({ d, servicoNome }: { d: DadosAvaliacao; servicoN
       <section className="flex items-center gap-4 rounded-lg border border-borda px-4 py-2.5 break-inside-avoid">
         <p className="shrink-0">
           <span className="block text-[11px] text-texto-suave">Índice de necessidade de cuidado</span>
-          <span className="text-2xl font-bold text-destaque tabular-nums">{indice}</span>
+          <span className="text-2xl font-bold text-destaque tabular-nums"><NumeroQueConta texto={String(indice)} /></span>
           <span className="text-texto-suave"> de {INDICE_MAXIMO}</span>
         </p>
         <p className="text-[12px] text-texto-suave">

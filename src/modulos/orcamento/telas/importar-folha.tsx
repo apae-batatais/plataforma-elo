@@ -23,6 +23,7 @@ import {
   type MapeamentoLotacao,
 } from '../dominio/importacao';
 import { percentual, reais } from './formato';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 type EstadoAnalise = { erro?: string; analise?: Analise };
 type EstadoArquivo = {
@@ -730,23 +731,23 @@ function Relatorio({ analise }: { analise: Analise }) {
         <dl className="grid gap-3 text-sm sm:grid-cols-4">
           <div>
             <dt className="text-texto-suave">Funcionários</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{r.postos.total}</dd>
+            <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={String(r.postos.total)} /></dd>
             <dd className="text-texto-suave">
               {r.postos.vagas} {r.postos.vagas === 1 ? 'vaga prevista' : 'vagas previstas'}
             </dd>
           </div>
           <div>
             <dt className="text-texto-suave">Com lotação válida</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{r.postos.comLotacao}</dd>
+            <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={String(r.postos.comLotacao)} /></dd>
           </div>
           <div>
             <dt className="text-texto-suave">Lotações reconhecidas</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{r.servicos.reconhecidos}</dd>
+            <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={String(r.servicos.reconhecidos)} /></dd>
             <dd className="text-texto-suave">{r.servicos.aEscolher} para você escolher</dd>
           </div>
           <div>
             <dt className="text-texto-suave">Custo mensal calculado</dt>
-            <dd className="text-2xl font-semibold tabular-nums">{reais(r.custoMensalApp)}</dd>
+            <dd className="text-2xl font-semibold tabular-nums"><NumeroQueConta texto={reais(r.custoMensalApp)} chave="custo-mensal" /></dd>
             {r.custoMensalPlanilha !== null && <dd className="text-texto-suave">Na planilha: {reais(r.custoMensalPlanilha)}</dd>}
           </div>
         </dl>

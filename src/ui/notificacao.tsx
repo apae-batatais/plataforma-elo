@@ -9,6 +9,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Aviso } from './aviso';
 import { IconeCerto, IconeFechar } from './icones';
+import { MARCA_DE_GRAVACAO } from './pisca-regras';
 
 export function Notificacao() {
   const params = useSearchParams();
@@ -21,6 +22,12 @@ export function Notificacao() {
   useEffect(() => {
     if (!ok) return;
     setVisivel(ok);
+    // Avisa o "pisca onde mudou" (que pode ler depois que o endereço for limpo) de que acabou de gravar.
+    try {
+      sessionStorage.setItem(MARCA_DE_GRAVACAO, String(Date.now()));
+    } catch {
+      // sem armazenamento da sessão: não pisca
+    }
     const resto = new URLSearchParams(params);
     resto.delete('ok');
     router.replace(resto.size ? `${caminho}?${resto}` : caminho, { scroll: false });

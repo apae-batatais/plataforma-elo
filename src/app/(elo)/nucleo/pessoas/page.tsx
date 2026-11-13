@@ -8,6 +8,7 @@ import { estiloBotao } from '@/ui/botao';
 import { estiloEntrada } from '@/ui/campo';
 import { IconeBusca } from '@/ui/icones';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, tabela } from '@/ui/pagina';
+import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
 export const metadata: Metadata = { title: 'Pessoas' };
 
@@ -106,7 +107,7 @@ export default async function Pessoas({ searchParams }: { searchParams: Promise<
             </thead>
             <tbody>
               {pessoas.map((p) => (
-                <tr key={p.id} className={tabela.linha}>
+                <PiscaOndeMudou key={p.id} chave={`pessoa:${p.id}`} como="tr" className={tabela.linha}>
                   <td className={`${tabela.td} font-semibold`}>{p.nome}</td>
                   <td className={tabela.td}>
                     <span className="flex flex-wrap gap-1">
@@ -118,7 +119,7 @@ export default async function Pessoas({ searchParams }: { searchParams: Promise<
                     </span>
                   </td>
                   <td className={`${tabela.td} text-texto-suave`}>{p.servicos.join(', ') || '—'}</td>
-                </tr>
+                </PiscaOndeMudou>
               ))}
             </tbody>
           </table>

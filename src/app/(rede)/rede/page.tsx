@@ -17,6 +17,7 @@ import { avisoDeEstrutura } from './estrutura-das-instituicoes';
 import { FormularioInstituicao } from './formulario-instituicao';
 import { PLANILHAS_DA_INSTITUICAO } from './planilhas';
 import { planilhasDaInstituicao } from './planilhas-da-instituicao';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Instituições' };
 
@@ -171,7 +172,7 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
             {(Object.keys(SITUACAO) as (keyof typeof SITUACAO)[]).map((s) => (
               <div key={s} className="rounded-cartao border border-borda bg-superficie px-4 py-3">
                 <dt className="text-sm text-texto-suave">{SITUACAO[s]}</dt>
-                <dd className="text-2xl font-bold tabular-nums">{contagem(s)}</dd>
+                <dd className="text-2xl font-bold tabular-nums"><NumeroQueConta texto={String(contagem(s))} chave={`situacao:${s}`} /></dd>
               </div>
             ))}
           </dl>

@@ -387,3 +387,62 @@ body,
     color 0.25s ease,
     border-color 0.25s ease;
 }
+
+/* Efeitos de acabamento (docs/identidade-visual.md). Tudo entre 0,2 e 0,6 s, menos o anel, que respira devagar. */
+
+/* Pisca onde mudou: fundo suave na cor do app que some em 0,6 s. Com menos movimento, fica fixo e a peça o tira em 3 s. */
+@keyframes pisca-onde-mudou {
+  from {
+    background-color: var(--destaque-suave);
+    box-shadow: 0 0 0 4px var(--destaque-suave);
+  }
+  to {
+    background-color: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+[data-pisca='sim'] {
+  border-radius: 0.375rem;
+  animation: pisca-onde-mudou 0.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-pisca='sim'] {
+    animation: none !important;
+    background-color: var(--destaque-suave);
+  }
+}
+
+/* Anel que pulsa: cartão de app com pendência vencida. Decoração; o alerta fica no texto e no ícone do cartão. */
+@keyframes anel-pulsante {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--negativo), 0 0 0 0 transparent;
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--negativo), 0 0 14px 3px color-mix(in srgb, var(--negativo) 35%, transparent);
+  }
+}
+.anel-pulsante {
+  animation: anel-pulsante 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anel-pulsante {
+    animation: none !important;
+    box-shadow: 0 0 0 2px var(--negativo);
+  }
+}
+
+/* Brilho na borda: cartão clicável, ao passar o mouse ou receber foco. Cor do app. */
+.cartao-brilho {
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cartao-brilho:hover,
+.cartao-brilho:focus-within {
+  border-color: color-mix(in srgb, var(--destaque) 60%, transparent);
+  box-shadow: 0 0 0 3px var(--destaque-suave), 0 0 12px 0 color-mix(in srgb, var(--destaque) 25%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cartao-brilho {
+    transition: none !important;
+  }
+}

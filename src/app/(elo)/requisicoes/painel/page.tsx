@@ -12,6 +12,8 @@ import { Campo, estiloEntrada } from '@/ui/campo';
 import { Linhas } from '@/ui/graficos';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao, tabela } from '@/ui/pagina';
 import { TabelaDados, type LinhaDados } from '@/ui/tabela-dados';
+import { NumeroQueConta } from '@/ui/numero-que-conta';
+import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
 export const metadata: Metadata = { title: 'Painel de prazos' };
 
@@ -23,7 +25,7 @@ function Cartao({ rotulo, valor, detalhe, alerta = false }: { rotulo: string; va
   return (
     <div className={`rounded-cartao border bg-superficie px-5 py-4 ${alerta ? 'border-erro' : 'border-borda'}`}>
       <dt className="text-sm text-texto-suave">{rotulo}</dt>
-      <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${alerta ? 'text-erro' : ''}`}>{valor}</dd>
+      <dd className={`mt-0.5 text-2xl font-bold leading-tight tabular-nums ${alerta ? 'text-erro' : ''}`}><NumeroQueConta texto={valor} chave={`cartao:${rotulo}`} /></dd>
       <dd className="mt-1 text-sm text-texto-suave">{detalhe}</dd>
     </div>
   );
@@ -151,7 +153,7 @@ export default async function PainelDePrazos({ searchParams }: { searchParams: P
               </thead>
               <tbody>
                 {p.atrasadas.map((a) => (
-                  <tr key={a.id} className={tabela.linha}>
+                  <PiscaOndeMudou key={a.id} chave={`atrasada:${a.id}`} como="tr" className={tabela.linha}>
                     <td className={tabela.td}>
                       <Link href={`/requisicoes/${a.id}`} className="font-semibold text-destaque underline-offset-2 hover:underline">
                         {a.numero}
@@ -163,7 +165,7 @@ export default async function PainelDePrazos({ searchParams }: { searchParams: P
                     </td>
                     <td className={`${tabela.td} text-erro`}>{textoHoras(a.horas, e)}</td>
                     <td className={tabela.td}>{textoHoras(a.prazo, e)}</td>
-                  </tr>
+                  </PiscaOndeMudou>
                 ))}
               </tbody>
             </table>
