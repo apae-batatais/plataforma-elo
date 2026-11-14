@@ -27,6 +27,7 @@ import {
   type DetalhesTi,
   type ServicoManutencao,
   type ServicoMobiliario,
+  type ProjetoEscolhivel,
   type Urgencia,
 } from '../dominio/requisicao';
 
@@ -48,6 +49,8 @@ export interface OpcoesFicha {
   servicos: { codigo: string; nome: string; area: string | null; areaNome: string }[];
   /** A instituição ativou a pasta de anexos (fotos e vídeo). */
   anexosAtivos: boolean;
+  /** Projetos que a pessoa vê e que aceitam compra, entregues pela plataforma. Sem lista, o campo não aparece. */
+  projetos?: ProjetoEscolhivel[];
 }
 
 const UNIDADES = ['un', 'kg', 'g', 'L', 'ml', 'pacote', 'caixa', 'resma', 'dúzia', 'fardo', 'rolo', 'par', 'frasco', 'galão'];
@@ -92,6 +95,17 @@ export function FormularioRequisicao({
   const [centros, setCentros] = useState(
     inicial?.centros.map((c) => ({ servico: c.servico, percentual: String(c.percentual) })) ?? [{ servico: '', percentual: '100' }],
   );
+  const [projetoId, setProjetoId] = useState(inicial?.projetoId ?? '');
+  const [atividadeId, setAtividadeId] = useState(inicial?.atividadeId ?? '');
+  const projeto = opcoes.projetos?.find((x) => x.id === projetoId);
+  const servicoTravado = Boolean(projeto?.servico);
+  const escolherProjeto = (id: string) => {
+    setProjetoId(id);
+    setAtividadeId('');
+    const novo = opcoes.projetos?.find((x) => x.id === id);
+    // O serviço vem do projeto (R3): um único centro de custo, 100%.
+    if (novo?.servico) setCentros([{ servico: novo.servico, percentual: '100' }]);
+  };
   const [itens, setItens] = useState(
     inicial?.itens.map((x) => ({ quantidade: String(x.quantidade), unidade: x.unidade, descricao: x.descricao })) ?? [vazioItem(), vazioItem()],
   );
@@ -183,6 +197,8 @@ export function FormularioRequisicao({
     tipoId,
     area,
     centros: centros.map((c) => ({ servico: c.servico, percentual: paraNumero(c.percentual) })),
+    projetoId: projetoId || null,
+    atividadeId: projetoId ? atividadeId || null : null,
     itens: (tipo && tipo.formulario !== 'materiais' ? [] : itens)
       .filter((x) => x.descricao.trim() || x.quantidade.trim())
       .map((x) => ({ quantidade: paraNumero(x.quantidade), unidade: x.unidade, descricao: x.descricao, catalogoId: daLista(x.descricao)?.id ?? null })),
@@ -254,18 +270,50 @@ export function FormularioRequisicao({
         </div>
       </section>
 
+      {opcoes.projetos && opcoes.projetos.length > 0 && (
+        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
+          <h2 className="text-lg font-bold">Projeto</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Esta compra é de um projeto?" dica="Opcional. Só aparecem projetos em implementação que você pode ver.">
+              <select value={projetoId} onChange={(e) => escolherProjeto(e.target.value)} className={estiloEntrada}>
+                <option value="">Não é de um projeto</option>
+                {opcoes.projetos.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.codigo} · {x.titulo}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            {projeto && (
+              <Campo rotulo="Atividade" dica="A atividade é opcional; informe se quiser ver o gasto por atividade no projeto.">
+                <select value={atividadeId} onChange={(e) => setAtividadeId(e.target.value)} className={estiloEntrada}>
+                  <option value="">Sem atividade</option>
+                  {projeto.atividades.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.descricao}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
+          </div>
+        </section>
+      )}
+
       <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-bold">Centros de custo</h2>
           <span className={`text-sm font-semibold tabular-nums ${soma === 100 ? 'text-sucesso' : 'text-aviso'}`}>Soma: {soma.toLocaleString('pt-BR')}%</span>
         </div>
-        <p className="text-sm text-texto-suave">Um ou mais serviços da mesma coordenação, somando 100%.</p>
+        <p className="text-sm text-texto-suave">
+          {servicoTravado ? 'O serviço vem do projeto.' : 'Um ou mais serviços da mesma coordenação, somando 100%.'}
+        </p>
         <ul className="space-y-2">
           {centros.map((c, i) => (
             <li key={i} className="grid grid-cols-[1fr_7rem_auto] items-end gap-2">
               <label className="block text-sm">
                 <span className="sr-only">Serviço {i + 1}</span>
-                <select value={c.servico} onChange={(e) => mudarCentro(i, 'servico', e.target.value)} className={`${estiloEntrada} !mt-0`}>
+                <select value={c.servico} disabled={servicoTravado} onChange={(e) => mudarCentro(i, 'servico', e.target.value)} className={`${estiloEntrada} !mt-0`}>
                   <option value="">Escolha o serviço…</option>
                   {areasDosServicos.map((a) => (
                     <optgroup key={a} label={a}>
@@ -286,6 +334,7 @@ export function FormularioRequisicao({
                   <input
                     inputMode="decimal"
                     value={c.percentual}
+                    readOnly={servicoTravado}
                     onChange={(e) => mudarCentro(i, 'percentual', e.target.value)}
                     className={`${estiloEntrada} !mt-0 pr-7 text-right`}
                   />
@@ -305,9 +354,11 @@ export function FormularioRequisicao({
           ))}
         </ul>
         <div className="flex flex-wrap gap-2">
-          <Botao type="button" variante="fantasma" onClick={() => setCentros([...centros, vazioCentro()])}>
-            <IconeMais tamanho={16} /> Outro centro de custo
-          </Botao>
+          {!servicoTravado && (
+            <Botao type="button" variante="fantasma" onClick={() => setCentros([...centros, vazioCentro()])}>
+              <IconeMais tamanho={16} /> Outro centro de custo
+            </Botao>
+          )}
           {centros.length > 1 && (
             <Botao type="button" variante="fantasma" onClick={dividirIgual}>
               Dividir igualmente

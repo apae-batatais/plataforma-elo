@@ -95,6 +95,45 @@ export function conferirCentros(centros: Centro[]): string[] {
   return [...new Set(erros)];
 }
 
+/** Projeto que a plataforma entrega à requisição para escolher (a Requisições não lê Projetos; ADR-022). */
+export interface ProjetoEscolhivel {
+  id: string;
+  codigo: string;
+  titulo: string;
+  servico: string | null;
+  atividades: { id: string; descricao: string }[];
+}
+
+/** Valor em reais com no máximo duas casas e não negativo. */
+export function conferirValor(v: number, rotulo: string): string | null {
+  if (!Number.isFinite(v) || v < 0) return `${rotulo}: informe um valor maior ou igual a zero.`;
+  if (Math.round(v * 100) / 100 !== v) return `${rotulo}: use no máximo duas casas decimais.`;
+  return null;
+}
+
+export const ERRO_PROJETO_FORA = 'Este projeto não está mais em implementação. Escolha outro ou envie sem projeto.';
+
+/**
+ * Confere a ligação com projeto (R2, R3). Sem projeto, nada a conferir. O projeto tem de estar na lista
+ * que a pessoa vê e que aceita compra; com serviço no projeto, o único centro de custo é o serviço, a 100%.
+ */
+export function conferirProjeto(
+  projetoId: string | null | undefined,
+  atividadeId: string | null | undefined,
+  centros: Centro[],
+  projetos: readonly ProjetoEscolhivel[] | null,
+): { erros: string[]; projeto: ProjetoEscolhivel | null; atividade: { id: string; descricao: string } | null } {
+  if (!projetoId) return { erros: atividadeId ? ['Escolha o projeto antes da atividade.'] : [], projeto: null, atividade: null };
+  const projeto = projetos?.find((x) => x.id === projetoId) ?? null;
+  if (!projeto) return { erros: [ERRO_PROJETO_FORA], projeto: null, atividade: null };
+  const erros: string[] = [];
+  const atividade = atividadeId ? (projeto.atividades.find((a) => a.id === atividadeId) ?? null) : null;
+  if (atividadeId && !atividade) erros.push('Esta atividade não está disponível no projeto.');
+  if (projeto.servico && !(centros.length === 1 && centros[0].servico === projeto.servico && centesimos(centros[0].percentual) === 10000))
+    erros.push('O serviço vem do projeto: o único centro de custo deve ser o serviço do projeto, com 100%.');
+  return { erros, projeto, atividade };
+}
+
 export interface ItemPedido {
   quantidade: number;
   unidade: string;

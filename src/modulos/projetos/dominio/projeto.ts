@@ -136,3 +136,9 @@ export function lerEmails(texto: string): string[] {
   for (const e of lista) if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) throw new ErroProjetos(`"${e}" não parece um e-mail válido.`);
   return [...new Set(lista)];
 }
+
+/**
+ * Etapa em que o projeto aceita compras (requisição ligada ao projeto): só o projeto em implementação,
+ * isto é, com o Termo aprovado. A etapa "implementacao" chega com as entregas P2 a P4; até lá nenhum projeto aceita.
+ */
+export const aceitaCompra = (etapa: string): boolean => etapa === 'implementacao';

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { opcoesDoFormulario } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { FormularioRequisicao } from '@/modulos/requisicoes/telas/formulario-requisicao';
+import { projetosParaRequisicao } from '@/plataforma/ligacoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -16,6 +17,9 @@ export default async function NovaRequisicao() {
   if (!usuario.autorizador.temPermissaoAlgumEscopo('requisicoes.solicitar')) redirect('/requisicoes');
   const app = await obterAplicacao();
   const opcoes = await opcoesDoFormulario(app.planilhas, usuario.autorizador, { anexosAtivos: app.arquivos !== null });
+  // Projetos em implementação que a pessoa vê; sem lista (app desligado ou nenhum projeto), o campo não aparece.
+  const projetos = await projetosParaRequisicao(app.planilhas, usuario.autorizador);
+  if (projetos?.length) opcoes.projetos = projetos;
   return (
     <div className="max-w-4xl">
       <CabecalhoPagina

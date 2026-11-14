@@ -6,7 +6,7 @@ import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import { Projetos } from '../dados/tabelas';
-import { NOME_ETAPA, type Etapa } from '../dominio/projeto';
+import { aceitaCompra, NOME_ETAPA, type Etapa } from '../dominio/projeto';
 import { lerConfig, podeVerProjeto } from './comum';
 
 export interface ProjetoDoServico {
@@ -37,4 +37,29 @@ export async function projetosDoServico(p: Planilhas, quem: Autorizador, servico
   for (const r of lista) contagem.set(r.etapa, (contagem.get(r.etapa) ?? 0) + 1);
   const porEtapa = [...contagem].map(([etapa, quantidade]) => ({ etapa, nome: NOME_ETAPA[etapa], quantidade }));
   return ligacaoOk({ projetos: lista, porEtapa, podePropor: quem.temPermissaoAlgumEscopo('projetos.propor') });
+}
+
+/** O que a requisição precisa saber de um projeto para ligar uma compra a ele (ADR-022). */
+export interface ProjetoParaCompra {
+  id: string;
+  codigo: string;
+  titulo: string;
+  /** Serviço do projeto (código); quando existe, a requisição fica nele a 100%. */
+  servico: string | null;
+  /** Atividades ainda não concluídas nem canceladas (opcionais na requisição). */
+  atividades: { id: string; descricao: string }[];
+}
+
+/** Projetos que a pessoa vê e que aceitam compra (em implementação). */
+export async function projetosParaCompra(p: Planilhas, quem: Autorizador): Promise<Ligacao<ProjetoParaCompra[]>> {
+  if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) return ligacaoSemPermissao();
+  const [projetos, config] = await Promise.all([lerTabela(p, Projetos), lerConfig(p)]);
+  return ligacaoOk(
+    projetos
+      .ativos()
+      .filter((r) => aceitaCompra(r.etapa) && podeVerProjeto(quem, r, config))
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+      // As atividades do projeto chegam com a entrega P3; até lá a lista é vazia.
+      .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo, servico: r.servico, atividades: [] })),
+  );
 }

@@ -76,6 +76,16 @@ export const Requisicoes = definirTabela({
     recebida_por: textoOpcional(),
     concluida_em: textoOpcional(),
     executada_por: textoOpcional(),
+    /** Ligação com projeto (L2): id e código/título copiados, para a lista não depender de ler Projetos. */
+    projeto_id: textoOpcional(),
+    projeto_codigo: textoOpcional(),
+    projeto_titulo: textoOpcional(),
+    atividade_id: textoOpcional(),
+    atividade_descricao: textoOpcional(),
+    /** Informado por quem aprova, só para conferir o saldo (nunca por quem pede). */
+    valor_estimado: numeroOpcional(),
+    /** Informado por quem atendeu ao concluir; não soma com o realizado do Orçamento. */
+    valor_gasto: numeroOpcional(),
   }),
   sigilo: { requisitante: 'pessoal', requisitante_nome: 'pessoal' },
 });
