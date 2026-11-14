@@ -140,3 +140,15 @@ Ficou para depois (14/11/2026):
 - [ ] Bloco de termos de Parcerias na Ficha do serviço (onda 2).
 - [ ] Realizado por atividade vindo do Orçamento (hoje, por projeto; por atividade só pelas compras ligadas).
 - [ ] Sugestões de experiência na Ficha do serviço: faixa "o que pede ação", atalhos de nova requisição e nova ideia, comparação com o ano anterior e impressão.
+
+## Agenda única e busca única (issue #117, especificação em `docs/especificacao-agenda-e-busca.md`)
+
+Ficou para depois (14/11/2026):
+
+- [ ] Segunda entrega, depois das ondas 1 e 2 (#115 e #116): bloco "Ligado a isto" em projeto, termo e serviço;
+      serviços como resultado da busca (precisam da Ficha do serviço); feriados na agenda (#67).
+- [ ] Datas do Orçamento, prazos de prestação de contas (Parcerias) e prazo das portas de Projetos na agenda,
+      quando existirem.
+- [ ] Avisos por e-mail dos prazos (ligação com o Gmail, #63) e assinatura da agenda no Google Agenda.
+- [ ] Busca em Avaliação (dado sensível; só com pedido da Diretoria).
+- [ ] Sugestões ao digitar e filtro por app nos resultados da busca.
