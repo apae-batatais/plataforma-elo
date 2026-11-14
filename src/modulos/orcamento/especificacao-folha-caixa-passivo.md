@@ -59,7 +59,7 @@ Planilha `orcamento_folha` (pessoal, restrita), salvo onde indicado:
 | `CalendarioPagamento` (nova) | uma linha por mês e vigência, **não pessoal** | `vigencia`, `mes` (1 a 12), `ferias_coletivas` (sim/não), `decimo_pct` (0 a 100), `abono_pct` (0 a 100) | — |
 | `FeriasTiradas` (nova) | uma linha por período gozado | `posto_id`, `inicio`, `dias` (1 a 30), `observacao` | `inicio` e `dias`: pessoal |
 | `SaldoFGTS` (nova) | ajuste manual, só inclusões; vale a linha mais recente | `posto_id`, `referencia` (data do extrato), `valor`, `observacao` | `valor`: pessoal |
-| `Parametros` (existente) | chaves novas (numéricas) | `decimo_parcelas_mes_1` e `_2` ficam no calendário; `aviso_dias_base` = 30, `aviso_dias_por_ano` = 3, `aviso_dias_max` = 90, `multa_fgts` = 40 | — |
+| `Parametros` (existente) | chaves novas (numéricas) | `aviso_dias_base` = 30, `aviso_dias_por_ano` = 3, `aviso_dias_max` = 90, `multa_fgts` = 40 | — |
 
 Planilha `orcamento_execucao` (não pessoal): aba nova `ReservaTrabalhista` (`ano`, `mes`, `valor`,
 `observacao`; uma linha ativa por mês) e **natureza nova** `provisao_trabalhista` na aba `Realizado`
