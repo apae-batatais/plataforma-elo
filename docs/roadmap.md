@@ -128,6 +128,21 @@ Ficou para depois (12/11/2026):
 - [ ] Modelos de projeto por tipo e cópia de projeto.
 - [ ] Conferir a licença do Guia Project DPro (Creative Commons não comercial) se o Elo vier a ser cobrado.
 
+## Ligações entre apps, onda 2 (issue #116, especificado em 14/11/2026)
+
+Especificação: `src/modulos/projetos/especificacao.md`, seção "Ligações, onda 2" (ADR-023).
+
+- [ ] **Prazos de prestação de contas do termo** no projeto: dependem de Parcerias ter esses prazos (ver "Rateio e
+      fontes"). Por ora o projeto mostra fim da vigência e datas das parcelas.
+- [ ] Outras contagens e resultados da Avaliação como indicador: entradas e saídas no período, quebra por faixa
+      etária ou sexo, % que melhorou e % com suspeita de violação de direitos (a Diretoria aprovou só vínculos
+      ativos, índice médio e reavaliação em dia, em 13/11/2026).
+- [ ] Mudar o mínimo de 5 pessoas por tela ou por OSC (hoje é fixo e vale para todas).
+- [ ] Atualizar o rascunho do termo quando o projeto muda (hoje só avisa a diferença de valor).
+- [ ] "Repetir evento da edição anterior" (sugestão): copia série, orçamento de custos e fonte.
+- [ ] Número no menu de Parcerias com os rascunhos de termo para completar (sugestão).
+- [ ] Sugerir o projeto no Realizado do Orçamento quando o grupo de gasto é de evento (sugestão).
+
 ## Ligações entre apps
 
 Issue #115 (onda 1), especificação em `docs/especificacao-ligacoes-entre-apps.md` e ADR-022. Ondas 2 e 3: issues #116 e #117.

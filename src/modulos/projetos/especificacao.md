@@ -2,7 +2,7 @@
 
 - Situação: aprovada pela Diretoria; entrega P1 (base) construída, P2 a P7 pendentes
 - Dono do produto: Diretoria
-- Proposta de origem: issue #107. Arquitetura: ADR-011, ADR-013 e ADR-021.
+- Proposta de origem: issue #107; ligações da onda 2: issue #116. Arquitetura: ADR-011, ADR-013, ADR-021, ADR-022 e ADR-023.
 - Referência do método: Guia Project DPro (PMD Pro), 2ª edição, PM4NGOs, 2020 (licença Creative
   Commons Atribuição-NãoComercial 4.0). O app usa os **conceitos** do método (fases, portas de decisão,
   termo de abertura, tolerâncias, marco lógico) e **não copia o texto do guia**. A fonte é citada na Ajuda
@@ -228,7 +228,7 @@ ligada à #107, nesta ordem.
 | P4 | **Fase 4**: acompanhamento, problemas, relatórios, pedidos de mudança e versões do Termo | Mudança dentro e fora da tolerância |
 | P5 | **Fase 5**: check-list, relatório final, lições aprendidas e consulta | Encerrar com lições |
 | P6 | **Carteira** da Diretoria | Carteira inteira numa tela |
-| P7 | **Ligações** (Orçamento, Requisições e Comunicação: ver `docs/especificacao-ligacoes-entre-apps.md`; as demais, onda 2, issue #116) com Parcerias (depende da entrega R2, issue #95), Orçamento, Requisições, Pessoas e Avaliação, Comunicação | Cada ligação sem cadastro repetido |
+| P7 | **Ligações** com Parcerias (depende da entrega R2, issue #95), Orçamento, Requisições, Pessoas e Avaliação, Comunicação. Onda 1 (Orçamento, Requisições e Comunicação): `docs/especificacao-ligacoes-entre-apps.md` (issue #115). Onda 2: issue #116, seção "Ligações, onda 2" abaixo | Cada ligação sem cadastro repetido |
 
 ## Decisões tomadas sozinho (com o custo se estiverem erradas)
 
@@ -256,3 +256,266 @@ ligada à #107, nesta ordem.
 - Nenhum texto de tela cita nome de instituição, unidade, marca ou cidade reais; a Ajuda cita o Guia
   Project DPro (PM4NGOs).
 - Regras com testes, incluindo quem vê e quem altera; `npm run verificar` e `npm run build` verdes.
+
+## Ligações, onda 2 (issue #116): termo de parceria, indicadores vindos de pessoas e evento de captação
+
+- Situação: especificação aguardando aprovação da Diretoria. Arquitetura: ADR-023 (novo) e ADR-013.
+- Respostas da Diretoria (comentário de 13/11/2026): contagem do cadastro só de **pessoas com vínculo ativo no
+  serviço**; da Avaliação só o **índice médio de necessidade de cuidado** e a **% de pessoas com reavaliação em
+  dia**; **mínimo de 5 pessoas** para um número aparecer ("poucos casos para divulgar"); evento de captação com
+  **porte enxuto por padrão**; rascunho do termo gerado **ao aprovar o Termo de Abertura (porta 2)**. Também
+  sem objeção: ligar o evento às edições anteriores pela **série**, resultado líquido = receita − custo
+  realizado, e o rascunho sempre completado pelo Financeiro.
+- **Premissa:** a onda 1 (issue #115) ainda não tem especificação. Esta onda assume que ela entrega o
+  **serviço como chave comum**, as requisições ligadas ao projeto (só o projeto obrigatório, atividade
+  opcional) e as linhas do projeto enviadas ao orçamento do serviço, encerradas quando o projeto é cancelado,
+  parado ou muda de versão do Termo. Se a #115 mudar algo disso, esta seção é ajustada antes de construir.
+- **Ordem:** as entregas abaixo dependem das entregas P2 a P5 do app (ainda não construídas); cada uma diz do
+  que depende.
+
+### Usuários e permissões (o que muda)
+
+Nenhum perfil novo. **Cada ligação respeita a permissão do app que guarda o dado** (ADR-023):
+
+| Dado mostrado no projeto | Quem vê |
+| --- | --- |
+| Números de pessoas (vínculos ativos, índice médio, % reavaliação em dia) | Quem vê o projeto ou o termo; são agregados, sempre com 5 pessoas ou mais, sem nomes |
+| Termo (fontes, parcelas, plano de aplicação, prazos) | Quem vê o projeto **e** tem `parcerias.termos.ver` com escopo que cubra o termo; os demais veem só "Ligado ao termo …" |
+| Receita, custo e resultado do evento (do Orçamento) | Quem vê o projeto **e** tem `orcamento.painel.ver`; os demais veem só "Ligado ao orçamento" |
+| Lista de requisições e pedidos de divulgação ligados | Quem vê o projeto vê **número, título e situação**; abrir o detalhe segue a permissão de cada app |
+
+Quem cria o rascunho do termo é a decisão de seguir da porta 2 (quem tem `projetos.decidir` ou
+`projetos.decidir_alcada`), não o Financeiro; o Financeiro (`parcerias.termos.editar`) o completa.
+
+### Entidades (novas colunas e abas em `projetos`; nenhuma coluna pessoal)
+
+| Aba | Mudança |
+| --- | --- |
+| `Projetos` | + `serie_evento` (texto; só captação), `data_evento`, `meta_receita`, `fonte_receita_id` e `fonte_receita_nome` (Fonte do Orçamento, cópia do nome), `termo_id` e `termo_nome` (cópia, quando há termo ligado); `tipo` ganha o valor `captacao` |
+| `MarcoLogico` | + `fonte_numero` (`manual`, `vinculos_ativos`, `indice_cuidado`, `reavaliacao_em_dia`; padrão `manual`), `servico_id` e `servico_nome` (cópia), `meta` (número, opcional) |
+| `IndicadoresMedidos` (nova) | Item do marco lógico × data × valor (ou vazio) × base (número de pessoas) × motivo (`poucos_casos`, `sem_dados`, `indisponivel`, vazio) × origem (`relatorio`, `encerramento`, `manual`) × quem registrou; `ativo` |
+| `ProjetoDocumentos` (Termo de Abertura, projeto financiado) | + `financiador` (nome do parceiro) e `objeto` (o que o financiamento cobre), obrigatórios para a porta 2 de projeto financiado |
+| `LigacoesProjeto` | Ganha os apps `termo` (Parcerias), `fonte_receita` (Orçamento), `requisicao` e `pedido_comunicacao` (o último, com `ligado_em`) |
+
+Valores medidos **não** são guardados a cada leitura: a tela calcula na hora. `IndicadoresMedidos` guarda só a
+"fotografia" tirada nos momentos da regra L12, para o histórico e o relatório final.
+
+Mudanças fora do módulo (já listadas em "Frentes"): `Termos`, `Metas` e `TermoFontes` em **Parcerias**, `Realizado`
+e `Receitas` no **Orçamento**, função de leitura nova na **Avaliação** e a regra do mínimo no **Núcleo**.
+Estão descritas nas seções "Ajustes da onda 2" das especificações desses apps.
+
+### Regras de negócio (com teste)
+
+**Números vindos de pessoas (entrega L1 e L4)**
+- L1. Um item do marco lógico, ou uma meta do termo, pode ter **fonte do número** automática: pessoas com vínculo
+  ativo no serviço, índice médio de necessidade de cuidado do serviço ou % de pessoas com reavaliação em dia
+  do serviço. Escolher fonte automática exige escolher o serviço. Fora essas três, nenhuma outra contagem ou
+  resultado é oferecido.
+- L2. **Mínimo de 5 pessoas**: o número só aparece se a base (pessoas contadas) for 5 ou mais. De 1 a 4 mostra
+  "Poucos casos para divulgar" e nunca o valor, nem arredondado nem em faixa. Base 0: contagem mostra 0 (não
+  identifica ninguém); média e % mostram "Sem dados". A regra é aplicada **na origem** (Núcleo e Avaliação
+  devolvem o número já protegido), para nenhum app consumidor poder pular.
+- L3. **Vínculos ativos** = pessoas com vínculo ativo hoje no serviço (cadastro do Núcleo; é a mesma contagem que
+  Parcerias usa para ocupação). **Índice médio** = média do índice de cada pessoa, na avaliação mais recente dela
+  no serviço (mesmo cálculo do indicador `avaliacao_indice_medio_cuidado`). **Reavaliação em dia** = pessoas
+  cuja avaliação mais recente ainda não venceu (inclui "vence em breve"), dividido pelas pessoas com avaliação
+  ativa no serviço.
+- L4. **Nada individual atravessa**: a leitura devolve `valor`, `base` e `motivo`, nunca iniciais, datas de
+  nascimento, ids de pessoa ou de avaliação. Teste: a resposta não tem nenhum campo além desses.
+- L5. Se o app de origem (Avaliação) estiver desligado, o item mostra "Ligação indisponível" e o valor digitado à
+  mão continua valendo, se houver. Item `manual` nunca muda sozinho.
+- L6. Situação do indicador contra a `meta`: "Dentro da meta" (atingiu), "Abaixo da meta" ou, sem meta,
+  só o número. Com "Poucos casos" ou "Sem dados", a situação não é calculada.
+- L12. **Fotografia**: ao enviar o relatório de monitoramento, ao encerrar o projeto e quando o responsável
+  clica em "Registrar medição", cada item automático grava uma linha em `IndicadoresMedidos` (valor, base,
+  motivo, origem). Linha nunca é editada; a nova medição é outra linha. Tudo é auditado com as colunas.
+
+**Projeto financiado e termo (entregas L2 e L3)**
+- L7. No Termo de Abertura de projeto `financiado`, **financiador** e **objeto** são obrigatórios (sem eles a
+  porta 2 não abre; a tela lista o que falta, como na regra 6).
+- L8. Quando a porta 2 de um projeto `financiado` termina com `seguir` (inclusive depois da alçada), o Elo
+  **cria o rascunho do termo em Parcerias**, uma única vez por projeto, com: financiador como parceiro, objeto,
+  serviço do projeto (se houver), vigência prevista (início e fim previstos do projeto), uma fonte global com o
+  **valor aprovado** do projeto e a origem (código do projeto). Número do termo, tipo de instrumento, cronograma
+  e plano de aplicação **ficam para o Financeiro**; ninguém redigita valores no projeto.
+- L9. A decisão da porta vale mesmo se o rascunho falhar (Parcerias desligado, erro de gravação): a decisão fica
+  registrada, a aba Ligações mostra o aviso e o botão **"Criar rascunho do termo"** (só para quem pode decidir
+  porta ou `projetos.gerenciar`) refaz a tentativa. Como o rascunho é único, clicar duas vezes não duplica
+  (a ligação guarda o `termo_id`).
+- L10. Depois de criado, o rascunho **não é reescrito pelo projeto**. Se o valor aprovado mudar (nova versão do
+  Termo de Abertura) ou o termo for alterado pelo Financeiro, o projeto mostra o ponto de atenção "O valor
+  aprovado do projeto (R$ X) é diferente do valor do termo (R$ Y)". Só informa.
+- L11. Projeto `cancelado` ou `parado`: o rascunho **não é apagado**; o projeto avisa o Financeiro pela
+  situação ("Projeto de origem cancelado") exibida na lista de termos de Parcerias, e ele decide encerrar o
+  rascunho.
+- L13. **Termo no projeto (leitura)**: com termo ligado, a aba Ligações mostra, para quem tem permissão (tabela
+  acima): fontes e valor atual de cada uma, cronograma de desembolso (mês e valor), plano de aplicação
+  (categoria e valor), recursos próprios previstos e **prazos**: próxima parcela a receber, última parcela e fim
+  da vigência. Mostra ainda a linha do tempo com as **atividades com prazo** do projeto (entrega P3) e as
+  parcelas do termo, em ordem de data. Prazos de **prestação de contas** ainda não existem em Parcerias
+  (roadmap): a tela diz "Prazos de prestação de contas: ainda não cadastrados em Parcerias".
+- L14. Rascunho de termo **não** entra em orçamento, ocupação, per capita nem alertas (ver Parcerias, regra 24) e não pode ser lido como termo em vigor por nenhum app.
+
+**Evento de captação (entrega L5)**
+- L15. Tipo `captacao` (leilão, bazar, festa, campanha, bilhetes) nasce com **porte enxuto**; o porte completo
+  continua possível, escolhido por quem propõe. O **modelo curto** do Termo de Abertura traz: objetivo, data do
+  evento, meta de receita, série, orçamento de custos (linhas de descrição e valor), responsável e fonte de
+  receita. Tolerância de custo e prazo vêm do padrão da configuração.
+- L16. **Série do evento**: texto com sugestões das séries já usadas (ex.: "Leilão anual"). Edições da mesma
+  série são os projetos `captacao` com o mesmo nome de série, sem diferença de acento ou maiúscula, e a
+  comparação ignora o que não foi encerrado. Série em branco = evento único, sem comparação.
+- L17. **Fonte da receita**: o projeto escolhe uma Fonte do Orçamento de natureza **própria**. Na porta 2 com
+  `seguir`, a meta de receita entra no Orçamento como item de **Receita "A captar"** nessa fonte (como a #115
+  faz com os custos); cancelado ou parado encerra o item; nova versão do Termo troca o valor, sem apagar
+  (mesma regra da onda 1). Sem fonte própria cadastrada, a tela diz "Peça ao Financeiro para cadastrar a fonte
+  do evento" e a porta 2 abre mesmo assim (a ligação com a receita fica pendente e visível).
+- L18. **Realizado do evento**: o Orçamento recebe um campo opcional **Projeto** nas linhas do Realizado
+  (despesa e receita). **Custo realizado** = soma das despesas realizadas com o projeto; **receita realizada** =
+  soma das receitas realizadas com o projeto; **resultado líquido** = receita − custo. Resultado negativo é
+  escrito como "Prejuízo de R$ X".
+- L19. Ao **encerrar** um evento, o relatório final mostra custo, receita e resultado (fotografia gravada junto
+  das lições, não editável) e a **comparação com as edições anteriores da série**: receita, custo e resultado de
+  cada edição, e a variação do resultado contra a edição imediatamente anterior. Encerrar não exige que o
+  Orçamento tenha lançamentos; sem eles o resultado aparece como "Sem lançamentos no Orçamento" (e não R$ 0,00).
+- L20. Compras (requisições) e divulgação (pedidos de publicação) ficam **ligadas ao evento**: a aba Ligações
+  lista número, título e situação de cada uma, com a contagem de pendentes. Requisições seguem a ligação da
+  onda 1; **Comunicação ganha o campo opcional "Projeto"** no pedido (se a onda 1 já o trouxer, é reaproveitado).
+- L21. Acesso e auditoria como na regra 28: toda leitura de ligação passa pelo `Autorizador` do app dono do
+  dado; gravações (rascunho do termo, fotografia, receita no Orçamento) usam `inserir`/`atualizar` com a versão
+  lida e `registrarAuditoria` com as colunas, nunca os valores.
+
+### Telas (o que muda)
+
+**1. Projeto › Marco lógico: número que vem do cadastro** (quem gerencia o projeto; quer ver o resultado sem
+digitar). Caminho mais curto: no item, escolher "De onde vem o número" e o serviço (2 escolhas, salvas ao
+escolher); some a digitação.
+- Primeira dobra: os itens com indicador, cada um com nome, **meta**, **hoje** e situação; ação principal da
+  tela: **"Registrar medição"**. Percentuais usam `Indicadores` (barra de 0 a 100% com a meta tracejada,
+  sentido "desde"); contagem e índice usam linha da tabela com o número e a frase ("42 pessoas com vínculo
+  ativo"). Cada número tem a etiqueta "Calculado do cadastro" (`Etiqueta`, texto) e a data da leitura.
+- Componentes: `Campo` (rótulo "De onde vem o número", dica "Escolha 'Digitado à mão' para informar você
+  mesmo"), `SelecaoAutomatica`, `Etiqueta`, `Indicadores`, `TabelaDados` para o histórico ("Ver as medições").
+- Estados: sem serviço escolhido → "Escolha o serviço para calcular"; **poucos casos** → "Poucos casos para
+  divulgar (menos de 5 pessoas)", sem valor; sem dados → "Sem dados ainda"; Avaliação desligada → "Ligação
+  indisponível; informe à mão, se quiser"; gravando (`BotaoEnviar`) e gravou ("Medição registrada", `?ok=`).
+- Sem permissão de ver o projeto: não abre a tela.
+- Gráficos: pergunta "o serviço está chegando à meta?"; forma `Indicadores` para percentual e número simples
+  para contagem (valor único não vira gráfico); título em conclusão ("Reavaliações em dia estão abaixo da
+  meta"), leitura ao lado: o que fazer ("Peça à equipe técnica para reavaliar as pessoas vencidas"); sem base
+  mínima aparece o texto de poucos casos, nunca barra vazia ou zero.
+
+**2. Porta 2 › decidir** (quem decide). Sem passo novo: a decisão "seguir" de projeto financiado mostra, acima do
+botão, "Ao seguir, o Elo cria o rascunho do termo em Parcerias para o Financeiro completar". Confirmação (`?ok=`):
+"Decisão registrada e rascunho do termo criado". Falha: `Aviso` "A decisão foi registrada, mas o rascunho do termo
+não foi criado (<motivo>). Use 'Criar rascunho do termo' na aba Ligações." Não é ação sem volta além da
+decisão, que já tem confirmação própria (P1).
+
+**3. Projeto › Ligações › Termo** (responsável, Financeiro e Diretoria; quer ver parcelas e prazos junto do
+projeto). Primeira dobra: situação do termo ("Rascunho, falta o Financeiro completar" ou "Em vigor até
+dd/mm/aaaa"), pontos de atenção (valor diferente, projeto cancelado) e o botão **"Abrir termo em Parcerias"**
+(só com permissão). Depois: fontes e valores; **Cronograma de desembolso** em `BarrasAgrupadas` (uma série, cor do
+app, categoria "Mês", formato moeda), título "O termo repassa R$ X em N parcelas" e leitura "Próxima parcela:
+mês e valor"; **Plano de aplicação** em `BarrasHorizontais` (maior primeiro, formato moeda), título
+"Pessoal concentra X% do plano"; **Linha do tempo** em tabela (`TabelaDados`) com a coluna "O quê" em
+`Etiqueta` ("Parcela do termo" ou "Atividade") e data, mais recente à frente. Todos com "Ver os números" e
+`descricao`. Estados: sem termo e porta 2 aprovada → `EstadoVazio` "Este projeto ainda não tem termo" + botão
+**"Criar rascunho do termo"**; sem permissão → `Aviso` "Você vê que o projeto está ligado ao termo <nome>.
+Os valores aparecem para quem acessa Parcerias"; Parcerias desligado → "Ligação indisponível"; termo sem
+parcelas → "O Financeiro ainda não cadastrou o cronograma". Celular: gráficos em coluna única, tabela com rolagem
+lateral só dentro do cartão. Teclado: ordem do cabeçalho para os cartões; "Abrir termo" é o primeiro botão.
+
+**4. Evento de captação** (quem propõe e coordena eventos). **Nova ideia**: ao escolher o tipo "Evento de
+captação", o porte já vem "Enxuto" e o formulário troca para o modelo curto (objetivo, data, meta de receita,
+série, fonte de receita, orçamento de custos). Série tem lista de sugestões (as já usadas); fonte de receita tem
+dica "Escolha onde a receita entra no orçamento". Erro nunca apaga o que foi digitado. **Projeto do evento
+(aba Resumo)**: no encerramento, o cartão **"Resultado do evento"** mostra o resultado líquido em número grande
+(`NumeroQueConta`, texto "Sobrou R$ X" ou "Faltou R$ X"), receita e custo ao lado, e a **comparação com as
+edições anteriores** em `BarrasAgrupadas` (categoria "Edição", duas séries: receita e custo, cores 1 e 2,
+legenda), título em conclusão ("O resultado de 2027 passou o de 2026 em R$ X") e leitura "Edição com melhor
+resultado: …". Primeira edição → texto "Primeira edição da série: ainda não há com o que comparar" (nunca
+gráfico com uma barra só). Edição em andamento aparece avisada como "parcial" e fora da comparação. Sem
+lançamentos → `Aviso` "O Orçamento ainda não tem lançamentos com este projeto. Peça ao Financeiro para informar
+o realizado com o campo Projeto". Sem permissão do Orçamento → "O Financeiro e a Diretoria veem os valores".
+
+**Melhorias de experiência de uso (sugestões, para a Diretoria decidir):**
+- "Repetir evento da edição anterior": copia série, orçamento de custos e fonte para a nova edição (roadmap).
+- Número no menu de Parcerias para os "Rascunhos de termo para completar", como o do app Projetos.
+- Mostrar no Orçamento, ao informar o realizado, o projeto sugerido quando o grupo de gasto é de evento.
+
+### Fica de fora (vai para o `docs/roadmap.md`)
+
+- Prazos de prestação de contas do termo no projeto (dependem de Parcerias, já no roadmap).
+- Outras contagens e resultados: entradas e saídas no período, quebra por faixa etária ou sexo, % que melhorou
+  e % com suspeita de violação de direitos (decisão da Diretoria de 13/11/2026: só os três números acima).
+- Alterar o limite mínimo de 5 pessoas por tela ou por OSC (hoje é fixo, mudar é nova decisão da Diretoria).
+- Atualizar o rascunho do termo quando o projeto muda; renovar evento copiando a edição anterior.
+- Receita e custo realizados lançados dentro do projeto (a fonte é o Orçamento).
+
+### Frentes
+
+- **Regras e dados**: abas e colunas acima, regras L1 a L21, leitura entre apps (ADR-023), permissões e auditoria.
+- **Telas**: as quatro acima e os ajustes de Parcerias e Orçamento descritos nas especificações deles.
+  Nenhum componente novo em `src/ui/`; todos os de `telas` e `graficos` já existem.
+- **Infraestrutura**: nenhuma planilha nova. Colunas e abas novas entram por "Preparar estrutura".
+- **Fora do módulo (aprovação por este PR):** Núcleo (regra `numeroAgregado` e contagem protegida), Avaliação
+  (leitura por serviço), Parcerias (rascunho e meta automática), Orçamento (campo Projeto no Realizado e receita
+  vinda do projeto) e Comunicação (campo "Projeto" no pedido). Cada app muda **só** o descrito aqui.
+
+### Entregas (sugestão: uma issue por entrega, ligadas à #116)
+
+| # | Entrega | Depende de | O que a Diretoria confere |
+| --- | --- | --- | --- |
+| L1 | **Números de pessoas protegidos**: regra do mínimo de 5 no Núcleo, leitura por serviço na Avaliação, meta do termo com fonte automática em Parcerias | onda 1 (serviço como chave) | Meta de termo mostra o número do cadastro; serviço com menos de 5 pessoas mostra "Poucos casos para divulgar" |
+| L2 | **Rascunho do termo**: estado "rascunho" em Parcerias; criação ao aprovar a porta 2; botão para refazer | P2 | Aprovar o Termo de Abertura de um projeto financiado cria o rascunho para o Financeiro |
+| L3 | **Termo dentro do projeto**: fontes, parcelas, plano, prazos e linha do tempo | L2 e P3 | O projeto mostra parcelas e prazos sem redigitação |
+| L4 | **Indicadores do marco lógico** com número automático, medição e histórico | L1 e P2 | Indicador se atualiza do cadastro e respeita o mínimo |
+| L5 | **Evento de captação**: tipo, modelo curto, série, receita no Orçamento, realizado com projeto, resultado e comparação, ligações de compras e divulgação | P2, P5 e onda 1 | Ao encerrar, custo, receita, resultado e comparação com a edição anterior |
+
+### Decisões tomadas sozinho (com o custo se estiverem erradas)
+
+1. **O mínimo de 5 vale também para a contagem de vínculos** (a Diretoria falou "número agregado"); 0 aparece.
+   Em Parcerias, a ocupação por serviço continua como já aprovada (é tela do Financeiro). Se a Diretoria
+   quiser contagem livre, é só tirar a regra da contagem (custo baixo).
+2. **Números de pessoas aparecem a quem vê o projeto ou o termo**, sem exigir permissão da Avaliação, por serem
+   agregados com 5 ou mais pessoas. Se a Diretoria exigir `avaliacao.painel`, o responsável do projeto deixa de
+   ver o número (custo baixo, mas muda a utilidade).
+3. **Termo e valores do Orçamento respeitam a permissão do app de origem** (proposta: "respeita a permissão de
+   cada app"). Quem coordena o evento mas não tem acesso ao Orçamento não vê o resultado; a Diretoria pode
+   decidir abrir (custo baixo).
+4. **Rascunho de termo é um estado novo em Parcerias**, fora de todos os cálculos. Se errado, o rascunho
+   contaminaria o orçamento e os alertas (custo médio, por isso o teste da regra L14).
+5. **Escrever em Parcerias a partir do Projetos** (a ADR-013 só previa leitura) por uma função da plataforma,
+   descrita na ADR-023. Se a Diretoria preferir só leitura, o rascunho passa a ser criado à mão pelo Financeiro
+   (custo médio: perde a economia da ligação).
+6. **A decisão da porta vale mesmo se o rascunho falhar**, com botão para refazer. Se errado, a decisão ficaria
+   presa a um app auxiliar (custo médio).
+7. **Prazos de prestação de contas ficam de fora**: Parcerias ainda não os tem (roadmap). O projeto mostra fim
+   da vigência e datas das parcelas. A proposta cita os prazos; adiantar essa parte de Parcerias é uma nova
+   proposta (custo médio).
+8. **Custo e receita do evento vêm de um campo "Projeto" no Realizado do Orçamento**, porque Requisições não
+   guardam valor e o Realizado é por totais mensais. Se a Diretoria preferir lançar dentro do projeto, o
+   Financeiro digitaria duas vezes (custo médio: muda o Orçamento e o projeto).
+9. **Fotografia da medição** só no relatório, no encerramento e sob pedido, em vez de a cada leitura. Se errado,
+   falta histórico fino (custo baixo).
+10. **Série = nome igual, sem diferença de acento ou maiúscula**, com sugestões. Se errado, edições se separam
+    por erro de digitação (custo baixo: o campo se corrige).
+11. **Só edições encerradas entram na comparação** e a série precisa de nome. Custo baixo.
+12. **Financiador e objeto passam a ser obrigatórios no Termo de Abertura de projeto financiado.** Custo baixo
+    (um campo a mais para quem propõe).
+13. **"Em dia" inclui "vence em breve"**; a base é quem tem avaliação ativa no serviço. Se a Diretoria quiser
+    contar só quem não está nem perto de vencer, é troca de cálculo (custo baixo).
+14. **A fonte da receita é escolhida entre as Fontes de natureza própria** do Orçamento, sem criar fonte
+    sozinho. Custo baixo.
+
+### Critérios de pronto (na prévia, com dados fictícios)
+
+- Item do marco lógico e meta do termo mostram o número do cadastro; serviço com 4 pessoas mostra "Poucos casos
+  para divulgar"; com 5, mostra o número. Nenhuma resposta traz nome, iniciais, nascimento ou id de pessoa.
+- Aprovar a porta 2 de um projeto financiado cria um rascunho em Parcerias (uma vez só); o termo em rascunho não
+  aparece no Orçamento nem nos alertas; sem Parcerias, a decisão vale e o botão refaz depois.
+- A aba Ligações mostra fontes, parcelas, plano, prazos e linha do tempo a quem tem permissão, e o aviso a quem
+  não tem.
+- Evento de captação nasce enxuto com modelo curto; ao encerrar mostra custo, receita, resultado líquido e a
+  comparação com a edição anterior da mesma série; primeira edição diz que não há com o que comparar.
+- Regras L1 a L21 com testes, incluindo quem vê e quem altera; `npm run verificar` e `npm run build` verdes.
+- Nenhum texto cita nome de instituição, unidade, marca ou cidade reais.
