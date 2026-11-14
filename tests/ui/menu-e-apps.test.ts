@@ -130,7 +130,7 @@ describe('pendências da tela inicial por app', () => {
   });
 });
 
-import { temMaisColunasADireita } from '@/ui/tabela-dados';
+import { temMaisColunasADireita } from '@/ui/rolagem';
 describe('aviso de mais colunas na tabela', () => {
   it('avisa só quando sobra largura à direita', () => {
     expect(temMaisColunasADireita(0, 600, 900)).toBe(true);

@@ -13,6 +13,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PiscaOndeMudou } from './pisca-onde-mudou';
+import { temMaisColunasADireita } from './rolagem';
 
 export type Valor = string | number | null;
 
@@ -37,11 +38,6 @@ export interface LinhaDados {
   /** Conteúdo pronto de células (no lugar do valor simples). */
   celulas?: Record<string, ReactNode>;
   destaque?: boolean;
-}
-
-/** Ainda há coluna escondida à direita? (função pura, com teste) */
-export function temMaisColunasADireita(rolagemEsquerda: number, larguraVisivel: number, larguraTotal: number): boolean {
-  return larguraTotal - (rolagemEsquerda + larguraVisivel) > 1;
 }
 
 const normal = (t: unknown) =>
