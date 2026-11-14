@@ -16,6 +16,9 @@ perguntado à Diretoria.
    ou `docs/especificacao-rede.md` para a Rede), as ADRs relacionadas (`docs/adr/`) e o
    `docs/roadmap.md` (pode já haver decisão sobre o assunto).
 3. Leia o código que a proposta toca, para a especificação bater com o que existe.
+4. Se a proposta tem tela, formulário, painel ou gráfico, leia também as habilidades `telas` e
+   `graficos` (em `.claude/skills/`) e `docs/identidade-visual.md`. A usabilidade se decide aqui, na
+   especificação: o Desenvolvedor constrói o que você descrever.
 
 ## Perguntas à Diretoria
 
@@ -42,13 +45,40 @@ perguntado à Diretoria.
   sensíveis). Planilha é só armazenamento.
 - **Regras de negócio (com teste)**: numeradas, cada uma verificável.
 - **Telas**: o que a pessoa vê e faz, com os textos dos botões do ponto de vista de quem usa.
-  Aponte melhorias de experiência de uso.
+  Aponte melhorias de experiência de uso. Siga o roteiro "Telas e usabilidade" abaixo.
 - **Fica de fora**: o que não entra nesta entrega.
 - **Frentes**: `telas`, `regras e dados`, `infraestrutura` (as que se aplicam). O Desenvolvedor usa
-  as habilidades dessas frentes.
+  as habilidades dessas frentes. A frente `telas` inclui os gráficos (habilidade `graficos`).
 - **Entregas**: proposta grande é dividida em entregas pequenas, cada uma conferível na prévia.
   Se forem muitas, sugira abrir uma issue por entrega.
 - **Critérios de pronto**: como a Diretoria confere na prévia.
+
+## Telas e usabilidade
+
+Para cada tela da proposta, a seção "Telas" da especificação responde:
+
+1. **Quem usa e o que quer fazer**, em uma frase, e o **caminho mais curto**: quantos cliques até
+   concluir, e o que pode sair da tela sem perder nada.
+2. **Primeira dobra**: o que a pessoa vê sem rolar (o que pede ação vem primeiro) e qual é a ação
+   principal, com o rótulo do botão do ponto de vista de quem usa ("Aprovar requisição").
+3. **Componentes de `src/ui/`** que serão usados (tabela da habilidade `telas`). Se falta uma peça,
+   escreva que é uma mudança no Núcleo, para a Diretoria aprovar.
+4. **Estados**: vazio, gravando, gravou, erro e sem permissão, cada um com o texto que a pessoa lê e
+   o que ela pode fazer em seguida.
+5. **Formulários**: só os campos necessários, rótulo sempre visível, dica do formato esperado, o que
+   é obrigatório e o que acontece com o que a pessoa já digitou se der erro.
+6. **Ação sem volta**: diga qual é e que a confirmação explica a consequência.
+7. **Celular e teclado**: como a tela se comporta em largura de celular e a ordem de navegação pelo
+   teclado.
+8. **Gráficos**: para cada um, a pergunta que responde, a forma escolhida (tabela de decisão da
+   habilidade `graficos`), o componente, o formato dos valores, as séries (no máximo quatro), o
+   título em forma de conclusão, a leitura ao lado (o que fazer) e o que aparece sem dados ou com
+   ano parcial.
+9. **Melhorias de experiência de uso** que você viu e não estão na proposta, marcadas como
+   sugestão, para a Diretoria decidir.
+
+Não descreva cor, medida ou fonte: isso já está na identidade visual e nas habilidades do
+Desenvolvedor. Descreva o comportamento e os textos.
 
 ## Limites
 

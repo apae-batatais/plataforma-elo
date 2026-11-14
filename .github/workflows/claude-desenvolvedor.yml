@@ -100,7 +100,8 @@ jobs:
             2. Leia a proposta e os comentários: `gh issue view ${{ env.ISSUE }} --comments`.
                Ache a especificação aprovada: `gh pr list --state merged --search "Especifica #${{ env.ISSUE }}"`
                e leia o PR e os arquivos que ele alterou. Use as habilidades de .claude/skills/ das
-               "Frentes" indicadas na especificação.
+               "Frentes" indicadas na especificação. Se a entrega tiver tela, formulário, painel ou
+               gráfico, use sempre as habilidades telas e graficos, mesmo que a frente não esteja listada.
             3. Se já existir um PR aberto com "Entrega #${{ env.ISSUE }}", continue nele (é uma retomada).
                Se existir um plano em docs/superpowers/plans/ para esta entrega, continue da primeira
                tarefa não concluída.
@@ -109,7 +110,8 @@ jobs:
             5. Senão: crie o ramo `feat/<modulo>-<assunto>` a partir da main, escreva o plano e o
                andamento em docs/superpowers/plans/, construa com testes e faça commit e push ao fim
                de cada tarefa.
-            6. Rode `npm run verificar` e `npm run build` até tudo passar.
+            6. Rode `npm run verificar` e `npm run build` até tudo passar. Se houver tela, faça também a
+               "Revisão de usabilidade" da habilidade telas na demonstração e leve o resultado ao PR.
             7. Abra o PR com `gh pr create --base main --label "PR: entrega"`: corpo em português começando com a linha
                "Entrega #${{ env.ISSUE }}", o que mudou, roteiro de conferência na prévia e as decisões
                tomadas sozinho (com o custo se estiverem erradas). A prévia é publicada sozinha.

@@ -54,13 +54,11 @@ que mais pesa:
 
 ## Gráficos
 
-- Use `graficos.tsx` (`Linhas`, `BarrasAgrupadas`, `BarrasHorizontais`, `Barras100`,
-  `Indicadores`, `ResultadoMensal`), preenchendo `descricao` (o que o gráfico mostra, para leitor de
-  tela) onde o componente aceita, e o formato dos valores.
-- Uma série só: na cor do app (`naCorDoApp`). Várias séries: as quatro cores fixas testadas para
-  daltonismo, sempre com legenda. Sobra e falta: azul e vermelho, com a situação escrita.
-- Nas análises, o título do cartão já é a conclusão ("Folha passou do previsto em março"), com o
-  gráfico à esquerda e a leitura à direita: o número grande e o que fazer.
+Toda tela com gráfico, indicador ou número de destaque segue a habilidade **`graficos`**: como
+escolher a forma, qual componente de `src/ui/graficos.tsx` usar, cores e leitura. Em resumo: o
+título do cartão é a conclusão ("Folha passou do previsto em março"), com o gráfico à esquerda e a
+leitura à direita (o número grande e o que fazer); uma série só usa a cor do app; várias séries,
+no máximo quatro, com legenda.
 
 ## Movimento
 
@@ -112,7 +110,22 @@ Antes do PR, confira (na demonstração, `npm run dev`, e no código):
 - [ ] Textos do ponto de vista de quem usa, sem caixa alta e sem nome próprio (o teste
       `tests/nucleo/sem-nomes-proprios.test.ts` confere).
 
-No PR, descreva o roteiro de conferência na prévia: onde clicar e o que a Diretoria deve ver.
+### Revisão de usabilidade (antes de abrir o PR)
+
+Percorra cada tela como quem a usa pela primeira vez, na demonstração, e confira:
+
+- [ ] O que a pessoa quer fazer se resolve no caminho mais curto descrito na especificação, sem
+      passo que a tela já sabe responder.
+- [ ] A ação principal é a única em destaque e o rótulo diz o que acontece.
+- [ ] Erro diz o que deu errado e o que fazer, e não apaga o que a pessoa digitou.
+- [ ] Ação sem volta pede confirmação que explica a consequência.
+- [ ] Gráfico: segue a habilidade `graficos` (forma, séries, `descricao`, "Ver os números").
+
+Se achar algo que melhoraria o uso e a especificação não pede, não mude por conta própria: liste
+como sugestão no PR.
+
+No PR, descreva o roteiro de conferência na prévia: onde clicar e o que a Diretoria deve ver. Inclua
+o resultado desta revisão de usabilidade.
 
 ## Sem nomes próprios (decisão da Diretoria, 11/11/2026)
 
