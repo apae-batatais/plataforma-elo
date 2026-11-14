@@ -129,3 +129,13 @@ describe('pendências da tela inicial por app', () => {
     expect(agruparPendencias([], ['orcamento'])).toEqual([]);
   });
 });
+
+import { temMaisColunasADireita } from '@/ui/tabela-dados';
+describe('aviso de mais colunas na tabela', () => {
+  it('avisa só quando sobra largura à direita', () => {
+    expect(temMaisColunasADireita(0, 600, 900)).toBe(true);
+    expect(temMaisColunasADireita(300, 600, 900)).toBe(false);
+    expect(temMaisColunasADireita(0, 600, 600)).toBe(false);
+    expect(temMaisColunasADireita(299.5, 600, 900)).toBe(false);
+  });
+});

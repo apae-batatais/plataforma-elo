@@ -11,7 +11,7 @@
  * As células podem trazer conteúdo pronto (etiquetas, botões); o filtro e a
  * ordem usam o `valor` simples de cada coluna.
  */
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { PiscaOndeMudou } from './pisca-onde-mudou';
 
 export type Valor = string | number | null;
@@ -37,6 +37,11 @@ export interface LinhaDados {
   /** Conteúdo pronto de células (no lugar do valor simples). */
   celulas?: Record<string, ReactNode>;
   destaque?: boolean;
+}
+
+/** Ainda há coluna escondida à direita? (função pura, com teste) */
+export function temMaisColunasADireita(rolagemEsquerda: number, larguraVisivel: number, larguraTotal: number): boolean {
+  return larguraTotal - (rolagemEsquerda + larguraVisivel) > 1;
 }
 
 const normal = (t: unknown) =>
@@ -78,6 +83,23 @@ export function TabelaDados({
   const [ordem, setOrdem] = useState<{ chave: string; sentido: 1 | -1 } | null>(null);
   const [filtros, setFiltros] = useState<Record<string, string>>({});
   const [verFiltros, setVerFiltros] = useState(false);
+  const rolagem = useRef<HTMLDivElement>(null);
+  const [maisADireita, setMaisADireita] = useState(false);
+  useEffect(() => {
+    const el = rolagem.current;
+    if (!el) return;
+    const conferir = () => setMaisADireita(temMaisColunasADireita(el.scrollLeft, el.clientWidth, el.scrollWidth));
+    conferir();
+    el.addEventListener('scroll', conferir, { passive: true });
+    const observador = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(conferir);
+    observador?.observe(el);
+    const tabela = el.querySelector('table');
+    if (tabela) observador?.observe(tabela);
+    return () => {
+      el.removeEventListener('scroll', conferir);
+      observador?.disconnect();
+    };
+  }, []);
   const [ocultas, setOcultas] = useState<Set<string>>(() => new Set(colunas.filter((c) => c.secundaria).map((c) => c.chave)));
   const visiveisColunas = colunas.filter((c) => !ocultas.has(c.chave));
   const opcionais = colunas.filter((c) => !c.fixa);
@@ -149,7 +171,8 @@ export function TabelaDados({
           </button>
         </div>
       </div>
-      <div className={`relative overflow-auto rounded-cartao border border-borda bg-superficie ${grande ? 'max-h-[75vh]' : ''}`}>
+      <div className="relative">
+      <div ref={rolagem} className={`relative overflow-auto rounded-cartao border border-borda bg-superficie ${grande ? 'max-h-[75vh]' : ''}`}>
         <table className={`border-separate border-spacing-0 text-left text-sm ${grande ? 'w-max min-w-full' : 'w-full'}`}>
           <caption className="sr-only">{legenda}. Clique no título de uma coluna para classificar.</caption>
           <thead className={`bg-superficie-2 text-texto-suave ${grande ? 'sticky top-0 z-20' : ''}`}>
@@ -163,7 +186,7 @@ export function TabelaDados({
                     scope="col"
                     aria-sort={ativa ? (ordem!.sentido === 1 ? 'ascending' : 'descending') : undefined}
                     title={c.calculada ? 'Calculado pelo app' : undefined}
-                    className={`border-b border-borda px-3 py-2 text-[0.8rem] font-semibold ${grande ? 'whitespace-nowrap' : ''} ${alinhar} ${c.largura ?? ''} ${c.calculada ? 'bg-destaque-suave text-destaque' : ''} ${grande && ci === 0 ? 'sticky left-0 z-30 border-r bg-superficie-2' : ''} ${
+                    className={`border-b border-borda px-3 py-2 text-[0.8rem] font-semibold ${grande ? 'whitespace-nowrap' : ''} ${alinhar} ${c.largura ?? ''} ${c.calculada ? 'bg-destaque-suave text-destaque' : ''} ${ci === 0 ? 'sticky left-0 z-30 border-r bg-superficie-2' : ''} ${
                       // A primeira coluna costuma ser o nome do registro: largura mínima para não quebrar em várias linhas.
                       ci === 0 && !grande && !c.largura && (c.tipo ?? 'texto') === 'texto' ? 'min-w-36 sm:min-w-52' : ''
                     }`}
@@ -185,7 +208,7 @@ export function TabelaDados({
             {verFiltros && (
               <tr className="border-t border-borda">
                 {visiveisColunas.map((c, ci) => (
-                  <th key={c.chave} scope="col" className={`border-b border-borda px-2 py-1.5 font-normal ${grande && ci === 0 ? 'sticky left-0 z-30 border-r bg-superficie-2' : ''}`}>
+                  <th key={c.chave} scope="col" className={`border-b border-borda px-2 py-1.5 font-normal ${ci === 0 ? 'sticky left-0 z-30 border-r bg-superficie-2' : ''}`}>
                     {!c.fixa && (
                       <input
                         value={filtros[c.chave] ?? ''}
@@ -215,7 +238,7 @@ export function TabelaDados({
                     return (
                       <td
                         key={c.chave}
-                        className={`border-b border-borda px-3 py-2 align-top group-hover:bg-superficie-2 group-last:border-b-0 ${alinhar} ${grande ? 'whitespace-nowrap' : ''} ${c.calculada ? 'bg-destaque-suave/40' : ''} ${grande && ci === 0 ? 'sticky left-0 z-10 border-r bg-superficie' : ''}`}
+                        className={`border-b border-borda px-3 py-2 align-top group-hover:bg-superficie-2 group-last:border-b-0 ${alinhar} ${grande ? 'whitespace-nowrap' : ''} ${c.calculada ? 'bg-destaque-suave/40' : ''} ${ci === 0 ? 'sticky left-0 z-10 border-r bg-superficie' : ''}`}
                       >
                         {l.celulas?.[c.chave] ?? formatar(l.valores[c.chave] ?? null, c.tipo)}
                       </td>
@@ -231,7 +254,7 @@ export function TabelaDados({
                 {visiveisColunas.map((c, i) => (
                   <td
                     key={c.chave}
-                    className={`border-t-2 border-borda-forte bg-superficie-2 px-3 py-2 font-bold ${c.somar ? 'text-right tabular-nums whitespace-nowrap' : ''} ${grande && i === 0 ? 'sticky left-0 z-30 border-r' : ''}`}
+                    className={`border-t-2 border-borda-forte bg-superficie-2 px-3 py-2 font-bold ${c.somar ? 'text-right tabular-nums whitespace-nowrap' : ''} ${i === 0 ? 'sticky left-0 z-30 border-r' : ''}`}
                   >
                     {c.somar
                       ? formatar(Math.round(visiveis.reduce((s, l) => s + (Number(l.valores[c.chave]) || 0), 0) * 100) / 100, c.tipo)
@@ -245,6 +268,14 @@ export function TabelaDados({
           )}
         </table>
       </div>
+      {maisADireita && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-px right-px w-8 rounded-r-cartao bg-gradient-to-l from-black/15 to-transparent dark:from-black/40"
+        />
+      )}
+      </div>
+      {maisADireita && <p className="text-sm text-texto-suave">Role para o lado para ver mais colunas.</p>}
     </div>
   );
 }
