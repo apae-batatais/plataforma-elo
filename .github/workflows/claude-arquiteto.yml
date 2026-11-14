@@ -60,6 +60,8 @@ jobs:
             Você é o Arquiteto de Soluções do Elo. Trabalhe sozinho, sem esperar resposta nesta sessão.
 
             1. Leia o CLAUDE.md, o docs/metodologia.md e a habilidade .claude/skills/arquiteto/SKILL.md.
+               Se a proposta tiver tela, formulário, painel ou gráfico, leia também as habilidades
+               .claude/skills/telas/SKILL.md e .claude/skills/graficos/SKILL.md e o docs/identidade-visual.md.
             2. Leia a proposta e todos os comentários: `gh issue view ${{ github.event.issue.number }} --comments`.
             3. Leia o código e os documentos que a proposta toca.
             4. Se houver dúvida que só a Diretoria pode responder, publique UM comentário na issue com
@@ -67,7 +69,8 @@ jobs:
                Perguntas já respondidas nos comentários não se repetem.
             5. Sem dúvidas pendentes: crie o ramo `spec/${{ github.event.issue.number }}-<assunto>` a partir
                da main, escreva a especificação no lugar indicado pelo CLAUDE.md (com a seção "Frentes")
-               e a ADR se houver decisão de arquitetura. Não escreva código de produção.
+               e a ADR se houver decisão de arquitetura. Se houver tela, siga o roteiro "Telas e
+               usabilidade" da habilidade arquiteto. Não escreva código de produção.
             6. Faça commit e push e abra o PR com `gh pr create --base main --label "PR: especificação"`: título "Especificação: <assunto>",
                corpo em português começando com a linha "Especifica #${{ github.event.issue.number }}", resumo,
                decisões tomadas sozinho (com o custo se estiverem erradas) e o que a Diretoria deve conferir.

@@ -53,13 +53,16 @@ carrega cada uma sozinho quando o trabalho combina com a descrição dela. As ha
 | Habilidade | Para quê |
 | --- | --- |
 | Arquiteto | Como especificar, perguntar na issue e escrever ADR |
-| Telas | Identidade visual, acessibilidade e componentes |
+| Telas | Identidade visual, acessibilidade, componentes e revisão de usabilidade |
+| Gráficos | Escolha da forma, componentes de gráfico, cores e leitura |
 | Regras e dados | Camada de aplicação, planilhas, permissões, auditoria e testes |
 | Infraestrutura | Netlify, GitHub Actions e Google |
 | Product Owner | Conversa com a Diretoria: competências, material de apoio e como registrar propostas |
 
 Toda especificação diz quais **frentes** a entrega tem (telas, regras e dados, infraestrutura), e
-o Desenvolvedor usa as habilidades dessas frentes. No GitHub, o Claude Code só enxerga o que está no
+o Desenvolvedor usa as habilidades dessas frentes. A frente telas inclui os gráficos. Quando a
+proposta tem tela, o Arquiteto também lê as habilidades de telas e gráficos e descreve a usabilidade
+na especificação. No GitHub, o Claude Code só enxerga o que está no
 repositório: habilidades da conta da Diretoria no Claude não vão junto.
 
 ## Combinados
