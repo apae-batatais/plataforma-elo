@@ -30,6 +30,8 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
       planilha de origem com base na estrutura do Elo (decisão da Diretoria em 09/11/2026). As linhas entram
       na mesma aba `Realizado`. Depende de a Diretoria definir o modelo ou de uma amostra da exportação do
       WK Radar (com dados fictícios ou anonimizados).
+- [ ] Casar o realizado da contabilidade pelo código da conta contábil dos grupos e fontes (o campo vem da
+      proposta #127, 14/11/2026); código nas Contas da Tesouraria e nos Serviços; somar painéis por código.
 - [ ] Realizado por lançamento (fornecedor, documento, fila "A classificar", regras de classificação), se a
       Diretoria quiser o detalhe.
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
@@ -43,6 +45,16 @@ Especificado em `src/modulos/orcamento/especificacao-folha-caixa-passivo.md`.
 - [ ] Rescisão antecipada de contrato por prazo determinado, reflexos do aviso e encargos patronais sobre a rescisão.
 - [ ] Férias fracionadas em até três períodos no caixa.
 - [ ] Verba rescisória por fonte conferida com o plano de aplicação do termo (depende de Parcerias).
+
+### Profissionais cedidos · para depois (14/11/2026, issue #125)
+
+Especificado em `src/modulos/orcamento/especificacao-cedidos.md`.
+
+- [ ] Cedido no realizado e na execução (lançamento automático mensal), se a Diretoria quiser.
+- [ ] Custo equivalente calculado pelo app (hoje digitado), depois de haver referência salarial.
+- [ ] Aviso de fim de cessão também por e-mail; duplicar cedido; cadastro em lote de cedidos.
+- [ ] Cobertura por serviço com o cedido atribuído a quem cede (painel de sustentabilidade, issue #131).
+- [ ] Confirmar com a contabilidade da instituição como a cessão é reconhecida (gratuidade recebida).
 
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
@@ -127,6 +139,21 @@ Ficou para depois (12/11/2026):
 - [ ] Exportar o marco lógico e o Termo de Abertura em PDF.
 - [ ] Modelos de projeto por tipo e cópia de projeto.
 - [ ] Conferir a licença do Guia Project DPro (Creative Commons não comercial) se o Elo vier a ser cobrado.
+
+## Ligações entre apps, onda 2 (issue #116, especificado em 14/11/2026)
+
+Especificação: `src/modulos/projetos/especificacao.md`, seção "Ligações, onda 2" (ADR-023).
+
+- [ ] **Prazos de prestação de contas do termo** no projeto: dependem de Parcerias ter esses prazos (ver "Rateio e
+      fontes"). Por ora o projeto mostra fim da vigência e datas das parcelas.
+- [ ] Outras contagens e resultados da Avaliação como indicador: entradas e saídas no período, quebra por faixa
+      etária ou sexo, % que melhorou e % com suspeita de violação de direitos (a Diretoria aprovou só vínculos
+      ativos, índice médio e reavaliação em dia, em 13/11/2026).
+- [ ] Mudar o mínimo de 5 pessoas por tela ou por OSC (hoje é fixo e vale para todas).
+- [ ] Atualizar o rascunho do termo quando o projeto muda (hoje só avisa a diferença de valor).
+- [ ] "Repetir evento da edição anterior" (sugestão): copia série, orçamento de custos e fonte.
+- [ ] Número no menu de Parcerias com os rascunhos de termo para completar (sugestão).
+- [ ] Sugerir o projeto no Realizado do Orçamento quando o grupo de gasto é de evento (sugestão).
 
 ## Ligações entre apps
 

@@ -13,6 +13,7 @@ import {
   detalharAvaliacao,
   fichaDaAvaliacao,
   historicoDaPessoa,
+  indicadoresDoServico,
   ErroRespostas,
   listarAvaliacoes,
   painelDaAvaliacao,
@@ -387,4 +388,42 @@ describe('casos de uso', () => {
     expect(lista[0].indice).toBe(2);
     expect(lista[1].idade).toBe(68);
   });
+  describe('números do serviço para outros apps (ADR-023)', () => {
+    const pessoa = (i: number, x: Partial<DadosAvaliacao> = {}) => completa({ iniciais: `a${'bcdefghij'[i]}`, nascimento: `195${i}-03-02`, ...x });
+
+    it('serviço sem avaliação: "sem dados"', async () => {
+      const r = await indicadoresDoServico(p, 'ur', { agora: AGORA });
+      expect(r.indiceMedio).toEqual({ valor: null, base: 0, motivo: 'sem_dados' });
+      expect(r.reavaliacaoEmDia.motivo).toBe('sem_dados');
+    });
+
+    it('com 4 pessoas não revela valor; com 5 revela', async () => {
+      const coord = await como('coord.ur@exemplo.local');
+      for (let i = 0; i < 4; i++) await salvarAvaliacao(p, coord, pessoa(i), { agora: AGORA });
+      const quatro = await indicadoresDoServico(p, 'ur', { agora: AGORA });
+      expect(quatro.indiceMedio).toEqual({ valor: null, base: 4, motivo: 'poucos_casos' });
+      expect(quatro.reavaliacaoEmDia).toEqual({ valor: null, base: 4, motivo: 'poucos_casos' });
+      await salvarAvaliacao(p, coord, pessoa(4, { isolamento: 'Sim' }), { agora: AGORA });
+      const cinco = await indicadoresDoServico(p, 'ur', { agora: AGORA });
+      expect(cinco.indiceMedio).toEqual({ valor: 1.2, base: 5, motivo: null });
+      expect(cinco.reavaliacaoEmDia).toEqual({ valor: 100, base: 5, motivo: null });
+    });
+
+    it('pessoa com duas avaliações conta uma vez, pela mais recente; vencida sai do "em dia"', async () => {
+      const coord = await como('coord.ur@exemplo.local');
+      for (let i = 0; i < 5; i++) await salvarAvaliacao(p, coord, pessoa(i, { data_avaliacao: '2025-01-10' }), { agora: new Date('2025-01-10T15:00:00Z') });
+      await salvarAvaliacao(p, coord, pessoa(0, { tipo: 'Acompanhamento anual', data_avaliacao: '2026-11-03' }), { agora: AGORA });
+      const r = await indicadoresDoServico(p, 'ur', { agora: AGORA });
+      expect(r.indiceMedio.base).toBe(5);
+      // 4 pessoas com avaliação de janeiro de 2025 estão vencidas; 1 foi reavaliada
+      expect(r.reavaliacaoEmDia).toEqual({ valor: 20, base: 5, motivo: null });
+    });
+
+    it('a resposta não tem nenhum campo além de valor, base e motivo', async () => {
+      const r = await indicadoresDoServico(p, 'ur', { agora: AGORA });
+      for (const n of [r.indiceMedio, r.reavaliacaoEmDia]) expect(Object.keys(n).sort()).toEqual(['base', 'motivo', 'valor']);
+      expect(Object.keys(r).sort()).toEqual(['indiceMedio', 'reavaliacaoEmDia']);
+    });
+  });
+
 });

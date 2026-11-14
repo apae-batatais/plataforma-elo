@@ -71,7 +71,10 @@ jobs:
                da main, escreva a especificação no lugar indicado pelo CLAUDE.md (com a seção "Frentes")
                e a ADR se houver decisão de arquitetura. Se houver tela, siga o roteiro "Telas e
                usabilidade" da habilidade arquiteto. Não escreva código de produção.
-            6. Faça commit e push e abra o PR com `gh pr create --base main --label "PR: especificação"`: título "Especificação: <assunto>",
+               Confira os PRs abertos antes de escolher o número da ADR e de escrever no roadmap, e
+               siga "Antes de abrir o PR: sem conflito e sem número repetido" da habilidade arquiteto.
+            6. Atualize o ramo com a main (`git fetch origin main` e `git merge origin/main`), mantendo os dois
+               textos em qualquer conflito. Faça commit e push e abra o PR com `gh pr create --base main --label "PR: especificação"`: título "Especificação: <assunto>",
                corpo em português começando com a linha "Especifica #${{ github.event.issue.number }}", resumo,
                decisões tomadas sozinho (com o custo se estiverem erradas) e o que a Diretoria deve conferir.
                Avise no PR que especificação não tem prévia: as telas mudam só no PR de entrega.

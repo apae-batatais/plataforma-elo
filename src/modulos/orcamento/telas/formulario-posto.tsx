@@ -12,7 +12,7 @@ import { IconeAtencao, IconeCerto } from '@/ui/icones';
 import type { FichaPosto } from '../aplicacao/folha';
 import { calcularLinha, COMPONENTES, dividirIgualmente, somaRateio, validarRateio, type ChaveComponente, type LinhaRateio } from '../dominio/folha';
 import { GridRateio } from './grid-rateio';
-import { percentual, reais } from './formato';
+import { MESES, percentual, reais } from './formato';
 
 type Acao = (estado: { erro?: string }, f: FormData) => Promise<{ erro?: string }>;
 
@@ -73,6 +73,9 @@ export function FormularioPosto({ ficha, acao }: { ficha: FichaPosto; acao: Acao
   const [departamento, setDepartamento] = useState(posto?.departamento ?? '');
   const [carga, setCarga] = useState(posto?.cargaHoraria ? String(posto.cargaHoraria) : '200');
   const [inicio, setInicio] = useState(posto?.inicio ?? `${cad.ano}-01-01`);
+  const [contrato, setContrato] = useState<'indeterminado' | 'determinado'>(posto?.contrato ?? 'indeterminado');
+  const [mesFerias, setMesFerias] = useState(posto?.mesFerias ? String(posto.mesFerias) : '');
+  const [desligamento, setDesligamento] = useState(posto?.desligamento ?? '');
   const [observacao, setObservacao] = useState(posto?.observacao ?? '');
   const [valores, setValores] = useState<Record<string, string>>(
     Object.fromEntries(COMPONENTES.map((c) => [c.chave, paraTexto(ficha.componentes[c.chave])])),
@@ -113,6 +116,9 @@ export function FormularioPosto({ ficha, acao }: { ficha: FichaPosto; acao: Acao
     cargaHoraria,
     inicio,
     observacao: observacao || null,
+    contrato,
+    mesFerias: mesFerias ? Number(mesFerias) : null,
+    desligamento: contrato === 'determinado' ? desligamento || null : undefined,
     componentes,
     rateio,
     vigencia: posto ? vigencia : inicio.slice(0, 7),
@@ -193,6 +199,25 @@ export function FormularioPosto({ ficha, acao }: { ficha: FichaPosto; acao: Acao
             </Campo>
             <Campo rotulo="Observação" dica=" " className="sm:col-span-2">
               <input value={observacao} onChange={(e) => setObservacao(e.target.value)} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Tipo de contrato" dica="Para prazo determinado, preencha a data de desligamento previsto." className="sm:col-span-2">
+              <select value={contrato} onChange={(e) => setContrato(e.target.value as typeof contrato)} className={estiloEntrada}>
+                <option value="indeterminado">Prazo indeterminado</option>
+                <option value="determinado">Prazo determinado</option>
+              </select>
+            </Campo>
+            {contrato === 'determinado' && (
+              <Campo rotulo="Desligamento previsto" obrigatorio className="sm:col-span-2">
+                <input value={desligamento} onChange={(e) => setDesligamento(e.target.value)} type="date" required className={estiloEntrada} />
+              </Campo>
+            )}
+            <Campo rotulo="Mês de férias" dica="Vale no lugar do calendário da instituição, no caixa." className="sm:col-span-2">
+              <select value={mesFerias} onChange={(e) => setMesFerias(e.target.value)} className={estiloEntrada}>
+                <option value="">Segue o calendário da instituição</option>
+                {MESES.map((m, i) => (
+                  <option key={m} value={i + 1}>{m}</option>
+                ))}
+              </select>
             </Campo>
           </div>
         </Bloco>

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { parametrosDaFolha } from '@/modulos/orcamento/aplicacao/folha';
+import { calendarioDePagamentos, parametrosDaFolha } from '@/modulos/orcamento/aplicacao/folha';
 import { PARAMETROS } from '@/modulos/orcamento/dominio/folha';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -8,7 +8,8 @@ import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina, Secao } from '@/ui/pagina';
-import { acaoSalvarParametros } from '../acoes';
+import { CalendarioPagamentos } from '@/modulos/orcamento/telas/calendario-pagamentos';
+import { acaoSalvarCalendario, acaoSalvarParametros } from '../acoes';
 
 export const metadata: Metadata = { title: 'Parâmetros da folha' };
 
@@ -28,6 +29,7 @@ export default async function Parametros() {
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
   const c = await parametrosDaFolha(app.planilhas, usuario.autorizador);
+  const cal = await calendarioDePagamentos(app.planilhas, usuario.autorizador);
   const def = new Map(PARAMETROS.map((p) => [p.chave as string, p]));
   const sufixo = (k: string) => (k === 'ano' || k === 'reajuste_mes' ? '' : '%');
 
@@ -69,6 +71,12 @@ export default async function Parametros() {
           {c.podeEditar && <BotaoEnviar enviando="Salvando…">Salvar parâmetros</BotaoEnviar>}
         </fieldset>
       </form>
+      <div id="calendario" className="mt-6 scroll-mt-6">
+        <Secao titulo="Calendário de pagamentos" descricao="Em que meses saem o 13º, o abono e as férias coletivas. Muda só a visão de Caixa do Resumo da folha; o custo do mês continua dividido em 12 partes.">
+          {!cal.configurado && <div className="mb-4"><Aviso tipo="info">Ainda no padrão: 13º em novembro (50%) e dezembro (50%), sem férias coletivas.</Aviso></div>}
+          <CalendarioPagamentos linhas={cal.linhas} vigenciaInicial={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`} podeEditar={cal.podeEditar} acao={acaoSalvarCalendario} />
+        </Secao>
+      </div>
     </div>
   );
 }

@@ -115,3 +115,23 @@ Nenhum nesta entrega.
 - [x] Testes de acesso (quem avalia, quem só vê o painel, quem não vê nada)
 - [x] `npm run verificar` verde
 - [ ] Conferido pela Diretoria na prévia com dados fictícios
+
+## Ajustes da onda 2 (issue #116): números do serviço para outros apps
+
+- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-023. Contexto: `src/modulos/projetos/especificacao.md`,
+  seção "Ligações, onda 2" (regras L1 a L6).
+- A Avaliação passa a oferecer, no seu `index.ts`, a função **`indicadoresDoServico(servico)`**, entregue pela
+  plataforma a Projetos e Parcerias (que não importam a Avaliação). Devolve só **dois** números, por serviço atual:
+  - **índice médio de necessidade de cuidado** (regra 7; mesma conta do indicador
+    `avaliacao_indice_medio_cuidado`, sobre a avaliação mais recente de cada pessoa no serviço);
+  - **% de pessoas com reavaliação em dia** (regra 9: não vencida, incluindo "vence em breve").
+- Cada número vem como `{ valor, base, motivo }`: `base` é o número de pessoas (mesma pessoa pela regra 8) com
+  avaliação ativa no serviço. Com **base de 1 a 4**, `valor` vem vazio e `motivo = poucos_casos`; base 0 →
+  `sem_dados`. A regra do mínimo de 5 está em função pura do Núcleo (`numeroAgregado`), usada aqui e na contagem
+  de vínculos.
+- **Sem permissão própria** e **sem dados pessoais**: nenhum campo além desses três (nem iniciais, nascimento,
+  prontuário ou id de avaliação). Não grava auditoria de leitura individual (regra 13 trata leitura de ficha);
+  grava nada, por ser agregado. Fica **de fora** (decisão da Diretoria, 13/11/2026): % que melhorou e % com
+  suspeita de violação de direitos.
+- Testes: serviço com 4 pessoas não revela valor; com 5 revela; pessoa com duas avaliações conta uma vez; serviço
+  sem avaliação → `sem_dados`; a resposta não tem campos além dos três; o painel e o indicador existentes não mudam.

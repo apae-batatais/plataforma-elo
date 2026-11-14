@@ -10,6 +10,7 @@ import {
   adicionarFonte,
   cancelarAporte,
   criarTermo,
+  definirFonteDaMeta,
   definirLimiteOcupacao,
   detalharTermo,
   encerrarTermo,
@@ -19,7 +20,8 @@ import {
   ErroTermo,
   type DadosTermo,
 } from '../aplicacao/parcerias';
-import { Aportes, TABELAS_PARCERIAS, Termos } from '../dados/tabelas';
+import { Aportes, Metas, TABELAS_PARCERIAS, Termos } from '../dados/tabelas';
+import type { NumerosDePessoas } from '../aplicacao/parcerias';
 import { popularParceriasFicticias } from '../dados/ficticios';
 import { manifesto } from '../manifesto';
 import { acumulado, alertaDeOciosas, avisoDeSoma, dividirEmPartesIguais, mesesDeCobertura, previstoPorMes, quadroDoServico, textoDaConta, valorInicialDaFonte } from '../dominio/termos';
@@ -262,3 +264,74 @@ describe('cadastro e regras de negócio', () => {
   });
 });
 void inserir;
+
+describe('meta com número do cadastro (onda 2, regra 27)', () => {
+  const numeros = (indiceMedio: number | null, base: number, reav: number | null = 80): NumerosDePessoas => ({
+    async indicadoresDoServico() {
+      const m = (valor: number | null) => (base >= 5 ? { valor, base, motivo: null } : { valor: null, base, motivo: 'poucos_casos' as const });
+      return { indiceMedio: m(indiceMedio), reavaliacaoEmDia: m(reav) };
+    },
+  });
+  const comMeta = async (m: Partial<NonNullable<DadosTermo['metas']>[number]> = {}, numero = '9/2026') => {
+    const id = await criarTermo(p, await como('financeiro@exemplo.local'), termoBase({ numero, metas: [{ servico: 'escola', descricao: 'Alunos', unidade: 'alunos', quantidade: 3, ...m }] }), AGORA);
+    const metaId = (await lerTabela(p, Metas)).ativos().find((x) => x.termo_id === id)!;
+    return { id, meta: metaId };
+  };
+
+  it('meta nova nasce manual e nunca calcula sozinha', async () => {
+    const { id, meta } = await comMeta();
+    expect(meta.fonte_numero).toBe('manual');
+    const d = await detalharTermo(p, await como('financeiro@exemplo.local'), id, AGORA, numeros(2, 9));
+    expect(d.hojeDasMetas).toEqual({});
+  });
+
+  it('só o Financeiro escolhe a fonte; a Diretoria só lê; a mudança vai para a auditoria com as colunas', async () => {
+    const { meta } = await comMeta();
+    await expect(definirFonteDaMeta(p, await como('diretoria@exemplo.local'), meta.id, meta.versao, { fonte: 'indice_cuidado' }, AGORA)).rejects.toThrow(ErroPermissao);
+    await definirFonteDaMeta(p, await como('financeiro@exemplo.local'), meta.id, meta.versao, { fonte: 'indice_cuidado' }, AGORA);
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'Metas');
+    expect(aud).toHaveLength(1);
+    expect(JSON.stringify(aud[0])).toContain('fonte_numero');
+    expect(JSON.stringify(aud[0])).not.toContain('indice_cuidado');
+  });
+
+  it('com 5 pessoas ou mais mostra o número e a situação contra a meta; com menos, "poucos casos"', async () => {
+    const fin = await como('financeiro@exemplo.local');
+    const { id, meta } = await comMeta({ quantidade: 2 });
+    await definirFonteDaMeta(p, fin, meta.id, meta.versao, { fonte: 'indice_cuidado' }, AGORA);
+    const ok = (await detalharTermo(p, fin, id, AGORA, numeros(2.5, 9))).hojeDasMetas[meta.id];
+    expect(ok).toMatchObject({ estado: 'ok', numero: { valor: 2.5, base: 9 }, situacao: 'dentro' });
+    const abaixo = (await detalharTermo(p, fin, id, AGORA, numeros(1.5, 9))).hojeDasMetas[meta.id];
+    expect(abaixo).toMatchObject({ situacao: 'abaixo' });
+    const pouco = (await detalharTermo(p, fin, id, AGORA, numeros(2.5, 4))).hojeDasMetas[meta.id];
+    expect(pouco).toEqual({ estado: 'ok', numero: { valor: null, base: 4, motivo: 'poucos_casos' }, situacao: null });
+  });
+
+  it('Avaliação desligada: "indisponível"; sem leitor também', async () => {
+    const fin = await como('financeiro@exemplo.local');
+    const { id, meta } = await comMeta();
+    await definirFonteDaMeta(p, fin, meta.id, meta.versao, { fonte: 'reavaliacao_em_dia' }, AGORA);
+    const nulo: NumerosDePessoas = { indicadoresDoServico: async () => null };
+    expect((await detalharTermo(p, fin, id, AGORA, nulo)).hojeDasMetas[meta.id]).toEqual({ estado: 'indisponivel' });
+    expect((await detalharTermo(p, fin, id, AGORA)).hojeDasMetas[meta.id]).toEqual({ estado: 'indisponivel' });
+  });
+
+  it('exige serviço do termo e unidade de pessoas', async () => {
+    const fin = await como('financeiro@exemplo.local');
+    const { meta } = await comMeta({ servico: null });
+    await expect(definirFonteDaMeta(p, fin, meta.id, meta.versao, { fonte: 'vinculos_ativos' }, AGORA)).rejects.toThrow(/serviço/);
+    await expect(definirFonteDaMeta(p, fin, meta.id, meta.versao, { fonte: 'vinculos_ativos', servico: 'ur' }, AGORA)).rejects.toThrow(/deste termo/);
+    const outra = await comMeta({ unidade: 'procedimentos' }, '10/2026');
+    await expect(definirFonteDaMeta(p, fin, outra.meta.id, outra.meta.versao, { fonte: 'vinculos_ativos' }, AGORA)).rejects.toThrow(/pessoas/);
+    await definirFonteDaMeta(p, fin, meta.id, meta.versao, { fonte: 'vinculos_ativos', servico: 'escola' }, AGORA);
+  });
+
+  it('vínculos ativos vêm do Núcleo, protegidos (a demonstração tem poucos vínculos na escola ou mais de 5)', async () => {
+    const fin = await como('financeiro@exemplo.local');
+    const { id, meta } = await comMeta();
+    await definirFonteDaMeta(p, fin, meta.id, meta.versao, { fonte: 'vinculos_ativos' }, AGORA);
+    const h = (await detalharTermo(p, fin, id, AGORA)).hojeDasMetas[meta.id];
+    expect(h.estado).toBe('ok');
+    if (h.estado === 'ok') expect(Object.keys(h.numero).sort()).toEqual(['base', 'motivo', 'valor']);
+  });
+});

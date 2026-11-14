@@ -14,6 +14,7 @@ import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
 import type { ItemDaAgenda } from '@/nucleo/modulos/agenda-busca';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
+import { numeroAgregado, type NumeroAgregado } from '@/nucleo/ligacoes/numero-agregado';
 import {
   barreirasDoTexto,
   barreirasParaTexto,
@@ -29,7 +30,7 @@ import {
   type SituacaoReavaliacao,
 } from '../dominio/avaliacao';
 import { compararAvaliacoes, type Comparativo } from '../dominio/comparativo';
-import { montarPainel, type PainelAvaliacao } from '../dominio/painel';
+import { montarPainel, percentual, porPessoa as agruparPorPessoa, type PainelAvaliacao } from '../dominio/painel';
 import { Avaliacoes } from '../dados/tabelas';
 
 export const PERM = {
@@ -418,4 +419,39 @@ export async function itensDaAgenda(p: Planilhas, quem: Autorizador, opcoes: { a
       href: `/avaliacao/${a.id}`,
       vencivel: true,
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Números do serviço para outros apps (ADR-023, onda 2): só dois, já protegidos pelo mínimo de 5 pessoas
+// ---------------------------------------------------------------------------
+
+export interface IndicadoresDoServico {
+  /** Índice médio de necessidade de cuidado (avaliação mais recente de cada pessoa no serviço). */
+  indiceMedio: NumeroAgregado;
+  /** % de pessoas com avaliação ativa cuja reavaliação não venceu (inclui "vence em breve"). */
+  reavaliacaoEmDia: NumeroAgregado;
+}
+
+/**
+ * Sem permissão própria e sem dado pessoal: devolve só `valor`, `base` e `motivo` de cada número
+ * (nenhuma inicial, nascimento, prontuário ou id). Não grava auditoria: não há leitura de registro individual.
+ */
+export async function indicadoresDoServico(p: Planilhas, servico: string, opcoes: { agora?: Date } = {}): Promise<IndicadoresDoServico> {
+  const hoje = hojeEm(opcoes.agora ?? new Date());
+  const [avaliacoes] = await lerTabelas(p, [Avaliacoes] as const);
+  const lista = avaliacoes
+    .ativos()
+    .filter((r) => r.servico === servico)
+    .map((r) => {
+      const d = paraDados(r);
+      return { ...d, servicoNome: r.servico_nome, indice: indiceDeCuidado(d), idade: null, chave: chavePessoa(r) };
+    });
+  const atuais = agruparPorPessoa(lista).map((x) => x.atual);
+  const base = atuais.length;
+  const media = base ? atuais.reduce((s, a) => s + a.indice, 0) / base : null;
+  const emDia = atuais.filter((a) => situacaoReavaliacao(a.data_avaliacao, hoje).situacao !== 'atrasada').length;
+  return {
+    indiceMedio: numeroAgregado({ valor: media === null ? null : Math.round(media * 10) / 10, base, tipo: 'media' }),
+    reavaliacaoEmDia: numeroAgregado({ valor: base ? percentual(emDia, base) : null, base, tipo: 'percentual' }),
+  };
 }

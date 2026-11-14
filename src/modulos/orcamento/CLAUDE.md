@@ -28,3 +28,4 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Realizado (1C.1): aba `Realizado` na planilha `orcamento_execucao`, totais mensais informados à mão (sem coluna pessoal).
   Informar/corrigir/remover: `orcamento.realizado.editar` (Financeiro); ver: `orcamento.execucao.ver` (Coordenação só o seu escopo,
   sem receitas). Salvar o mês é tudo ou nada (versão lida); remover encerra (`ativo = FALSE`). Regras puras em `dominio/realizado.ts`.
+- Folha em caixa (P1 da #126): `dominio/caixa.ts` (puro). O custo do mês não muda; o Resumo soma o deslocamento de 13º, 1/3 de férias e abono (com encargos) ao custo. Calendário na aba `CalendarioPagamento` (só inclusões, só `orcamento.parametros.editar`); `contrato` e `mes_ferias` em `Funcionarios`.

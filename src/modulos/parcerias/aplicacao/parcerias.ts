@@ -9,8 +9,9 @@ import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizar, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Servicos } from '@/nucleo/estrutura/tabelas';
-import { contarAtendidos } from '@/nucleo/pessoas/contagem';
+import type { NumeroAgregado } from '@/nucleo/ligacoes/numero-agregado';
 import { contem, MAX_RESULTADOS_POR_APP, type ItemDaAgenda, type ResultadoDaBusca } from '@/nucleo/modulos/agenda-busca';
+import { contarAtendidos, vinculosAtivosProtegido } from '@/nucleo/pessoas/contagem';
 import {
   AporteParcelas,
   Aportes,
@@ -44,6 +45,8 @@ import {
   previstoPorMes,
   quadroDoServico,
   unidadeEhPessoa,
+  FONTES_NUMERO,
+  type FonteNumero,
   valorInicialDaFonte,
   dinheiro,
   type AlertaOciosas,
@@ -87,7 +90,7 @@ export interface DadosTermo {
   servicos: { servico: string; inicio?: string | null; fim?: string | null; vagasOferecidas?: number | null; vagasCusteadas?: number | null }[];
   fontes: DadosFonte[];
   equipe?: { funcao: string; pessoas: number; horasSemanais: number }[];
-  metas?: { servico?: string | null; descricao: string; unidade: string; quantidade?: number | null; quantidadeTexto?: string | null }[];
+  metas?: { servico?: string | null; descricao: string; unidade: string; quantidade?: number | null; quantidadeTexto?: string | null; fonteNumero?: FonteNumero }[];
 }
 export interface DadosAporte {
   fonteId: string;
@@ -153,6 +156,16 @@ export interface FichaAporte {
   parcelas: Parcela[];
   versao: number;
 }
+export interface FichaMeta {
+  id: string;
+  versao: number;
+  servico: string | null;
+  descricao: string;
+  unidade: string;
+  quantidade: number | null;
+  quantidadeTexto: string | null;
+  fonteNumero: FonteNumero;
+}
 export interface FichaTermo {
   id: string;
   versao: number;
@@ -172,7 +185,7 @@ export interface FichaTermo {
   fontes: FichaFonte[];
   aportes: FichaAporte[];
   equipe: { funcao: string; pessoas: number; horasSemanais: number }[];
-  metas: { servico: string | null; descricao: string; unidade: string; quantidade: number | null; quantidadeTexto: string | null }[];
+  metas: FichaMeta[];
   previstoPorMes: Parcela[];
   pontosDeAtencao: string[];
   terminaEmAte90Dias: boolean;
@@ -277,7 +290,7 @@ function fichaDe(l: Lido, t: RegTermo, agora: Date): FichaTermo {
     metas: l.metas
       .ativos()
       .filter((m) => m.termo_id === t.id)
-      .map((m) => ({ servico: m.servico, descricao: m.descricao, unidade: m.unidade, quantidade: m.quantidade, quantidadeTexto: m.quantidade_texto })),
+      .map((m) => ({ id: m.id, versao: m.versao, servico: m.servico, descricao: m.descricao, unidade: m.unidade, quantidade: m.quantidade, quantidadeTexto: m.quantidade_texto, fonteNumero: m.fonte_numero })),
     previstoPorMes: previstoPorMes(...fontes.map((f) => f.parcelas), ...aportes.map((a) => a.parcelas)),
     pontosDeAtencao: pontos,
     terminaEmAte90Dias: t.situacao === 'em_vigor' && t.fim >= dia && t.fim <= limite90,
@@ -336,18 +349,62 @@ export interface QuadroServico {
   acumulado: ReturnType<typeof acumulado>;
   alerta: AlertaOciosas | null;
 }
-export interface DetalheTermo extends FichaTermo {
-  quadro: QuadroServico[];
+/** "Hoje" de uma meta com número do cadastro (regras 27 e L1 a L6 da onda 2). */
+export type HojeDaMeta =
+  | { estado: 'ok'; numero: NumeroAgregado; situacao: 'dentro' | 'abaixo' | null }
+  | { estado: 'sem_servico' | 'indisponivel' };
+
+/**
+ * Leitura de números de pessoas, declarada aqui e entregue pela plataforma (Parcerias não importa a Avaliação).
+ * Devolve `null` quando o app de origem está desligado. Os números já vêm protegidos pelo mínimo de 5 pessoas.
+ */
+export interface NumerosDePessoas {
+  indicadoresDoServico(servico: string): Promise<{ indiceMedio: NumeroAgregado; reavaliacaoEmDia: NumeroAgregado } | null>;
 }
 
-export async function detalharTermo(p: Planilhas, quem: Autorizador, id: string, agora = new Date()): Promise<DetalheTermo> {
+export interface DetalheTermo extends FichaTermo {
+  quadro: QuadroServico[];
+  /** Por id da meta; só metas com fonte automática. */
+  hojeDasMetas: Record<string, HojeDaMeta>;
+}
+
+/** Situação contra a meta: sem meta ou sem número, não se calcula. */
+const situacaoDaMeta = (numero: NumeroAgregado, meta: number | null): 'dentro' | 'abaixo' | null =>
+  numero.valor === null || meta === null ? null : numero.valor >= meta ? 'dentro' : 'abaixo';
+
+async function hojeDasMetas(p: Planilhas, f: FichaTermo, leitor: NumerosDePessoas | undefined, dia: string): Promise<Record<string, HojeDaMeta>> {
+  const r: Record<string, HojeDaMeta> = {};
+  const cache = new Map<string, Awaited<ReturnType<NumerosDePessoas['indicadoresDoServico']>>>();
+  for (const m of f.metas) {
+    if (m.fonteNumero === 'manual') continue;
+    if (!m.servico) {
+      r[m.id] = { estado: 'sem_servico' };
+      continue;
+    }
+    let numero: NumeroAgregado;
+    if (m.fonteNumero === 'vinculos_ativos') numero = await vinculosAtivosProtegido(p, m.servico, dia);
+    else {
+      if (!cache.has(m.servico)) cache.set(m.servico, leitor ? await leitor.indicadoresDoServico(m.servico).catch(() => null) : null);
+      const ind = cache.get(m.servico);
+      if (!ind) {
+        r[m.id] = { estado: 'indisponivel' };
+        continue;
+      }
+      numero = m.fonteNumero === 'indice_cuidado' ? ind.indiceMedio : ind.reavaliacaoEmDia;
+    }
+    r[m.id] = { estado: 'ok', numero, situacao: situacaoDaMeta(numero, m.quantidade) };
+  }
+  return r;
+}
+
+export async function detalharTermo(p: Planilhas, quem: Autorizador, id: string, agora = new Date(), leitor?: NumerosDePessoas): Promise<DetalheTermo> {
   if (!quem.temPermissaoAlgumEscopo(PERM.ver)) throw new ErroPermissao();
   const l = await ler(p);
   const t = l.termos.porId(id);
   if (!t || !t.ativo) throw new ErroTermo('Termo não encontrado.');
   const f = fichaDe(l, t, agora);
   if (!podeVer(quem, f.servicos.map((s) => s.servico))) throw new ErroPermissao();
-  return { ...f, quadro: await quadroDe(p, f, agora) };
+  return { ...f, quadro: await quadroDe(p, f, agora), hojeDasMetas: await hojeDasMetas(p, f, leitor, hoje(agora)) };
 }
 
 /** Quadro "Per capita e ocupação" por serviço, do início da vigência até o mês atual (ou o fim). */
@@ -493,7 +550,7 @@ export async function gravarTermo(p: Planilhas, email: string, d: DadosTermo, ag
   await inserirRegistros(
     p,
     l.metas,
-    (d.metas ?? []).map((m) => ({ termo_id: termo.id, servico: m.servico ?? null, descricao: m.descricao, unidade: m.unidade, quantidade: m.quantidade ?? null, quantidade_texto: m.quantidadeTexto ?? null })),
+    (d.metas ?? []).map((m) => ({ termo_id: termo.id, servico: m.servico ?? null, descricao: m.descricao, unidade: m.unidade, quantidade: m.quantidade ?? null, quantidade_texto: m.quantidadeTexto ?? null, fonte_numero: m.fonteNumero ?? ('manual' as const) })),
     autoria,
   );
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Termos', registroId: termo.id, detalhes: { fontes: d.fontes.length, servicos: d.servicos.length } }, agora);
@@ -580,6 +637,35 @@ export async function encerrarTermo(p: Planilhas, quem: Autorizador, termoId: st
   exigirEditar(quem);
   const r = await atualizar(p, Termos, termoId, versao, { situacao: 'encerrado' }, { email: quem.email, agora: () => agora });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: 'Termos', registroId: termoId, detalhes: { colunas: r.colunasAlteradas } }, agora);
+}
+
+/**
+ * Escolhe de onde vem o número "hoje" da meta (regra 27). Fonte automática exige serviço do termo e
+ * unidade de pessoas; "manual" volta ao número digitado. Grava as colunas alteradas na auditoria.
+ */
+export async function definirFonteDaMeta(
+  p: Planilhas,
+  quem: Autorizador,
+  metaId: string,
+  versao: number,
+  escolha: { fonte: FonteNumero; servico?: string | null },
+  agora = new Date(),
+): Promise<void> {
+  exigirEditar(quem);
+  if (!FONTES_NUMERO.includes(escolha.fonte)) throw new ErroTermo('Escolha uma das fontes oferecidas.');
+  const l = await ler(p);
+  const m = l.metas.porId(metaId);
+  if (!m || !m.ativo) throw new ErroTermo('Meta não encontrada.');
+  let servico = m.servico;
+  if (escolha.fonte !== 'manual') {
+    if (!unidadeEhPessoa(m.unidade)) throw new ErroTermo('Só metas contadas em pessoas (alunos, usuários, pessoas…) aceitam número do cadastro.');
+    servico = escolha.servico || m.servico;
+    if (!servico) throw new ErroTermo('Escolha o serviço para calcular o número.');
+    const doTermo = l.servicos.ativos().some((s) => s.termo_id === m.termo_id && s.servico === servico);
+    if (!doTermo) throw new ErroTermo('Escolha um serviço deste termo.');
+  }
+  const r = await atualizar(p, Metas, metaId, versao, { fonte_numero: escolha.fonte, servico }, { email: quem.email, agora: () => agora });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Metas', registroId: metaId, detalhes: { colunas: r.colunasAlteradas } }, agora);
 }
 
 export async function definirLimiteOcupacao(p: Planilhas, quem: Autorizador, termoId: string, versao: number, limite: number, agora = new Date()): Promise<void> {
