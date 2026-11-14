@@ -12,6 +12,7 @@ import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizar, inserir, lerTabelas, type Planilhas, type Registro } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
+import type { ItemDaAgenda } from '@/nucleo/modulos/agenda-busca';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import {
   barreirasDoTexto,
@@ -399,4 +400,22 @@ export async function avaliacaoDoServico(
     indiceMedioDeCuidado: painel.mediaIndice,
     reavaliacoesAtrasadas: painel.reavaliacao.atrasadas,
   });
+}
+
+/** Agenda única (ADR-024): a reavaliação anual de quem a pessoa já avalia no serviço. Avaliação não entra na busca (dado sensível). */
+export async function itensDaAgenda(p: Planilhas, quem: Autorizador, opcoes: { agora?: Date } = {}): Promise<ItemDaAgenda[]> {
+  if (!quem.temPermissaoAlgumEscopo(PERM.avaliar)) return [];
+  return (await listarAvaliacoes(p, quem, opcoes))
+    .filter((a) => a.reavaliacao)
+    .map((a) => ({
+      app: 'avaliacao',
+      tipo: 'Reavaliação',
+      titulo: `Reavaliação de ${a.iniciais} (${a.servicoNome})`,
+      data: a.reavaliacao!.vence,
+      ate: null,
+      mes: null,
+      servico: a.servico,
+      href: `/avaliacao/${a.id}`,
+      vencivel: true,
+    }));
 }

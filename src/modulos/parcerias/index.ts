@@ -3,3 +3,4 @@ export { manifesto } from './manifesto';
 export { TABELAS_PARCERIAS } from './dados/tabelas';
 export { popularParceriasFicticias } from './dados/ficticios';
 export { termosParaOrcamento, type TermoParaOrcamento } from './aplicacao/parcerias';
+export { itensDaAgenda, buscar } from './aplicacao/parcerias';

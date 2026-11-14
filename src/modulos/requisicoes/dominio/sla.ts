@@ -62,3 +62,23 @@ export function textoHoras(horas: number, e: Expediente = EXPEDIENTE_PADRAO): st
   const partes = [dias ? `${dias} ${dias === 1 ? 'dia útil' : 'dias úteis'}` : '', h ? `${h} h` : '', m && !dias ? `${m} min` : ''].filter(Boolean);
   return partes.join(' e ') || '0 min';
 }
+
+/**
+ * Dia (AAAA-MM-DD, horário de Brasília) em que o prazo de uma etapa, contado em horas úteis a partir de `deISO`,
+ * se esgota. É o dia que a agenda mostra como limite.
+ */
+export function diaLimite(deISO: string, prazoHoras: number, e: Expediente = EXPEDIENTE_PADRAO): string {
+  const de = Date.parse(deISO) + FUSO_MS;
+  let restante = prazoHoras * 3600_000;
+  let dia = Math.floor(de / DIA_MS) * DIA_MS;
+  for (let i = 0; i < 3660; i++, dia += DIA_MS) {
+    const semana = new Date(dia).getUTCDay();
+    if (semana === 0 || semana === 6 || e.feriados?.has(new Date(dia).toISOString().slice(0, 10))) continue;
+    const ini = Math.max(de, dia + e.inicio * 3600_000);
+    const disponivel = dia + e.fim * 3600_000 - ini;
+    if (disponivel <= 0) continue;
+    if (restante <= disponivel) return new Date(dia).toISOString().slice(0, 10);
+    restante -= disponivel;
+  }
+  return new Date(dia).toISOString().slice(0, 10);
+}
