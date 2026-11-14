@@ -36,7 +36,7 @@ export async function baixarCadastrosCsv(p: Planilhas, quem: Autorizador, tipo: 
 }
 
 export async function baixarItensCsv(p: Planilhas, quem: Autorizador, tipo: 'despesa' | 'receita', ano?: number): Promise<ArquivoCsv> {
-  const prev = await lerPrevisao(p, quem, ano);
+  const prev = await lerPrevisao(p, quem, ano, { incluirCedidos: false });
   const meses = (l: number[]) => l.map((v) => v);
   if (tipo === 'despesa') {
     const linhas: (string | number | null)[][] = prev.despesas.map((d) => [

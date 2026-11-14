@@ -15,7 +15,7 @@ import { CentrosCusto, Despesas, GruposGasto, RegrasRateio, RegrasRateioParticip
 import { aplicarRegras, conferirRegra, ErroRegra, type CentroRateio, type CustoRateado } from '../dominio/rateio-custos';
 import { ErroValidacaoFolha, profissionaisPorServico } from './folha';
 import { regrasParaCalculo } from './regras-rateio';
-import { lerPrevisao } from './previsao';
+import { lerPrevisao, NOME_GRUPO_CEDIDOS } from './previsao';
 
 const ErroCentro = ErroValidacaoFolha;
 
@@ -114,6 +114,13 @@ export interface PainelArea {
   categorias: Categoria[];
   base: BaseRateio;
   analise: AnaliseArea | null;
+  /** A mesma análise sem cedidos (só quando os cedidos estão incluídos): dá o segundo per capita. */
+  analiseSemCedidos: AnaliseArea | null;
+  /** Há cedidos no ano (o seletor só aparece então) e se estão incluídos. */
+  temCedidos: boolean;
+  incluiCedidos: boolean;
+  /** Custo de cedidos por serviço no ano (coluna "Cedidos"). */
+  cedidosPorServico: Record<string, number>;
   semClassificacao: number;
   /** Avisos do cálculo das regras de rateio. */
   avisosRegras: string[];
@@ -122,10 +129,12 @@ export interface PainelArea {
 export async function painelPorArea(
   p: Planilhas,
   quem: Autorizador,
-  filtro: { ano?: number; area?: string; categorias?: Categoria[]; base?: BaseRateio },
+  filtro: { ano?: number; area?: string; categorias?: Categoria[]; base?: BaseRateio; incluirCedidos?: boolean },
 ): Promise<PainelArea> {
   exigirVer(quem);
-  const prev = await lerPrevisao(p, quem, filtro.ano);
+  const prev = await lerPrevisao(p, quem, filtro.ano, { incluirCedidos: false });
+  const cedidosAno = prev.cedidos;
+  const incluiCedidos = (filtro.incluirCedidos ?? true) && cedidosAno.temCedidos;
   const centros = await listarCentros(p, quem);
   const categorias: Categoria[] = filtro.categorias?.length ? filtro.categorias : ['operacional', 'projetos'];
   const base: BaseRateio = filtro.base && ['custo', 'profissionais', 'atendidos', 'm2'].includes(filtro.base) ? filtro.base : 'custo';
@@ -136,34 +145,50 @@ export async function painelPorArea(
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
   const area = comCentros.find((a) => a.codigo === filtro.area) ?? comCentros[0] ?? null;
 
-  const custos: CustoLancado[] = [
-    ...prev.despesas.filter((d) => categorias.includes(d.categoria)).map((d) => ({ servico: d.servico, grupo: d.grupoNome, valor: d.valor })),
-    // A folha é custo operacional.
-    ...(categorias.includes('operacional') ? (prev.folha?.linhas ?? []).map((l) => ({ servico: l.servico, grupo: GRUPO_FOLHA, valor: l.anual })) : []),
-  ];
-
   // Regras de rateio (R1): o que tem regra vai direto aos serviços; o resto segue a base do painel.
   const [regrasCalc, despesasT, gruposT] = await Promise.all([regrasParaCalculo(p), lerTabelas(p, [Despesas] as const), lerTabelas(p, [GruposGasto] as const)]);
   const regraDoItem = new Map(despesasT[0].ativos().map((d) => [d.id, d.regra_rateio_id]));
   const regraDoGrupo = new Map(gruposT[0].ativos().map((g) => [g.id, g.regra_rateio_id]));
-  const profPorServico = new Map(centros.map((c) => [c.codigo, c.profissionais]));
-  const centrosRateio: CentroRateio[] = centros.map((c) => ({
-    codigo: c.codigo, area: c.area, tipo: c.tipo, atendidos: c.atendidos, vagas: c.vagas, m2: c.m2,
-    profissionais: profPorServico.get(c.codigo) ?? 0, regraId: c.regraId,
-  }));
-  const regraAplicada = aplicarRegras({
-    centros: centrosRateio,
-    regras: regrasCalc.regras,
-    basesProprias: regrasCalc.basesDoAno(prev.ano),
-    custos: [
-      ...prev.despesas.filter((d) => categorias.includes(d.categoria)).map((d) => ({ servico: d.servico, grupo: d.grupoNome, valor: d.valor, regraItem: regraDoItem.get(d.id) ?? null, regraGrupo: regraDoGrupo.get(d.grupo_id) ?? null })),
-      ...(categorias.includes('operacional') ? (prev.folha?.linhas ?? []).map((l) => ({ servico: l.servico, grupo: GRUPO_FOLHA, valor: l.anual })) : []),
-    ],
-  });
-  const custosFinais: CustoLancado[] = regraAplicada.mantidos;
-  const porRegra = regraAplicada.rateados.map((r: CustoRateado) => ({ servico: r.servico, grupo: r.grupo, valor: r.valor, regraNome: r.regraNome, origem: r.origem }));
-  void custos;
+  const cedidoDe = new Map(cedidosAno.porServico.map((c) => [c.servico, c.anual]));
 
+  /** Uma análise completa, com ou sem os cedidos (cedido é custo direto do serviço, base "custo"; conta como profissional). */
+  const calcular = (comCedidos: boolean) => {
+    const centrosVisao: LinhaCentro[] = centros.map((c) => ({
+      ...c,
+      profissionais: comCedidos ? Math.round((c.profissionais + (cedidosAno.profissionais.get(c.codigo) ?? 0)) * 100) / 100 : c.profissionais,
+    }));
+    const linhasCedidos = comCedidos && categorias.includes('operacional') ? cedidosAno.porServico.map((c) => ({ servico: c.servico, grupo: NOME_GRUPO_CEDIDOS, valor: c.anual })) : [];
+    const centrosRateio: CentroRateio[] = centrosVisao.map((c) => ({
+      codigo: c.codigo, area: c.area, tipo: c.tipo, atendidos: c.atendidos, vagas: c.vagas, m2: c.m2, profissionais: c.profissionais, regraId: c.regraId,
+    }));
+    const aplicada = aplicarRegras({
+      centros: centrosRateio,
+      regras: regrasCalc.regras,
+      basesProprias: regrasCalc.basesDoAno(prev.ano),
+      custos: [
+        ...prev.despesas.filter((d) => categorias.includes(d.categoria)).map((d) => ({ servico: d.servico, grupo: d.grupoNome, valor: d.valor, regraItem: regraDoItem.get(d.id) ?? null, regraGrupo: regraDoGrupo.get(d.grupo_id) ?? null })),
+        // A folha é custo operacional.
+        ...(categorias.includes('operacional') ? (prev.folha?.linhas ?? []).map((l) => ({ servico: l.servico, grupo: GRUPO_FOLHA, valor: l.anual })) : []),
+        ...linhasCedidos,
+      ],
+    });
+    const porRegra = aplicada.rateados.map((r: CustoRateado) => ({ servico: r.servico, grupo: r.grupo, valor: r.valor, regraNome: r.regraNome, origem: r.origem }));
+    const analise = area
+      ? analisarArea({
+          area: area.codigo,
+          base,
+          centros: centrosVisao,
+          custos: aplicada.mantidos,
+          porRegra,
+          receitas: prev.receitas.map((r) => ({ area: r.area, restrita: r.uso === 'restrita', valor: r.valor })),
+          ordemGrupos: [GRUPO_FOLHA, NOME_GRUPO_CEDIDOS, ...prev.opcoes.grupos.map((g) => g.nome)],
+        })
+      : null;
+    return { analise, avisos: aplicada.avisos };
+  };
+
+  const com = calcular(incluiCedidos);
+  const sem = incluiCedidos ? calcular(false) : null;
   return {
     ano: prev.ano,
     anos: prev.anos,
@@ -171,18 +196,12 @@ export async function painelPorArea(
     area,
     categorias,
     base,
-    analise: area
-      ? analisarArea({
-          area: area.codigo,
-          base,
-          centros,
-          custos: custosFinais,
-          porRegra,
-          receitas: prev.receitas.map((r) => ({ area: r.area, restrita: r.uso === 'restrita', valor: r.valor })),
-          ordemGrupos: [GRUPO_FOLHA, ...prev.opcoes.grupos.map((g) => g.nome)],
-        })
-      : null,
+    analise: com.analise,
+    analiseSemCedidos: sem?.analise ?? null,
+    temCedidos: cedidosAno.temCedidos,
+    incluiCedidos,
+    cedidosPorServico: incluiCedidos ? Object.fromEntries(cedidoDe) : {},
     semClassificacao: centros.filter((c) => !c.classificado).length,
-    avisosRegras: regraAplicada.avisos,
+    avisosRegras: com.avisos,
   };
 }
