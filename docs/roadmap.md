@@ -46,6 +46,16 @@ Especificado em `src/modulos/orcamento/especificacao-folha-caixa-passivo.md`.
 - [ ] Férias fracionadas em até três períodos no caixa.
 - [ ] Verba rescisória por fonte conferida com o plano de aplicação do termo (depende de Parcerias).
 
+### Profissionais cedidos · para depois (14/11/2026, issue #125)
+
+Especificado em `src/modulos/orcamento/especificacao-cedidos.md`.
+
+- [ ] Cedido no realizado e na execução (lançamento automático mensal), se a Diretoria quiser.
+- [ ] Custo equivalente calculado pelo app (hoje digitado), depois de haver referência salarial.
+- [ ] Aviso de fim de cessão também por e-mail; duplicar cedido; cadastro em lote de cedidos.
+- [ ] Cobertura por serviço com o cedido atribuído a quem cede (painel de sustentabilidade, issue #131).
+- [ ] Confirmar com a contabilidade da instituição como a cessão é reconhecida (gratuidade recebida).
+
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
 - [ ] Rateio R1: item de despesa sem serviço ("Comum"), botão "Dividir igualmente" e prévia com os custos reais lançados.
