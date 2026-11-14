@@ -2,4 +2,4 @@
 export { manifesto } from './manifesto';
 export { TABELAS_AVALIACAO } from './dados/tabelas';
 export { popularAvaliacoesFicticias } from './dados/ficticios';
-export { avaliacaoDoServico, type AvaliacaoDoServico } from './aplicacao/avaliacoes';
+export { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico, type IndicadoresDoServico } from './aplicacao/avaliacoes';

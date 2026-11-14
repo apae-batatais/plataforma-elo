@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { detalharTermo, ErroTermo } from '@/modulos/parcerias/aplicacao/parcerias';
-import { dinheiro, nomeMes, NOME_APORTE, NOME_TIPO, TIPOS_APORTE } from '@/modulos/parcerias/dominio/termos';
+import { dinheiro, FONTES_NUMERO, nomeMes, NOME_APORTE, NOME_FONTE_NUMERO, NOME_TIPO, TIPOS_APORTE, unidadeEhPessoa } from '@/modulos/parcerias/dominio/termos';
 import { CamposFonte } from '@/modulos/parcerias/telas/campos-fonte';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { numerosDePessoas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { pequeno } from '@/ui/botao';
@@ -14,7 +15,7 @@ import { FormularioConfirmado } from '@/ui/confirmar';
 import { IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
-import { acaoAdicionarFonte, acaoCancelarAporte, acaoEncerrarTermo, acaoLimiteOcupacao, acaoRegistrarAporte } from '../acoes';
+import { acaoAdicionarFonte, acaoCancelarAporte, acaoEncerrarTermo, acaoFonteDaMeta, acaoLimiteOcupacao, acaoRegistrarAporte } from '../acoes';
 import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Ficha do termo' };
@@ -30,7 +31,7 @@ export default async function FichaDoTermo({ params, searchParams }: { params: P
   const { planilhas } = await obterAplicacao();
   let t;
   try {
-    t = await detalharTermo(planilhas, usuario.autorizador, id);
+    t = await detalharTermo(planilhas, usuario.autorizador, id, new Date(), numerosDePessoas(planilhas));
   } catch (e) {
     if (e instanceof ErroTermo) notFound();
     if (e instanceof ErroPermissao) redirect('/parcerias');
@@ -177,9 +178,60 @@ export default async function FichaDoTermo({ params, searchParams }: { params: P
       <Secao titulo="Equipe e metas" descricao="Equipe por função, sem nomes.">
         <ul className="space-y-1 text-sm">
           {t.equipe.map((e) => <li key={e.funcao}>{e.funcao}: {e.pessoas} pessoa(s), {e.horasSemanais} h semanais por pessoa</li>)}
-          {t.metas.map((m) => <li key={m.descricao}>Meta · {m.descricao}: {m.quantidade ?? m.quantidadeTexto ?? '—'} {m.unidade}</li>)}
           {t.equipe.length + t.metas.length === 0 && <li className="text-texto-suave">Nada informado.</li>}
         </ul>
+        {t.metas.length > 0 && (
+          <ul className="mt-3 space-y-4 text-sm">
+            {t.metas.map((m) => {
+              const hoje = t.hojeDasMetas[m.id];
+              const aceitaCadastro = unidadeEhPessoa(m.unidade);
+              return (
+                <li key={m.id} className="space-y-1">
+                  <p>
+                    <span className="font-semibold">Meta · {m.descricao}:</span> {m.quantidade ?? m.quantidadeTexto ?? '—'} {m.unidade}
+                  </p>
+                  {hoje?.estado === 'ok' && (
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span>Hoje:</span>
+                      {hoje.numero.valor !== null ? (
+                        <span className="font-semibold tabular-nums">
+                          {hoje.numero.valor.toLocaleString('pt-BR')}
+                          {m.fonteNumero === 'reavaliacao_em_dia' ? '%' : ''}
+                        </span>
+                      ) : hoje.numero.motivo === 'poucos_casos' ? (
+                        <span>Poucos casos para divulgar (menos de 5 pessoas)</span>
+                      ) : (
+                        <span>Sem dados ainda</span>
+                      )}
+                      <Etiqueta tipo="info">Calculado do cadastro</Etiqueta>
+                      {hoje.situacao && <Etiqueta tipo={hoje.situacao === 'dentro' ? 'sucesso' : 'atencao'}>{hoje.situacao === 'dentro' ? 'Dentro da meta' : 'Abaixo da meta'}</Etiqueta>}
+                    </p>
+                  )}
+                  {hoje?.estado === 'sem_servico' && <p className="text-texto-suave">Escolha o serviço para calcular.</p>}
+                  {hoje?.estado === 'indisponivel' && <p className="text-texto-suave">Ligação indisponível; use “Digitado à mão”, se quiser.</p>}
+                  {edita && aceitaCadastro && (
+                    <form action={acaoFonteDaMeta} className="flex flex-wrap items-end gap-2">
+                      <input type="hidden" name="termo_id" value={t.id} />
+                      <input type="hidden" name="meta_id" value={m.id} />
+                      <input type="hidden" name="versao" value={m.versao} />
+                      <Campo rotulo="De onde vem o número" dica="Escolha “Digitado à mão” para informar você mesmo.">
+                        <select name="fonte" defaultValue={m.fonteNumero} className={estiloEntrada}>
+                          {FONTES_NUMERO.map((v) => <option key={v} value={v}>{NOME_FONTE_NUMERO[v]}</option>)}
+                        </select>
+                      </Campo>
+                      <Campo rotulo="Serviço">
+                        <select name="servico" defaultValue={m.servico ?? t.servicos[0]?.servico} className={estiloEntrada}>
+                          {t.servicos.map((s) => <option key={s.servico} value={s.servico}>{s.nome}</option>)}
+                        </select>
+                      </Campo>
+                      <BotaoEnviar enviando="Salvando…" className={pequeno}>Salvar</BotaoEnviar>
+                    </form>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </Secao>
 
       <Secao

@@ -8,13 +8,14 @@ import {
   adicionarFonte,
   cancelarAporte,
   criarTermo,
+  definirFonteDaMeta,
   definirLimiteOcupacao,
   encerrarTermo,
   ErroTermo,
   registrarAporte,
   type DadosFonte,
 } from '@/modulos/parcerias/aplicacao/parcerias';
-import { TIPOS_APORTE, TIPOS_INSTRUMENTO, type TipoInstrumento } from '@/modulos/parcerias/dominio/termos';
+import { FONTES_NUMERO, TIPOS_APORTE, TIPOS_INSTRUMENTO, type FonteNumero, type TipoInstrumento } from '@/modulos/parcerias/dominio/termos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 
@@ -149,5 +150,16 @@ export async function acaoLimiteOcupacao(f: FormData) {
   const id = texto(f, 'termo_id');
   await executar(`/parcerias/${id}`, 'Limite de ocupação salvo.', async ({ usuario, planilhas }) => {
     await definirLimiteOcupacao(planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), numero(f, 'limite') ?? 0);
+  });
+}
+
+export async function acaoFonteDaMeta(f: FormData) {
+  const id = texto(f, 'termo_id');
+  await executar(`/parcerias/${id}`, 'Fonte do número da meta salva.', async ({ usuario, planilhas }) => {
+    const fonte = texto(f, 'fonte') as FonteNumero;
+    await definirFonteDaMeta(planilhas, usuario.autorizador, texto(f, 'meta_id'), Number(texto(f, 'versao')), {
+      fonte: FONTES_NUMERO.includes(fonte) ? fonte : 'manual',
+      servico: texto(f, 'servico') || null,
+    });
   });
 }

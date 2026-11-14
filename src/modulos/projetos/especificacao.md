@@ -259,7 +259,7 @@ ligada à #107, nesta ordem.
 
 ## Ligações, onda 2 (issue #116): termo de parceria, indicadores vindos de pessoas e evento de captação
 
-- Situação: especificação aguardando aprovação da Diretoria. Arquitetura: ADR-023 (novo) e ADR-013.
+- Situação: especificação aprovada. **L1 construída** (14/11/2026: `numeroAgregado` no Núcleo, `indicadoresDoServico` na Avaliação, meta com fonte automática em Parcerias). L2 a L5 dependem de P2 a P5 e aguardam. Arquitetura: ADR-023 e ADR-013.
 - Respostas da Diretoria (comentário de 13/11/2026): contagem do cadastro só de **pessoas com vínculo ativo no
   serviço**; da Avaliação só o **índice médio de necessidade de cuidado** e a **% de pessoas com reavaliação em
   dia**; **mínimo de 5 pessoas** para um número aparecer ("poucos casos para divulgar"); evento de captação com

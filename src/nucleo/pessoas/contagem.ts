@@ -5,6 +5,7 @@
  */
 import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { VinculosServico } from '@/nucleo/estrutura/tabelas';
+import { numeroAgregado, type NumeroAgregado } from '@/nucleo/ligacoes/numero-agregado';
 
 const fimDoMes = (mes: string) => {
   const [a, m] = mes.split('-').map(Number);
@@ -35,4 +36,13 @@ export async function contarAtendidos(
     r.set(s, porMes);
   }
   return r;
+}
+
+/**
+ * Pessoas com vínculo ativo hoje no serviço, já protegidas pelo mínimo de 5 pessoas (ADR-023).
+ * Devolve só `valor`, `base` e `motivo`; a mesma contagem que Parcerias usa para a ocupação.
+ */
+export async function vinculosAtivosProtegido(p: Planilhas, servico: string, hoje: string): Promise<NumeroAgregado> {
+  const n = (await contarAtendidos(p, [servico], [hoje.slice(0, 7)], hoje)).get(servico)?.get(hoje.slice(0, 7)) ?? 0;
+  return numeroAgregado({ valor: n, base: n, tipo: 'contagem' });
 }
