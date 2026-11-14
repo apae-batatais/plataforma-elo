@@ -12,8 +12,12 @@ especificações, código, prévias e publicação.
 2. **Aprovar a especificação**: botão "Approve" no PR de especificação.
 3. **Aprovar a entrega**: conferir a prévia e clicar em "Approve" no PR de entrega.
 
-Além disso, a Diretoria responde às perguntas que o Arquiteto deixar como comentário na issue. O
-GitHub avisa por e-mail sempre que alguma coisa depende dela.
+Além disso, a Diretoria responde às perguntas que o Arquiteto ou o Desenvolvedor deixarem como
+comentário na issue (ou, num ajuste pedido por "Request changes", no PR). O GitHub avisa por
+e-mail sempre que alguma coisa depende dela, e a etiqueta **"pergunta aberta"** marca onde: quem
+pergunta põe a etiqueta na issue ou no PR; ela sai sozinha no primeiro comentário da Diretoria ali
+(`.github/workflows/etiqueta-pergunta.yml`). Enquanto a etiqueta estiver numa issue ligada a um PR
+ou no próprio PR, a Aprovação não faz o merge, mesmo com "Approve".
 
 ## Papéis
 

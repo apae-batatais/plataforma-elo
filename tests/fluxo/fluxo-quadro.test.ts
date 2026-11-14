@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, podeConstruir, referencias, tipoDoPR, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
+import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, podeConstruir, referencias, temPerguntaAberta, tipoDoPR, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
 
 type Issue = { number: number; state: string; labels: { name: string }[]; node_id: string; pull_request?: unknown };
 
@@ -76,6 +76,18 @@ describe('fluxo do quadro', () => {
   it('PR sem etiqueta de tipo, ou com tipo que não combina, não move nenhuma issue', () => {
     expect(mudancas({ tipo: 'pr_merge', texto: 'Entrega #9', etiquetas: [] })).toEqual([]);
     expect(mudancas({ tipo: 'pr_merge', texto: 'Entrega #9', etiquetas: ['PR: especificação'] })).toEqual([]);
+  });
+});
+
+describe('temPerguntaAberta', () => {
+  it('true com a etiqueta, em string ou em objeto', () => {
+    expect(temPerguntaAberta(['pergunta aberta'])).toBe(true);
+    expect(temPerguntaAberta([{ name: 'pergunta aberta' }])).toBe(true);
+  });
+  it('false sem a etiqueta, com lista vazia ou sem argumento', () => {
+    expect(temPerguntaAberta(['etapa: proposta'])).toBe(false);
+    expect(temPerguntaAberta([])).toBe(false);
+    expect(temPerguntaAberta()).toBe(false);
   });
 });
 

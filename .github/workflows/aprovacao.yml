@@ -47,7 +47,7 @@ jobs:
           QUADRO_NUMERO: ${{ vars.QUADRO_NUMERO }}
         with:
           script: |
-            const { aplicar, mudancas, tipoDoPR } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
+            const { aplicar, mudancas, tipoDoPR, temPerguntaAberta } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/fluxo-quadro.mjs`);
             const { owner, repo } = context.repo;
             const pr = context.payload.pull_request;
             const texto = `${pr.title}\n${pr.body ?? ''}`;
@@ -57,6 +57,19 @@ jobs:
               await github.rest.issues.createComment({ owner, repo, issue_number: pr.number,
                 body: `Não fiz o merge: ${tipo.erro} Depois de corrigir, aprove de novo.` });
               core.setFailed(tipo.erro);
+              return;
+            }
+            // Não faz o merge enquanto houver pergunta esperando resposta, no PR ou na issue ligada.
+            const pendentes = [];
+            if (temPerguntaAberta(etiquetas)) pendentes.push(`o PR #${pr.number}`);
+            for (const n of tipo.issues) {
+              const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: n });
+              if (temPerguntaAberta(issue.labels)) pendentes.push(`a issue #${n}`);
+            }
+            if (pendentes.length) {
+              const motivo = `Não fiz o merge: há pergunta esperando resposta em ${pendentes.join(' e ')}. Responda lá e aprove de novo.`;
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body: motivo });
+              core.setFailed(motivo);
               return;
             }
             try {
@@ -118,6 +131,8 @@ jobs:
             3. Faça os ajustes no próprio ramo do PR (${{ github.event.pull_request.head.ref }}), com testes
                quando houver código. Rode `npm run verificar` e `npm run build` até tudo passar.
             4. Faça commit e push e responda no PR, em poucas linhas, o que mudou em cada ponto pedido.
-               Se algum pedido não puder ser atendido, explique e proponha alternativas numeradas.
+               Se algum pedido não puder ser atendido, ou se a resposta depender de uma escolha da
+               Diretoria, explique, proponha alternativas numeradas e ponha a etiqueta "pergunta
+               aberta" (`gh pr edit ${{ github.event.pull_request.number }} --add-label "pergunta aberta"`).
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
             (evita barras invertidas antes das aspas).
