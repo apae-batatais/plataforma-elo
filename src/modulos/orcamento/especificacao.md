@@ -526,3 +526,126 @@ R1: `telas`, `regras e dados`. R2: ver Parcerias. R3 e R4: `telas`, `regras e da
   lançamentos", nunca zero. Valores não são dados pessoais.
 - Regra de teste: linha de Realizado com projeto aparece no resultado do projeto e **também** nos totais do
   Orçamento, uma vez só; projeto desligado não quebra a grade.
+
+## Código da conta contábil nos cadastros (proposta #127, 14/11/2026)
+
+**Objetivo:** o Financeiro conferir um grupo de gasto ou uma fonte com a conta da contabilidade
+pelo código, sem tabela de correspondência à parte. O código vem do sistema contábil da OSC; o Elo
+**não mantém plano de contas** (decisão da Diretoria, 10/11/2026). Quem não preencher usa o
+Orçamento como hoje.
+
+**Decisões da Diretoria (comentário da issue):** o campo entra em **Grupos de gasto** e em **Fontes
+de recurso** (não entra nas Contas da Tesouraria nem nos Serviços); o código aparece nas listas e
+telas **e** ganha um botão "Baixar planilha".
+
+### Usuários e permissões
+
+Sem permissão nova. Quem vê e quem altera segue os cadastros: alterar o código = Financeiro
+(`orcamento.previsao.editar`); quem vê os cadastros e as listas vê o código. O código não é dado
+pessoal nem sensível (sem `sigilo`).
+
+### Entidades
+
+- `GruposGasto` (planilha `orcamento`): coluna nova `codigo_conta` (`textoOpcional()`).
+- `Fontes` (planilha `orcamento`): coluna nova `codigo_conta` (`textoOpcional()`).
+- Linhas antigas ficam com a coluna vazia; "Preparar estrutura" acrescenta a coluna sem mexer nos dados.
+- O código é texto (guarda zeros à esquerda e pontos, como `3.1.02.001`); o Elo não interpreta nem
+  valida o formato do plano de contas.
+
+### Regras de negócio (com teste)
+
+1. O código é opcional. Aceita letras, números, ponto, hífen e barra; espaços das pontas e repetidos
+   são limpos; no máximo 30 caracteres. Fora disso, o cadastro recusa e diz o que está errado.
+2. O código é **único dentro do cadastro**, entre os registros ativos (grupo com grupo, fonte com fonte),
+   sem diferença de maiúscula ou espaço. Repetido: recusa e diz qual grupo/fonte já usa o código.
+   Grupo e fonte podem ter o mesmo código entre si (são planos diferentes: despesa e receita).
+3. Excluir um grupo/fonte libera o código; reativar recusa se o código já foi tomado por outro
+   (avisa qual) — a pessoa altera o código na hora de reativar ou antes de reativar o outro.
+4. Adicionar, alterar e cadastrar em lote gravam `codigo_conta` com a versão lida e registram
+   auditoria com a coluna alterada, nunca o valor.
+5. **Cadastro em lote:** a lista colada ganha uma coluna opcional "Código da conta" (grupo:
+   Nome; Tipo; Código. Fonte: Nome; Natureza; Uso; Código). Código repetido na lista ou já usado
+   aparece na prévia como erro da linha, e a linha não entra.
+6. **Importar despesas e receitas:** a coluna "reconhecer pelo nome ou código" passa a casar também
+   pelo `codigo_conta` do grupo e da fonte (além do nome). Se o código casar com um só registro, usa-o;
+   nome e código que apontam para registros diferentes contam como não reconhecido (a pessoa associa
+   na tela, como hoje).
+7. **Baixar planilha** (CSV aberto no Excel e no Google Planilhas, com acentos corretos e separador
+   de ponto e vírgula), gerada pela camada de aplicação, só para quem já pode ver a lista:
+   - Cadastros (grupos e fontes): nome, código da conta, demais campos do cadastro (ativos).
+   - Despesas e receitas do exercício na tela: uma linha por item, com **código da conta do grupo**
+     e **código da conta da fonte** em colunas próprias, além de serviço, grupo, fonte, descrição e
+     valor anual e mensal. Valores como número puro (sem "R$"), para somar na planilha.
+   - Despesas da folha (automáticas) entram no total mensal por serviço como na lista, sem valor
+     individual de pessoa: o arquivo respeita as mesmas regras de quem vê individual (regra de
+     Folha 1A); quem só vê totais recebe só totais.
+   - Células que começam com `=`, `+`, `-` ou `@` recebem apóstrofo na frente (evita fórmula
+     executada ao abrir o arquivo; texto do usuário nunca vira fórmula).
+   - Baixar não grava nada; não gera auditoria de leitura (sem dado sensível).
+8. Painéis e totais **não mudam**: o código só aparece como rótulo. Agrupar ou somar por código é outra
+   proposta.
+
+### Telas
+
+Quem usa: o Financeiro, ao cadastrar e conferir com a contabilidade; coordenações e Diretoria só
+leem. Caminho mais curto: Cadastros › Grupos de gasto (ou Fontes) › Alterar › digitar o código › Salvar
+(3 cliques, nada se perde ao cancelar).
+
+1. **Cadastros de Grupos de gasto e de Fontes de recurso** (`/orcamento/previsao/grupos`, `.../fontes`):
+   - Lista ganha a coluna **Código da conta** (vazio mostra "—", não texto de erro), logo depois do nome,
+     e um campo de busca já existente continua achando por nome; passa a achar também por código.
+   - Formulários Adicionar/Alterar ganham o campo **Código da conta contábil (opcional)**, com a dica
+     "Como está no sistema da contabilidade, por exemplo 3.1.02.001". Rótulo sempre visível.
+   - Erro (código repetido ou caractere inválido): a janela continua aberta, com tudo o que a pessoa
+     digitou, e a mensagem diz qual grupo/fonte já usa o código e que ela pode alterar este ou aquele.
+   - Gravou: aviso "Grupo salvo." / "Fonte salva." (como hoje).
+   - Sem permissão: sem os botões Adicionar/Alterar/Excluir; a coluna aparece.
+   - Botão **Baixar planilha** ao lado de "Cadastrar em lote" (ação secundária; "Adicionar" continua a principal).
+   - Cadastro em lote: exemplo de linha da prévia com a coluna nova e o texto de ajuda explicando que a
+     coluna é opcional.
+2. **Despesas e Receitas do exercício** (`/orcamento/previsao/despesas`, `.../receitas`): a tabela
+   mostra o código sob o nome do grupo e da fonte em texto menor (não ganha coluna nova, para não
+   estourar a largura); **Baixar planilha** no cabeçalho da lista, respeitando o ano e os filtros em tela
+   (diz no botão: "Baixar planilha (ano 2027)").
+3. **Celular e teclado:** a lista de cadastros usa o padrão responsivo atual (o código vira uma linha do
+   cartão); campos e botões na ordem natural; o download é um link com rótulo, alcançável por teclado.
+4. **Estado vazio do arquivo:** sem itens no exercício, o botão fica desligado com a dica "Nada para baixar
+   ainda". Erro ao gerar: mensagem simples e a pessoa pode tentar de novo.
+5. **Componentes de `src/ui/`:** os mesmos que os cadastros já usam (`JanelaFormulario`, campos, tabela,
+   `BotaoEnviar`, botão fantasma). Nenhuma peça nova; não há gráfico.
+6. **Ação sem volta:** não há (o código se altera sempre; excluir é reversível, como hoje).
+7. **Sugestões (não estão na proposta, a Diretoria decide):** (a) mostrar o código também nos painéis
+   (rótulo das barras e tabelas), (b) avisar na tela de Cadastros quantos grupos/fontes ainda estão sem
+   código ("12 de 15 com código"), (c) filtrar a lista por "sem código".
+
+### Fica de fora
+
+Código nas Contas da Tesouraria e nos Serviços; plano de contas mantido pelo Elo; validar o formato do
+código; somar ou agrupar painéis por código; **casar o realizado da contabilidade pelo código** (depende da
+importação do realizado, já no roadmap — esta entrega só deixa o código pronto para ela); exportar outras
+telas (Tesouraria, Realizado, Histórico).
+
+### Frentes
+
+`telas`, `regras e dados`. Sem infraestrutura. Fora do módulo: nenhuma mudança no Núcleo (a exportação
+é uma rota em `src/app/(elo)/orcamento/` que chama um caso de uso do módulo, no padrão das rotas de anexos).
+
+### Decisões tomadas sozinho
+
+- Código único dentro de cada cadastro (se a contabilidade usar o mesmo código para dois grupos, a
+  Diretoria precisará liberar; custo: pequeno, é retirar a regra 2).
+- CSV em vez de arquivo .xlsx (sem biblioteca nova; abre no Excel e no Google Planilhas).
+- Código em texto livre de até 30 caracteres, sem validar formato.
+
+### Entrega
+
+Uma só (pequena): colunas e regras 1–6, telas dos cadastros, depois o botão "Baixar planilha" (regra 7).
+
+### Critérios de pronto
+
+- [ ] Testes: código opcional, limpeza, único por cadastro, reativação, lote, importação por código, CSV
+      (acentos, número puro, proteção de fórmula, quem vê totais x individual), acesso (quem altera, quem só vê)
+- [ ] Dados antigos sem código funcionam como antes; "Preparar estrutura" acrescenta as colunas
+- [ ] Na prévia (dados fictícios): alterar um grupo e uma fonte com código; ver o código nas listas e nas
+      despesas; tentar repetir um código (mensagem clara); baixar a planilha e abrir no Excel/Google Planilhas
+- [ ] `npm run verificar` e `npm run build` verdes
