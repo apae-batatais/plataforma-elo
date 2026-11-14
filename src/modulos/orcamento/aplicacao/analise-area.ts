@@ -9,7 +9,7 @@ import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizar, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
-import { analisarArea, type AnaliseArea, type BaseRateio, type CentroAnalise, type CustoLancado, type TipoCentro } from '../dominio/analise-area';
+import { analisarArea, type AnaliseArea, type BaseRateio, type CentroAnalise, type TipoCentro } from '../dominio/analise-area';
 import type { Categoria } from '../dominio/previsao';
 import { CentrosCusto, Despesas, GruposGasto, RegrasRateio, RegrasRateioParticipantes } from '../dados/tabelas';
 import { aplicarRegras, conferirRegra, ErroRegra, type CentroRateio, type CustoRateado } from '../dominio/rateio-custos';

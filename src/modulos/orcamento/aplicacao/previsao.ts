@@ -27,7 +27,7 @@ import {
 } from '../dados/tabelas';
 import { parametrosCom } from '../dominio/folha';
 import { ErroValidacaoFolha, resumoFolha } from './folha';
-import { cedidosDoAno, SEM_CEDIDOS, type CedidosDoAno } from './cedidos-custo';
+import { cedidosDoAno, type CedidosDoAno } from './cedidos-custo';
 import { contaComoPublico } from '../dominio/cedidos-custo';
 
 /** Mesmo tipo de erro da folha: as telas já sabem mostrá-lo. */
