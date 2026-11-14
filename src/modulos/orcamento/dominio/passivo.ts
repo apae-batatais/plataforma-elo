@@ -5,7 +5,7 @@
  * Fica de fora, por decisão da Diretoria: reflexos do aviso, encargos patronais sobre a
  * rescisão, rescisão antecipada de contrato por prazo determinado e cedidos.
  */
-import { centavos } from './folha';
+const centavos = (v: number) => Math.round(v * 100) / 100;
 
 export interface ParametrosPassivo {
   aviso_dias_base: number;
