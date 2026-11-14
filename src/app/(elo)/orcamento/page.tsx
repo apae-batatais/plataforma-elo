@@ -16,10 +16,12 @@ import { LinkBotao } from '@/ui/botao';
 import { CabecalhoPagina, EstadoVazio, tabela } from '@/ui/pagina';
 import { NumeroQueConta } from '@/ui/numero-que-conta';
 import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
+import { Linhas } from '@/ui/graficos';
+import { TabelaDados } from '@/ui/tabela-dados';
 
 export const metadata: Metadata = { title: 'Resumo da folha' };
 
-export default async function ResumoDaFolha({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
+export default async function ResumoDaFolha({ searchParams }: { searchParams: Promise<{ mes?: string; visao?: string }> }) {
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   if (!veResumoDaFolha(usuario.autorizador)) {
@@ -28,7 +30,10 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
     redirect(app?.itens[0]?.href ?? '/');
   }
   const app = await obterAplicacao();
-  const r = await resumoFolha(app.planilhas, usuario.autorizador, Number((await searchParams).mes) || undefined);
+  const filtros = await searchParams;
+  const r = await resumoFolha(app.planilhas, usuario.autorizador, Number(filtros.mes) || undefined);
+  const caixa = filtros.visao === 'caixa';
+  const hrefVisao = (v: 'custo' | 'caixa') => `/orcamento?${v === 'caixa' ? 'visao=caixa&' : ''}mes=${r.mes}`;
   // R11: lembrete de realizado do último mês fechado (some se a aba ainda não foi preparada).
   const faltaRealizado = await pendenciaDeRealizado(app.planilhas, usuario.autorizador).catch(() => null);
   const i = r.mes - 1;
@@ -112,7 +117,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
           {MESES.map((nome, k) => (
             <li key={nome}>
               <Link
-                href={`/orcamento?mes=${k + 1}`}
+                href={`/orcamento?${caixa ? 'visao=caixa&' : ''}mes=${k + 1}`}
                 scroll={false}
                 aria-current={k === i ? 'true' : undefined}
                 className={`block rounded-md px-3 py-1.5 text-sm ${k === i ? 'bg-destaque font-semibold text-sobre-destaque' : 'text-texto-suave hover:bg-destaque-suave hover:text-texto'}`}
@@ -125,7 +130,83 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
         </ul>
       </nav>
 
-      {vazio ? (
+      <nav aria-label="Visão da folha" className="inline-flex rounded-lg border border-borda bg-superficie-2 p-0.5">
+        {(['custo', 'caixa'] as const).map((v) => (
+          <Link
+            key={v}
+            href={hrefVisao(v)}
+            scroll={false}
+            aria-current={(v === 'caixa') === caixa ? 'page' : undefined}
+            className={`rounded-md px-3 py-1.5 text-sm font-semibold ${
+              (v === 'caixa') === caixa ? 'bg-superficie text-texto shadow-[0_1px_2px_rgb(0_0_0/0.12)] ring-1 ring-borda' : 'text-texto-suave hover:text-texto'
+            }`}
+          >
+            {v === 'caixa' ? 'Caixa' : 'Custo do mês'}
+          </Link>
+        ))}
+      </nav>
+
+      {caixa && !vazio && (
+        <section aria-labelledby="t-caixa" className="space-y-4">
+          {!r.caixa.calendarioConfigurado && (
+            <Aviso tipo="info" titulo="Calendário de pagamentos no padrão">
+              13º em novembro e dezembro, sem férias coletivas.{' '}
+              {r.caixa.podeEditarCalendario ? (
+                <Link href="/orcamento/parametros#calendario" className="underline">
+                  Ajuste em Parâmetros
+                </Link>
+              ) : (
+                'Quem cuida dos parâmetros pode ajustar.'
+              )}
+            </Aviso>
+          )}
+          <div>
+            <h2 id="t-caixa" className="text-lg font-bold">
+              {r.caixa.pico.valor > r.caixa.pico.media
+                ? `A folha tem o maior pico em ${MESES[r.caixa.pico.mes - 1].toLowerCase()}: ${reais(r.caixa.pico.valor)}, ${reais(r.caixa.pico.valor - r.caixa.pico.media)} a mais que a média`
+                : 'A folha sai de forma uniforme ao longo do ano'}
+            </h2>
+            <p className="text-sm text-texto-suave">Em que meses a folha pesa mais no caixa? O custo do mês divide 13º e férias em 12 partes; o caixa mostra quando o dinheiro sai.</p>
+          </div>
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+            <Linhas
+              categorias={MESES.map((n) => n.slice(0, 3))}
+              series={[
+                { nome: 'Custo do mês', valores: r.total.mensal, cor: 1 },
+                { nome: 'Caixa', valores: r.caixa.mensal, cor: 2 },
+              ]}
+              formato="moeda"
+              descricao={`Custo do mês e caixa da folha em cada mês de ${r.ano}. O maior valor de caixa é em ${MESES[r.caixa.pico.mes - 1]}, ${reais(r.caixa.pico.valor)}.`}
+            />
+            <aside className="space-y-3" aria-label="Pico de saída">
+              <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
+                <p className="text-sm text-texto-suave">Pico de saída · {MESES[r.caixa.pico.mes - 1].toLowerCase()}</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(r.caixa.pico.valor)} chave={`pico:${r.caixa.pico.mes}`} /></p>
+                <p className="text-sm text-texto-suave">Guarde esse valor antes: 13º e férias coletivas pesam nesses meses.</p>
+              </div>
+              <div className="rounded-cartao border border-borda bg-superficie px-5 py-4">
+                <p className="text-sm text-texto-suave">Total no ano</p>
+                <p className="mt-0.5 text-2xl font-bold tabular-nums"><NumeroQueConta texto={reais(r.caixa.anual)} chave="caixa-ano" /></p>
+                <p className="text-sm text-texto-suave">Custo do mês no ano: {reais(r.total.anual)}</p>
+              </div>
+            </aside>
+          </div>
+          <TabelaDados
+            legenda="Caixa da folha por serviço, mês a mês"
+            totalRotulo="Total"
+            colunas={[
+              { chave: 'servico', rotulo: 'Serviço' },
+              ...MESES.map((n, k) => ({ chave: `m${k}`, rotulo: n.slice(0, 3), tipo: 'moeda' as const, somar: true })),
+            ]}
+            linhas={r.centros.map((c) => ({
+              id: c.codigo,
+              valores: { servico: c.nome, ...Object.fromEntries(c.caixa.map((v, k) => [`m${k}`, v])) },
+            }))}
+          />
+        </section>
+      )}
+
+      {caixa && !vazio ? null : vazio ? (
         <EstadoVazio
           titulo={r.todasAsAreas ? 'Ainda não há folha registrada' : 'Nenhum serviço no seu escopo'}
           acao={podeCorrigir ? <LinkBotao href="/orcamento/importar">Importar a planilha da folha</LinkBotao> : undefined}
@@ -202,7 +283,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
         </div>
       )}
 
-      {r.centros.length > 0 && (
+      {!caixa && r.centros.length > 0 && (
         <section aria-labelledby="t-servicos" className="space-y-3">
           <div>
             <h2 id="t-servicos" className="text-lg font-bold">

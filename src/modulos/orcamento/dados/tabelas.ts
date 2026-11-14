@@ -42,8 +42,12 @@ export const Postos = definirTabela({
     inicio: data(),
     desligamento: dataOpcional(),
     observacao: textoOpcional(),
+    /** 'indeterminado' ou 'determinado' (vazio = indeterminado). */
+    contrato: z.preprocess((v) => (vazio(v) ? null : v), z.enum(['indeterminado', 'determinado']).nullable()),
+    /** Mês de férias (1 a 12) que vale no lugar do calendário da instituição. */
+    mes_ferias: z.preprocess((v) => (vazio(v) ? null : Number(v)), z.number().int().min(1).max(12).nullable()),
   }),
-  sigilo: { colaborador: 'pessoal' },
+  sigilo: { colaborador: 'pessoal', mes_ferias: 'pessoal' },
 });
 
 const colunasComponentes = Object.fromEntries(COMPONENTES.map((c) => [c.chave, numeroOpcional()])) as Record<
@@ -76,6 +80,19 @@ export const Rateios = definirTabela({
     servico: texto(),
     percentual: numero(),
     vigencia: data(),
+  }),
+});
+
+/** Calendário de pagamentos da instituição (P1): 12 linhas por vigência, sem dado pessoal. */
+export const CalendarioPagamento = definirTabela({
+  planilha: PLANILHA_FOLHA,
+  aba: 'CalendarioPagamento',
+  esquema: z.object({
+    vigencia: data(),
+    mes: numero(),
+    ferias_coletivas: booleano(),
+    decimo_pct: numero(),
+    abono_pct: numero(),
   }),
 });
 
@@ -414,4 +431,4 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado] as const;
