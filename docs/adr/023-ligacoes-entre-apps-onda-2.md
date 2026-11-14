@@ -1,6 +1,6 @@
 # ADR-023 — Ligações entre apps, onda 2: escrita pela plataforma, números de pessoas protegidos e permissão de cada app
 
-- Situação: proposta (14/11/2026), a aprovar com a especificação da issue #116
+- Situação: aceita (especificação aprovada em 14/11/2026); decisões 2 e 3 construídas na entrega L1
 - Data: 14/11/2026
 - Proposta de origem: issue #116 (onda 2 de 3). Estende a ADR-013 e se apoia nas ADRs 011, 020, 021 e 022 (onda 1).
 

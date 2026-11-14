@@ -262,6 +262,8 @@ Cada gráfico tem "Ver os números" em tabela.
 | `resultado_previsto` | Receita prevista − despesa prevista | Alerta se negativo (1B) |
 | `execucao_orcamentaria` | Realizado ÷ previsto, por área, grupo e mês | Informativo (1C) |
 
+> Profissionais cedidos (proposta #125): `folha_sobre_receita`, `dependencia_recursos_publicos` e `recursos_livres` passam a ter a visão "com cedidos" (padrão) e "sem cedidos". Ver `especificacao-cedidos.md`.
+
 ## Telas — Entrega 1A
 
 1. **Resumo da folha:** o resumo da aba Estudo no mês escolhido e no ano, os quadros

@@ -213,3 +213,13 @@ export function alertaDeOciosas(linhas: readonly LinhaOcupacao[], limite: number
   const ociosas = Math.max(0, (b.vagasCusteadas ?? 0) - b.atendidos);
   return { vagasOciosas: ociosas, valorMensal: arredondar(ociosas * (perCapitaMensal ?? 0)), meses: [a.mes, b.mes] };
 }
+
+// --- meta com número do cadastro (ADR-023) -------------------------------------------
+export const FONTES_NUMERO = ['manual', 'vinculos_ativos', 'indice_cuidado', 'reavaliacao_em_dia'] as const;
+export type FonteNumero = (typeof FONTES_NUMERO)[number];
+export const NOME_FONTE_NUMERO: Record<FonteNumero, string> = {
+  manual: 'Digitado à mão',
+  vinculos_ativos: 'Pessoas com vínculo ativo no serviço',
+  indice_cuidado: 'Índice médio de necessidade de cuidado do serviço',
+  reavaliacao_em_dia: '% de pessoas com reavaliação em dia',
+};

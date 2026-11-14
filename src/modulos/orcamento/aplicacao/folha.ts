@@ -22,7 +22,8 @@ import {
   situacaoRateio, validarParametros, validarRateio, vigenteNoMes,
   type Componentes as ValoresComponentes, type LinhaCalculada, type LinhaRateio, type ResumoEstudo, type Parametros as ValoresParametros,
 } from '../dominio/folha';
-import { Componentes, Parametros, Postos, Rateios, type RegComponentes, type RegPosto, type RegRateio } from '../dados/tabelas';
+import { calendarioDe, deslocamentoDeCaixa, picoDeCaixa, taxaDeEncargosSobreSalarial, validarCalendario, CONTRATOS, type Calendario, type Contrato, type DeslocamentoCaixa, type LinhaCalendario, type PicoDeCaixa } from '../dominio/caixa';
+import { CalendarioPagamento, Componentes, Parametros, Postos, Rateios, type RegComponentes, type RegPosto, type RegRateio } from '../dados/tabelas';
 
 export class ErroValidacaoFolha extends Error {}
 
@@ -45,8 +46,8 @@ const DATA = /^\d{4}-\d{2}-\d{2}$/;
 // ---------------------------------------------------------------------------
 
 export async function lerFolha(p: Planilhas) {
-  const [postos, componentes, rateios, parametros, areas, servicos] = await lerTabelas(p, [
-    Postos, Componentes, Rateios, Parametros, Areas, Servicos,
+  const [postos, componentes, rateios, parametros, areas, servicos, calendarios] = await lerTabelas(p, [
+    Postos, Componentes, Rateios, Parametros, Areas, Servicos, CalendarioPagamento,
   ] as const);
   const valores = parametrosCom(Object.fromEntries(parametros.ativos().map((x) => [x.chave, x.valor])));
 
@@ -74,8 +75,24 @@ export async function lerFolha(p: Planilhas) {
   const ultimo = <T extends { vigencia: string; criado_em: string }>(lista: T[] | undefined) =>
     lista ? vigenteNoMes(lista, 9999, 12) : undefined;
 
+  // Calendário de pagamentos: vale o conjunto de 12 linhas da vigência mais recente que já começou em dezembro.
+  const linhasCalendario = (() => {
+    const lista = calendarios.ativos();
+    const v = lista.length ? vigenteNoMes(lista, valores.ano, 12) : undefined;
+    if (!v) return undefined;
+    const doLote = lista.filter((x) => x.vigencia === v.vigencia);
+    const ultimoLote = doLote.reduce((a, b) => (a.criado_em >= b.criado_em ? a : b)).criado_em;
+    const ls = new Map<number, LinhaCalendario>();
+    for (const x of doLote.sort((a, b) => a.criado_em.localeCompare(b.criado_em))) {
+      if (x.criado_em.slice(0, 16) === ultimoLote.slice(0, 16)) ls.set(x.mes, { mes: x.mes, ferias_coletivas: x.ferias_coletivas, decimo_pct: x.decimo_pct, abono_pct: x.abono_pct });
+    }
+    return { vigencia: v.vigencia, linhas: [...ls.values()].sort((a, b) => a.mes - b.mes) };
+  })();
+
   return {
     parametros: valores,
+    calendario: calendarioDe(linhasCalendario?.linhas),
+    linhasCalendario,
     parametrosLidos: parametros,
     /** Serviços ativos: são os "centros de custo" da lotação. */
     centros: servicos.ativos().map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area })),
@@ -126,9 +143,11 @@ export interface ResumoFolha {
   /** O mesmo resumo somando os 12 meses do ano. */
   estudoAno: ResumoEstudo;
   /** Total geral (com encargos) por serviço da lotação. */
-  centros: { codigo: string; nome: string; area: string | null; areaNome: string; mensal: number[]; anual: number }[];
-  areas: { codigo: string; nome: string; mensal: number[]; anual: number }[];
+  centros: { codigo: string; nome: string; area: string | null; areaNome: string; mensal: number[]; anual: number; caixa: number[] }[];
+  areas: { codigo: string; nome: string; mensal: number[]; anual: number; caixa: number[] }[];
   total: { mensal: number[]; anual: number };
+  /** Visão em caixa (P1): em que mês o dinheiro sai. O custo do mês acima não muda. */
+  caixa: { mensal: number[]; anual: number; pico: PicoDeCaixa; calendarioConfigurado: boolean; podeEditarCalendario: boolean };
   /** Só para quem vê todas as áreas. */
   alertas: { semRateio: number; foraDe100: number; vagasPrevistas: number; postosAtivos: number; custoSemRateio: number } | null;
 }
@@ -149,6 +168,22 @@ export async function resumoFolha(p: Planilhas, quem: Autorizador, mesEscolhido?
   const itensDoMes: Item[][] = [];
   const porServico = new Map<string, Item[][]>();
   let custoSemRateio = 0;
+  const taxa = taxaDeEncargosSobreSalarial(f.parametros);
+  const desloc = new Map<string, DeslocamentoCaixa>();
+  for (const posto of f.postos) {
+    const meses = MESES.map((m) => {
+      if (!ativoNoMes(posto, f.parametros.ano, m)) return null;
+      const c = f.componentes(posto.id, m);
+      return c ? { c, calc: calcularLinha(c, posto.carga_horaria, f.parametros, m) } : null;
+    });
+    desloc.set(posto.id, deslocamentoDeCaixa({ meses, contrato: posto.contrato ?? 'indeterminado', mesFerias: posto.mes_ferias, inicio: posto.inicio, desligamento: posto.desligamento, ano: f.parametros.ano }, f.calendario));
+  }
+  /** Deslocamento do caixa (com encargos) por serviço e no total visível, mês a mês. */
+  const caixaPorServico = new Map<string, number[]>();
+  const caixaTotal = MESES.map(() => 0);
+  const somarCaixa = (lista: number[], m: number, peso: number, d: DeslocamentoCaixa) => {
+    lista[m - 1] += peso * ((1 + taxa) * d.delta[m - 1] + d.termino[m - 1]);
+  };
   for (const m of MESES) {
     const doMes: Item[] = [];
     for (const posto of f.postos) {
@@ -167,8 +202,14 @@ export async function resumoFolha(p: Planilhas, quem: Autorizador, mesEscolhido?
         const lista = porServico.get(l.centro) ?? MESES.map(() => []);
         lista[m - 1].push({ c, calc, peso });
         porServico.set(l.centro, lista);
+        const cx = caixaPorServico.get(l.centro) ?? MESES.map(() => 0);
+        somarCaixa(cx, m, peso, desloc.get(posto.id)!);
+        caixaPorServico.set(l.centro, cx);
       }
-      if (pesoVisivel > 0) doMes.push({ c, calc, peso: pesoVisivel });
+      if (pesoVisivel > 0) {
+        doMes.push({ c, calc, peso: pesoVisivel });
+        somarCaixa(caixaTotal, m, pesoVisivel, desloc.get(posto.id)!);
+      }
     }
     itensDoMes.push(doMes);
   }
@@ -186,22 +227,25 @@ export async function resumoFolha(p: Planilhas, quem: Autorizador, mesEscolhido?
         areaNome: codigo === SEM_LOTACAO ? 'Sem lotação' : area ? (nomeArea.get(area) ?? area) : 'Sem área',
         mensal,
         anual: arred(mensal.reduce((x, v) => x + v, 0)),
+        caixa: mensal.map((v, i) => arred(v + caixaPorServico.get(codigo)![i])),
       };
     })
     .sort((a, b) => (a.codigo === SEM_LOTACAO ? 1 : b.codigo === SEM_LOTACAO ? -1 : a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')));
 
-  const areasMap = new Map<string, { codigo: string; nome: string; mensal: number[] }>();
+  const areasMap = new Map<string, { codigo: string; nome: string; mensal: number[]; caixa: number[] }>();
   for (const c of centros) {
     const chave = c.codigo === SEM_LOTACAO ? SEM_LOTACAO : (c.area ?? '');
-    const a = areasMap.get(chave) ?? { codigo: chave, nome: c.areaNome, mensal: MESES.map(() => 0) };
+    const a = areasMap.get(chave) ?? { codigo: chave, nome: c.areaNome, mensal: MESES.map(() => 0), caixa: MESES.map(() => 0) };
     c.mensal.forEach((v, i) => (a.mensal[i] += v));
+    c.caixa.forEach((v, i) => (a.caixa[i] += v));
     areasMap.set(chave, a);
   }
-  const areas = [...areasMap.values()].map((a) => ({ ...a, mensal: a.mensal.map(arred), anual: arred(a.mensal.reduce((s, v) => s + v, 0)) }));
+  const areas = [...areasMap.values()].map((a) => ({ ...a, mensal: a.mensal.map(arred), caixa: a.caixa.map(arred), anual: arred(a.mensal.reduce((s, v) => s + v, 0)) }));
   const estudoMes = resumirEstudo(itensDoMes[mes - 1], f.parametros);
   const estudoAno = { ...resumirEstudo(itensDoMes.flat(), f.parametros), pessoas: estudoMes.pessoas };
   const totalMensal = itensDoMes.map((itens) => resumirEstudo(itens, f.parametros).totalGeral);
 
+  const caixaMensal = totalMensal.map((v, i) => arred(v + caixaTotal[i]));
   let alertas: ResumoFolha['alertas'] = null;
   if (todas) {
     const ativos = f.postos.filter((x) => !x.desligamento || x.desligamento >= `${f.parametros.ano}-01-01`);
@@ -224,6 +268,13 @@ export async function resumoFolha(p: Planilhas, quem: Autorizador, mesEscolhido?
     centros,
     areas,
     total: { mensal: totalMensal, anual: arred(totalMensal.reduce((s, v) => s + v, 0)) },
+    caixa: {
+      mensal: caixaMensal,
+      anual: arred(caixaMensal.reduce((s, v) => s + v, 0)),
+      pico: picoDeCaixa(caixaMensal),
+      calendarioConfigurado: f.calendario.configurado,
+      podeEditarCalendario: quem.temPermissao(PERM.parametros),
+    },
     alertas,
   };
 }
@@ -317,7 +368,7 @@ function cadastrosDoFormulario(f: FolhaLida): CadastrosDoFormulario {
 }
 
 export interface FichaPosto {
-  posto: { id: string; versao: number; ficha: string | null; colaborador: string | null; cargo: string; departamento: string | null; cargaHoraria: number | null; inicio: string; desligamento: string | null; observacao: string | null } | null;
+  posto: { id: string; versao: number; ficha: string | null; colaborador: string | null; cargo: string; departamento: string | null; cargaHoraria: number | null; inicio: string; desligamento: string | null; observacao: string | null; contrato: Contrato; mesFerias: number | null } | null;
   componentes: ValoresComponentes;
   rateio: LinhaRateio[];
   cadastros: CadastrosDoFormulario;
@@ -335,7 +386,7 @@ export async function fichaDoPosto(p: Planilhas, quem: Autorizador, id: string |
   if (!x) throw new ErroValidacaoFolha('Funcionário não encontrado.');
   await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'Postos', registroId: id });
   return {
-    posto: { id: x.id, versao: x.versao, ficha: x.ficha, colaborador: x.colaborador, cargo: x.cargo, departamento: x.departamento, cargaHoraria: x.carga_horaria, inicio: x.inicio, desligamento: x.desligamento, observacao: x.observacao },
+    posto: { id: x.id, versao: x.versao, ficha: x.ficha, colaborador: x.colaborador, cargo: x.cargo, departamento: x.departamento, cargaHoraria: x.carga_horaria, inicio: x.inicio, desligamento: x.desligamento, observacao: x.observacao, contrato: x.contrato ?? 'indeterminado', mesFerias: x.mes_ferias },
     componentes: f.componentes(id) ?? componentesZerados(),
     rateio: f.rateio(id) ?? [],
     cadastros,
@@ -353,6 +404,12 @@ export interface DadosPosto {
   cargaHoraria: number | null;
   inicio: string;
   observacao: string | null;
+  /** Tipo de contrato (vazio = indeterminado). */
+  contrato?: Contrato;
+  /** Mês de férias (1 a 12) no lugar do calendário da instituição. */
+  mesFerias?: number | null;
+  /** Desligamento (previsto, para contrato por prazo determinado). Não informado = não muda. */
+  desligamento?: string | null;
   componentes: ValoresComponentes;
   rateio: LinhaRateio[];
   /** A partir de quando valem os componentes e o rateio informados (AAAA-MM-DD). */
@@ -376,6 +433,10 @@ export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto
     if (!Number.isFinite(v) || v < 0) erros.push(`${c.nome}: valor inválido.`);
   }
   if (d.componentes.salario_atual <= 0 && d.componentes.bolsa_estagio <= 0) erros.push('Informe o salário atual (ou a bolsa estágio).');
+  if (d.contrato !== undefined && !CONTRATOS.includes(d.contrato)) erros.push('Tipo de contrato inválido.');
+  if (d.mesFerias != null && (!Number.isInteger(d.mesFerias) || d.mesFerias < 1 || d.mesFerias > 12)) erros.push('Mês de férias deve ser de 1 a 12.');
+  if (d.desligamento && (!DATA.test(d.desligamento) || d.desligamento < d.inicio)) erros.push('Desligamento previsto inválido ou antes da admissão.');
+  if (d.contrato === 'determinado' && DATA.test(d.inicio) && d.desligamento === null) erros.push('Para contrato por prazo determinado, informe o desligamento previsto.');
   erros.push(...validarRateio(d.rateio));
   const desconhecidos = d.rateio.filter((l) => l.centro && !f.centros.some((c) => c.codigo === l.centro));
   if (desconhecidos.length) erros.push('Há serviço na lotação que não existe no cadastro de Serviços.');
@@ -392,6 +453,9 @@ export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto
     carga_horaria: d.cargaHoraria,
     inicio: d.inicio,
     observacao: d.observacao?.trim() || null,
+    ...(d.contrato !== undefined ? { contrato: d.contrato } : {}),
+    ...(d.mesFerias !== undefined ? { mes_ferias: d.mesFerias } : {}),
+    ...(d.desligamento !== undefined ? { desligamento: d.desligamento || null } : {}),
   };
 
   let postoId: string;
@@ -557,3 +621,34 @@ export async function profissionaisPorServico(p: Planilhas): Promise<Map<string,
   }
   return r;
 }
+
+// ---------------------------------------------------------------------------
+// Calendário de pagamentos (P1)
+// ---------------------------------------------------------------------------
+
+export async function calendarioDePagamentos(p: Planilhas, quem: Autorizador) {
+  if (!quem.temPermissaoAlgumEscopo(PERM.ver)) throw new ErroPermissao();
+  const f = await lerFolha(p);
+  return {
+    configurado: f.calendario.configurado,
+    vigencia: f.linhasCalendario?.vigencia ?? null,
+    linhas: MESES.map((mes): LinhaCalendario => {
+      const c = f.linhasCalendario?.linhas.find((l) => l.mes === mes);
+      return c ?? { mes, ferias_coletivas: false, decimo_pct: f.calendario.decimo[mes - 1], abono_pct: f.calendario.abono?.[mes - 1] ?? 0 };
+    }),
+    podeEditar: quem.temPermissao(PERM.parametros),
+  };
+}
+
+/** Grava as 12 linhas com vigência (só inclusões: os meses anteriores não mudam). Só `parametros.editar`. */
+export async function salvarCalendario(p: Planilhas, quem: Autorizador, linhas: LinhaCalendario[], vigencia: string): Promise<void> {
+  exigir(quem, PERM.parametros);
+  if (!DATA.test(vigencia)) throw new ErroValidacaoFolha('Informe a partir de quando vale o calendário.');
+  const erros = validarCalendario(linhas);
+  if (erros.length) throw new ErroValidacaoFolha(erros.join(' '));
+  const [tabela] = await lerTabelas(p, [CalendarioPagamento] as const);
+  await inserirRegistros(p, tabela, linhas.map((l) => ({ vigencia, ...l })), { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'CalendarioPagamento', detalhes: { colunas: ['ferias_coletivas', 'decimo_pct', 'abono_pct'] } });
+}
+
+export type { Calendario };
