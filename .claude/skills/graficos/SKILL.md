@@ -74,6 +74,7 @@ com os mesmos dados. O `Indicadores` escreve nome, valor e situação na própri
   gráfico; duas grandezas viram dois gráficos ou duas séries comparadas na mesma unidade.
 - Ano parcial (em andamento) aparece avisado no texto, para não parecer queda.
 - Sem dados: `EstadoVazio` explica por que e o que fazer; nunca gráfico em branco.
+- Movimento (pronto nos componentes, 0,4 s): ao abrir, barras crescem e linhas se desenham; ao trocar ano, aba ou filtro, vão até a nova posição. Por isso **não ponha `key` com o ano ou filtro no gráfico**: o mesmo componente precisa receber os dados novos. A escala usa os valores finais; "Ver os números" e a dica mostram sempre o valor final.
 - Movimento: o que está em `Movimento` na habilidade `telas` (0,2 a 0,6 s; nada com "menos
   movimento").
 - Dado de exemplo e texto sem nome de instituição, unidade, marca ou cidade reais.

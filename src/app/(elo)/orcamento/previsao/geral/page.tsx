@@ -11,18 +11,39 @@ import { Barras100, BarrasHorizontais, Indicadores, Linhas, ResultadoMensal } fr
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from '@/ui/tabela-dados';
+import { AtalhosSecoes } from '@/ui/atalhos-secoes';
 import { NumeroQueConta } from '@/ui/numero-que-conta';
 
 export const metadata: Metadata = { title: 'Painel geral' };
 
+const SECOES = [
+  { id: 'indicadores', rotulo: 'Indicadores' },
+  { id: 'ano-em-foco', rotulo: 'O ano em foco' },
+  { id: 'comparar', rotulo: 'Comparar exercícios' },
+  { id: 'receita', rotulo: 'Receita' },
+  { id: 'resumo', rotulo: 'Resumo' },
+];
+
 const SITUACAO = { elaboracao: 'Em elaboração', aprovado: 'Aprovado', encerrado: 'Encerrado' } as const;
 
-function Bloco({ titulo, descricao, children, className = '' }: { titulo: string; descricao?: string; children: ReactNode; className?: string }) {
+function Bloco({ titulo, descricao, children, className = '', tituloOculto = false }: { titulo: string; descricao?: string; children: ReactNode; className?: string; tituloOculto?: boolean }) {
   return (
     <section className={`rounded-cartao border border-borda bg-superficie p-5 ${className}`} aria-label={titulo}>
-      <h2 className="font-bold">{titulo}</h2>
+      <h3 className={tituloOculto ? 'sr-only' : 'font-bold'}>{titulo}</h3>
       {descricao && <p className="mb-4 mt-0.5 text-sm text-texto-suave">{descricao}</p>}
       {!descricao && <div className="mb-4" />}
+      {children}
+    </section>
+  );
+}
+
+/** Seção do painel: título e âncora da faixa "Neste painel". */
+function SecaoDoPainel({ id, titulo, children }: { id: string; titulo: string; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`t-${id}`} tabIndex={-1} className="scroll-mt-32 space-y-4 outline-none lg:scroll-mt-20">
+      <h2 id={`t-${id}`} className="text-lg font-bold">
+        {titulo}
+      </h2>
       {children}
     </section>
   );
@@ -124,7 +145,10 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
         ))}
       </dl>
 
-      <Bloco titulo="Indicadores" descricao="Percentuais sobre a receita total. A barra é o ano em foco, o tracejado é o limite de referência e os traços finos são os anos anteriores.">
+      <AtalhosSecoes secoes={SECOES} />
+
+      <SecaoDoPainel id="indicadores" titulo="Indicadores">
+      <Bloco tituloOculto titulo="Indicadores" descricao="Percentuais sobre a receita total. A barra é o ano em foco, o tracejado é o limite de referência e os traços finos são os anos anteriores.">
         <Indicadores
           itens={[
             {
@@ -156,7 +180,9 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
           ]}
         />
       </Bloco>
+      </SecaoDoPainel>
 
+      <SecaoDoPainel id="ano-em-foco" titulo="O ano em foco">
       <div className="grid gap-4 xl:grid-cols-2">
         <Bloco titulo={`Receita e despesa em ${atual.ano}, mês a mês`} descricao="Onde as linhas se cruzam, a despesa do mês passa a receita do mês.">
           <Linhas
@@ -211,7 +237,9 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
           )}
         />
       </Bloco>
+      </SecaoDoPainel>
 
+      <SecaoDoPainel id="comparar" titulo="Comparar exercícios">
       <Bloco titulo="Despesa mês a mês, por exercício" descricao="Uma linha por ano: mostra a sazonalidade e onde cada ano gasta mais.">
         <Linhas
           descricao="Despesa prevista por mês em cada exercício"
@@ -242,7 +270,9 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
           />
         </Bloco>
       </div>
+      </SecaoDoPainel>
 
+      <SecaoDoPainel id="receita" titulo="Receita">
       <div className="grid gap-4 xl:grid-cols-3">
         <Bloco titulo="Segurança da receita" descricao="Garantida: termo ou contrato assinado. Em negociação e a captar ainda podem não vir.">
           <Barras100
@@ -279,8 +309,10 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
           />
         </Bloco>
       </div>
+      </SecaoDoPainel>
 
-      <Bloco titulo="Resumo dos exercícios">
+      <SecaoDoPainel id="resumo" titulo="Resumo">
+      <Bloco tituloOculto titulo="Resumo dos exercícios">
         <TabelaDados
           legenda="Resumo dos exercícios"
           colunas={[
@@ -316,6 +348,7 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
           }))}
         />
       </Bloco>
+      </SecaoDoPainel>
     </div>
   );
 }

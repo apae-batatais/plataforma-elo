@@ -88,4 +88,4 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 ## Depois
 
 - Aviso por e-mail (precisa de ligação com o Gmail).
-- Ligar a requisição à execução do orçamento (1C).
+- Ligar a requisição à execução do orçamento (1C): especificado na issue #115, em `docs/especificacao-ligacoes-entre-apps.md` (projeto, atividade, saldo e fonte na aprovação).

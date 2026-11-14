@@ -18,6 +18,7 @@ import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { atualizar, atualizarVarios, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
+import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import { Areas, Atribuicoes, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
   CatalogoItens,
@@ -1234,4 +1235,43 @@ export async function cadastrarItensEmLote(p: Planilhas, quem: Autorizador, tipo
     detalhes: { emLote: conferidas.length },
   });
   return conferidas.length;
+}
+
+// ---------------------------------------------------------------------------
+// Visão de ligação (ADR-022): números do serviço para a Ficha do serviço
+// ---------------------------------------------------------------------------
+
+export interface RequisicoesDoServico {
+  ano: number;
+  abertas: number;
+  esperandoAprovacao: number;
+  atrasadas: number;
+  atendidasNoAno: number;
+}
+
+/**
+ * Contagens das requisições que têm o serviço entre os centros de custo, só das que a pessoa já pode ver.
+ * Nunca traz o nome de quem pediu.
+ */
+export async function requisicoesDoServico(
+  p: Planilhas,
+  quem: Autorizador,
+  servico: string,
+  opcoes: { agora?: Date } = {},
+): Promise<Ligacao<RequisicoesDoServico>> {
+  if (!quem.temPermissaoAlgumEscopo('requisicoes.acessar')) return ligacaoSemPermissao();
+  const agora = opcoes.agora ?? new Date();
+  const ano = Number(hoje(agora).slice(0, 4));
+  const d = await ler(p, agora);
+  const doServico = d.requisicoes
+    .ativos()
+    .filter((r) => (d.centrosPor.get(r.id) ?? []).some((c) => c.servico === servico) && podeVer(quem, d, r));
+  const abertas = doServico.filter((r) => !SITUACOES_ENCERRADAS.includes(r.situacao));
+  return ligacaoOk({
+    ano,
+    abertas: abertas.length,
+    esperandoAprovacao: abertas.filter((r) => r.situacao === 'enviada').length,
+    atrasadas: abertas.filter((r) => linha(d, r, agora).prazo?.situacao === 'atrasada').length,
+    atendidasNoAno: doServico.filter((r) => (r.situacao === 'atendida' || r.situacao === 'atendida_parcial') && (r.concluida_em ?? '').startsWith(String(ano))).length,
+  });
 }

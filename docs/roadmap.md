@@ -35,6 +35,15 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
       comparam os saldos com o realizado.
 
+### Folha em caixa, passivo e provisão · para depois (14/11/2026, issue #126)
+
+Especificado em `src/modulos/orcamento/especificacao-folha-caixa-passivo.md`.
+
+- [ ] Importar a provisão e o saldo da reserva junto com o realizado, quando a importação existir (hoje são digitados).
+- [ ] Rescisão antecipada de contrato por prazo determinado, reflexos do aviso e encargos patronais sobre a rescisão.
+- [ ] Férias fracionadas em até três períodos no caixa.
+- [ ] Verba rescisória por fonte conferida com o plano de aplicação do termo (depende de Parcerias).
+
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
 - [ ] Rateio R1: item de despesa sem serviço ("Comum"), botão "Dividir igualmente" e prévia com os custos reais lançados.
@@ -118,6 +127,19 @@ Ficou para depois (12/11/2026):
 - [ ] Exportar o marco lógico e o Termo de Abertura em PDF.
 - [ ] Modelos de projeto por tipo e cópia de projeto.
 - [ ] Conferir a licença do Guia Project DPro (Creative Commons não comercial) se o Elo vier a ser cobrado.
+
+## Ligações entre apps
+
+Issue #115 (onda 1), especificação em `docs/especificacao-ligacoes-entre-apps.md` e ADR-022. Ondas 2 e 3: issues #116 e #117.
+Ficou para depois (14/11/2026):
+
+- [ ] Valor na requisição pedido a quem pede e desconto automático das compras aprovadas no saldo (precisa de cotação e preço).
+- [ ] Bloqueio de aprovação por falta de saldo ou de fonte (hoje só aviso).
+- [ ] Remanejamento e suplementação das linhas de projeto dentro do Orçamento.
+- [ ] Cancelar sozinho os pedidos de publicação quando o projeto for cancelado.
+- [ ] Bloco de termos de Parcerias na Ficha do serviço (onda 2).
+- [ ] Realizado por atividade vindo do Orçamento (hoje, por projeto; por atividade só pelas compras ligadas).
+- [ ] Sugestões de experiência na Ficha do serviço: faixa "o que pede ação", atalhos de nova requisição e nova ideia, comparação com o ano anterior e impressão.
 
 ## Agenda única e busca única (issue #117, especificação em `docs/especificacao-agenda-e-busca.md`)
 

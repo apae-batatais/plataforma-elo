@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { maiusculaInicial } from '@/ui/texto';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -84,7 +85,7 @@ export default async function Indicadores({ searchParams }: { searchParams: Prom
           <Link href={endereco(tipo, somarMeses(mes, -passo))} className={botaoNav}>
             Anterior
           </Link>
-          <h2 className="min-w-40 px-2 text-center text-lg font-bold capitalize">{rotuloPeriodo}</h2>
+          <h2 className="min-w-40 px-2 text-center text-lg font-bold">{maiusculaInicial(rotuloPeriodo)}</h2>
           <Link href={endereco(tipo, somarMeses(mes, passo))} className={botaoNav}>
             Seguinte
           </Link>
