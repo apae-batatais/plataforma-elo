@@ -108,3 +108,24 @@ describe('grupos do menu', () => {
     expect(chaveDoGrupo('/orcamento', 'Painéis')).not.toBe(chaveDoGrupo('/projetos', 'Painéis'));
   });
 });
+
+import { maiusculaInicial } from '@/ui/texto';
+describe('maiúscula só na primeira letra', () => {
+  it('não põe maiúscula em "de"', () => {
+    expect(maiusculaInicial('novembro de 2026')).toBe('Novembro de 2026');
+    expect(maiusculaInicial('')).toBe('');
+    expect(maiusculaInicial('Março de 2026')).toBe('Março de 2026');
+  });
+});
+
+import { agruparPendencias } from '@/plataforma/pendencias';
+describe('pendências da tela inicial por app', () => {
+  it('juntam as do mesmo app, na ordem do menu, com a plataforma por último', () => {
+    const p = [{ n: 1, app: 'comunicacao' }, { n: 2 }, { n: 3, app: 'orcamento' }, { n: 4, app: 'comunicacao' }];
+    const g = agruparPendencias(p, ['orcamento', 'requisicoes', 'comunicacao']);
+    expect(g.map((x) => [x.app, x.itens.map((i) => i.n)])).toEqual([['orcamento', [3]], ['comunicacao', [1, 4]], [null, [2]]]);
+  });
+  it('sem pendências, nenhum grupo', () => {
+    expect(agruparPendencias([], ['orcamento'])).toEqual([]);
+  });
+});
