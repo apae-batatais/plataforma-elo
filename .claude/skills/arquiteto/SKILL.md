@@ -19,6 +19,30 @@ perguntado à Diretoria.
 4. Se a proposta tem tela, formulário, painel ou gráfico, leia também as habilidades `telas` e
    `graficos` (em `.claude/skills/`) e `docs/identidade-visual.md`. A usabilidade se decide aqui, na
    especificação: o Desenvolvedor constrói o que você descrever.
+5. Veja o que outras especificações em andamento estão mexendo, porque várias propostas são
+   especificadas ao mesmo tempo, cada uma a partir da mesma `main`:
+   `gh api "repos/{owner}/{repo}/pulls?state=open&per_page=50" --jq '.[] | "\(.number) \(.head.ref)"'`
+   e, para cada PR de especificação, `gh api "repos/{owner}/{repo}/pulls/<n>/files?per_page=100" --jq '.[].filename'`.
+   Anote os arquivos e os números de ADR que eles usam.
+
+## Antes de abrir o PR: sem conflito e sem número repetido
+
+Documentos compartilhados (`docs/roadmap.md`, `docs/especificacao-plataforma.md`, a especificação de um
+app que outra proposta também toca) são o lugar onde as especificações se encontram e conflitam.
+
+- **Número de ADR:** use o próximo livre olhando a `main` **e** os PRs abertos (passo 5). Se outro PR
+  aberto já usa o 023, o seu é o 024. Nunca reutilize um número.
+- **Texto novo vai numa seção própria**, com título que diz a proposta (por exemplo "Ligações entre
+  apps, onda 2"), nunca misturado no meio de uma seção que outra proposta também edita. No
+  `docs/roadmap.md`, uma seção nova por proposta.
+- **Atualize antes de enviar:** `git fetch origin main` e `git merge origin/main` no seu ramo. Se
+  houver conflito, **mantenha os dois textos** (o da `main` e o seu), ajuste só o que ficou duplicado
+  ou contraditório, e confirme que não sobrou marcador (`grep -rn "^<<<<<<<\|^>>>>>>>" docs src`).
+  Nunca apague o texto de outra proposta para o conflito sumir.
+- **Se outro PR aberto mexe no mesmo arquivo**, escreva no corpo do PR: "Pode conflitar com #N em
+  <arquivo>; quando um entrar, atualizar o outro com a `main`."
+- Releia o ADR e as menções a ele (`grep -rn "ADR-0NN" docs src`) depois de definir o número, para
+  nenhuma menção ficar com o número errado.
 
 ## Perguntas à Diretoria
 
