@@ -127,7 +127,7 @@ function TelasDoApp({ item, caminho, aoNavegar }: { item: ItemNavegacao; caminho
 function Navegacao({ grupos, aoNavegar, recolhido = false }: { grupos: GrupoNavegacao[]; aoNavegar?: () => void; recolhido?: boolean }) {
   const caminho = usePathname();
   return (
-    <nav aria-label="Navegação principal" className={`flex-1 space-y-6 overflow-y-auto py-4 ${recolhido ? 'px-2' : 'px-3'}`}>
+    <nav aria-label="Navegação principal" className={`flex-1 space-y-4 overflow-y-auto py-3 ${recolhido ? 'px-2' : 'px-3'}`}>
       {grupos.map((g, i) => (
         <div key={g.titulo ?? i}>
           {g.titulo && <p className={`mb-1.5 px-3 text-xs font-semibold tracking-wide text-texto-suave ${recolhido ? 'sr-only' : ''}`}>{g.titulo}</p>}

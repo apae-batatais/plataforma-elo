@@ -32,7 +32,15 @@ export function AtalhosSecoes({ secoes }: { secoes: AtalhoSecao[] }) {
       { rootMargin: '-20% 0px -65% 0px' },
     );
     elementos.forEach((e) => observador.observe(e));
-    return () => observador.disconnect();
+    // No fim da página a última seção pode ser curta demais para chegar à faixa de leitura.
+    const noFim = () => {
+      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) setEmFoco(secoes[secoes.length - 1].id);
+    };
+    window.addEventListener('scroll', noFim, { passive: true });
+    return () => {
+      observador.disconnect();
+      window.removeEventListener('scroll', noFim);
+    };
   }, [secoes]);
 
   function ir(e: React.MouseEvent<HTMLAnchorElement>, id: string) {
