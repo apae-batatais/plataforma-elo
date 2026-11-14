@@ -35,6 +35,15 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
       comparam os saldos com o realizado.
 
+### Folha em caixa, passivo e provisão · para depois (14/11/2026, issue #126)
+
+Especificado em `src/modulos/orcamento/especificacao-folha-caixa-passivo.md`.
+
+- [ ] Importar a provisão e o saldo da reserva junto com o realizado, quando a importação existir (hoje são digitados).
+- [ ] Rescisão antecipada de contrato por prazo determinado, reflexos do aviso e encargos patronais sobre a rescisão.
+- [ ] Férias fracionadas em até três períodos no caixa.
+- [ ] Verba rescisória por fonte conferida com o plano de aplicação do termo (depende de Parcerias).
+
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
 - [ ] Rateio R1: item de despesa sem serviço ("Comum"), botão "Dividir igualmente" e prévia com os custos reais lançados.
