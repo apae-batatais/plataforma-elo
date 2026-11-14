@@ -106,7 +106,8 @@ jobs:
                Se existir um plano em docs/superpowers/plans/ para esta entrega, continue da primeira
                tarefa não concluída.
             4. Se faltar uma decisão que só a Diretoria pode tomar, comente na issue as perguntas
-               numeradas, com opções, e pare.
+               numeradas, com opções, ponha a etiqueta "pergunta aberta"
+               (`gh issue edit ${{ env.ISSUE }} --add-label "pergunta aberta"`) e pare.
             5. Senão: crie o ramo `feat/<modulo>-<assunto>` a partir da main, escreva o plano e o
                andamento em docs/superpowers/plans/, construa com testes e faça commit e push ao fim
                de cada tarefa. Antes de começar, veja os PRs de entrega abertos e os arquivos que eles

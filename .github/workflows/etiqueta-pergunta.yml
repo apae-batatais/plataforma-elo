@@ -1,0 +1,30 @@
+# Remove a etiqueta "pergunta aberta" quando a Diretoria responde (docs/metodologia.md).
+#
+# O Arquiteto e o Desenvolvedor põem essa etiqueta numa issue, ou o ajuste de um PR de entrega,
+# quando há pergunta deles esperando resposta (veja ETIQUETA_PERGUNTA em fluxo-quadro.mjs). Este
+# workflow só tira a etiqueta; quem responde de novo à pergunta (Arquiteto ou Desenvolvedor) é
+# chamado pelos workflows deles, que já escutam o comentário da Diretoria.
+
+name: Pergunta respondida
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  remover:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event.comment.user.login == 'diretoria823' &&
+      contains(github.event.issue.labels.*.name, 'pergunta aberta')
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            await github.rest.issues.removeLabel({ owner, repo, issue_number: context.payload.issue.number, name: 'pergunta aberta' });
+            core.info(`Etiqueta "pergunta aberta" removida de #${context.payload.issue.number} (comentário da Diretoria).`);

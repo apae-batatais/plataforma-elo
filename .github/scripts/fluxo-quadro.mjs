@@ -55,6 +55,15 @@ export function referencias(texto) {
  */
 export const ETIQUETA_ESPECIFICACAO = 'PR: especificação';
 export const ETIQUETA_ENTREGA = 'PR: entrega';
+export const ETIQUETA_PERGUNTA = 'pergunta aberta';
+
+/**
+ * Há pergunta do Arquiteto ou do Desenvolvedor esperando resposta da Diretoria.
+ * @param {(string | { name: string })[]} etiquetas
+ */
+export function temPerguntaAberta(etiquetas = []) {
+  return etiquetas.map((e) => (typeof e === 'string' ? e : e.name)).includes(ETIQUETA_PERGUNTA);
+}
 
 /**
  * Tipo do PR pela etiqueta, conferido com a referência à issue.
