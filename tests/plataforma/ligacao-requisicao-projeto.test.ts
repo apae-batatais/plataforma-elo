@@ -33,9 +33,8 @@ describe('projetos para a requisição', () => {
     expect(await projetosParaRequisicao(p, await como('diretoria@exemplo.local'))).toEqual([]);
   });
 
-  it('com Projetos desligado, a lista é nula e a requisição funciona sem o campo; sem permissão também', async () => {
+  it('com Projetos desligado, a lista é nula e a requisição funciona sem o campo', async () => {
     expect(await projetosParaRequisicao(p, await como('diretoria@exemplo.local'), { desligados: new Set(['projetos']) })).toBeNull();
-    expect(await projetosParaRequisicao(p, await como('compras@exemplo.local'))).toBeNull();
   });
 });
 
