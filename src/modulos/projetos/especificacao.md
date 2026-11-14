@@ -1,6 +1,6 @@
 # Especificação — Módulo Projetos
 
-- Situação: aprovada pela Diretoria; entrega P1 (base) construída, P2 a P7 pendentes
+- Situação: aprovada pela Diretoria; entrega P1 (base) construída, P2 a P7 pendentes (issue #143: seção "Construção de P2 a P7" no fim deste arquivo)
 - Dono do produto: Diretoria
 - Proposta de origem: issue #107; ligações da onda 2: issue #116. Arquitetura: ADR-011, ADR-013, ADR-021, ADR-022 e ADR-023.
 - Referência do método: Guia Project DPro (PMD Pro), 2ª edição, PM4NGOs, 2020 (licença Creative
@@ -519,3 +519,112 @@ o realizado com o campo Projeto". Sem permissão do Orçamento → "O Financeiro
   comparação com a edição anterior da mesma série; primeira edição diz que não há com o que comparar.
 - Regras L1 a L21 com testes, incluindo quem vê e quem altera; `npm run verificar` e `npm run build` verdes.
 - Nenhum texto cita nome de instituição, unidade, marca ou cidade reais.
+
+## Construção de P2 a P7 (issue #143)
+
+- Situação: **detalhamento para construir; não muda nenhuma decisão aprovada** (seções acima e "Ligações, onda 2").
+  Sem dúvida pendente para a Diretoria. Cada entrega abaixo é um PR de entrega; a Diretoria pode pedir uma issue
+  por entrega, mas a #143 já autoriza construí-las **na ordem P2, P3, P4, P5, P6, P7**.
+- **Premissa da onda 2 atualizada:** a seção "Ligações, onda 2" dizia que a onda 1 ainda não tinha especificação.
+  Hoje a onda 1 (`docs/especificacao-ligacoes-entre-apps.md`) está aprovada e a L1 dela está construída. As
+  entregas L2 a L5 da onda 2 e L4 e L5 da onda 1 continuam esperando P2 a P5, como já estava dito.
+
+### O que já existe e o que cada entrega acrescenta
+
+P1 entregou: `Projetos`, `ConfigProjetos`, `Portas`, `Pareceres`, `Decisoes`, ideia, responsável, porta 1,
+alçada e histórico, a leitura para a Ficha do serviço e para a agenda e a busca únicas (ADR-024). Cada entrega
+abaixo declara as abas novas com `definirTabela` e as registra em "Preparar estrutura" (regra 5 do `CLAUDE.md`).
+`projetos.carteira` e `ProjetoEquipe` entram com as entregas que os usam (P6 e P2).
+
+| # | Abas novas | Regras (da lista numerada acima) | Telas | Depende de |
+| --- | --- | --- | --- | --- |
+| P2 | `ProjetoDocumentos`, `MarcoLogico`, `Riscos`, `ProjetoEquipe` | 5 a 7 (fases 1 e 2), 13 a 15, 8 a 12 e 14 para a porta 2 | Aba "Fase atual" por passos, "Marco lógico", "Riscos", "Equipe", porta 2 | P1 |
+| P3 | `Atividades`, `ProjetoOrcamento` | 5 (fase 3), 20 (cadastro e prazos), 8 a 12 para a porta 3 opcional | Abas "Atividades" (lista com datas, sem Gantt) e "Orçamento" | P2 |
+| P4 | `Problemas`, `Relatorios`, `PedidosMudanca` | 13, 16 a 22 | Abas "Riscos e problemas", "Mudanças", "Relatórios"; tela "Pedido de mudança" | P3 |
+| P5 | `Licoes`, `Encerramento` | 23 a 25 | Check-list, relatório final, porta de encerramento, tela "Lições aprendidas" | P4 |
+| P6 | nenhuma (lê as anteriores) | 21, 25 e 28 | Tela "Carteira" | P2 a P5 |
+| P7 | `LigacoesProjeto` (e colunas da onda 2) | 26 e 27 | Aba "Ligações" | L1 da onda 2 (pronta); o resto das ligações é construído pelas entregas L2 a L5 de cada onda |
+
+A P7 **não reconstrói** o que as entregas de ligação das ondas 1 e 2 já descrevem: ela entrega a aba "Ligações"
+do projeto, a aba `LigacoesProjeto` e o catálogo de leitura de cada app (ADR-013 e ADR-022), de modo que L2 a L5
+só preencham a aba. Antes de construir a P7, o Desenvolvedor confere no código o que as ondas já entregaram.
+
+### Telas e usabilidade (comuns a P2 a P6)
+
+Componentes de `src/ui/` (tabela da habilidade `telas`): `pagina`, `campo`, `botao`, `botao-enviar`,
+`confirmar`, `aviso`, `tabela-dados`, `numero-que-conta`, `campo-de-busca`. **Nenhuma peça nova no Núcleo.** A
+carteira usa os componentes de `graficos.tsx` só se a Diretoria pedir gráfico; por padrão são números que levam à lista.
+
+1. **Quem usa e caminho mais curto.** O responsável do projeto preenche o que a porta seguinte exige: da página
+   do projeto à porta aberta, no máximo 2 cliques ("Fase atual" já mostra "O que falta para a próxima porta", e
+   cada item da lista leva direto ao formulário). Quem decide chega pela mensagem "Espera uma ação sua" no menu e
+   na tela inicial.
+2. **Primeira dobra do projeto:** cabeçalho (código, etapa, fase, responsável, situação) e o bloco "O que falta
+   para a próxima porta". Ação principal da fase: "Preencher <documento>" e, com tudo pronto, "Abrir porta de
+   decisão". Na carteira: os números que pedem ação (portas pendentes, fora da tolerância, problemas altos,
+   encerramentos atrasados) vêm antes da lista.
+3. **Formulários por passos**, um documento por passo, com "Salvar rascunho" sempre disponível e
+   "Marcar como pronto". Rótulo sempre visível, dica do formato ("ex.: 10 dias de atraso") e obrigatórios
+   marcados. Termo de Abertura vem pré-preenchido com a proposta. No porte enxuto, só os passos mínimos.
+4. **Estados** (cada tela):
+   - vazio: "Nada aqui ainda." + o botão da ação ("Adicionar atividade", "Registrar problema", "Registrar lição");
+   - gravando: botão desabilitado com "Salvando…"; gravou: aviso "Salvo." na mesma tela;
+   - erro: o texto do que falhou ("Faltou o indicador do resultado 2") e **o que a pessoa digitou fica na tela**;
+     conflito de versão: "Outra pessoa alterou isto agora. Veja a versão atual e refaça a alteração.";
+   - sem permissão: "Você não tem acesso a este projeto." (sem revelar título) ou, na aba, "Só quem gerencia
+     o projeto altera esta aba" com o conteúdo em leitura.
+5. **Ações sem volta**, todas com confirmação que diz a consequência: abrir porta ("Depois de aberta, os documentos
+   da fase ficam travados até a decisão"), decidir (justificativa obrigatória; "Esta decisão sobe para a
+   Presidência ou o Conselho" quando houver alçada), aplicar mudança, encerrar projeto ("O projeto passa a
+   somente leitura"), parar ou cancelar.
+6. **Pedido de mudança:** mostra a tolerância e a variação em palavras ("o custo sobe 3% de 5% permitidos") e
+   diz quem decide ("Dentro da tolerância: você aplica" ou "Fora da tolerância: vai para a Diretoria").
+7. **Celular e teclado:** abas viram lista rolável de seções; tabelas de atividades e orçamento viram cartões por
+   linha; todo botão alcançável por Tab na ordem da tela; aviso de erro leva o foco ao primeiro campo com problema.
+8. **Gráficos:** nenhum na P2 a P5. Na P6, a situação do relatório (verde, amarelo, vermelho) **sempre vem com a
+   palavra**, nunca só a cor.
+9. **Sugestões de experiência de uso** (para a Diretoria decidir; **não entram** sem aprovação):
+   a) datas das portas e fins previstos de atividade entrarem na agenda única (já está no roadmap, linha da
+   agenda); b) lembrete na tela quando uma atividade passa do prazo; c) copiar a linha do orçamento ao criar outra
+   parecida.
+
+### Regras de borda que a construção precisa fixar (decididas sozinho)
+
+1. **Documento aprovado fica travado:** editar cria nova versão em `rascunho` e a anterior continua `aprovado` até
+   a nova ser aprovada (então vira `substituido`). Coerente com as regras 14 e 18. Custo se errado: baixo.
+2. **Fechar a fase antes da porta:** só se abre a porta com todos os documentos da fase `prontos` (regra 6); "pronto"
+   é uma marca do próprio documento, não aprovação. Custo baixo.
+3. **Orçamento do projeto e Orçamento da instituição são coisas separadas** até a L4: `ProjetoOrcamento` é só o
+   plano do projeto. Nada é enviado ao Orçamento antes da onda 1 L4. Custo baixo.
+4. **Valor aprovado** do projeto = total do orçamento da última versão aprovada do Termo; a alçada usa esse valor
+   nas portas 2 em diante (regra 8). Custo médio se a Diretoria preferir digitar o valor.
+5. **Quem assume o projeto como equipe** (`ProjetoEquipe`) só vê o projeto e as atividades; não altera nada e não vê
+   pareceres. Altera quem tem `projetos.gerenciar` no escopo. Custo baixo.
+6. **Carteira sem nome para quem não vê o projeto:** números agregados contam só projetos que a pessoa vê (regra
+   28). Custo baixo.
+
+### Fica de fora (continua no `docs/roadmap.md`)
+
+Tudo o que a seção "Fica de fora" já lista (e-mails, anexos, Gantt, PDF, modelos). Nesta construção também fica
+para depois: Gantt, caminho crítico, prestação de contas ao financiador e contratos com fornecedores (Parcerias).
+
+### Frentes
+
+- **Regras e dados:** abas, portas 2 e 3 e de encerramento, tolerâncias, versões do Termo, pedidos de mudança,
+  permissões, auditoria (colunas alteradas, nunca valores; **texto de parecer nunca na auditoria**) e testes de quem vê e quem altera.
+- **Telas:** as listadas acima, com a habilidade `telas`.
+- **Infraestrutura:** nenhuma nova (a chave `projetos` em `PLANILHAS` e as permissões já existem desde a P1).
+- Núcleo, capacidades e outros módulos **não mudam**, exceto, na P7, a função de leitura pequena de cada app no
+  seu `index.ts` (ADR-013 e ADR-022), pedida e aprovada em cada caso.
+
+### Critérios de pronto (na prévia, com dados fictícios)
+
+- **P2:** projeto completo preenche proposta, marco lógico (com as validações da regra 7) e Termo com tolerâncias;
+  sem Termo aprovado a implementação é recusada.
+- **P3:** atividades com datas e responsável; atrasada aparece como "Atrasada"; orçamento do projeto soma e mostra o total.
+- **P4:** mudança dentro da tolerância se aplica sozinha; fora dela fica pendente e, aprovada, gera nova versão do Termo.
+- **P5:** projeto só encerra com check-list, relatório final e uma lição; a lição aparece na consulta.
+- **P6:** carteira com os cinco números e cada um levando à lista filtrada; Leitura vê a carteira sem pareceres.
+- **P7:** aba "Ligações" mostra "ligação indisponível" com o app desligado e nunca erro.
+- Em todas: nenhum texto de tela cita nome real de instituição, unidade, marca ou cidade; `npm run verificar` e
+  `npm run build` verdes.
