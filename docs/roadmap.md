@@ -118,3 +118,15 @@ Ficou para depois (12/11/2026):
 - [ ] Exportar o marco lógico e o Termo de Abertura em PDF.
 - [ ] Modelos de projeto por tipo e cópia de projeto.
 - [ ] Conferir a licença do Guia Project DPro (Creative Commons não comercial) se o Elo vier a ser cobrado.
+
+## Agenda única e busca única (issue #117, especificação em `docs/especificacao-agenda-e-busca.md`)
+
+Ficou para depois (14/11/2026):
+
+- [ ] Segunda entrega, depois das ondas 1 e 2 (#115 e #116): bloco "Ligado a isto" em projeto, termo e serviço;
+      serviços como resultado da busca (precisam da Ficha do serviço); feriados na agenda (#67).
+- [ ] Datas do Orçamento, prazos de prestação de contas (Parcerias) e prazo das portas de Projetos na agenda,
+      quando existirem.
+- [ ] Avisos por e-mail dos prazos (ligação com o Gmail, #63) e assinatura da agenda no Google Agenda.
+- [ ] Busca em Avaliação (dado sensível; só com pedido da Diretoria).
+- [ ] Sugestões ao digitar e filtro por app nos resultados da busca.
