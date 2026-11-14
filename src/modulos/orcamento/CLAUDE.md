@@ -33,3 +33,5 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   os ativos de cada cadastro; regras em `dominio/codigo-conta.ts`). Aparece nas listas, no lote, na importação de itens
   (casa por nome ou código) e em "Baixar planilha" (CSV, `aplicacao/baixar-planilha.ts`, rota `previsao/baixar/[arquivo]`).
   Sem plano de contas no Elo; o código não é dado pessoal.
+- Passivo trabalhista (P2 da #126, #142): `dominio/passivo.ts` (puro) e `aplicacao/passivo.ts`. Abas `FeriasTiradas` e `SaldoFGTS` (só inclusões; remover férias encerra) na planilha `orcamento_folha`; parâmetros do grupo `passivo` (aviso prévio e multa do FGTS). Só postos com código entram (vaga e cedido não). Valor por pessoa só com `orcamento.folha.ver_individual`; quem tem só `folha.ver` vê totais do seu escopo. Pessoa sem dados vai para pendências, nunca com valor zero. Fonte pelo cadastro `FontesFolha`; quando o rateio de fonte por pessoa (R4) existir, trocar só o mapa `fonteDe`.
+

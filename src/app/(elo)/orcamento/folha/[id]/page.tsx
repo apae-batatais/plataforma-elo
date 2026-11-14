@@ -1,15 +1,17 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { ErroValidacaoFolha, fichaDoPosto } from '@/modulos/orcamento/aplicacao/folha';
-import { data } from '@/modulos/orcamento/telas/formato';
+import { ajustesDaPessoa } from '@/modulos/orcamento/aplicacao/passivo';
+import { data, reais } from '@/modulos/orcamento/telas/formato';
 import { FormularioPosto } from '@/modulos/orcamento/telas/formulario-posto';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
+import { BotaoEnviar } from '@/ui/botao-enviar';
 import { LinkBotao } from '@/ui/botao';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
-import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
-import { acaoEncerrarPosto, acaoSalvarPosto } from '../../acoes';
+import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
+import { acaoEncerrarPosto, acaoRegistrarFerias, acaoRegistrarSaldoFgts, acaoRemoverFerias, acaoSalvarPosto } from '../../acoes';
 
 export const metadata: Metadata = { title: 'Funcionário' };
 
@@ -28,6 +30,7 @@ export default async function FichaDoPosto({ params }: { params: Promise<{ id: s
     throw erro;
   }
   const p = ficha.posto;
+  const ajustes = p?.ficha ? await ajustesDaPessoa(app.planilhas, usuario.autorizador, p.id) : null;
   const cargo = p?.cargo ?? null;
   const titulo = novo ? 'Cadastrar na folha' : (p?.colaborador ?? 'Vaga prevista');
 
@@ -88,6 +91,72 @@ export default async function FichaDoPosto({ params }: { params: Promise<{ id: s
         </EstadoVazio>
       ) : (
         <FormularioPosto key={`${p?.id}-${p?.versao}`} ficha={ficha} acao={acaoSalvarPosto} />
+      )}
+
+      {p && ajustes && (
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <Secao titulo="Férias já tiradas" descricao="Servem para calcular as férias vencidas no passivo trabalhista.">
+            {ajustes.ferias.length === 0 ? (
+              <p className="text-sm text-texto-suave">Nenhum período registrado.</p>
+            ) : (
+              <ul className="divide-y divide-borda text-sm">
+                {ajustes.ferias.map((x) => (
+                  <li key={x.id} className="flex items-center justify-between gap-3 py-2">
+                    <span>
+                      {data(x.inicio)} · {x.dias} {x.dias === 1 ? 'dia' : 'dias'}
+                      {x.observacao ? ` · ${x.observacao}` : ''}
+                    </span>
+                    {ajustes.podeEditar && (
+                      <form action={acaoRemoverFerias}>
+                        <input type="hidden" name="posto_id" value={p.id} />
+                        <input type="hidden" name="id" value={x.id} />
+                        <input type="hidden" name="versao" value={x.versao} />
+                        <BotaoEnviar variante="secundario" enviando="Removendo…">
+                          Remover
+                        </BotaoEnviar>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {ajustes.podeEditar && (
+              <form action={acaoRegistrarFerias} className="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_6rem_auto]">
+                <input type="hidden" name="posto_id" value={p.id} />
+                <Campo rotulo="Início do período" obrigatorio>
+                  <input type="date" name="inicio" required className={estiloEntrada} />
+                </Campo>
+                <Campo rotulo="Dias" obrigatorio>
+                  <input type="number" name="dias" min={1} max={30} required inputMode="numeric" className={estiloEntrada} />
+                </Campo>
+                <BotaoEnviar enviando="Registrando…">Registrar período de férias</BotaoEnviar>
+              </form>
+            )}
+          </Secao>
+          <Secao titulo="Saldo do FGTS" descricao="Opcional. Sem extrato, o Elo estima pelo valor da folha.">
+            <p className="text-sm">
+              {ajustes.saldo ? (
+                <>
+                  Último extrato: <strong>{reais(ajustes.saldo.valor)}</strong> em {data(ajustes.saldo.referencia)}.
+                </>
+              ) : (
+                <span className="text-texto-suave">Nenhum extrato registrado; saldo estimado.</span>
+              )}
+            </p>
+            {ajustes.podeEditar && (
+              <form action={acaoRegistrarSaldoFgts} className="mt-4 grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
+                <input type="hidden" name="posto_id" value={p.id} />
+                <Campo rotulo="Data do extrato" obrigatorio>
+                  <input type="date" name="referencia" required className={estiloEntrada} />
+                </Campo>
+                <Campo rotulo="Saldo (R$)" obrigatorio>
+                  <input name="valor" required inputMode="decimal" className={`${estiloEntrada} text-right tabular-nums`} />
+                </Campo>
+                <BotaoEnviar enviando="Atualizando…">Atualizar com o extrato</BotaoEnviar>
+              </form>
+            )}
+          </Secao>
+        </div>
       )}
     </div>
   );

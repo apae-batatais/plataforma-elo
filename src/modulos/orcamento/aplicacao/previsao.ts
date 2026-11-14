@@ -364,7 +364,7 @@ export async function cancelarItem(p: Planilhas, quem: Autorizador, tipo: 'despe
 // ---------------------------------------------------------------------------
 
 /** A escolha mais recente de cada (ano, serviço). */
-function fontesDaFolhaVigentes<T extends { ano: number; servico: string; criado_em: string }>(lista: T[]): T[] {
+export function fontesDaFolhaVigentes<T extends { ano: number; servico: string; criado_em: string }>(lista: T[]): T[] {
   const m = new Map<string, T>();
   for (const x of [...lista].sort((a, b) => a.criado_em.localeCompare(b.criado_em))) m.set(`${x.ano}|${x.servico}`, x);
   return [...m.values()];

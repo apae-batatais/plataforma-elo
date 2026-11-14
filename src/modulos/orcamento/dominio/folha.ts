@@ -5,6 +5,7 @@
  * Valores mensais em reais com centavos; percentuais com até duas casas.
  * Contas de percentual de lotação usam centésimos inteiros (100% = 10000).
  */
+import { validarParametrosPassivo } from './passivo';
 
 // ---------------------------------------------------------------------------
 // Campos digitados (valores mensais em R$), na ordem da aba Estudo
@@ -40,6 +41,7 @@ export type Componentes = Record<ChaveComponente, number> & {
 export const componentesZerados = (reajuste = 0): Componentes =>
   ({ ...Object.fromEntries(COMPONENTES.map((c) => [c.chave, 0])), reajuste, hora_atividade: false }) as Componentes;
 
+
 // ---------------------------------------------------------------------------
 // Parâmetros (definidos pelo Financeiro)
 // ---------------------------------------------------------------------------
@@ -55,6 +57,10 @@ export const PARAMETROS = [
   { chave: 'fap', nome: 'FAP ajustado (RAT × FAP) (%)', padrao: 0.5, grupo: 'encargos' },
   { chave: 'aposentadoria_especial', nome: 'INSS aposentadoria especial (%)', padrao: 6, grupo: 'encargos' },
   { chave: 'pis', nome: 'PIS (%)', padrao: 0, grupo: 'encargos' },
+  { chave: 'aviso_dias_base', nome: 'Aviso prévio: dias base', padrao: 30, grupo: 'passivo' },
+  { chave: 'aviso_dias_por_ano', nome: 'Aviso prévio: dias por ano de casa', padrao: 3, grupo: 'passivo' },
+  { chave: 'aviso_dias_max', nome: 'Aviso prévio: máximo de dias', padrao: 90, grupo: 'passivo' },
+  { chave: 'multa_fgts', nome: 'Multa do FGTS na rescisão (%)', padrao: 40, grupo: 'passivo' },
 ] as const;
 
 export type ChaveParametro = (typeof PARAMETROS)[number]['chave'];
@@ -68,7 +74,8 @@ export function validarParametros(p: Parametros): string[] {
   const erros: string[] = [];
   if (!Number.isInteger(p.ano) || p.ano < 2020 || p.ano > 2100) erros.push('Ano inválido.');
   if (!Number.isInteger(p.reajuste_mes) || p.reajuste_mes < 1 || p.reajuste_mes > 12) erros.push('Mês do reajuste deve ser de 1 a 12.');
-  for (const d of PARAMETROS.filter((x) => x.grupo !== 'geral' && x.chave !== 'reajuste_mes')) {
+  erros.push(...validarParametrosPassivo(p));
+  for (const d of PARAMETROS.filter((x) => x.grupo !== 'geral' && x.grupo !== 'passivo' && x.chave !== 'reajuste_mes')) {
     const v = p[d.chave];
     if (!Number.isFinite(v) || v < 0 || v > 100) erros.push(`${d.nome}: use um número entre 0 e 100.`);
   }

@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { salvarCalendario, encerrarPosto, ErroValidacaoFolha, salvarParametros, salvarPosto, salvarRateios } from '@/modulos/orcamento/aplicacao/folha';
+import { registrarFeriasTiradas, registrarSaldoFgts, removerFeriasTiradas } from '@/modulos/orcamento/aplicacao/passivo';
 import { analisarImportacao, descreverArquivo, importarFolha, lerMapeamento, lerXlsx, type Analise } from '@/modulos/orcamento/aplicacao/importacao';
 import type { AbaResumida, Mapeamento } from '@/modulos/orcamento/dominio/importacao';
 import { COMPONENTES, PARAMETROS, parametrosCom } from '@/modulos/orcamento/dominio/folha';
@@ -213,4 +214,29 @@ export async function acaoConfirmarImportacao(_: EstadoImportacao, f: FormData):
     n.lotacoes ? `${n.lotacoes} ${n.lotacoes === 1 ? 'lotação gravada' : 'lotações gravadas'}` : '',
   ].filter(Boolean);
   redirect(`/orcamento/folha?ok=${encodeURIComponent(partes.length ? `${partes.join(' e ')}.` : 'Nada mudou: as lotações já estavam iguais.')}`);
+}
+
+// ---------------------------------------------------------------------------
+// Passivo (P2): férias já tiradas e extrato do FGTS, na ficha do funcionário
+// ---------------------------------------------------------------------------
+
+export async function acaoRegistrarFerias(f: FormData) {
+  const postoId = texto(f, 'posto_id');
+  await executar(`/orcamento/folha/${postoId}`, 'Férias registradas.', ({ usuario, app }) =>
+    registrarFeriasTiradas(app.planilhas, usuario.autorizador, { postoId, inicio: texto(f, 'inicio'), dias: Number(texto(f, 'dias')), observacao: texto(f, 'observacao') || null }),
+  );
+}
+
+export async function acaoRemoverFerias(f: FormData) {
+  const postoId = texto(f, 'posto_id');
+  await executar(`/orcamento/folha/${postoId}`, 'Período de férias removido.', ({ usuario, app }) =>
+    removerFeriasTiradas(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
+}
+
+export async function acaoRegistrarSaldoFgts(f: FormData) {
+  const postoId = texto(f, 'posto_id');
+  await executar(`/orcamento/folha/${postoId}`, 'Extrato do FGTS registrado.', ({ usuario, app }) =>
+    registrarSaldoFgts(app.planilhas, usuario.autorizador, { postoId, referencia: texto(f, 'referencia'), valor: numeroOuNulo(f, 'valor') ?? NaN }),
+  );
 }

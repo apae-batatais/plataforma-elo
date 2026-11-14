@@ -106,6 +106,13 @@ export async function lerFolha(p: Planilhas) {
       const r = mes ? (lista ? vigenteNoMes(lista, valores.ano, mes) : undefined) : ultimo(lista);
       return r ? paraValores(r) : undefined;
     },
+    /** Componentes vigentes em qualquer mês (antes da primeira vigência, vale a primeira). Usado no passivo. */
+    componentesEm(postoId: string, ano: number, mes: number): ValoresComponentes | undefined {
+      const lista = componentesPorPosto.get(postoId);
+      if (!lista?.length) return undefined;
+      const r = vigenteNoMes(lista, ano, mes) ?? [...lista].sort((a, b) => a.vigencia.localeCompare(b.vigencia))[0];
+      return paraValores(r);
+    },
     /** Rateio que vale no mês (ou o mais recente, sem mês). */
     rateio(postoId: string, mes?: number): LinhaRateio[] | undefined {
       const lista = lotesPorPosto.get(postoId);
