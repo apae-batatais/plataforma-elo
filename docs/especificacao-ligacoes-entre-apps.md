@@ -1,6 +1,6 @@
 # Especificação — Ligações entre apps, onda 1
 
-- Situação: aprovada. **L1 (Ficha do serviço) construída** em 14/11/2026; L2 a L6 ainda por construir
+- Situação: aprovada. **L1 (Ficha do serviço) construída** em 14/11/2026; L2 a L6 ainda por construir (detalhamento na seção "Construção de L2 a L6", issue #144)
 - Dono do produto: Diretoria
 - Proposta de origem: issue #115 (onda 1 de 3; as ondas 2 e 3 são as issues #116 e #117)
 - Arquitetura: ADR-013 (ligação entre módulos) e **ADR-022** (leituras com permissão e portas de entrada)
@@ -525,3 +525,168 @@ L1 a L3 podem ser construídas **agora**; L4 a L6 esperam as entregas indicadas.
 - Nenhum texto de tela cita nome de instituição, unidade, marca ou cidade reais.
 - Regras com testes, incluindo quem vê e quem altera e a repetição das portas de entrada; `npm run verificar` e
   `npm run build` verdes.
+
+## Construção de L2 a L6 (issue #144)
+
+- Situação: **detalhamento para construir; não muda nenhuma decisão aprovada** (seções acima, respostas 1.1 e 2.1 de
+  13/11/2026). Sem dúvida pendente para a Diretoria. A #144 autoriza construir as entregas na ordem
+  **L2, L3, L4, L5, L6**, cada uma em um PR de entrega, respeitando a coluna "Depende de" da tabela de Entregas.
+  L4, L5 e L6 só começam quando o que elas esperam estiver no `main` (conferir no código antes de começar).
+- **Estado em 14/11/2026, conferido no código:** L1 construída. Projetos tem só a P1 (etapas: rascunho, aguardando
+  responsável, ideia, em porta, fase 1, parado, cancelado); a P2 está em PR aberto (#151). Não existe ainda projeto
+  "em implementação". Orçamento tem o realizado (1C.1) e a leitura `custoDoServico`, mas **não tem** o rateio de
+  fontes (R3). Requisições e Comunicação não têm nenhuma coluna de projeto.
+
+### Como as ligações se constroem (vale para L2 a L6; ADR-022)
+
+- **Nenhum módulo importa outro.** Requisições e Comunicação **não** leem Projetos nem Orçamento: a **plataforma**
+  (`src/plataforma/ligacoes.ts`) lê o app dono do dado, com a permissão da pessoa, e entrega o resultado à tela do
+  app que pede, como entrada da tela (lista de projetos para escolher, cartão de conferência). Cada app declara no
+  `index.ts` só o formato do que recebe (por exemplo `ProjetoEscolhivel`: id, código, título, serviço e atividades).
+- **O servidor sempre reconfere.** A lista mostrada na tela não vale como prova: ao gravar, a plataforma lê de novo
+  e recusa projeto que a pessoa não vê ou que não aceita compra. Cada regra de recusa tem teste com id de projeto
+  fora da lista.
+- **Colunas novas** são declaradas nas abas que já existem (`definirTabela`) e entram em "Preparar estrutura";
+  linhas antigas ficam com a coluna vazia e continuam válidas (teste com linha antiga).
+- Toda gravação nova usa `inserir`/`atualizar` com a versão lida e `registrarAuditoria` com as colunas alteradas.
+
+### L2 · Requisição ↔ serviço e projeto, com saldo (R1 a R7, R9)
+
+| Peça | O que a construção entrega |
+| --- | --- |
+| Requisições (dados) | Colunas em `Requisicoes`: `projeto_id`, `projeto_codigo`, `atividade_id`, `valor_estimado`, `grupo_id`, `grupo_nome`, `valor_gasto`. Guarda o **código** do projeto também, para a lista não depender de ler Projetos |
+| Projetos (leitura) | `projetosParaCompra(quem)` no `index.ts`: projetos que a pessoa vê, **em implementação**, com serviço e atividades não concluídas nem canceladas. Aceita projeto só se a etapa for a de implementação (função `aceitaCompra(etapa)` no domínio, para a regra morar num lugar só) |
+| Orçamento (leitura) | `saldoParaConferencia(quem, servico, grupo?)`: previsto aprovado menos realizado até o último mês lançado, no serviço e no grupo; confere `orcamento.execucao.ver` no escopo do serviço e devolve "sem permissão" ou "sem exercício aprovado" como estados, nunca erro. Lista os grupos de gasto para o campo "Grupo de gasto" |
+| Plataforma | Composição das duas leituras e dos três estados; a aba "Compras" do projeto (R9) usa uma leitura nova de Requisições, `comprasDoProjeto`, **sem o nome de quem pediu** |
+| Telas | As da seção "Telas" 5, 6 e 7 desta especificação (Nova e Ajustar, Para aprovar, Concluir) |
+
+**Regras de borda decididas na construção (sozinho):**
+
+1. Enquanto nenhum projeto estiver em implementação (até P2 a P4 entrarem), a pergunta "Esta compra é de um
+   projeto?" **não aparece** e a requisição funciona como hoje; o resto de L2 (saldo na aprovação, valor gasto ao
+   concluir) já funciona e é conferido na prévia. Os testes do vínculo usam um projeto de teste em implementação.
+2. O saldo do cartão é calculado na hora de abrir a tela, nunca guardado. O que fica gravado na requisição é só o
+   que quem aprova informou (valor estimado e grupo), para conferir depois.
+3. Quem aprova que muda o grupo ou o valor depois de aprovar não reabre nada: a requisição aprovada mantém o que
+   foi gravado, e a mudança fica no histórico com as colunas alteradas.
+4. Requisição ligada a projeto de **serviço diferente** do escolhido nos centros de custo é recusada no servidor
+   (R3); o campo travado na tela é conforto, não proteção.
+5. "Valor gasto" aceita só número maior ou igual a zero, com duas casas. Corrigi-lo depois é permitido a quem
+   atendeu, até a requisição ser arquivada, com histórico.
+
+### L3 · Pedido de publicação ↔ projeto (C1, C2, C6 parcial)
+
+| Peça | O que a construção entrega |
+| --- | --- |
+| Comunicação (dados) | Colunas em `Pedidos`: `projeto_id`, `projeto_codigo`, `servico`, e (reservada para a L5) `plano_item_id`, vazia nesta entrega |
+| Projetos (leitura) | `projetosParaPublicacao(quem)`: os que a pessoa vê, de qualquer etapa menos rascunho de outra pessoa e menos cancelado, com o serviço |
+| Plataforma | Compõe a lista e reconfere ao gravar; a área vem preselecionada pela área do serviço (leitura do cadastro de serviços do Núcleo, que a Comunicação já recebe) |
+| Comunicação (leitura) | `publicacoesDoProjeto(quem, projetoId)` para a aba "Comunicação" do projeto: número, título, tipo, situação, data publicada e link, **sem o nome de quem pediu** |
+| Telas | Seção "Telas" 8 (Novo e Ajustar) e a lista da aba "Comunicação" do projeto (9, só a leitura; o plano e o botão ficam para a L5) |
+
+**Regras de borda:** (1) a aba "Comunicação" do projeto só existe para quem vê o projeto e aparece vazia ("Nenhum
+pedido de publicação ligado a este projeto") com o atalho "Pedir publicação sobre este projeto", que abre o
+formulário já ligado; (2) as linhas "Publicação: <título>" no Histórico do projeto são calculadas na leitura
+(C6), sem gravar nada; (3) projeto que a pessoa deixa de ver depois: o pedido mantém o vínculo, e quem pediu
+continua vendo o próprio pedido, sem o nome do projeto, só com o código; (4) a troca de projeto e serviço na
+revisão (C2) é auditada com as colunas alteradas.
+
+### L4 · Projeto ↔ Orçamento (O1 a O12)
+
+Começa quando Projetos P2, P3 e P4 estiverem no `main`. O Desenvolvedor, antes de começar, confere no código de
+Projetos: a etapa de implementação, o Termo aprovado, `ProjetoOrcamento` (com grupo de gasto e fonte), as versões do
+Termo e os pedidos de mudança. As regras O1 a O12 e as telas 3 e 4 são as da seção acima; esta entrega só precisa
+fixar:
+
+1. **Porta do Orçamento:** `sincronizarLinhasDeProjeto(projetoId, versaoDoTermo, linhas)`, idempotente pela chave
+   (`projeto_id`, `linha_id`); chamar duas vezes com o mesmo Termo não duplica nem altera nada (teste).
+2. **Quem chama:** a plataforma, no mesmo passo da aprovação da porta 2 e da aprovação de nova versão do Termo,
+   e no cancelamento ou parada do projeto (1.1: sai só o que ainda não foi gasto). Se a porta falhar, o Termo
+   **fica aprovado** e o projeto mostra "Orçamento ainda não atualizado" com o botão "Tentar de novo" ao
+   responsável; nada se perde e repetir é seguro.
+3. **Linhas do projeto no Orçamento são só leitura na Previsão:** a tela diz de quem são ("Vem do projeto PRJ-…") e
+   leva ao projeto; mudar valor é pedido de mudança (ADR-022).
+4. `Realizado.projeto_id` é opcional; lançamentos antigos ficam sem projeto.
+
+### L5 · Plano de comunicação cria pedidos e publicações no relatório final (C3 a C8)
+
+Começa com Projetos P3 e P5 e a L3 no `main`. Fixar na construção:
+
+1. **Idempotência:** o par (`plano_item_id`) é a chave; o botão repetido devolve o número do pedido já criado.
+   Dois responsáveis clicando ao mesmo tempo não duplicam: a segunda gravação encontra o pedido e devolve o número.
+2. **Data "futura" (C4)** é comparada com a data de Brasília de hoje; hoje conta como futura.
+3. A porta de criação da Comunicação confere as regras normais do pedido (antecedência, calendário, urgência) e
+   **marca**, não bloqueia: pedido fora do calendário nasce "Aguardando revisão" com o aviso, como já acontece.
+4. **Relatório final (C7):** a lista de publicações é copiada para o documento no momento do envio, junto com a data
+   e hora da cópia; reenviar o relatório depois de ajustes **recopia** a lista. Publicações sem link aparecem só com
+   o título e a data.
+5. Comunicação desligada: o botão "Criar pedidos de publicação" fica desabilitado com o motivo, e o relatório final
+   é enviado sem a lista, com a frase "Comunicação não ativa nesta instituição".
+
+### L6 · Conferência da fonte na aprovação (R8)
+
+Começa com o rateio de fontes R3 do Orçamento no `main`. Antes de construir, o Desenvolvedor lê a seção "Rateio de
+fontes" de `src/modulos/orcamento/especificacao.md` e o que foi entregue; **não inventa** formato de plano de
+aplicação. Fixar:
+
+1. A leitura `fontesParaConferencia(quem, servico, grupo)` do Orçamento devolve, por fonte, saldo e **avisos
+   prontos** (texto curto e o motivo), para a tela de Requisições só mostrar.
+2. Sem R3 (ou sem plano de aplicação cadastrado para a fonte) o cartão mostra a frase da regra R8 e **nunca**
+   "fonte pode pagar" nem "não pode". Teste para os dois casos.
+3. Quem não tem `orcamento.execucao.ver` no serviço não vê a lista de fontes (mesmo texto de R4).
+4. Ao entregar a L6, a Diretoria pode fechar a issue #60 (regra de "Antes de entregar": avisar no PR).
+
+### Telas e usabilidade (L2, L3, L5 e L6)
+
+A seção "Telas" (5 a 9) já descreve cada tela. O que a construção deve cuidar além dela:
+
+- **Cartão de conferência (L2 e L6):** o aviso "passa do previsto" e os avisos de fonte aparecem **acima** do botão
+  "Aprovar requisição", com texto e ícone (nunca só cor), e o botão **não** muda de nome nem fica desabilitado:
+  é aviso, não bloqueio. O foco do teclado passa pelo cartão antes do botão.
+- **Campos "Valor estimado" e "Grupo de gasto"** ficam recolhidos em "Conferir o saldo (opcional)", para quem aprova
+  rápido não ter que rolar; o cartão mostra o saldo do serviço já ao abrir, sem digitar nada.
+- **Celular:** o cartão vira uma pilha (serviço, saldo, fontes), sem tabela larga; os valores usam o componente de
+  moeda existente em `src/ui/`. Se faltar alguma peça em `src/ui/`, é mudança no Núcleo e vai à Diretoria antes.
+- **Estados:** sem permissão ("Você não tem acesso ao orçamento deste serviço; a aprovação segue sem a
+  conferência"), sem exercício aprovado, sem fonte configurada e erro de leitura ("Não foi possível conferir o
+  saldo agora; a aprovação segue sem a conferência") **nunca impedem** a aprovação.
+- **Textos sem nome próprio:** exemplos, dicas e dados fictícios usam "instituição", "Sede", "serviço", conforme o
+  `CLAUDE.md`.
+- **Gráficos:** nenhum gráfico novo nesta onda além do planejado × realizado do projeto (tela 3), que segue a
+  habilidade `graficos` como já descrito; L2, L3, L5 e L6 usam números e listas.
+
+### Decisões tomadas sozinho na construção (com o custo se estiverem erradas)
+
+1. **L2 entra antes de existir projeto em implementação**, com o campo de projeto escondido até lá. Custo se errado:
+   baixo (esperar P2 a P4 para entregar a L2; o saldo e o valor gasto ficariam parados).
+2. **Guardar o código do projeto junto do id** em Requisições e Comunicação, para listas e a aba do projeto não
+   dependerem de ler Projetos. Custo se errado: baixo (coluna a mais; se o código mudar, mostra o antigo).
+3. **Falha da porta do Orçamento não desfaz o Termo** (L4), com "Tentar de novo". Custo se errado: médio (se a
+   Diretoria preferir tudo ou nada, a aprovação passaria a falhar junto, o que trava o projeto por problema do
+   Orçamento).
+4. **Relatório final recopia as publicações a cada envio** (L5). Custo se errado: baixo.
+5. **Cada entrega é um PR separado**, sem esperar uma issue por entrega. Custo se errado: nenhum no código; só a
+   rastreabilidade no quadro.
+
+### Fica de fora (continua no `docs/roadmap.md`, seção "Ligações entre apps")
+
+Nada novo além do que já está lá.
+
+### Frentes
+
+Iguais às da onda 1 (seção "Frentes"): regras e dados, telas e, sem chave nova, infraestrutura só com "Preparar
+estrutura". Cada PR de entrega altera **só** os pontos da tabela da sua entrega acima; Núcleo, capacidades e outros
+módulos só nos pontos já aprovados na seção "Frentes".
+
+### Critérios de pronto (na prévia, com dados fictícios)
+
+- **L2:** abrir uma requisição para aprovar e ver o saldo do serviço e o aviso "saldo sem as compras aprovadas ainda
+  não lançadas"; informar grupo e valor e ver "depois desta compra"; entrar como quem não tem permissão do orçamento
+  e ver a aprovação seguir sem a conferência; concluir com valor gasto.
+- **L3:** pedir publicação ligada a um projeto, ver o serviço travado, ver o pedido na aba "Comunicação" do projeto
+  sem o nome de quem pediu.
+- **L4:** aprovar o Termo de um projeto fictício e ver as linhas no orçamento do serviço; cancelar e ver sair só o
+  que não foi gasto; simular falha e ver "Tentar de novo".
+- **L5:** criar os pedidos do plano duas vezes sem duplicar; enviar o relatório final com a lista de publicações.
+- **L6:** ver o aviso da fonte antes de aprovar; sem rateio de fonte, ver a frase de espera.
+- Em todas: `npm run verificar` e `npm run build` verdes e testes de quem vê e quem altera.
