@@ -1,4 +1,4 @@
-# ADR-023 — Agenda única e busca única pela composição da plataforma
+# ADR-024 — Agenda única e busca única pela composição da plataforma
 
 - Situação: proposta (14/11/2026), a aprovar com a especificação da issue #117
 - Data: 14/11/2026

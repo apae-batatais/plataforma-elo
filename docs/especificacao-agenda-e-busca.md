@@ -1,6 +1,6 @@
 # Agenda única e busca única · especificação
 
-Issue #117 (onda 3 de 3 das ligações entre apps) · 14/11/2026 · ADR-023
+Issue #117 (onda 3 de 3 das ligações entre apps) · 14/11/2026 · ADR-024
 
 Decisões da Diretoria (13/11/2026): a agenda **complementa** o calendário da Comunicação, que não muda;
 a busca encontra **atendidos só para quem já os vê no Cadastro Único**, com auditoria; a primeira entrega
@@ -14,7 +14,7 @@ Nada aparece que o perfil da pessoa não possa ver no app de origem.
 
 ## Usuários e permissões
 
-- Não há permissão nova: **cada app decide** o que entra, com as regras que já tem (ADR-023). A agenda e a
+- Não há permissão nova: **cada app decide** o que entra, com as regras que já tem (ADR-024). A agenda e a
   busca são abertas a qualquer pessoa que entrou; o resultado pode ser vazio.
 - Quem não tem acesso a um app não vê itens dele nem o filtro dele.
 - O filtro "serviço" só lista serviços que aparecem para a pessoa.
@@ -39,7 +39,7 @@ portas de decisão de Projetos (não têm data; continuam nas pendências da tel
 ## Regras de negócio (com teste)
 
 1. Cada módulo ativo exporta `itensDaAgenda(p, quem, periodo)` e `buscar(p, quem, termo)` no `index.ts`,
-   no formato comum do Núcleo (ADR-023). Módulo não importa outro; `npm run fronteiras` confere.
+   no formato comum do Núcleo (ADR-024). Módulo não importa outro; `npm run fronteiras` confere.
 2. A agenda só mostra o que o app de origem mostraria à mesma pessoa. Teste por app: perfil que vê, perfil
    que não vê, e escopo (coordenação só do seu serviço).
 3. Registro encerrado (`ativo = FALSE`), cancelado, publicado, concluído ou termo encerrado não entra.
