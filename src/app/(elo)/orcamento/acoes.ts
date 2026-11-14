@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
-import { encerrarPosto, ErroValidacaoFolha, salvarParametros, salvarPosto, salvarRateios } from '@/modulos/orcamento/aplicacao/folha';
+import { salvarCalendario, encerrarPosto, ErroValidacaoFolha, salvarParametros, salvarPosto, salvarRateios } from '@/modulos/orcamento/aplicacao/folha';
 import { analisarImportacao, descreverArquivo, importarFolha, lerMapeamento, lerXlsx, type Analise } from '@/modulos/orcamento/aplicacao/importacao';
 import type { AbaResumida, Mapeamento } from '@/modulos/orcamento/dominio/importacao';
 import { COMPONENTES, PARAMETROS, parametrosCom } from '@/modulos/orcamento/dominio/folha';
@@ -61,6 +61,9 @@ const esquemaPosto = z.object({
   cargaHoraria: z.number().nullable(),
   inicio: z.string(),
   observacao: z.string().nullable(),
+  contrato: z.enum(['indeterminado', 'determinado']).optional(),
+  mesFerias: z.number().nullable().optional(),
+  desligamento: z.string().nullable().optional(),
   componentes: z.object({
     ...Object.fromEntries(COMPONENTES.map((c) => [c.chave, z.number()])),
     reajuste: z.number(),
@@ -127,6 +130,19 @@ export async function acaoSalvarRateios(_: EstadoAcao, f: FormData): Promise<Est
 export async function acaoSalvarParametros(f: FormData) {
   await executar('/orcamento/parametros', 'Parâmetros salvos.', ({ usuario, app }) =>
     salvarParametros(app.planilhas, usuario.autorizador, parametrosCom(Object.fromEntries(PARAMETROS.map((p) => [p.chave, numeroOuNulo(f, p.chave) ?? NaN])))),
+  );
+}
+
+export async function acaoSalvarCalendario(f: FormData) {
+  const pct = (campo: string) => numeroOuNulo(f, campo) ?? 0;
+  const linhas = Array.from({ length: 12 }, (_, i) => ({
+    mes: i + 1,
+    ferias_coletivas: f.get(`coletivas${i + 1}`) === 'on',
+    decimo_pct: pct(`decimo${i + 1}`),
+    abono_pct: pct(`abono${i + 1}`),
+  }));
+  await executar('/orcamento/parametros', 'Calendário salvo.', ({ usuario, app }) =>
+    salvarCalendario(app.planilhas, usuario.autorizador, linhas, inicioDoMes(texto(f, 'vigencia'))),
   );
 }
 
