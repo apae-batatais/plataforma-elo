@@ -1,6 +1,6 @@
 # Especificação — Ligações entre apps, onda 1
 
-- Situação: proposta de especificação (14/11/2026), a aprovar pela Diretoria
+- Situação: aprovada. **L1 (Ficha do serviço) construída** em 14/11/2026; L2 a L6 ainda por construir
 - Dono do produto: Diretoria
 - Proposta de origem: issue #115 (onda 1 de 3; as ondas 2 e 3 são as issues #116 e #117)
 - Arquitetura: ADR-013 (ligação entre módulos) e **ADR-022** (leituras com permissão e portas de entrada)

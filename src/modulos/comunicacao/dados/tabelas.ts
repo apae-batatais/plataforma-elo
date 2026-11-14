@@ -64,6 +64,8 @@ export const PedidosComunicacao = definirTabela({
     destinatarios: textoOpcional(),
     link_publicacao: textoOpcional(),
     publicado_em: textoOpcional(),
+    /** Serviço de que o pedido trata (código do Núcleo), para a Ficha do serviço. Opcional. */
+    servico: textoOpcional(),
   }),
   sigilo: { solicitante: 'pessoal', solicitante_nome: 'pessoal', imagem_confirmada_por: 'pessoal' },
 });
