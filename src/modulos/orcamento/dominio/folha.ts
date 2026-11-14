@@ -55,6 +55,7 @@ export const PARAMETROS = [
   { chave: 'fap', nome: 'FAP ajustado (RAT × FAP) (%)', padrao: 0.5, grupo: 'encargos' },
   { chave: 'aposentadoria_especial', nome: 'INSS aposentadoria especial (%)', padrao: 6, grupo: 'encargos' },
   { chave: 'pis', nome: 'PIS (%)', padrao: 0, grupo: 'encargos' },
+  { chave: 'cessao_aviso_dias', nome: 'Avisar o fim da cessão com quantos dias de antecedência', padrao: 60, grupo: 'cessao' },
 ] as const;
 
 export type ChaveParametro = (typeof PARAMETROS)[number]['chave'];
@@ -68,7 +69,8 @@ export function validarParametros(p: Parametros): string[] {
   const erros: string[] = [];
   if (!Number.isInteger(p.ano) || p.ano < 2020 || p.ano > 2100) erros.push('Ano inválido.');
   if (!Number.isInteger(p.reajuste_mes) || p.reajuste_mes < 1 || p.reajuste_mes > 12) erros.push('Mês do reajuste deve ser de 1 a 12.');
-  for (const d of PARAMETROS.filter((x) => x.grupo !== 'geral' && x.chave !== 'reajuste_mes')) {
+  if (!Number.isInteger(p.cessao_aviso_dias) || p.cessao_aviso_dias < 1 || p.cessao_aviso_dias > 365) erros.push('Aviso do fim da cessão: use um número inteiro de dias, de 1 a 365.');
+  for (const d of PARAMETROS.filter((x) => x.grupo !== 'geral' && x.grupo !== 'cessao' && x.chave !== 'reajuste_mes')) {
     const v = p[d.chave];
     if (!Number.isFinite(v) || v < 0 || v > 100) erros.push(`${d.nome}: use um número entre 0 e 100.`);
   }
