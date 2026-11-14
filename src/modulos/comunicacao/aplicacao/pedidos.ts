@@ -15,6 +15,7 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
+import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import { Areas } from '@/nucleo/estrutura/tabelas';
 import {
   AnexosComunicacao,
@@ -644,4 +645,34 @@ export async function contadoresComunicacao(p: Planilhas, quem: Autorizador, opc
       : 0,
     aprovar: quem.temPermissao(PERM.aprovar) ? ativos.filter((r) => r.situacao === 'aguardando_aprovacao').length : 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Visão de ligação (ADR-022): publicações do serviço para a Ficha do serviço
+// ---------------------------------------------------------------------------
+
+export interface PublicacoesDoServico {
+  emAndamento: number;
+  /** Pedidos publicados ou realizados nos últimos 12 meses. */
+  publicadosNosUltimos12Meses: number;
+  /** Os últimos pedidos publicados, sem o nome de quem pediu. */
+  ultimosPublicados: { numero: string; titulo: string; tipoPeca: string; publicadoEm: string | null; link: string | null }[];
+}
+
+/** Pedidos ligados ao serviço que a pessoa já pode ver. Nunca traz o nome de quem pediu. */
+export async function publicacoesDoServico(p: Planilhas, quem: Autorizador, servico: string, opcoes: { agora?: Date } = {}): Promise<Ligacao<PublicacoesDoServico>> {
+  if (!quem.temPermissaoAlgumEscopo('comunicacao.acessar')) return ligacaoSemPermissao();
+  const agora = opcoes.agora ?? new Date();
+  const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
+  const doServico = pedidos.ativos().filter((r) => r.servico === servico && podeVer(quem, r));
+  const limite = new Date(agora.getTime() - 365 * 86400_000).toISOString();
+  const feitos = doServico.filter((r) => (r.situacao === 'publicado' || r.situacao === 'realizada') && (r.publicado_em ?? r.enviado_em) >= limite);
+  return ligacaoOk({
+    emAndamento: doServico.filter((r) => !SITUACOES_FINAIS.has(r.situacao)).length,
+    publicadosNosUltimos12Meses: feitos.length,
+    ultimosPublicados: feitos
+      .sort((a, b) => (b.publicado_em ?? b.enviado_em).localeCompare(a.publicado_em ?? a.enviado_em))
+      .slice(0, 5)
+      .map((r) => ({ numero: r.numero, titulo: r.titulo, tipoPeca: r.tipo_peca, publicadoEm: r.publicado_em, link: r.link_publicacao })),
+  });
 }

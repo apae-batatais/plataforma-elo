@@ -139,6 +139,8 @@ export async function popularComunicacaoFicticia(p: Planilhas): Promise<void> {
         destinatarios: r.tipo === 'release' || r.tipo === 'artigo' || r.tipo === 'entrevista' ? JSON.stringify({ grupos: [gs[0].id], contatos: [cs[2].id] }) : null,
         link_publicacao: passou('publicado', 'realizada') ? 'https://exemplo.local/publicacao-ficticia' : null,
         publicado_em: passou('publicado', 'realizada') ? hist[hist.length - 1].em : null,
+        // Alguns pedidos ligados a um serviço, para a Ficha do serviço mostrar publicações na demonstração.
+        servico: r.area === 'educacao' ? 'escola' : r.area === 'assistencia_social' ? 'centro_dia_intergeracional' : null,
       };
     }),
     AUTOR,
