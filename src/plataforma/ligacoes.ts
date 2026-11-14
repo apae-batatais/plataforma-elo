@@ -11,7 +11,8 @@ import { contarAtendidos } from '@/nucleo/pessoas/contagem';
 import { Servicos, type RegServico } from '@/nucleo/estrutura/tabelas';
 import { lerTabela } from '@/nucleo/armazenamento/tabela';
 import type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
-import { avaliacaoDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
+import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
+import type { NumerosDePessoas } from '@/modulos/parcerias';
 import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
 import { custoDoServico, type CustoDoServico } from '@/modulos/orcamento';
 import { projetosDoServico, type ProjetosDoServico } from '@/modulos/projetos';
@@ -97,5 +98,18 @@ export async function fichaDoServico(
     requisicoes,
     publicacoes,
     avaliacao,
+  };
+}
+
+/**
+ * Números de pessoas (índice de cuidado e reavaliação em dia) entregues a Parcerias, que não importa a Avaliação
+ * (ADR-023). Avaliação desligada devolve `null` e a meta mostra "Ligação indisponível".
+ */
+export function numerosDePessoas(p: Planilhas, opcoes: { desligados?: ReadonlySet<string>; agora?: Date } = {}): NumerosDePessoas {
+  return {
+    async indicadoresDoServico(servico) {
+      if (opcoes.desligados?.has('avaliacao') || !MODULOS.some((m) => m.id === 'avaliacao')) return null;
+      return indicadoresDoServico(p, servico, { agora: opcoes.agora });
+    },
   };
 }

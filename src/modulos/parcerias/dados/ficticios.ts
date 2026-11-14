@@ -55,7 +55,7 @@ export async function popularParceriasFicticias(p: Planilhas): Promise<void> {
         { funcao: 'Professor', pessoas: 4, horasSemanais: 20 },
         { funcao: 'Administrativo', pessoas: 1, horasSemanais: 10 },
       ],
-      metas: [{ descricao: 'Alunos atendidos', unidade: 'alunos', quantidade: 100 }],
+      metas: [{ servico: 'escola', descricao: 'Alunos atendidos', unidade: 'alunos', quantidade: 100, fonteNumero: 'vinculos_ativos' }],
     },
     AGORA,
   );

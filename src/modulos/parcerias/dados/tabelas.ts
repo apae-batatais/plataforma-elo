@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
-import { TIPOS_APORTE, TIPOS_INSTRUMENTO } from '../dominio/termos';
+import { FONTES_NUMERO, TIPOS_APORTE, TIPOS_INSTRUMENTO } from '../dominio/termos';
 
 export const PLANILHA_PARCERIAS = 'parcerias';
 
@@ -111,6 +111,8 @@ export const Metas = definirTabela({
     unidade: texto(),
     quantidade: numeroOpcional(),
     quantidade_texto: textoOpcional(),
+    /** De onde vem o número de "hoje": à mão (padrão) ou do cadastro de pessoas (ADR-023). */
+    fonte_numero: z.preprocess((v) => (vazio(v) ? 'manual' : v), z.enum(FONTES_NUMERO)),
   }),
 });
 
