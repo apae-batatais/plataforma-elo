@@ -37,6 +37,15 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
       comparam os saldos com o realizado.
 
+### Folha em caixa, passivo e provisão · para depois (14/11/2026, issue #126)
+
+Especificado em `src/modulos/orcamento/especificacao-folha-caixa-passivo.md`.
+
+- [ ] Importar a provisão e o saldo da reserva junto com o realizado, quando a importação existir (hoje são digitados).
+- [ ] Rescisão antecipada de contrato por prazo determinado, reflexos do aviso e encargos patronais sobre a rescisão.
+- [ ] Férias fracionadas em até três períodos no caixa.
+- [ ] Verba rescisória por fonte conferida com o plano de aplicação do termo (depende de Parcerias).
+
 ### Rateio e fontes · pontas que ficaram para depois (10/11/2026, issue #91)
 
 - [ ] Rateio R1: item de despesa sem serviço ("Comum"), botão "Dividir igualmente" e prévia com os custos reais lançados.
@@ -121,6 +130,21 @@ Ficou para depois (12/11/2026):
 - [ ] Modelos de projeto por tipo e cópia de projeto.
 - [ ] Conferir a licença do Guia Project DPro (Creative Commons não comercial) se o Elo vier a ser cobrado.
 
+## Ligações entre apps, onda 2 (issue #116, especificado em 14/11/2026)
+
+Especificação: `src/modulos/projetos/especificacao.md`, seção "Ligações, onda 2" (ADR-023).
+
+- [ ] **Prazos de prestação de contas do termo** no projeto: dependem de Parcerias ter esses prazos (ver "Rateio e
+      fontes"). Por ora o projeto mostra fim da vigência e datas das parcelas.
+- [ ] Outras contagens e resultados da Avaliação como indicador: entradas e saídas no período, quebra por faixa
+      etária ou sexo, % que melhorou e % com suspeita de violação de direitos (a Diretoria aprovou só vínculos
+      ativos, índice médio e reavaliação em dia, em 13/11/2026).
+- [ ] Mudar o mínimo de 5 pessoas por tela ou por OSC (hoje é fixo e vale para todas).
+- [ ] Atualizar o rascunho do termo quando o projeto muda (hoje só avisa a diferença de valor).
+- [ ] "Repetir evento da edição anterior" (sugestão): copia série, orçamento de custos e fonte.
+- [ ] Número no menu de Parcerias com os rascunhos de termo para completar (sugestão).
+- [ ] Sugerir o projeto no Realizado do Orçamento quando o grupo de gasto é de evento (sugestão).
+
 ## Ligações entre apps
 
 Issue #115 (onda 1), especificação em `docs/especificacao-ligacoes-entre-apps.md` e ADR-022. Ondas 2 e 3: issues #116 e #117.
@@ -133,3 +157,15 @@ Ficou para depois (14/11/2026):
 - [ ] Bloco de termos de Parcerias na Ficha do serviço (onda 2).
 - [ ] Realizado por atividade vindo do Orçamento (hoje, por projeto; por atividade só pelas compras ligadas).
 - [ ] Sugestões de experiência na Ficha do serviço: faixa "o que pede ação", atalhos de nova requisição e nova ideia, comparação com o ano anterior e impressão.
+
+## Agenda única e busca única (issue #117, especificação em `docs/especificacao-agenda-e-busca.md`)
+
+Ficou para depois (14/11/2026):
+
+- [ ] Segunda entrega, depois das ondas 1 e 2 (#115 e #116): bloco "Ligado a isto" em projeto, termo e serviço;
+      serviços como resultado da busca (precisam da Ficha do serviço); feriados na agenda (#67).
+- [ ] Datas do Orçamento, prazos de prestação de contas (Parcerias) e prazo das portas de Projetos na agenda,
+      quando existirem.
+- [ ] Avisos por e-mail dos prazos (ligação com o Gmail, #63) e assinatura da agenda no Google Agenda.
+- [ ] Busca em Avaliação (dado sensível; só com pedido da Diretoria).
+- [ ] Sugestões ao digitar e filtro por app nos resultados da busca.
