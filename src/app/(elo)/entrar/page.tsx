@@ -23,7 +23,7 @@ async function Moldura({ children }: { children: React.ReactNode }) {
         <div className="mt-10 max-w-md lg:mt-0">
           <p className="text-[1.75rem] font-bold leading-tight text-white lg:text-[2.1rem]">O elo entre os setores da {instituicao.nome}.</p>
           <p className="mt-3 text-lateral-suave">
-            Orçamento, folha de pagamento, cadastro de pessoas e, em breve, a avaliação diagnóstica. Cada pessoa vê só o que o seu perfil permite.
+            Os apps da sua instituição em um só lugar: orçamento, requisições, comunicação, avaliação e mais. Cada pessoa vê só o que o seu perfil permite.
           </p>
         </div>
         <div className="mt-10 hidden space-y-1 text-sm text-lateral-suave lg:block">

@@ -9,6 +9,8 @@
  */
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { NumeroQueConta } from '@/ui/numero-que-conta';
+import { useValoresAnimados } from '@/ui/use-valores-animados';
+import type { ValoresPorSerie } from '@/ui/movimento';
 
 export type Formato = 'moeda' | 'pct' | 'numero';
 export interface Serie {
@@ -20,6 +22,10 @@ export interface Serie {
    */
   cor: number | 'ano-1' | 'ano-2' | 'ano-3' | 'destaque';
 }
+
+const porNome = (series: Serie[]): ValoresPorSerie => Object.fromEntries(series.map((s) => [s.nome, s.valores]));
+/** Séries com os valores do instante da animação (a escala, a dica e a tabela usam os valores finais). */
+const comValores = (series: Serie[], valores: ValoresPorSerie): Serie[] => series.map((s) => ({ ...s, valores: valores[s.nome] ?? s.valores }));
 
 /** Uma série só não precisa diferenciar cores: usa a cor do app aberto (identidade visual). */
 export function naCorDoApp(series: Serie[]): Serie[] {
@@ -153,6 +159,8 @@ export function BarrasAgrupadas({ categorias, series, formato, altura = 240, rot
   const [foco, setFoco] = useState<number | null>(null);
   const id = useId();
   const [quadro, L] = useLargura();
+  const { ref: refFigura, valores: animados } = useValoresAnimados(porNome(series));
+  const desenhadas = comValores(series, animados);
   const todos = series.flatMap((s) => s.valores);
   const { topo, base, marcas } = escala(Math.max(...todos, 0), Math.min(...todos, 0));
   const h = altura - MARGEM.topo - MARGEM.base;
@@ -163,7 +171,7 @@ export function BarrasAgrupadas({ categorias, series, formato, altura = 240, rot
   const xGrupo = (i: number) => MARGEM.esq + faixa * i + (faixa - largBarra * series.length - 2 * (series.length - 1)) / 2;
 
   return (
-    <figure className="space-y-2">
+    <figure ref={refFigura} className="space-y-2">
       <Legenda series={series} />
       <div ref={quadro} className="relative" onMouseLeave={() => setFoco(null)}>
         <svg viewBox={`0 0 ${L} ${altura}`} width={L} height={altura} className="block max-w-full" role="img" aria-labelledby={id}>
@@ -179,7 +187,7 @@ export function BarrasAgrupadas({ categorias, series, formato, altura = 240, rot
           {categorias.map((c, i) => (
             <g key={c} onMouseEnter={() => setFoco(i)} onFocus={() => setFoco(i)} tabIndex={0} aria-label={c}>
               <rect x={MARGEM.esq + faixa * i} y={MARGEM.topo} width={faixa} height={h} fill={foco === i ? 'var(--superficie-2)' : 'transparent'} />
-              {series.map((s, k) => {
+              {desenhadas.map((s, k) => {
                 const v = s.valores[i] ?? 0;
                 const y0 = y(Math.max(v, 0));
                 const alt = Math.max(Math.abs(y(v) - y(0)), v ? 1 : 0);
@@ -212,6 +220,9 @@ export function Linhas({ categorias, series, formato, altura = 240, referencias 
   const id = useId();
   const [quadro, L] = useLargura();
   const todos = [...series.flatMap((s) => s.valores), ...referencias.map((r) => r.valor)];
+  const { ref: refFigura, valores: animados, abertura } = useValoresAnimados(porNome(series), { abrirNoLugar: true });
+  const desenhadas = comValores(series, animados);
+  const idRevelar = `${id.replace(/\W/g, '')}-revelar`;
   const { topo, base, marcas } = escala(maximo ?? Math.max(...todos, 0), minimo ?? Math.min(...todos, 0));
   const h = altura - MARGEM.topo - MARGEM.base;
   const w = L - MARGEM.esq - MARGEM.dir;
@@ -220,7 +231,7 @@ export function Linhas({ categorias, series, formato, altura = 240, referencias 
   const x = (i: number) => MARGEM.esq + folga + (categorias.length === 1 ? (w - 2 * folga) / 2 : ((w - 2 * folga) * i) / (categorias.length - 1));
 
   return (
-    <figure className="space-y-2">
+    <figure ref={refFigura} className="space-y-2">
       <Legenda series={series} />
       <div ref={quadro} className="relative" onMouseLeave={() => setFoco(null)}>
         <svg
@@ -238,6 +249,12 @@ export function Linhas({ categorias, series, formato, altura = 240, referencias 
           }}
         >
           <title id={id}>{descricao}</title>
+          <defs>
+            {/* Ao abrir, a linha e os pontos são revelados da esquerda para a direita. */}
+            <clipPath id={idRevelar}>
+              <rect x={0} y={0} width={Math.max(abertura, 0) * L} height={altura} />
+            </clipPath>
+          </defs>
           {marcas.map((m) => (
             <g key={m}>
               <line x1={MARGEM.esq} x2={L - MARGEM.dir} y1={y(m)} y2={y(m)} stroke="var(--grade)" />
@@ -260,8 +277,8 @@ export function Linhas({ categorias, series, formato, altura = 240, referencias 
             </text>
           ))}
           {foco !== null && <line x1={x(foco)} x2={x(foco)} y1={MARGEM.topo} y2={MARGEM.topo + h} stroke="var(--borda-forte)" />}
-          {series.map((s) => (
-            <g key={s.nome}>
+          {desenhadas.map((s) => (
+            <g key={s.nome} clipPath={abertura < 1 ? `url(#${idRevelar})` : undefined}>
               <polyline points={s.valores.map((v, i) => `${x(i)},${y(v)}`).join(' ')} fill="none" stroke={cor(s.cor)} strokeWidth={2} strokeLinejoin="round" />
               {s.valores.map((v, i) => (
                 <circle key={i} cx={x(i)} cy={y(v)} r={foco === i ? 5 : categorias.length <= 6 ? 4 : 0} fill={cor(s.cor)} stroke="var(--superficie)" strokeWidth={2} />
@@ -288,8 +305,9 @@ export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria
 }) {
   series = naCorDoApp(series);
   const maximo = Math.max(...series.flatMap((s) => s.valores), 1);
+  const { ref: refFigura, valores: animados } = useValoresAnimados(porNome(series));
   return (
-    <figure className="space-y-3" aria-label={descricao}>
+    <figure ref={refFigura} className="space-y-3" aria-label={descricao}>
       <Legenda series={series} />
       <ul className="space-y-3">
         {categorias.map((c, i) => (
@@ -303,9 +321,10 @@ export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria
             <span className="space-y-1">
               {series.map((s) => {
                 const v = s.valores[i] ?? 0;
+                const vAnimado = animados[s.nome]?.[i] ?? v;
                 return (
                   <span key={s.nome} className="flex items-center gap-2" title={`${s.nome}: ${formatarValor(v, formato)}`}>
-                    <span className="h-2.5 rounded-r" style={{ width: `${Math.max((v / maximo) * 82, v ? 0.8 : 0)}%`, background: cor(s.cor) }} aria-hidden="true" />
+                    <span className="h-2.5 rounded-r" style={{ width: `${Math.max((vAnimado / maximo) * 82, v ? 0.8 : 0)}%`, background: cor(s.cor) }} aria-hidden="true" />
                     <span className="whitespace-nowrap text-xs tabular-nums text-texto-suave">
                       <span className="sr-only">{s.nome}: </span>
                       {formatarValor(v, formato, true)}
@@ -325,24 +344,28 @@ export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria
 /** Barras 100%: a composição de cada categoria (ex.: receita pública × própria por ano). */
 export function Barras100({ categorias, series, rotuloCategoria, descricao }: { categorias: string[]; series: Serie[]; rotuloCategoria: string; descricao: string }) {
   series = naCorDoApp(series);
+  const totais = categorias.map((_, i) => series.reduce((s, x) => s + (x.valores[i] ?? 0), 0) || 1);
+  // Anima a proporção (0 a 100) de cada pedaço; o texto do pedaço usa a proporção final.
+  const { ref: refFigura, valores: animados } = useValoresAnimados(Object.fromEntries(series.map((s) => [s.nome, categorias.map((_, i) => ((s.valores[i] ?? 0) / totais[i]) * 100)])));
   return (
-    <figure className="space-y-3" aria-label={descricao}>
+    <figure ref={refFigura} className="space-y-3" aria-label={descricao}>
       <Legenda series={series} />
       <ul className="space-y-2.5">
         {categorias.map((c, i) => {
-          const total = series.reduce((s, x) => s + (x.valores[i] ?? 0), 0) || 1;
+          const total = totais[i];
           return (
             <li key={c} className="grid grid-cols-[3.5rem_1fr] items-center gap-3 text-sm">
               <span className="font-semibold tabular-nums">{c}</span>
               <span className="flex h-6 overflow-hidden rounded-md">
                 {series.map((s, k) => {
                   const p = ((s.valores[i] ?? 0) / total) * 100;
+                  const largura = animados[s.nome]?.[i] ?? p;
                   return (
                     <span
                       key={s.nome}
                       title={`${s.nome}: ${formatarValor(p, 'pct')}`}
                       className={`flex items-center justify-center text-[11px] font-semibold ${k > 0 ? 'border-l-2 border-superficie' : ''}`}
-                      style={{ width: `${p}%`, background: cor(s.cor), color: sobre(s.cor) }}
+                      style={{ width: `${largura}%`, background: cor(s.cor), color: sobre(s.cor) }}
                     >
                       {p >= 9 ? formatarValor(p, 'pct') : ''}
                     </span>
@@ -375,49 +398,55 @@ export interface Indicador {
 export function Indicadores({ itens }: { itens: Indicador[] }) {
   return (
     <ul className="grid gap-x-8 gap-y-6 md:grid-cols-2">
-      {itens.map((i) => {
-        const v = i.valor;
-        const fora = v !== null && i.referencia ? (i.referencia.sentido === 'ate' ? v > i.referencia.valor : v < i.referencia.valor) : false;
-        const anteriores = i.anteriores.filter((a) => a.valor !== null) as { rotulo: string; valor: number }[];
-        const limite = (x: number) => Math.min(Math.max(x, 0), 100);
-        return (
-          <li key={i.nome} className="space-y-2">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-              <span className="font-semibold">{i.nome}</span>
-              <span className="text-2xl font-bold tabular-nums">{v === null ? '—' : <NumeroQueConta texto={formatarValor(v, 'pct')} />}</span>
-            </div>
-            <div className="relative h-3 rounded-full bg-superficie-2 ring-1 ring-inset ring-borda" role="img" aria-label={`${i.nome}: ${v === null ? 'sem dado' : formatarValor(v, 'pct')}${i.referencia ? `; referência ${i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} ${i.referencia.valor}%` : ''}`}>
-              {v !== null && (
-                <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${limite(v)}%`, background: fora ? 'var(--negativo)' : 'var(--destaque)' }} />
-              )}
-              {anteriores.map((a) => (
-                <span
-                  key={a.rotulo}
-                  title={`${a.rotulo}: ${formatarValor(a.valor, 'pct')}`}
-                  className="absolute -top-1 h-5 w-0.5 rounded bg-texto/60"
-                  style={{ left: `calc(${limite(a.valor)}% - 1px)` }}
-                />
-              ))}
-              {i.referencia && (
-                <span className="absolute -inset-y-2 border-l-2 border-dashed border-[var(--referencia)]" style={{ left: `${limite(i.referencia.valor)}%` }} />
-              )}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-texto-suave">
-              <span>
-                {anteriores.length > 0 ? `Antes: ${anteriores.map((a) => `${a.rotulo} ${formatarValor(a.valor, 'pct')}`).join(', ')}` : 'Sem anos anteriores'}
-              </span>
-              {i.referencia && (
-                <span className={`font-semibold ${fora ? 'text-erro' : 'text-sucesso'}`}>
-                  <span aria-hidden="true">{fora ? '▲ ' : '✓ '}</span>
-                  {fora ? 'Fora' : 'Dentro'} da referência ({i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} {i.referencia.valor}%)
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-texto-suave">{i.explicacao}</p>
-          </li>
-        );
-      })}
+      {itens.map((i) => (
+        <ItemIndicador key={i.nome} i={i} />
+      ))}
     </ul>
+  );
+}
+
+function ItemIndicador({ i }: { i: Indicador }) {
+  const { ref, valores } = useValoresAnimados({ valor: [i.valor ?? 0] });
+  const v = i.valor;
+  const vAnimado = valores.valor?.[0] ?? v ?? 0;
+  const fora = v !== null && i.referencia ? (i.referencia.sentido === 'ate' ? v > i.referencia.valor : v < i.referencia.valor) : false;
+  const anteriores = i.anteriores.filter((a) => a.valor !== null) as { rotulo: string; valor: number }[];
+  const limite = (x: number) => Math.min(Math.max(x, 0), 100);
+  return (
+    <li ref={ref as React.RefObject<HTMLLIElement>} className="space-y-2">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+        <span className="font-semibold">{i.nome}</span>
+        <span className="text-2xl font-bold tabular-nums">{v === null ? '—' : <NumeroQueConta texto={formatarValor(v, 'pct')} />}</span>
+      </div>
+      <div className="relative h-3 rounded-full bg-superficie-2 ring-1 ring-inset ring-borda" role="img" aria-label={`${i.nome}: ${v === null ? 'sem dado' : formatarValor(v, 'pct')}${i.referencia ? `; referência ${i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} ${i.referencia.valor}%` : ''}`}>
+        {v !== null && (
+          <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${limite(vAnimado)}%`, background: fora ? 'var(--negativo)' : 'var(--destaque)' }} />
+        )}
+        {anteriores.map((a) => (
+          <span
+            key={a.rotulo}
+            title={`${a.rotulo}: ${formatarValor(a.valor, 'pct')}`}
+            className="absolute -top-1 h-5 w-0.5 rounded bg-texto/60"
+            style={{ left: `calc(${limite(a.valor)}% - 1px)` }}
+          />
+        ))}
+        {i.referencia && (
+          <span className="absolute -inset-y-2 border-l-2 border-dashed border-[var(--referencia)]" style={{ left: `${limite(i.referencia.valor)}%` }} />
+        )}
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-texto-suave">
+        <span>
+          {anteriores.length > 0 ? `Antes: ${anteriores.map((a) => `${a.rotulo} ${formatarValor(a.valor, 'pct')}`).join(', ')}` : 'Sem anos anteriores'}
+        </span>
+        {i.referencia && (
+          <span className={`font-semibold ${fora ? 'text-erro' : 'text-sucesso'}`}>
+            <span aria-hidden="true">{fora ? '▲ ' : '✓ '}</span>
+            {fora ? 'Fora' : 'Dentro'} da referência ({i.referencia.sentido === 'ate' ? 'até' : 'a partir de'} {i.referencia.valor}%)
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-texto-suave">{i.explicacao}</p>
+    </li>
   );
 }
 
@@ -431,6 +460,8 @@ export function ResultadoMensal({ categorias, receita, despesa, descricao }: { c
   const [quadro, L] = useLargura();
   const resultado = categorias.map((_, i) => Math.round(((receita[i] ?? 0) - (despesa[i] ?? 0)) * 100) / 100);
   const acumulado = resultado.reduce<number[]>((acc, v, i) => [...acc, (acc[i - 1] ?? 0) + v], []);
+  const { ref: refFigura, valores: animados } = useValoresAnimados({ resultado });
+  const resultadoAnimado = animados.resultado ?? resultado;
   const altura = 220;
   const { topo, base, marcas } = escala(Math.max(...resultado, 0), Math.min(...resultado, 0));
   const h = altura - MARGEM.topo - MARGEM.base;
@@ -445,7 +476,7 @@ export function ResultadoMensal({ categorias, receita, despesa, descricao }: { c
     { nome: 'Saldo acumulado', valores: acumulado, cor: 1 },
   ];
   return (
-    <figure className="space-y-2">
+    <figure ref={refFigura} className="space-y-2">
       <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-texto-suave">
         <li className="flex items-center gap-1.5">
           <span className="inline-block size-2.5 rounded-sm" style={{ background: 'var(--positivo)' }} aria-hidden="true" />
@@ -469,11 +500,12 @@ export function ResultadoMensal({ categorias, receita, despesa, descricao }: { c
           ))}
           {categorias.map((c, i) => {
             const v = resultado[i];
+            const vAnimado = resultadoAnimado[i] ?? v;
             const cx = MARGEM.esq + faixa * i + faixa / 2;
             return (
               <g key={c} onMouseEnter={() => setFoco(i)} onFocus={() => setFoco(i)} tabIndex={0} aria-label={`${c}: ${formatarValor(v, 'moeda')}`}>
                 <rect x={MARGEM.esq + faixa * i} y={MARGEM.topo} width={faixa} height={h} fill={foco === i ? 'var(--superficie-2)' : 'transparent'} />
-                <rect x={cx - larg / 2} y={y(Math.max(v, 0))} width={larg} height={Math.max(Math.abs(y(v) - y(0)), v ? 1 : 0)} rx={3} fill={v < 0 ? 'var(--negativo)' : 'var(--positivo)'} />
+                <rect x={cx - larg / 2} y={y(Math.max(vAnimado, 0))} width={larg} height={Math.max(Math.abs(y(vAnimado) - y(0)), v ? 1 : 0)} rx={3} fill={v < 0 ? 'var(--negativo)' : 'var(--positivo)'} />
                 <text x={cx} y={altura - 8} textAnchor="middle" className="fill-texto-suave text-[11px]">
                   {c}
                 </text>

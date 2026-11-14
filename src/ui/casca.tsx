@@ -5,32 +5,16 @@
  * (um único lugar de navegação), área do usuário e, no celular, menu que
  * abre por cima da página.
  */
-import { MarcaElo, NOME_PLATAFORMA, textoVersao } from './marca';
+import { MarcaElo, NOME_PLATAFORMA } from './marca';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { SeletorTema } from './tema';
+import { MenuUsuario } from './menu-usuario';
+import { agruparItens, chaveDoGrupo, grupoAberto, type EscolhaDeGrupos } from './grupos-do-menu';
 import { appDoCaminho } from './cor-do-app';
-import {
-  IconeAjuda,
-  IconeAreas, IconeAvaliacao, IconeChave, IconeComunicacao, IconeFechar, IconeInicio, IconeMenu, IconeOrcamento, IconePessoas, IconePlanilha, IconeRecolher, IconeRequisicao, IconeSair, IconeServicos,
-} from './icones';
+import { ICONES, IconeFechar, IconeMenu, IconeRecolher, IconeSeta, type NomeIcone } from './icones';
 
-const ICONES = {
-  inicio: IconeInicio,
-  pessoas: IconePessoas,
-  orcamento: IconeOrcamento,
-  requisicoes: IconeRequisicao,
-  comunicacao: IconeComunicacao,
-  avaliacao: IconeAvaliacao,
-  acessos: IconeChave,
-  servicos: IconeServicos,
-  areas: IconeAreas,
-  planilhas: IconePlanilha,
-  ajuda: IconeAjuda,
-} as const;
-
-export type NomeIcone = keyof typeof ICONES;
+export type { NomeIcone };
 
 export interface ItemNavegacao {
   rotulo: string;
@@ -57,13 +41,96 @@ function ativo(caminho: string, href: string, exato = false) {
   return caminho === href || caminho.startsWith(`${href}/`);
 }
 
+/** Telas de um app, em grupos que abrem e fecham (só o da tela atual vem aberto; a escolha fica lembrada). */
+function TelasDoApp({ item, caminho, aoNavegar }: { item: ItemNavegacao; caminho: string; aoNavegar?: () => void }) {
+  const filhos = item.filhos ?? [];
+  const [escolhas, setEscolhas] = useState<EscolhaDeGrupos>({});
+  const grupos = agruparItens(filhos);
+  useEffect(() => {
+    const lidas: EscolhaDeGrupos = {};
+    try {
+      for (const g of agruparItens(filhos)) {
+        if (!g.titulo) continue;
+        const v = localStorage.getItem(chaveDoGrupo(item.href, g.titulo));
+        if (v) lidas[g.titulo] = v === 'aberto';
+      }
+    } catch {
+      // Navegador sem armazenamento: a escolha vale só até recarregar.
+    }
+    setEscolhas(lidas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item.href]);
+
+  // Só o item mais específico fica marcado (ex.: Despesas, e não também Previsão).
+  const maisLongo = filhos.filter((x) => ativo(caminho, x.href, x.href === item.href)).sort((a, b) => b.href.length - a.href.length)[0];
+  const grupoAtual = maisLongo ? filhos.find((f) => f.href === maisLongo.href)?.secao : undefined;
+
+  function alternar(titulo: string) {
+    const novo = !grupoAberto(titulo, grupoAtual, escolhas);
+    setEscolhas((e) => ({ ...e, [titulo]: novo }));
+    try {
+      localStorage.setItem(chaveDoGrupo(item.href, titulo), novo ? 'aberto' : 'fechado');
+    } catch {
+      // Sem armazenamento, vale até recarregar.
+    }
+  }
+
+  const lista = (itens: typeof filhos, id?: string) => (
+    <ul id={id} className="mb-1 ml-[1.375rem] mt-0.5 space-y-0.5 border-l border-borda pl-3">
+      {itens.map((f) => {
+        const filhoAtivo = maisLongo?.href === f.href;
+        return (
+          <li key={f.href}>
+            <Link
+              href={f.href}
+              onClick={aoNavegar}
+              aria-current={filhoAtivo ? 'page' : undefined}
+              className={`relative block min-h-9 rounded-md px-3 py-1.5 text-sm ${
+                filhoAtivo ? 'bg-destaque-suave font-semibold text-texto' : 'text-texto-suave hover:bg-superficie-2 hover:text-texto'
+              }`}
+            >
+              {filhoAtivo && <span className="absolute inset-y-1 -left-[0.8125rem] w-0.5 rounded bg-destaque" aria-hidden="true" />}
+              {f.rotulo}
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+
+  return (
+    <div className="mt-1">
+      {grupos.map((g, i) => {
+        if (!g.titulo) return <div key={i}>{lista(g.itens)}</div>;
+        const aberto = grupoAberto(g.titulo, grupoAtual, escolhas);
+        const id = `grupo-${item.href.replace(/\W+/g, '-')}-${i}`;
+        return (
+          <div key={g.titulo} className="mt-1 first:mt-0">
+            <button
+              type="button"
+              onClick={() => alternar(g.titulo!)}
+              aria-expanded={aberto}
+              aria-controls={id}
+              className="ml-3 flex min-h-9 w-[calc(100%-0.75rem)] items-center gap-1.5 rounded-md px-2 text-left text-sm font-medium text-texto hover:bg-superficie-2"
+            >
+              <IconeSeta tamanho={14} className={`shrink-0 text-texto-suave transition-transform duration-200 ${aberto ? 'rotate-90' : ''}`} />
+              {g.titulo}
+            </button>
+            {aberto && lista(g.itens, id)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function Navegacao({ grupos, aoNavegar, recolhido = false }: { grupos: GrupoNavegacao[]; aoNavegar?: () => void; recolhido?: boolean }) {
   const caminho = usePathname();
   return (
-    <nav aria-label="Navegação principal" className={`flex-1 space-y-6 overflow-y-auto py-4 ${recolhido ? 'px-2' : 'px-3'}`}>
+    <nav aria-label="Navegação principal" className={`flex-1 space-y-4 overflow-y-auto py-3 ${recolhido ? 'px-2' : 'px-3'}`}>
       {grupos.map((g, i) => (
         <div key={g.titulo ?? i}>
-          {g.titulo && <p className={`mb-1.5 px-3 text-xs font-semibold text-texto-suave ${recolhido ? 'sr-only' : ''}`}>{g.titulo}</p>}
+          {g.titulo && <p className={`mb-1.5 px-3 text-xs font-semibold tracking-wide text-texto-suave ${recolhido ? 'sr-only' : ''}`}>{g.titulo}</p>}
           <ul className="space-y-0.5">
             {g.itens.map((item) => {
               const Icone = ICONES[item.icone];
@@ -77,7 +144,7 @@ function Navegacao({ grupos, aoNavegar, recolhido = false }: { grupos: GrupoNave
                     aria-current={aqui ? 'page' : undefined}
                     title={recolhido ? item.rotulo : undefined}
                     className={`relative flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-[0.95rem] transition-colors ${recolhido ? 'justify-center' : ''} ${
-                      dentro ? 'bg-destaque-suave font-semibold text-texto' : 'text-texto-suave hover:bg-superficie-2 hover:text-texto'
+                      dentro ? 'bg-destaque-suave font-bold text-texto' : 'font-semibold text-texto-suave hover:bg-superficie-2 hover:text-texto'
                     }`}
                   >
                     {dentro && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-destaque" aria-hidden="true" />}
@@ -97,32 +164,7 @@ function Navegacao({ grupos, aoNavegar, recolhido = false }: { grupos: GrupoNave
                       </span>
                     )}
                   </Link>
-                  {item.filhos && dentro && !recolhido && (
-                    <ul className="mb-1 ml-[1.375rem] mt-0.5 space-y-0.5 border-l border-borda pl-3">
-                      {item.filhos.map((f, k) => {
-                        // Só o item mais específico fica marcado (ex.: Despesas, e não também Previsão).
-                        const candidatos = item.filhos!.filter((x) => ativo(caminho, x.href, x.href === item.href));
-                        const maisLongo = candidatos.sort((a, b) => b.href.length - a.href.length)[0];
-                        const filhoAtivo = maisLongo?.href === f.href;
-                        const novaSecao = f.secao && f.secao !== item.filhos![k - 1]?.secao;
-                        return (
-                          <li key={f.href}>
-                            {novaSecao && <p className="mb-0.5 mt-3 px-3 text-xs font-medium text-texto-suave first:mt-1">{f.secao}</p>}
-                            <Link
-                              href={f.href}
-                              onClick={aoNavegar}
-                              aria-current={filhoAtivo ? 'page' : undefined}
-                              className={`block rounded-md px-3 py-1.5 text-sm ${
-                                filhoAtivo ? 'font-semibold text-destaque' : 'text-texto-suave hover:bg-superficie-2 hover:text-texto'
-                              }`}
-                            >
-                              {f.rotulo}
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
+                  {item.filhos && dentro && !recolhido && <TelasDoApp item={item} caminho={caminho} aoNavegar={aoNavegar} />}
                 </li>
               );
             })}
@@ -138,46 +180,6 @@ function Marca({ instituicao, soSimbolo = false }: { instituicao: string; soSimb
     <Link href="/" className="block rounded-md px-1.5 py-1" aria-label={`${NOME_PLATAFORMA}, ${instituicao}: início`}>
       <MarcaElo instituicao={instituicao} tom="tema" soSimbolo={soSimbolo} />
     </Link>
-  );
-}
-
-function AreaUsuario({ usuario, sair, recolhido = false }: { usuario: UsuarioCasca; sair: () => Promise<void>; recolhido?: boolean }) {
-  const iniciais = usuario.nome
-    .replace(/\(.*?\)/g, '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((p) => p[0]?.toUpperCase())
-    .join('');
-  return (
-    <div className="border-t border-borda p-3">
-      <div className={`flex items-center gap-3 rounded-md px-2 py-2 ${recolhido ? 'flex-col' : ''}`}>
-        <span
-          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-superficie-2 text-sm font-semibold text-texto"
-          aria-hidden="true"
-          title={recolhido ? usuario.nome : undefined}
-        >
-          {iniciais}
-        </span>
-        <div className={`min-w-0 flex-1 ${recolhido ? 'sr-only' : ''}`}>
-          <p className="truncate text-sm font-semibold text-texto">{usuario.nome}</p>
-          <p className="truncate text-xs text-texto-suave" title={usuario.perfis.join(', ')}>
-            {usuario.perfis.join(', ') || 'Sem perfil'}
-          </p>
-        </div>
-        <form action={sair}>
-          <button aria-label="Sair da plataforma" title="Sair" className="flex size-11 items-center justify-center rounded-md text-texto-suave hover:bg-superficie-2 hover:text-texto">
-            <IconeSair />
-          </button>
-        </form>
-      </div>
-      <SeletorTema compacto={recolhido} />
-      {!recolhido && (
-        <p className="px-2 pt-2 text-[0.75rem] text-texto-suave">
-          {NOME_PLATAFORMA} · {textoVersao()}
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -239,7 +241,7 @@ export function Casca({
           </button>
         </div>
         <Navegacao grupos={grupos} recolhido={recolhido} />
-        <AreaUsuario usuario={usuario} sair={sair} recolhido={recolhido} />
+        <MenuUsuario usuario={usuario} sair={sair} recolhido={recolhido} />
       </aside>
 
       {/* Celular: barra superior + menu */}
@@ -267,7 +269,7 @@ export function Casca({
             </button>
           </div>
           <Navegacao grupos={grupos} aoNavegar={() => gaveta.current?.close()} />
-          <AreaUsuario usuario={usuario} sair={sair} />
+          <MenuUsuario usuario={usuario} sair={sair} />
         </div>
       </dialog>
 

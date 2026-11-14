@@ -151,23 +151,20 @@
  * a casca marca o app aberto, e o menu e os cartões do início marcam cada app.
  * App novo: escolher a cor na identidade visual antes de declarar aqui.
  */
-[data-app='orcamento'],
-[data-app='parcerias'] {
+[data-app='orcamento'] {
   --destaque: #0e7c86;
   --destaque-forte: #0b666e;
   --destaque-suave: #f1f7f8;
 }
 
-:root[data-tema='escuro'] [data-app='orcamento'],
-:root[data-tema='escuro'] [data-app='parcerias'] {
+:root[data-tema='escuro'] [data-app='orcamento'] {
   --destaque: #3cc8c8;
   --destaque-forte: #6dd6d6;
   --destaque-suave: #1d3844;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-tema='claro']) [data-app='orcamento'],
-  :root:not([data-tema='claro']) [data-app='parcerias'] {
+  :root:not([data-tema='claro']) [data-app='orcamento'] {
     --destaque: #3cc8c8;
     --destaque-forte: #6dd6d6;
     --destaque-suave: #1d3844;
@@ -231,6 +228,46 @@
     --destaque: #5cc8f5;
     --destaque-forte: #7dd3f7;
     --destaque-suave: #22384b;
+  }
+}
+
+[data-app='parcerias'] {
+  --destaque: #7e3f98;
+  --destaque-forte: #673280;
+  --destaque-suave: #f8f3fa;
+}
+
+:root[data-tema='escuro'] [data-app='parcerias'] {
+  --destaque: #d2a2ea;
+  --destaque-forte: #dfb8f1;
+  --destaque-suave: #35264a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='parcerias'] {
+    --destaque: #d2a2ea;
+    --destaque-forte: #dfb8f1;
+    --destaque-suave: #35264a;
+  }
+}
+
+[data-app='projetos'] {
+  --destaque: #5f6b12;
+  --destaque-forte: #4d570e;
+  --destaque-suave: #f5f6ee;
+}
+
+:root[data-tema='escuro'] [data-app='projetos'] {
+  --destaque: #b8c65a;
+  --destaque-forte: #c8d474;
+  --destaque-suave: #313a1e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='projetos'] {
+    --destaque: #b8c65a;
+    --destaque-forte: #c8d474;
+    --destaque-suave: #313a1e;
   }
 }
 
