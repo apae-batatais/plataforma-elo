@@ -21,6 +21,7 @@ import { resumirAbas, type AbaImportada, type AbaResumida } from '../dominio/imp
 import {
   conferirMapeamentoItens, lerItens, mapeamentoSugeridoItens, type ItemLido, type MapeamentoItens, type TipoItem,
 } from '../dominio/importacao-itens';
+import { chaveCodigoConta } from '../dominio/codigo-conta';
 import { arred, distribuir, nomeComparavel } from '../dominio/previsao';
 import { ErroValidacaoFolha } from './folha';
 
@@ -131,7 +132,20 @@ async function cadastros(p: Planilhas) {
       mapa.set(nomeComparavel(o.nome), o.valor);
       if (chave === 'servico' || chave === 'area') mapa.set(nomeComparavel(o.valor), o.valor);
     }
-    return (nome: string) => mapa.get(nomeComparavel(nome)) ?? null;
+    // Grupos e fontes também casam pelo código da conta (só ativos; código único por cadastro).
+    const porCodigo = new Map<string, string>();
+    if (chave === 'grupo' || chave === 'fonte') {
+      for (const r of chave === 'grupo' ? grupos.ativos() : fontes.ativos()) {
+        if (r.codigo_conta) porCodigo.set(chaveCodigoConta(r.codigo_conta), r.id);
+      }
+    }
+    return (nome: string) => {
+      const pelaNome = mapa.get(nomeComparavel(nome)) ?? null;
+      const pelaCodigo = porCodigo.get(chaveCodigoConta(nome)) ?? null;
+      // Nome e código que apontam para registros diferentes: não reconhecido (a pessoa associa na tela).
+      if (pelaNome && pelaCodigo && pelaNome !== pelaCodigo) return null;
+      return pelaNome ?? pelaCodigo;
+    };
   };
   return { opcoes, reconhecer };
 }

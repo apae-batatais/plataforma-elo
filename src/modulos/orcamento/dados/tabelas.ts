@@ -119,7 +119,7 @@ const distribuicao = () => z.preprocess((v) => (vazio(v) ? 'igual' : v), z.enum(
 export const GruposGasto = definirTabela({
   planilha: PLANILHA_ORCAMENTO,
   aba: 'GruposGasto',
-  esquema: z.object({ nome: texto(), rh: booleano(), regra_rateio_id: textoOpcional() }),
+  esquema: z.object({ nome: texto(), rh: booleano(), regra_rateio_id: textoOpcional(), codigo_conta: textoOpcional() }),
 });
 
 /** Fontes de recurso. Natureza e uso alimentam os indicadores. */
@@ -130,6 +130,7 @@ export const Fontes = definirTabela({
     nome: texto(),
     natureza: z.enum(['publica', 'propria']),
     uso: z.enum(['livre', 'restrita']),
+    codigo_conta: textoOpcional(),
   }),
 });
 

@@ -74,6 +74,7 @@ export async function acaoSalvarGrupo(f: FormData) {
       nome: texto(f, 'nome'),
       rh: texto(f, 'rh') === 'sim',
       regra_rateio_id: f.has('regra_rateio_id') ? texto(f, 'regra_rateio_id') || null : undefined,
+      codigo_conta: f.has('codigo_conta') ? texto(f, 'codigo_conta') : undefined,
     }),
   );
 }
@@ -99,6 +100,7 @@ export async function acaoSalvarFonte(f: FormData) {
       nome: texto(f, 'nome'),
       natureza: texto(f, 'natureza') as 'publica' | 'propria',
       uso: texto(f, 'uso') as 'livre' | 'restrita',
+      codigo_conta: f.has('codigo_conta') ? texto(f, 'codigo_conta') : undefined,
     }),
   );
 }

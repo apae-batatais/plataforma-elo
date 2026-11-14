@@ -645,9 +645,9 @@ Uma só (pequena): colunas e regras 1–6, telas dos cadastros, depois o botão 
 
 ### Critérios de pronto
 
-- [ ] Testes: código opcional, limpeza, único por cadastro, reativação, lote, importação por código, CSV
+- [x] Testes: código opcional, limpeza, único por cadastro, reativação, lote, importação por código, CSV
       (acentos, número puro, proteção de fórmula, quem vê totais x individual), acesso (quem altera, quem só vê)
-- [ ] Dados antigos sem código funcionam como antes; "Preparar estrutura" acrescenta as colunas
-- [ ] Na prévia (dados fictícios): alterar um grupo e uma fonte com código; ver o código nas listas e nas
+- [x] Dados antigos sem código funcionam como antes; "Preparar estrutura" acrescenta as colunas
+- [x] Na prévia (dados fictícios): alterar um grupo e uma fonte com código; ver o código nas listas e nas
       despesas; tentar repetir um código (mensagem clara); baixar a planilha e abrir no Excel/Google Planilhas
-- [ ] `npm run verificar` e `npm run build` verdes
+- [x] `npm run verificar` e `npm run build` verdes

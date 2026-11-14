@@ -19,6 +19,7 @@ import {
   COTACAO, PRIORIDADE,
   type Captacao, type Categoria, type Cotacao, type Distribuicao, type Indicadores, type Prioridade,
 } from '../dominio/previsao';
+import { acharCodigoRepetido, ErroCodigoConta, limparCodigoConta } from '../dominio/codigo-conta';
 import { deltasDosAjustes, mesesComAjuste } from '../dominio/ajustes';
 import {
   Ajustes, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Receitas, Parametros, RegrasRateio,
@@ -120,27 +121,44 @@ function conferirNome(lista: { id: string; nome: string; ativo: boolean }[], nom
 }
 const limparNome = (t: string) => t.trim().replace(/\s+/g, ' ');
 
-export async function salvarGrupo(p: Planilhas, quem: Autorizador, dados: { id?: string; versao?: number; nome: string; rh: boolean; regra_rateio_id?: string | null }): Promise<void> {
+/** Limpa e confere o código da conta: formato e unicidade entre os ativos do cadastro. */
+function conferirCodigo(lista: { id: string; nome: string; ativo: boolean; codigo_conta: string | null }[], bruto: string | null | undefined, oQue: 'grupo' | 'fonte', ignorarId?: string): string | null {
+  let codigo: string | null;
+  try {
+    codigo = limparCodigoConta(bruto);
+  } catch (e) {
+    if (e instanceof ErroCodigoConta) throw new ErroPrevisao(e.message);
+    throw e;
+  }
+  const outro = acharCodigoRepetido(lista, codigo, ignorarId);
+  if (outro) {
+    throw new ErroPrevisao(`O código ${codigo} já é d${oQue === 'grupo' ? 'o grupo' : 'a fonte'} "${outro.nome}". Altere o código ${oQue === 'grupo' ? 'deste grupo' : 'desta fonte'} ou d${oQue === 'grupo' ? 'aquele' : 'aquela'}.`);
+  }
+  return codigo;
+}
+
+export async function salvarGrupo(p: Planilhas, quem: Autorizador, dados: { id?: string; versao?: number; nome: string; rh: boolean; regra_rateio_id?: string | null; codigo_conta?: string | null }): Promise<void> {
   exigir(quem, PERM.editar);
   const nome = limparNome(dados.nome);
   const [grupos, regras] = await lerTabelas(p, [GruposGasto, RegrasRateio] as const);
   conferirNome(grupos.todos(), nome, 'do grupo', dados.id);
   if (dados.regra_rateio_id && !regras.ativos().some((r) => r.id === dados.regra_rateio_id)) throw new ErroPrevisao('Regra de rateio não encontrada.');
+  const codigo_conta = dados.codigo_conta === undefined && dados.id ? (grupos.porId(dados.id)?.codigo_conta ?? null) : conferirCodigo(grupos.todos(), dados.codigo_conta, 'grupo', dados.id);
   if (!dados.id) {
-    const g = await inserir(p, GruposGasto, { nome, rh: dados.rh, regra_rateio_id: dados.regra_rateio_id || null }, { email: quem.email });
+    const g = await inserir(p, GruposGasto, { nome, rh: dados.rh, regra_rateio_id: dados.regra_rateio_id || null, codigo_conta }, { email: quem.email });
     await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'GruposGasto', registroId: g.id });
     return;
   }
   const alvo = grupos.porId(dados.id);
   if (!alvo || !alvo.ativo) throw new ErroPrevisao('Grupo não encontrado.');
-  const { colunasAlteradas } = await atualizar(p, GruposGasto, dados.id, dados.versao ?? alvo.versao, { nome, rh: dados.rh, regra_rateio_id: dados.regra_rateio_id === undefined ? alvo.regra_rateio_id : dados.regra_rateio_id || null }, { email: quem.email });
+  const { colunasAlteradas } = await atualizar(p, GruposGasto, dados.id, dados.versao ?? alvo.versao, { nome, rh: dados.rh, regra_rateio_id: dados.regra_rateio_id === undefined ? alvo.regra_rateio_id : dados.regra_rateio_id || null, codigo_conta }, { email: quem.email });
   if (colunasAlteradas.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'GruposGasto', registroId: dados.id, detalhes: { colunas: colunasAlteradas } });
 }
 
 export async function salvarFonte(
   p: Planilhas,
   quem: Autorizador,
-  dados: { id?: string; versao?: number; nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita' },
+  dados: { id?: string; versao?: number; nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita'; codigo_conta?: string | null },
 ): Promise<void> {
   exigir(quem, PERM.editar);
   const nome = limparNome(dados.nome);
@@ -148,7 +166,8 @@ export async function salvarFonte(
   if (!['livre', 'restrita'].includes(dados.uso)) throw new ErroPrevisao('Escolha se o uso é livre ou restrito.');
   const [fontes] = await lerTabelas(p, [Fontes] as const);
   conferirNome(fontes.todos(), nome, 'da fonte', dados.id);
-  const campos = { nome, natureza: dados.natureza, uso: dados.uso };
+  const codigo_conta = dados.codigo_conta === undefined && dados.id ? (fontes.porId(dados.id)?.codigo_conta ?? null) : conferirCodigo(fontes.todos(), dados.codigo_conta, 'fonte', dados.id);
+  const campos = { nome, natureza: dados.natureza, uso: dados.uso, codigo_conta };
   if (!dados.id) {
     const f = await inserir(p, Fontes, campos, { email: quem.email });
     await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Fontes', registroId: f.id });
@@ -176,6 +195,11 @@ async function encerrarCadastro(p: Planilhas, quem: Autorizador, tipo: 'grupo' |
     }
   } else if (lida.ativos().some((x) => nomeComparavel(x.nome) === nomeComparavel(alvo.nome))) {
     throw new ErroPrevisao(`Já existe "${alvo.nome}" ativo.`);
+  } else {
+    const outro = acharCodigoRepetido((lida as unknown as { todos(): { id: string; nome: string; ativo: boolean; codigo_conta: string | null }[] }).todos(), alvo.codigo_conta, id);
+    if (outro) {
+      throw new ErroPrevisao(`Não dá para reativar "${alvo.nome}": o código ${alvo.codigo_conta} agora é d${tipo === 'grupo' ? 'o grupo' : 'a fonte'} "${outro.nome}". Altere o código d${tipo === 'grupo' ? 'esse grupo' : 'essa fonte'} em uso antes de reativar.`);
+    }
   }
   await atualizar(p, tabela, id, versao, { ativo } as never, { email: quem.email });
   await registrarAuditoria(p, {
@@ -372,11 +396,14 @@ export interface LinhaDespesa {
   areaNome: string;
   grupo_id: string;
   grupoNome: string;
+  /** Código da conta contábil do grupo (rótulo; vazio = sem código). */
+  grupoCodigo: string | null;
   /** Regra de rateio do item (vazio = a do grupo). */
   regra_rateio_id?: string | null;
   rh: boolean;
   fonte_id: string | null;
   fonteNome: string;
+  fonteCodigo: string | null;
   descricao: string;
   quantidade: number;
   ocorrencias: number;
@@ -397,6 +424,7 @@ export interface LinhaReceita {
   versao: number;
   fonte_id: string;
   fonteNome: string;
+  fonteCodigo: string | null;
   natureza: 'publica' | 'propria';
   uso: 'livre' | 'restrita';
   descricao: string;
@@ -441,9 +469,9 @@ export interface Previsao {
   opcoes: {
     servicos: { codigo: string; nome: string; areaNome: string }[];
     areas: { codigo: string; nome: string }[];
-    grupos: { id: string; nome: string; rh: boolean; regra_rateio_id?: string | null }[];
+    grupos: { id: string; nome: string; rh: boolean; regra_rateio_id?: string | null; codigo_conta?: string | null }[];
     regras?: { id: string; nome: string }[];
-    fontes: { id: string; nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita' }[];
+    fontes: { id: string; nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita'; codigo_conta?: string | null }[];
   };
   despesas: LinhaDespesa[];
   receitas: LinhaReceita[];
@@ -513,10 +541,12 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         areaNome: s?.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área',
         grupo_id: d.grupo_id,
         grupoNome: g?.nome ?? '?',
+        grupoCodigo: g?.codigo_conta ?? null,
         regra_rateio_id: d.regra_rateio_id ?? null,
         rh: g?.rh ?? false,
         fonte_id: d.fonte_id,
         fonteNome: nomeFonte(d.fonte_id),
+        fonteCodigo: d.fonte_id ? (fonte.get(d.fonte_id)?.codigo_conta ?? null) : null,
         descricao: d.descricao,
         quantidade: d.quantidade,
         ocorrencias: d.ocorrencias,
@@ -543,6 +573,7 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         versao: r.versao,
         fonte_id: r.fonte_id,
         fonteNome: f?.nome ?? '?',
+        fonteCodigo: f?.codigo_conta ?? null,
         natureza: f?.natureza ?? 'propria',
         uso: f?.uso ?? 'livre',
         descricao: r.descricao,
@@ -629,7 +660,7 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         .ativos()
         .map((s) => ({ codigo: s.codigo, nome: s.nome, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
         .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
-      grupos: gruposT.ativos().map((g) => ({ id: g.id, nome: g.nome, rh: g.rh, regra_rateio_id: g.regra_rateio_id ?? null })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      grupos: gruposT.ativos().map((g) => ({ id: g.id, nome: g.nome, rh: g.rh, regra_rateio_id: g.regra_rateio_id ?? null, codigo_conta: g.codigo_conta ?? null })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       regras: regrasT.ativos().map((r) => ({ id: r.id, nome: r.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       fontes: fontesT.ativos().map((f) => ({ id: f.id, nome: f.nome, natureza: f.natureza, uso: f.uso })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     },
