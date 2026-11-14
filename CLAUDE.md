@@ -96,6 +96,20 @@ Rode `npm run verificar` (tipos, lint, fronteiras e testes) e `npm run build`.
 Só entregue com tudo verde. Depois explique à Diretoria, em poucas linhas, o
 que mudou e como conferir na prévia do Pull Request.
 
+**Atualizar o ramo com a `main`.** Várias entregas andam ao mesmo tempo, cada uma a partir da
+`main` de quando começou, e mexem nos mesmos arquivos (índices `index.ts` dos módulos, imports,
+`CLAUDE.md` e especificação do módulo). Por isso, antes de verificar e de novo antes de abrir o PR
+(e a cada retomada): `git fetch origin main` e `git merge origin/main`.
+
+- Conflito: **mantenha o código dos dois lados**. Em `export`, `import` e listas, una os dois; em
+  funções ou seções novas dos dois lados, deixe as duas, uma depois da outra (cuidado com a chave
+  que fecha a primeira). Nunca apague o trabalho de outra entrega para o conflito sumir.
+- Depois do merge, confirme que não sobrou marcador (`grep -rn "^<<<<<<<\|^>>>>>>>" src docs tests`)
+  e rode `npm run verificar` e `npm run build`. Se o `verificar` acusar erro de `.next/types` de
+  páginas que não existem no seu ramo, rode `npm run build` e repita (é cache de outro ramo).
+- Se outro PR aberto mexe nos mesmos arquivos, escreva no corpo do PR: "Pode conflitar com #N em
+  <arquivo>; quando um entrar, atualizar o outro com a `main`."
+
 A Diretoria não roda nada no computador (ADR-010): toda conferência é feita
 pelo navegador, no Pull Request e na prévia. Nunca peça para ela instalar
 ferramentas ou executar comandos.
