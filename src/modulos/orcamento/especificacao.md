@@ -651,3 +651,8 @@ Uma só (pequena): colunas e regras 1–6, telas dos cadastros, depois o botão 
 - [x] Na prévia (dados fictícios): alterar um grupo e uma fonte com código; ver o código nas listas e nas
       despesas; tentar repetir um código (mensagem clara); baixar a planilha e abrir no Excel/Google Planilhas
 - [x] `npm run verificar` e `npm run build` verdes
+
+## Painel de sustentabilidade financeira (proposta #131, 14/11/2026)
+
+Especificado em `especificacao-sustentabilidade.md` (cobertura do déficit dos serviços, origem e dependência, fôlego, resultado e
+execução das parcerias). Acrescenta a coluna `origem` em `CentrosCusto`, `recorrencia` em `Fontes` e a aba `LimitesSustentabilidade`.

@@ -67,6 +67,16 @@ Especificado em `src/modulos/orcamento/especificacao-cedidos.md`.
 - [ ] Conferência dos termos da Tesouraria usando as fontes de Parcerias.
 - [ ] Anexar o arquivo do termo em Parcerias.
 
+## Painel de sustentabilidade financeira · para depois (14/11/2026, issue #131)
+
+Especificado em `src/modulos/orcamento/especificacao-sustentabilidade.md`.
+
+- [ ] Aporte medido sobre o **realizado**, mês a mês: depende de Parcerias registrar o repasse **recebido**.
+- [ ] Repasse em atraso calculado pelas datas das parcelas (hoje só pelos adiantamentos da Tesouraria, 1C.2).
+- [ ] Painel por coordenação e aporte na Ficha do serviço (plataforma).
+- [ ] Custo por serviço nos anos fechados (a importação do histórico, 1E, não traz).
+- [ ] Sugestões: baixar o painel, simulador de repasse, número no menu quando passa do limite, texto pronto de negociação.
+
 ## Comunicação
 
 App para gerenciar os pedidos de publicação: calendário de temas, pedidos de qualquer
