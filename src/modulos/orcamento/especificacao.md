@@ -508,3 +508,21 @@ R1: `telas`, `regras e dados`. R2: ver Parcerias. R3 e R4: `telas`, `regras e da
 - [ ] R3 e R4: testes de acesso (quem vê por pessoa, quem vê totais, quem altera)
 - [ ] Dados antigos (fonte do item, fonte da folha por serviço) dão o mesmo resultado nos painéis
 - [ ] `npm run verificar` e `npm run build` verdes; Diretoria confere na prévia com dados fictícios
+
+## Ajustes da onda 2 (issue #116): receita e realizado ligados a projeto
+
+- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-022. Contexto: `src/modulos/projetos/especificacao.md`,
+  seção "Ligações, onda 2" (evento de captação). Depende da Execução 1C.1 (`Realizado`) e da onda 1 (issue #115).
+- **Aba `Realizado`**: + `projeto_id` e `projeto_codigo` (cópia), opcionais, em linhas de despesa e de receita.
+  A grade **Execução › Informar realizado** ganha o campo opcional **"Projeto"** em cada linha (lista dos projetos
+  ativos que o Projetos oferece à plataforma; sem Projetos, o campo some). Linha com projeto continua somando
+  normalmente nos totais, no painel e nos indicadores; o campo só marca de que projeto ela é.
+- **Receita vinda do projeto**: na porta 2 de um evento de captação, o Projetos pede à plataforma um item de
+  **Receita "A captar"** na Fonte de natureza própria escolhida, com o valor da meta de receita (mesmo caminho
+  que a onda 1 usa para os custos). Cancelado ou parado encerra o item; nova versão troca o valor sem apagar.
+  O item mostra a origem ("Projeto PRJ-0001") e só o Projeto o altera.
+- **Leitura para o projeto** (`resultadoDoProjeto`): devolve receita realizada, custo realizado e quantidade de
+  lançamentos do projeto; **passa pelo `Autorizador`** (`orcamento.painel.ver`). Sem lançamentos devolve "sem
+  lançamentos", nunca zero. Valores não são dados pessoais.
+- Regra de teste: linha de Realizado com projeto aparece no resultado do projeto e **também** nos totais do
+  Orçamento, uma vez só; projeto desligado não quebra a grade.

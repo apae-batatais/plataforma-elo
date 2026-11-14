@@ -190,3 +190,65 @@ importa outro módulo; o Núcleo é a base compartilhada.
 - [ ] "Preparar estrutura" cria as abas e liga as permissões, dentro do limite de 10 segundos
 - [ ] `npm run verificar` e `npm run build` verdes
 - [ ] Diretoria confere na prévia, com termos fictícios
+
+## Ajustes da onda 2 (issue #116): rascunho vindo do projeto e meta com número do cadastro
+
+- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-022. Contexto e telas do projeto:
+  `src/modulos/projetos/especificacao.md`, seção "Ligações, onda 2".
+- Parcerias **continua sem importar outro módulo**. As funções abaixo ficam no `index.ts` e a plataforma as liga.
+
+### Entidades (mudanças)
+
+| Aba | Mudança |
+| --- | --- |
+| `Termos` | `situacao` ganha `rascunho` (além de `em_vigor` e `encerrado`); + `projeto_origem_id` e `projeto_origem_codigo` (cópia, opcionais); número, tipo de instrumento e vigência passam a ser opcionais **só enquanto rascunho** |
+| `Metas` | + `fonte_numero` (`manual`, `vinculos_ativos`, `indice_cuidado`, `reavaliacao_em_dia`; padrão `manual`); usa o `serviço` que a meta já tem (obrigatório com fonte automática) |
+
+### Regras de negócio (com teste)
+
+22. **Rascunho do projeto**: a função `criarRascunhoDeTermo` (chamada só pela plataforma, a pedido do Projetos)
+    cria um termo `rascunho` com parceiro, objeto, serviço (se houver), vigência prevista, **uma fonte global**
+    com o valor aprovado do projeto e o código do projeto de origem. É **idempotente por projeto**: chamar de novo
+    devolve o termo já criado, sem duplicar. Grava auditoria de inclusão, com o e-mail de quem decidiu a porta e a
+    origem. Não exige `parcerias.termos.editar` (quem decide a porta não é do Financeiro), mas **só existe nesse
+    caminho**: nenhuma tela de Parcerias cria rascunho.
+23. **Completar o rascunho** exige `parcerias.termos.editar` e cumpre todas as regras de termo (1, 2, 3, 11, 12):
+    número, tipo de instrumento, vigência, serviço, cronograma e plano. **"Concluir termo"** só habilita quando
+    não falta nada e passa a situação para `em_vigor`. Antes disso a ficha lista, em texto, o que falta.
+24. **Rascunho fica fora de tudo**: não aparece em `termosParaOrcamento`, nem no rateio, ocupação, per capita,
+    alertas de vagas ociosas ou de término de vigência. Teste: com só um rascunho, o catálogo do Orçamento vem vazio.
+25. **Valor do projeto × valor do termo**: o rascunho nasce com o valor aprovado do projeto; depois o Financeiro
+    é dono do valor. O Projetos mostra a divergência (regra L10); Parcerias não avisa nada ao projeto.
+26. **Encerrar rascunho** (`ativo = FALSE`) é permitido ao Financeiro, com motivo; se o projeto de origem foi
+    cancelado ou parado, a lista mostra a etiqueta "Projeto de origem cancelado" (informada pelo Projetos pela
+    plataforma, só leitura).
+27. **Meta com número do cadastro**: a meta pode usar uma das três fontes automáticas (mesmas do projeto, regras
+    L1 a L6) e mostra **previsto × hoje**, com a regra do mínimo de 5 pessoas. A leitura vem do Núcleo (contagem)
+    e da Avaliação (índice e reavaliação) por interface declarada em Parcerias e entregue pela plataforma;
+    Parcerias não importa a Avaliação. Avaliação desligada → "Ligação indisponível". Unidade da meta que não é
+    pessoa só admite fonte manual.
+28. **Leitura do termo para o projeto** (`termoParaProjeto`): devolve fontes, valor atual, cronograma, plano,
+    recursos próprios previstos, fim da vigência e situação; **passa pelo `Autorizador`** (`parcerias.termos.ver`
+    com escopo do termo, regra 7). Sem permissão devolve "sem permissão", nunca os valores. Sem dados pessoais.
+
+### Telas (mudanças)
+
+- **Termos (lista):** o Financeiro vê no topo o quadro **"Rascunhos para completar"** (código do projeto, parceiro,
+  valor) e o botão **"Completar termo"**; rascunho tem `Etiqueta` "Rascunho" e sai dos totais da lista. Vazio:
+  `EstadoVazio` "Nenhum rascunho para completar".
+- **Ficha do rascunho:** `Aviso` com o que falta ("Falta número do termo, tipo de instrumento e cronograma"),
+  campos vindos do projeto marcados "Vindo do projeto PRJ-0001", botão principal **"Concluir termo"**
+  (desabilitado com o motivo ao lado, como as telas de formulário do app) e **"Encerrar rascunho"** em
+  `FormularioConfirmado` ("O rascunho deixa de aparecer; o projeto continua como está"). O que a pessoa digitou
+  não se perde se der erro.
+- **Metas:** campo "De onde vem o número" (`manual` por padrão) e, quando automático, a coluna "Hoje" com o
+  número ou "Poucos casos para divulgar" e `Etiqueta` "Calculado do cadastro".
+
+### Fica de fora
+
+Prestação de contas por termo e seus prazos (roadmap); atualizar o rascunho depois de criado.
+
+### Critérios de pronto (acréscimo)
+
+- [ ] Regras 22 a 28 com testes: criação única, rascunho fora do catálogo do Orçamento, concluir só com tudo,
+      quem completa, quem lê o termo pelo projeto e meta com mínimo de 5.
