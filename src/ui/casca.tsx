@@ -12,7 +12,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { MenuUsuario } from './menu-usuario';
 import { agruparItens, chaveDoGrupo, grupoAberto, type EscolhaDeGrupos } from './grupos-do-menu';
 import { appDoCaminho } from './cor-do-app';
-import { ICONES, IconeFechar, IconeMenu, IconeRecolher, IconeSeta, type NomeIcone } from './icones';
+import { CampoDeBusca } from './campo-de-busca';
+import { ICONES, IconeBusca, IconeFechar, IconeMenu, IconeRecolher, IconeSeta, type NomeIcone } from './icones';
 
 export type { NomeIcone };
 
@@ -189,6 +190,7 @@ export function Casca({
   sair,
   faixa,
   instituicao,
+  comBusca = true,
   children,
 }: {
   instituicao: string;
@@ -196,12 +198,18 @@ export function Casca({
   usuario: UsuarioCasca;
   sair: () => Promise<void>;
   faixa?: ReactNode;
+  /** Campo da busca única na barra do topo (some enquanto a estrutura não está pronta). */
+  comBusca?: boolean;
   children: ReactNode;
 }) {
   const gaveta = useRef<HTMLDialogElement>(null);
   const caminho = usePathname();
-  useEffect(() => gaveta.current?.close(), [caminho]);
+  useEffect(() => {
+    gaveta.current?.close();
+    setBuscaAberta(false);
+  }, [caminho]);
   const [recolhido, setRecolhido] = useState(false);
+  const [buscaAberta, setBuscaAberta] = useState(false);
   useEffect(() => {
     try {
       setRecolhido(localStorage.getItem('elo-menu') === 'recolhido');
@@ -247,15 +255,33 @@ export function Casca({
       {/* Celular: barra superior + menu */}
       <div className="sticky top-0 z-30 flex items-center justify-between border-b border-borda bg-superficie px-3 py-2 lg:hidden print:hidden">
         <Marca instituicao={instituicao} />
-        <button
-          type="button"
-          onClick={() => gaveta.current?.showModal()}
-          aria-label="Abrir menu"
-          className="flex size-11 items-center justify-center rounded-md text-texto hover:bg-superficie-2"
-        >
-          <IconeMenu tamanho={24} />
-        </button>
+        <div className="flex items-center">
+          {comBusca && (
+            <button
+              type="button"
+              onClick={() => setBuscaAberta((a) => !a)}
+              aria-label="Buscar no Elo"
+              aria-expanded={buscaAberta}
+              className="flex size-11 items-center justify-center rounded-md text-texto hover:bg-superficie-2"
+            >
+              <IconeBusca tamanho={22} />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => gaveta.current?.showModal()}
+            aria-label="Abrir menu"
+            className="flex size-11 items-center justify-center rounded-md text-texto hover:bg-superficie-2"
+          >
+            <IconeMenu tamanho={24} />
+          </button>
+        </div>
       </div>
+      {comBusca && buscaAberta && (
+        <div className="border-b border-borda bg-superficie px-3 pb-3 lg:hidden print:hidden">
+          <CampoDeBusca autoFoco />
+        </div>
+      )}
       <dialog
         ref={gaveta}
         aria-label="Menu"
@@ -274,6 +300,15 @@ export function Casca({
       </dialog>
 
       {faixa}
+      {comBusca && (
+        <div className="sticky top-0 z-10 hidden border-b border-borda bg-superficie/95 px-10 py-2 backdrop-blur lg:block print:hidden">
+          <div className="mx-auto max-w-6xl">
+            <div className="max-w-md">
+              <CampoDeBusca atalho />
+            </div>
+          </div>
+        </div>
+      )}
       <main id="conteudo" className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-8 print:max-w-none print:p-0">
         {children}
       </main>

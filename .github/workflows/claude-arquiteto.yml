@@ -65,8 +65,9 @@ jobs:
             2. Leia a proposta e todos os comentários: `gh issue view ${{ github.event.issue.number }} --comments`.
             3. Leia o código e os documentos que a proposta toca.
             4. Se houver dúvida que só a Diretoria pode responder, publique UM comentário na issue com
-               todas as perguntas numeradas, cada uma com opções numeradas, e pare aqui (sem PR).
-               Perguntas já respondidas nos comentários não se repetem.
+               todas as perguntas numeradas, cada uma com opções numeradas, ponha a etiqueta "pergunta
+               aberta" (`gh issue edit ${{ github.event.issue.number }} --add-label "pergunta aberta"`)
+               e pare aqui (sem PR). Perguntas já respondidas nos comentários não se repetem.
             5. Sem dúvidas pendentes: crie o ramo `spec/${{ github.event.issue.number }}-<assunto>` a partir
                da main, escreva a especificação no lugar indicado pelo CLAUDE.md (com a seção "Frentes")
                e a ADR se houver decisão de arquitetura. Se houver tela, siga o roteiro "Telas e

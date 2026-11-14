@@ -13,16 +13,20 @@ import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
+import { BotaoBaixar } from '@/modulos/orcamento/telas/botao-baixar';
 import { CadastroEmLoteOrcamento } from '@/modulos/orcamento/telas/cadastro-em-lote';
 import { acaoExcluirGrupo, acaoReativarGrupo, acaoSalvarGrupo, acaoCadastrarGruposEmLote, acaoConferirGruposEmLote } from '../acoes';
 
 export const metadata: Metadata = { title: 'Grupos de gasto' };
 
-function CamposGrupo({ valor, regras }: { valor?: { nome: string; rh: boolean; regra_rateio_id?: string | null }; regras: { id: string; nome: string }[] }) {
+function CamposGrupo({ valor, regras }: { valor?: { nome: string; rh: boolean; regra_rateio_id?: string | null; codigo_conta?: string | null }; regras: { id: string; nome: string }[] }) {
   return (
     <>
       <Campo rotulo="Nome" obrigatorio dica="Não pode repetir o nome de outro grupo.">
         <input name="nome" required defaultValue={valor?.nome} className={estiloEntrada} />
+      </Campo>
+      <Campo rotulo="Código da conta contábil (opcional)" dica="Como está no sistema da contabilidade, por exemplo 3.1.02.001. Não pode repetir o de outro grupo.">
+        <input name="codigo_conta" maxLength={30} defaultValue={valor?.codigo_conta ?? ''} className={estiloEntrada} />
       </Campo>
       <fieldset className="text-sm">
         <legend className="font-semibold">Tipo</legend>
@@ -65,6 +69,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
         descricao="Classificam as despesas (ex.: Material de consumo, Serviços). Marque como Recursos Humanos os grupos que somam no indicador da folha, como RPA e rescisões."
         acoes={
           <>
+            <BotaoBaixar href="/orcamento/previsao/baixar/grupos" rotulo="Baixar planilha" vazio={grupos.ativos.length === 0} />
             <JanelaFormulario
               rotulo="Cadastrar em lote"
               variante="fantasma"
@@ -113,6 +118,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
         vazio="Nenhum grupo cadastrado. Use “Adicionar grupo”."
         colunas={[
           { chave: 'nome', rotulo: 'Grupo' },
+          { chave: 'codigo', rotulo: 'Código da conta' },
           { chave: 'tipo', rotulo: 'Tipo' },
           { chave: 'regra', rotulo: 'Regra de rateio' },
           { chave: 'itens', rotulo: 'Itens no orçamento', tipo: 'numero' },
@@ -122,9 +128,10 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
           const n = grupos.uso[g.id] ?? 0;
           return {
             id: g.id,
-            valores: { nome: g.nome, tipo: g.rh ? 'Recursos Humanos' : 'Despesa geral', regra: regras.find((r) => r.id === g.regra_rateio_id)?.nome ?? 'Base do painel', itens: n },
+            valores: { nome: g.nome, codigo: g.codigo_conta ?? '—', tipo: g.rh ? 'Recursos Humanos' : 'Despesa geral', regra: regras.find((r) => r.id === g.regra_rateio_id)?.nome ?? 'Base do painel', itens: n },
             celulas: {
               nome: <span className="font-semibold">{g.nome}</span>,
+              codigo: g.codigo_conta ?? <span className="text-texto-suave">—</span>,
               tipo: g.rh ? <Etiqueta tipo="info">Recursos Humanos</Etiqueta> : <span className="text-texto-suave">Despesa geral</span>,
               acoes: (
                 <div className="flex justify-end gap-1">

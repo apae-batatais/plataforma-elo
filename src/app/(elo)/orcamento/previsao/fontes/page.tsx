@@ -13,16 +13,20 @@ import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
+import { BotaoBaixar } from '@/modulos/orcamento/telas/botao-baixar';
 import { CadastroEmLoteOrcamento } from '@/modulos/orcamento/telas/cadastro-em-lote';
 import { acaoExcluirFonte, acaoReativarFonte, acaoSalvarFonte, acaoCadastrarFontesEmLote, acaoConferirFontesEmLote } from '../acoes';
 
 export const metadata: Metadata = { title: 'Fontes de recurso' };
 
-function CamposFonte({ valor }: { valor?: { nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita' } }) {
+function CamposFonte({ valor }: { valor?: { nome: string; natureza: 'publica' | 'propria'; uso: 'livre' | 'restrita'; codigo_conta?: string | null } }) {
   return (
     <>
       <Campo rotulo="Nome" obrigatorio dica="Não pode repetir o nome de outra fonte.">
         <input name="nome" required defaultValue={valor?.nome} className={estiloEntrada} />
+      </Campo>
+      <Campo rotulo="Código da conta contábil (opcional)" dica="Como está no sistema da contabilidade, por exemplo 4.1.01.001. Não pode repetir o de outra fonte.">
+        <input name="codigo_conta" maxLength={30} defaultValue={valor?.codigo_conta ?? ''} className={estiloEntrada} />
       </Campo>
       <fieldset className="text-sm">
         <legend className="font-semibold">Natureza</legend>
@@ -63,6 +67,7 @@ export default async function FontesDeRecurso({ searchParams }: { searchParams: 
         descricao="De onde vem o dinheiro de cada receita e o que paga cada despesa. Natureza e uso alimentam os indicadores; Projeto Incentivado conta como pública."
         acoes={
           <>
+            <BotaoBaixar href="/orcamento/previsao/baixar/fontes" rotulo="Baixar planilha" vazio={fontes.ativos.length === 0} />
             <JanelaFormulario
               rotulo="Cadastrar em lote"
               variante="fantasma"
@@ -111,6 +116,7 @@ export default async function FontesDeRecurso({ searchParams }: { searchParams: 
         vazio="Nenhuma fonte cadastrada. Use “Adicionar fonte”."
         colunas={[
           { chave: 'nome', rotulo: 'Fonte' },
+          { chave: 'codigo', rotulo: 'Código da conta' },
           { chave: 'natureza', rotulo: 'Natureza' },
           { chave: 'uso', rotulo: 'Uso' },
           { chave: 'itens', rotulo: 'Itens no orçamento', tipo: 'numero' },
@@ -120,9 +126,10 @@ export default async function FontesDeRecurso({ searchParams }: { searchParams: 
           const n = fontes.uso[f.id] ?? 0;
           return {
             id: f.id,
-            valores: { nome: f.nome, natureza: NATUREZA[f.natureza], uso: USO[f.uso], itens: n },
+            valores: { nome: f.nome, codigo: f.codigo_conta ?? '—', natureza: NATUREZA[f.natureza], uso: USO[f.uso], itens: n },
             celulas: {
               nome: <span className="font-semibold">{f.nome}</span>,
+              codigo: f.codigo_conta ?? <span className="text-texto-suave">—</span>,
               natureza: <Etiqueta tipo={f.natureza === 'publica' ? 'info' : 'neutro'}>{NATUREZA[f.natureza]}</Etiqueta>,
               acoes: (
                 <div className="flex justify-end gap-1">

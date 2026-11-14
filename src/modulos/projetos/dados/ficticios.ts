@@ -3,11 +3,12 @@
  * em situações diferentes. Passam pelos casos de uso, então seguem as mesmas regras de quem usa o app.
  */
 import { Autorizador } from '@/nucleo/acesso/autorizador';
-import { lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { atualizar, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { salvarConfig } from '../aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
+import { Projetos } from '../dados/tabelas';
 import { CONFIG_PADRAO } from '../dominio/projeto';
 
 const FUNCIONARIO = 'funcionario@exemplo.local';
@@ -61,4 +62,15 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   await darParecer(p, await como(p, FINANCEIRO), abertaCinco.portaId, 'financeiro', 'com_ressalvas', 'Texto fictício: conferir a contrapartida.', { agora: dia(13) });
   await darParecer(p, await como(p, JURIDICO), abertaCinco.portaId, 'juridico', 'satisfatorio', null, { agora: dia(14) });
   await decidirPorta(p, diretoria, abertaCinco.portaId, 1, 'seguir', 'Texto fictício: a ideia atende à necessidade; segue para a alçada.', { agora: dia(15) });
+  // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
+  const datas: [string, string, string][] = [
+    [quatro.id, '2026-12-01', '2027-02-26'],
+    [cinco.id, '2027-03-01', '2027-12-17'],
+    [tres.id, '2026-12-18', '2026-12-18'],
+  ];
+  for (const [id, inicio, fim] of datas) {
+    const [projetos] = await lerTabelas(p, [Projetos] as const);
+    const atual = projetos.porId(id)!;
+    await atualizar(p, Projetos, id, atual.versao, { inicio_previsto: inicio, fim_previsto: fim }, { email: DIRETORIA, agora: () => dia(16) });
+  }
 }

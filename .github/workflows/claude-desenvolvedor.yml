@@ -106,11 +106,15 @@ jobs:
                Se existir um plano em docs/superpowers/plans/ para esta entrega, continue da primeira
                tarefa não concluída.
             4. Se faltar uma decisão que só a Diretoria pode tomar, comente na issue as perguntas
-               numeradas, com opções, e pare.
+               numeradas, com opções, ponha a etiqueta "pergunta aberta"
+               (`gh issue edit ${{ env.ISSUE }} --add-label "pergunta aberta"`) e pare.
             5. Senão: crie o ramo `feat/<modulo>-<assunto>` a partir da main, escreva o plano e o
                andamento em docs/superpowers/plans/, construa com testes e faça commit e push ao fim
-               de cada tarefa.
-            6. Rode `npm run verificar` e `npm run build` até tudo passar. Se houver tela, faça também a
+               de cada tarefa. Antes de começar, veja os PRs de entrega abertos e os arquivos que eles
+               mexem (`gh api "repos/{owner}/{repo}/pulls?state=open&per_page=50"` e `.../pulls/<n>/files`).
+            6. Atualize o ramo com a main (`git fetch origin main` e `git merge origin/main`) antes de
+               verificar e de novo antes de abrir o PR, seguindo "Atualizar o ramo com a main" do CLAUDE.md.
+               Rode `npm run verificar` e `npm run build` até tudo passar. Se houver tela, faça também a
                "Revisão de usabilidade" da habilidade telas na demonstração e leve o resultado ao PR.
             7. Abra o PR com `gh pr create --base main --label "PR: entrega"`: corpo em português começando com a linha
                "Entrega #${{ env.ISSUE }}", o que mudou, roteiro de conferência na prévia e as decisões

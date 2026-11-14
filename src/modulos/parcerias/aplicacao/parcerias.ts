@@ -10,6 +10,7 @@ import { atualizar, inserir, inserirRegistros, lerTabelas, type Planilhas } from
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Servicos } from '@/nucleo/estrutura/tabelas';
 import type { NumeroAgregado } from '@/nucleo/ligacoes/numero-agregado';
+import { contem, MAX_RESULTADOS_POR_APP, type ItemDaAgenda, type ResultadoDaBusca } from '@/nucleo/modulos/agenda-busca';
 import { contarAtendidos, vinculosAtivosProtegido } from '@/nucleo/pessoas/contagem';
 import {
   AporteParcelas,
@@ -754,4 +755,55 @@ export async function registrarAporteDemonstracao(p: Planilhas, termoId: string,
   const a = await inserir(p, Aportes, { termo_id: termoId, fonte_id: fonte.id, tipo: 'aditivo', registrado_em: '2026-07-01', inicio: '2026-07-01', fim: '2026-12-31', valor: 6000, cronograma: 'digitado', descricao: 'Aditivo (exemplo)' }, autoria);
   const valores = [2000, 800, 800, 800, 800, 800];
   await inserirRegistros(p, l.aporteParcelas, valores.map((valor, i) => ({ aporte_id: a.id, mes: `2026-${String(7 + i).padStart(2, '0')}`, valor })), autoria);
+}
+
+// --- agenda única e busca única (ADR-024) ----------------------------------------
+const MESES = ['', 'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+
+/** Fim da vigência e parcelas dos termos em vigor que a pessoa já vê. As parcelas vão sem valor. */
+export async function itensDaAgenda(p: Planilhas, quem: Autorizador): Promise<ItemDaAgenda[]> {
+  if (!quem.temPermissaoAlgumEscopo(PERM.ver)) return [];
+  const l = await ler(p);
+  const itens: ItemDaAgenda[] = [];
+  for (const t of l.termos.ativos().filter((x) => x.situacao === 'em_vigor')) {
+    const servicos = l.servicos.ativos().filter((s) => s.termo_id === t.id).map((s) => s.servico);
+    if (!podeVer(quem, servicos)) continue;
+    const href = `/parcerias/${t.id}`;
+    const servico = servicos.length === 1 ? servicos[0] : null;
+    itens.push({ app: 'parcerias', tipo: 'Fim do termo', titulo: `Fim do termo ${t.numero}`, data: t.fim, ate: null, mes: null, servico, href, vencivel: true });
+    for (const f of l.fontes.ativos().filter((x) => x.termo_id === t.id))
+      for (const parcela of l.parcelas.ativos().filter((x) => x.fonte_id === f.id)) {
+        const [, m] = parcela.mes.split('-').map(Number);
+        itens.push({
+          app: 'parcerias',
+          tipo: 'Parcela',
+          titulo: `Parcela de ${f.nome} (${MESES[m] ?? parcela.mes})`,
+          data: null,
+          ate: null,
+          mes: parcela.mes,
+          servico,
+          href,
+          vencivel: false,
+        });
+      }
+  }
+  return itens;
+}
+
+/** Termos por número, parceiro ou objeto, só os que a pessoa já vê. */
+export async function buscar(p: Planilhas, quem: Autorizador, termo: string): Promise<ResultadoDaBusca[]> {
+  if (!quem.temPermissaoAlgumEscopo(PERM.ver)) return [];
+  const l = await ler(p);
+  return l.termos
+    .ativos()
+    .filter((t) => [t.numero, t.parceiro, t.objeto].some((c) => contem(c, termo)))
+    .filter((t) => podeVer(quem, l.servicos.ativos().filter((s) => s.termo_id === t.id).map((s) => s.servico)))
+    .slice(0, MAX_RESULTADOS_POR_APP)
+    .map((t) => ({
+      app: 'parcerias',
+      tipo: 'Termo',
+      titulo: `Termo ${t.numero}`,
+      apoio: `${t.parceiro} · ${t.situacao === 'em_vigor' ? 'em vigor' : 'encerrado'}`,
+      href: `/parcerias/${t.id}`,
+    }));
 }

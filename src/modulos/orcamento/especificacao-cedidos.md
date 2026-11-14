@@ -1,6 +1,6 @@
 # Especificação — Orçamento: profissionais cedidos no custo dos serviços
 
-- Situação: C1 entregue (proposta #125, 14/11/2026); C2 pendente. Na C1, "Quem cede" ficou em `/orcamento/cedidos/cedentes` (menu Folha de pagamento), porque o Departamento Pessoal não entra nas rotas da Previsão; o campo de termo (Parcerias) fica para a C2.
+- Situação: aprovada (proposta #125, 14/11/2026); entrega C2 detalhada na seção "Entrega C2 (issue #141)" ao fim
 - Dono do produto: Diretoria
 - Complementa `especificacao.md` (Folha 1A, Previsão 1B, Análise por área, indicadores) e
   `especificacao-folha-caixa-passivo.md` (caixa e passivo: **cedidos ficam fora**). Arquitetura: ADR-011 e
@@ -249,6 +249,41 @@ Seguem as habilidades `telas` e `graficos` e `docs/identidade-visual.md`; nenhum
 `telas`, `regras e dados`. Sem infraestrutura. **Fora do módulo (precisa de aprovação):**
 `src/plataforma/alertas.ts` (número no menu) e `src/plataforma/ligacoes.ts` (entrega da leitura por cedente à
 #131 e do catálogo de termos); nenhuma mudança no Núcleo.
+
+## Entrega C2 (issue #141): como construir
+
+Continuação da #125, prioridade 2 de 6. **Nada do que a Diretoria decidiu muda**: valem as regras 8 a 15, as
+telas 4 e 5 e as respostas 1.2, 2, 3.3 e 4.1. Esta seção só organiza a construção.
+
+**Pré-condição:** começar depois do merge do PR #137 (C1). A C2 reaproveita o que a C1 cria (abas `Cedentes`,
+`Cedidos`, `ValoresCedidos`, `LotacaoCedidos`, a regra de "cedido ativo no mês" e a regra de "falta valor ou
+lotação"). Se algo da C1 construída divergir da regra 5 ou da seção Entidades, o Desenvolvedor **pergunta na
+issue** antes de seguir.
+
+**Ordem sugerida (três passos conferíveis na prévia, no mesmo PR ou em PRs seguidos):**
+
+| Passo | Conteúdo | Regras |
+| --- | --- | --- |
+| C2a, números | Cálculo puro de despesa e receita de cedidos por serviço, cedente e mês; entrada nos custos, rateios, per capita e indicadores, com a visão "com" e "sem" | 8 a 11, 14, 15 |
+| C2b, telas | Seletor "Incluir cedidos", linhas automáticas nas listas, coluna "Cedidos" e dois per capita na Análise por área, Ficha do serviço | 9, 13 a 15; tela 4 |
+| C2c, participação | Tela "Participação de quem cede" e a leitura por cedente para a #131 | 12, 13; tela 5 |
+
+**Pontos de atenção:**
+
+- A leitura por serviço e cedente para o painel de sustentabilidade (#131, PR #139 ainda aberto) é só a
+  leitura do Orçamento, sem dado pessoal; o painel em si é da #131. Se o formato esperado pela #131 mudar até lá,
+  alinhar na issue, sem mudar a regra 13.
+- Todo número novo tem teste nas duas visões; o teste de regressão da regra 14 (seletor desligado igual a hoje,
+  centavo a centavo) é o primeiro a escrever.
+- Arquivos fora do módulo: só `src/plataforma/ligacoes.ts` (campo `cedidos` e leitura por cedente), como já
+  aprovado na seção Frentes; nenhuma mudança no Núcleo.
+
+**Frentes da C2:** `telas`, `regras e dados`. Sem infraestrutura.
+
+**Critérios de pronto da C2:** os da seção "Critérios de pronto" que tratam de visão com e sem cedidos, receita
+igual à despesa, resultado igual nas duas visões, indicadores, regressão, acesso, e na prévia: custo e per capita
+de um serviço com e sem cedidos, o resultado previsto igual, a tela de participação por cedente, e os saldos da
+Tesouraria e do caixa sem mudança.
 
 ## Decisões tomadas sozinho
 

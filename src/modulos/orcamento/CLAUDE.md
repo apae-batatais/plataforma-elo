@@ -29,4 +29,8 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   Informar/corrigir/remover: `orcamento.realizado.editar` (Financeiro); ver: `orcamento.execucao.ver` (Coordenação só o seu escopo,
   sem receitas). Salvar o mês é tudo ou nada (versão lida); remover encerra (`ativo = FALSE`). Regras puras em `dominio/realizado.ts`.
 - Folha em caixa (P1 da #126): `dominio/caixa.ts` (puro). O custo do mês não muda; o Resumo soma o deslocamento de 13º, 1/3 de férias e abono (com encargos) ao custo. Calendário na aba `CalendarioPagamento` (só inclusões, só `orcamento.parametros.editar`); `contrato` e `mes_ferias` em `Funcionarios`.
+- Código da conta contábil (#127): coluna opcional `codigo_conta` em `GruposGasto` e `Fontes` (texto até 30 caracteres, único entre
+  os ativos de cada cadastro; regras em `dominio/codigo-conta.ts`). Aparece nas listas, no lote, na importação de itens
+  (casa por nome ou código) e em "Baixar planilha" (CSV, `aplicacao/baixar-planilha.ts`, rota `previsao/baixar/[arquivo]`).
+  Sem plano de contas no Elo; o código não é dado pessoal.
 - Cedidos (C1 da #125): `dominio/cedidos.ts` (puro) e `aplicacao/cedidos.ts`. Abas `Cedidos`, `ValoresCedidos`, `LotacaoCedidos` (planilha da folha, nome e valor pessoais) e `Cedentes` (planilha `orcamento`). Nada altera folha, caixa ou passivo. Ver e abrir ficha: `folha.ver_individual` (com auditoria de leitura); alterar: `folha.editar`. Aviso de fim de cessão (parâmetro `cessao_aviso_dias`): DP, Financeiro e Diretoria com nome; coordenação só no seu escopo e sem nome.

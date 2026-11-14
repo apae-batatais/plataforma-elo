@@ -18,6 +18,7 @@ import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { atualizar, atualizarVarios, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
+import { contem, MAX_RESULTADOS_POR_APP, type ItemDaAgenda, type ResultadoDaBusca } from '@/nucleo/modulos/agenda-busca';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import { Areas, Atribuicoes, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
@@ -66,7 +67,7 @@ import {
 import { aceitaAnexos, conferirArquivo, conferirQuantidade, type TipoAnexo } from '../dominio/anexos';
 import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
 import { mesDe, montarPainel } from '../dominio/painel';
-import { EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
+import { diaLimite, EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
 
 export { ErroRequisicao };
 
@@ -1274,4 +1275,52 @@ export async function requisicoesDoServico(
     atrasadas: abertas.filter((r) => linha(d, r, agora).prazo?.situacao === 'atrasada').length,
     atendidasNoAno: doServico.filter((r) => (r.situacao === 'atendida' || r.situacao === 'atendida_parcial') && (r.concluida_em ?? '').startsWith(String(ano))).length,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Agenda única e busca única (ADR-024): só o que a pessoa já vê em Requisições
+// ---------------------------------------------------------------------------
+
+/** Prazo de aprovação ou de atendimento das requisições abertas que a pessoa vê (dia limite, pelo expediente e feriados). */
+export async function itensDaAgenda(p: Planilhas, quem: Autorizador, opcoes: { agora?: Date } = {}): Promise<ItemDaAgenda[]> {
+  if (!quem.temPermissaoAlgumEscopo('requisicoes.acessar')) return [];
+  const d = await ler(p, opcoes.agora ?? new Date());
+  const itens: ItemDaAgenda[] = [];
+  for (const r of d.requisicoes.ativos().filter((x) => podeVer(quem, d, x))) {
+    const tipo = d.tipoPorId.get(r.tipo_id);
+    if (!tipo) continue;
+    const aprovando = r.situacao === 'enviada';
+    const atendendo = (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && r.decidida_em;
+    if (!aprovando && !atendendo) continue;
+    const data = aprovando ? diaLimite(r.enviada_em, tipo.prazo_aprovacao, d.expediente) : diaLimite(r.decidida_em!, tipo.prazo_atendimento, d.expediente);
+    itens.push({
+      app: 'requisicoes',
+      tipo: aprovando ? 'Prazo de aprovação' : 'Prazo de atendimento',
+      titulo: `Prazo de ${aprovando ? 'aprovação' : 'atendimento'} da ${r.numero}`,
+      data,
+      ate: null,
+      mes: null,
+      servico: null,
+      href: `/requisicoes/${r.id}`,
+      vencivel: true,
+    });
+  }
+  return itens;
+}
+
+/** Requisições por número ou nome do tipo, só as que a pessoa já vê. Nome de quem pediu não é buscado. */
+export async function buscar(p: Planilhas, quem: Autorizador, termo: string): Promise<ResultadoDaBusca[]> {
+  if (!quem.temPermissaoAlgumEscopo('requisicoes.acessar')) return [];
+  const d = await ler(p, new Date());
+  return d.requisicoes
+    .ativos()
+    .filter((r) => (contem(r.numero, termo) || contem(d.tipoPorId.get(r.tipo_id)?.nome, termo)) && podeVer(quem, d, r))
+    .slice(0, MAX_RESULTADOS_POR_APP)
+    .map((r) => ({
+      app: 'requisicoes',
+      tipo: 'Requisição',
+      titulo: r.numero,
+      apoio: `${d.tipoPorId.get(r.tipo_id)?.nome ?? 'Requisição'} · ${NOME_SITUACAO[r.situacao]}`,
+      href: `/requisicoes/${r.id}`,
+    }));
 }

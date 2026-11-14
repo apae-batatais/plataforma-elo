@@ -2,8 +2,8 @@
  * Grupos de gasto e fontes de recurso em lote: a pessoa cola uma lista
  * copiada de uma planilha, confere a prévia e confirma.
  *
- * - Grupos: Nome; Tipo (opcional: "RH" ou "Recursos Humanos"; vazio = despesa geral).
- * - Fontes: Nome; Natureza (pública ou própria); Uso (livre ou restrito).
+ * - Grupos: Nome; Tipo (opcional: "RH" ou "Recursos Humanos"; vazio = despesa geral); Código da conta (opcional).
+ * - Fontes: Nome; Natureza (pública ou própria); Uso (livre ou restrito); Código da conta (opcional).
  *
  * Nomes que já existem (inclusive entre os excluídos) ou repetidos na lista
  * são ignorados. Na confirmação, tudo é conferido de novo antes de gravar.
@@ -12,6 +12,7 @@ import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Fontes, GruposGasto } from '../dados/tabelas';
+import { acharCodigoRepetido, chaveCodigoConta, ErroCodigoConta, limparCodigoConta } from '../dominio/codigo-conta';
 import { nomeComparavel } from '../dominio/previsao';
 import { ErroValidacaoFolha } from './folha';
 
@@ -23,6 +24,7 @@ export interface LinhaCadastroLote {
   rh?: boolean;
   natureza?: 'publica' | 'propria';
   uso?: 'livre' | 'restrita';
+  codigo_conta?: string | null;
   situacao: 'ok' | 'ja_existe' | 'erro';
   problema: string | null;
 }
@@ -58,10 +60,12 @@ export async function analisarCadastrosEmLote(p: Planilhas, quem: Autorizador, t
   const [grupos, fontes] = await lerTabelas(p, [GruposGasto, Fontes] as const);
   const existentes = new Map((tipo === 'grupo' ? grupos.todos() : fontes.todos()).map((x) => [nomeComparavel(x.nome), x]));
   const naLista = new Set<string>();
+  const codigosNaLista = new Map<string, string>();
+  const cadastrados = (tipo === 'grupo' ? grupos.todos() : fontes.todos()) as { id: string; nome: string; ativo: boolean; codigo_conta: string | null }[];
   const resultado: LinhaCadastroLote[] = [];
 
   texto.split(/\r?\n/).forEach((bruta, i) => {
-    const [nomeBruto = '', a = '', b = ''] = bruta.split(/\t|;/).map((x) => x.trim());
+    const [nomeBruto = '', a = '', b = '', c = ''] = bruta.split(/\t|;/).map((x) => x.trim());
     const nome = limpar(nomeBruto);
     if (!nome) return;
     const chave = nomeComparavel(nome);
@@ -114,6 +118,23 @@ export async function analisarCadastrosEmLote(p: Planilhas, quem: Autorizador, t
         });
       else Object.assign(linha, { natureza, uso });
     }
+    if (linha.situacao === 'ok') {
+      const bruto = tipo === 'grupo' ? b : c;
+      try {
+        const codigo = limparCodigoConta(bruto);
+        const dono = acharCodigoRepetido(cadastrados, codigo);
+        const colega = codigo ? codigosNaLista.get(chaveCodigoConta(codigo)) : undefined;
+        if (dono) Object.assign(linha, { situacao: 'erro', problema: `O código ${codigo} já é d${tipo === 'grupo' ? 'o grupo' : 'a fonte'} "${dono.nome}".` });
+        else if (colega) Object.assign(linha, { situacao: 'erro', problema: `O código ${codigo} está repetido na lista (também em "${colega}").` });
+        else {
+          linha.codigo_conta = codigo;
+          if (codigo) codigosNaLista.set(chaveCodigoConta(codigo), nome);
+        }
+      } catch (e) {
+        if (!(e instanceof ErroCodigoConta)) throw e;
+        Object.assign(linha, { situacao: 'erro', problema: e.message });
+      }
+    }
     naLista.add(chave);
     resultado.push(linha);
   });
@@ -125,7 +146,7 @@ export async function cadastrarEmLote(p: Planilhas, quem: Autorizador, tipo: Tip
   exigir(quem);
   const texto = linhas
     .filter((l) => l.situacao === 'ok')
-    .map((l) => (tipo === 'grupo' ? `${l.nome};${l.rh ? 'RH' : ''}` : `${l.nome};${l.natureza ?? ''};${l.uso ?? ''}`))
+    .map((l) => (tipo === 'grupo' ? `${l.nome};${l.rh ? 'RH' : ''};${l.codigo_conta ?? ''}` : `${l.nome};${l.natureza ?? ''};${l.uso ?? ''};${l.codigo_conta ?? ''}`))
     .join('\n');
   const conferidas = (await analisarCadastrosEmLote(p, quem, tipo, texto)).filter((l) => l.situacao === 'ok');
   if (conferidas.length === 0) throw new ErroValidacaoFolha('Nenhum item pronto para cadastrar. Confira a lista de novo.');
@@ -135,7 +156,7 @@ export async function cadastrarEmLote(p: Planilhas, quem: Autorizador, tipo: Tip
     await inserirRegistros(
       p,
       grupos,
-      conferidas.map((l) => ({ nome: l.nome, rh: Boolean(l.rh) })),
+      conferidas.map((l) => ({ nome: l.nome, rh: Boolean(l.rh), codigo_conta: l.codigo_conta ?? null })),
       autoria,
     );
   } else {
@@ -146,6 +167,7 @@ export async function cadastrarEmLote(p: Planilhas, quem: Autorizador, tipo: Tip
         nome: l.nome,
         natureza: l.natureza!,
         uso: l.uso!,
+        codigo_conta: l.codigo_conta ?? null,
       })),
       autoria,
     );

@@ -17,6 +17,7 @@ import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import { Areas } from '@/nucleo/estrutura/tabelas';
+import { contem, MAX_RESULTADOS_POR_APP, type ItemDaAgenda, type ResultadoDaBusca } from '@/nucleo/modulos/agenda-busca';
 import {
   AnexosComunicacao,
   CalendarioComunicacao,
@@ -675,4 +676,58 @@ export async function publicacoesDoServico(p: Planilhas, quem: Autorizador, serv
       .slice(0, 5)
       .map((r) => ({ numero: r.numero, titulo: r.titulo, tipoPeca: r.tipo_peca, publicadoEm: r.publicado_em, link: r.link_publicacao })),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Agenda única e busca única (ADR-024): só o que a pessoa já vê em Comunicação
+// ---------------------------------------------------------------------------
+
+/** Temas do calendário (para quem o gerencia) e publicações agendadas (dos pedidos que a pessoa vê). */
+export async function itensDaAgenda(p: Planilhas, quem: Autorizador): Promise<ItemDaAgenda[]> {
+  if (!quem.temPermissaoAlgumEscopo('comunicacao.acessar')) return [];
+  const [calendario, pedidos] = await lerTabelas(p, [CalendarioComunicacao, PedidosComunicacao] as const);
+  const itens: ItemDaAgenda[] = [];
+  if (quem.temPermissao('comunicacao.calendario.gerenciar'))
+    for (const t of calendario.ativos())
+      itens.push({
+        app: 'comunicacao',
+        tipo: 'Tema',
+        titulo: `Tema: ${t.tema}`,
+        data: t.inicio,
+        ate: t.fim > t.inicio ? t.fim : null,
+        mes: null,
+        servico: null,
+        href: '/comunicacao/calendario',
+        vencivel: false,
+      });
+  for (const r of pedidos.ativos().filter((x) => x.situacao === 'agendado' && x.agendado_para && podeVer(quem, x)))
+    itens.push({
+      app: 'comunicacao',
+      tipo: 'Publicação agendada',
+      titulo: `Publicação agendada: ${r.titulo}`,
+      data: diaEmBrasilia(new Date(r.agendado_para!)),
+      ate: null,
+      mes: null,
+      servico: r.servico ?? null,
+      href: `/comunicacao/${r.id}`,
+      vencivel: true,
+    });
+  return itens;
+}
+
+/** Pedidos por número ou título, e temas do calendário (para quem o gerencia). Nunca o nome de quem pediu. */
+export async function buscar(p: Planilhas, quem: Autorizador, termo: string): Promise<ResultadoDaBusca[]> {
+  if (!quem.temPermissaoAlgumEscopo('comunicacao.acessar')) return [];
+  const [calendario, pedidos] = await lerTabelas(p, [CalendarioComunicacao, PedidosComunicacao] as const);
+  const doCalendario: ResultadoDaBusca[] = quem.temPermissao('comunicacao.calendario.gerenciar')
+    ? calendario
+        .ativos()
+        .filter((t) => contem(t.tema, termo))
+        .map((t) => ({ app: 'comunicacao', tipo: 'Tema', titulo: t.tema, apoio: 'Tema do calendário', href: '/comunicacao/calendario' }))
+    : [];
+  const dosPedidos: ResultadoDaBusca[] = pedidos
+    .ativos()
+    .filter((r) => (contem(r.numero, termo) || contem(r.titulo, termo)) && podeVer(quem, r))
+    .map((r) => ({ app: 'comunicacao', tipo: 'Pedido', titulo: r.titulo, apoio: `${r.numero} · ${NOME_SITUACAO[r.situacao]}`, href: `/comunicacao/${r.id}` }));
+  return [...dosPedidos, ...doCalendario].slice(0, MAX_RESULTADOS_POR_APP);
 }
