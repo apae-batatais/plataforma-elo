@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { Fragment } from 'react';
 import { manifesto } from '@/modulos/orcamento';
 import { veResumoDaFolha } from '@/modulos/orcamento/aplicacao/entrada';
+import { avisosDeCessao } from '@/modulos/orcamento/aplicacao/cedidos';
+import { FaixaCessoes } from '@/modulos/orcamento/telas/faixa-cessoes';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
 import { pendenciaDeRealizado } from '@/modulos/orcamento/aplicacao/realizado';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
@@ -35,6 +37,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
   const caixa = filtros.visao === 'caixa';
   const hrefVisao = (v: 'custo' | 'caixa') => `/orcamento?${v === 'caixa' ? 'visao=caixa&' : ''}mes=${r.mes}`;
   // R11: lembrete de realizado do último mês fechado (some se a aba ainda não foi preparada).
+  const avisosCessao = await avisosDeCessao(app.planilhas, usuario.autorizador).catch(() => null);
   const faltaRealizado = await pendenciaDeRealizado(app.planilhas, usuario.autorizador).catch(() => null);
   const i = r.mes - 1;
   const podeCorrigir = usuario.autorizador.temPermissao('orcamento.folha.editar');
@@ -103,6 +106,7 @@ export default async function ResumoDaFolha({ searchParams }: { searchParams: Pr
         </Aviso>
       )}
 
+      {avisosCessao && <FaixaCessoes avisos={avisosCessao} />}
       {faltaRealizado && (
         <Aviso tipo="atencao" titulo="Falta informar o realizado">
           O realizado de {rotuloMes(faltaRealizado)} ainda não foi informado.{' '}

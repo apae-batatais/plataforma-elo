@@ -33,3 +33,4 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   os ativos de cada cadastro; regras em `dominio/codigo-conta.ts`). Aparece nas listas, no lote, na importação de itens
   (casa por nome ou código) e em "Baixar planilha" (CSV, `aplicacao/baixar-planilha.ts`, rota `previsao/baixar/[arquivo]`).
   Sem plano de contas no Elo; o código não é dado pessoal.
+- Cedidos (C1 da #125): `dominio/cedidos.ts` (puro) e `aplicacao/cedidos.ts`. Abas `Cedidos`, `ValoresCedidos`, `LotacaoCedidos` (planilha da folha, nome e valor pessoais) e `Cedentes` (planilha `orcamento`). Nada altera folha, caixa ou passivo. Ver e abrir ficha: `folha.ver_individual` (com auditoria de leitura); alterar: `folha.editar`. Aviso de fim de cessão (parâmetro `cessao_aviso_dias`): DP, Financeiro e Diretoria com nome; coordenação só no seu escopo e sem nome.

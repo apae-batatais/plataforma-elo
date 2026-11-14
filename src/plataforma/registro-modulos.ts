@@ -12,7 +12,7 @@ import type { Manifesto } from '@/nucleo/modulos/manifesto';
 import { validarRegistro } from '@/nucleo/modulos/registro';
 
 import type { EstruturaDosModulos } from '@/nucleo/estrutura/preparar';
-import { manifesto as orcamento, popularFolhaFicticia, popularHistoricoFicticia, popularPrevisaoFicticia, popularTesourariaFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
+import { manifesto as orcamento, popularCedidosFicticia, popularFolhaFicticia, popularHistoricoFicticia, popularPrevisaoFicticia, popularTesourariaFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
 import { manifesto as comunicacao, popularComunicacaoFicticia, TABELAS_COMUNICACAO } from '@/modulos/comunicacao';
 import { manifesto as requisicoes, popularRequisicoesFicticias, TABELAS_REQUISICOES } from '@/modulos/requisicoes';
 import { manifesto as parcerias, popularParceriasFicticias, TABELAS_PARCERIAS } from '@/modulos/parcerias';
@@ -40,6 +40,7 @@ export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void>
   await popularFolhaFicticia(p);
   await popularPrevisaoFicticia(p);
   await popularTesourariaFicticia(p);
+  await popularCedidosFicticia(p);
   await popularHistoricoFicticia(p);
   await popularParceriasFicticias(p);
   await popularRequisicoesFicticias(p);

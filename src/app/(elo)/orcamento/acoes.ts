@@ -6,6 +6,9 @@ import { z } from 'zod';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { salvarCalendario, encerrarPosto, ErroValidacaoFolha, salvarParametros, salvarPosto, salvarRateios } from '@/modulos/orcamento/aplicacao/folha';
+import {
+  alterarValorDoCedido, encerrarCedente, encerrarCessao, ErroValidacaoCedidos, prorrogarCessao, salvarCedente, salvarCedido,
+} from '@/modulos/orcamento/aplicacao/cedidos';
 import { analisarImportacao, descreverArquivo, importarFolha, lerMapeamento, lerXlsx, type Analise } from '@/modulos/orcamento/aplicacao/importacao';
 import type { AbaResumida, Mapeamento } from '@/modulos/orcamento/dominio/importacao';
 import { COMPONENTES, PARAMETROS, parametrosCom } from '@/modulos/orcamento/dominio/folha';
@@ -22,7 +25,7 @@ async function contexto() {
   return { usuario, app: await obterAplicacao() };
 }
 
-const conhecido = (e: unknown) => e instanceof ErroValidacaoFolha || e instanceof ErroConflito || e instanceof ErroPermissao;
+const conhecido = (e: unknown) => e instanceof ErroValidacaoFolha || e instanceof ErroValidacaoCedidos || e instanceof ErroConflito || e instanceof ErroPermissao;
 
 /** Formulários simples: volta para a página com mensagem no endereço. */
 async function executar(pagina: string, sucesso: string, acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>) {
@@ -213,4 +216,77 @@ export async function acaoConfirmarImportacao(_: EstadoImportacao, f: FormData):
     n.lotacoes ? `${n.lotacoes} ${n.lotacoes === 1 ? 'lotação gravada' : 'lotações gravadas'}` : '',
   ].filter(Boolean);
   redirect(`/orcamento/folha?ok=${encodeURIComponent(partes.length ? `${partes.join(' e ')}.` : 'Nada mudou: as lotações já estavam iguais.')}`);
+}
+
+// ---------------------------------------------------------------------------
+// Profissionais cedidos (C1 da #125)
+// ---------------------------------------------------------------------------
+
+const esquemaCedido = z.object({
+  id: z.string().optional(),
+  versao: z.number().optional(),
+  colaborador: z.string().nullable(),
+  funcao: z.string(),
+  cargaHoraria: z.number().nullable(),
+  cedenteId: z.string(),
+  inicio: z.string(),
+  fimPrevisto: z.string().nullable(),
+  observacao: z.string().nullable(),
+  lotacao: z.array(z.object({ centro: z.string(), percentual: z.number() })),
+  valorMensal: z.number().optional(),
+  tipoValor: z.string().optional(),
+});
+
+export async function acaoSalvarCedido(_: EstadoAcao, f: FormData): Promise<EstadoAcao> {
+  const { usuario, app } = await contexto();
+  let id: string;
+  try {
+    id = await salvarCedido(app.planilhas, usuario.autorizador, esquemaCedido.parse(JSON.parse(texto(f, 'dados'))));
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    if (erro instanceof z.ZodError || erro instanceof SyntaxError) return { erro: 'Confira os campos: há valor em formato inválido.' };
+    throw erro;
+  }
+  revalidatePath('/orcamento', 'layout');
+  redirect(`/orcamento/cedidos/${id}?ok=${encodeURIComponent('Cedido salvo.')}`);
+}
+
+export async function acaoAlterarValorCedido(f: FormData) {
+  const id = texto(f, 'id');
+  const valor = numeroOuNulo(f, 'valor') ?? NaN;
+  await executar(`/orcamento/cedidos/${id}`, 'Valor salvo.', ({ usuario, app }) =>
+    alterarValorDoCedido(app.planilhas, usuario.autorizador, id, { valorMensal: valor, tipoValor: texto(f, 'tipo'), vigencia: inicioDoMes(texto(f, 'vigencia')) }),
+  );
+}
+
+export async function acaoProrrogarCessao(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(`/orcamento/cedidos/${id}`, 'Cessão prorrogada.', ({ usuario, app }) =>
+    prorrogarCessao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), texto(f, 'fim')),
+  );
+}
+
+export async function acaoEncerrarCessao(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(`/orcamento/cedidos/${id}`, 'Cessão encerrada.', ({ usuario, app }) =>
+    encerrarCessao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), texto(f, 'encerramento')),
+  );
+}
+
+export async function acaoSalvarCedente(f: FormData) {
+  await executar('/orcamento/cedidos/cedentes', 'Cadastro salvo.', ({ usuario, app }) =>
+    salvarCedente(app.planilhas, usuario.autorizador, {
+      id: texto(f, 'id') || undefined,
+      versao: f.get('versao') ? Number(texto(f, 'versao')) : undefined,
+      nome: texto(f, 'nome'),
+      tipo: texto(f, 'tipo'),
+      observacao: texto(f, 'observacao') || null,
+    }),
+  );
+}
+
+export async function acaoEncerrarCedente(f: FormData) {
+  await executar('/orcamento/cedidos/cedentes', 'Cadastro encerrado.', ({ usuario, app }) =>
+    encerrarCedente(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
 }
