@@ -12,12 +12,16 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { APPS_PLANEJADOS } from '@/plataforma/apps-planejados';
 import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
-import { IconeAreas, IconeAtencao, IconeAvaliacao, IconeChave, IconeCerto, IconeComunicacao, IconeOrcamento, IconePessoas, IconeRequisicao, IconeSeta, IconeServicos } from '@/ui/icones';
+import { ICONES, IconeAreas, IconeAtencao, IconeChave, IconeCerto, IconePessoas, IconeSeta, IconeServicos } from '@/ui/icones';
+import { iconeDoApp } from '@/plataforma/icones-dos-apps';
+import { agruparPendencias } from '@/plataforma/pendencias';
 import { appDoCaminho } from '@/ui/cor-do-app';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { appsComPendenciaVencida } from '@/plataforma/pendencias-vencidas';
 
 interface Pendencia {
+  /** Id do app de origem; sem app, é da plataforma. */
+  app?: string;
   texto: ReactNode;
   detalhe: string;
   href: string;
@@ -46,7 +50,7 @@ function CartaoApp({
   vencida?: boolean;
 }) {
   return (
-    <li data-app={appDoCaminho(href)} className={`cartao-brilho flex flex-col rounded-cartao border border-borda bg-superficie ${vencida ? 'anel-pulsante' : ''}`}>
+    <li data-app={appDoCaminho(href)} className={`cartao-brilho flex h-full flex-col rounded-cartao border border-borda bg-superficie ${vencida ? 'anel-pulsante' : ''}`}>
       <Link href={href} className="group flex flex-1 gap-4 rounded-t-cartao p-5">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-destaque-suave text-destaque">{icone}</span>
         <span className="min-w-0">
@@ -66,7 +70,7 @@ function CartaoApp({
         </span>
       </Link>
       {atalhos && atalhos.length > 0 && (
-        <ul className="flex flex-wrap gap-x-4 gap-y-1 border-t border-borda px-5 py-3 text-sm">
+        <ul className="mt-auto flex flex-wrap gap-x-4 gap-y-1 border-t border-borda px-5 py-3 text-sm">
           {atalhos.map((a) => (
             <li key={a.href}>
               <Link href={a.href} className="font-semibold text-destaque hover:underline">
@@ -108,6 +112,7 @@ export default async function Portal() {
       const n = (r.alertas?.semRateio ?? 0) + (r.alertas?.foraDe100 ?? 0);
       if (n > 0) {
         pendencias.push({
+          app: 'orcamento',
           texto: `${n} ${n === 1 ? 'funcionário está' : 'funcionários estão'} sem lotação válida`,
           detalhe: 'O custo deles não aparece em nenhum serviço no resumo por serviço.',
           href: '/orcamento/lotacao?atalho=pendentes',
@@ -124,6 +129,7 @@ export default async function Portal() {
       const n = (x: number, um: string, varios: string) => `${x} ${x === 1 ? um : varios}`;
       if (c.aprovar > 0) {
         pendencias.push({
+          app: 'requisicoes',
           texto: n(c.aprovar, 'requisição espera a sua aprovação', 'requisições esperam a sua aprovação'),
           detalhe: 'Aprove, devolva para ajuste ou recuse.',
           href: '/requisicoes/aprovar',
@@ -132,6 +138,7 @@ export default async function Portal() {
       }
       if (c.atender > 0) {
         pendencias.push({
+          app: 'requisicoes',
           texto: n(c.atender, 'requisição está na fila do seu setor', 'requisições estão na fila do seu setor'),
           detalhe: 'Aprovadas, esperando atendimento.',
           href: '/requisicoes/atender',
@@ -140,6 +147,7 @@ export default async function Portal() {
       }
       if (c.devolvidas > 0) {
         pendencias.push({
+          app: 'requisicoes',
           texto: n(c.devolvidas, 'requisição sua foi devolvida para ajuste', 'requisições suas foram devolvidas para ajuste'),
           detalhe: 'Veja o que a coordenação pediu e reenvie.',
           href: '/requisicoes',
@@ -156,6 +164,7 @@ export default async function Portal() {
       const n = (x: number, um: string, varios: string) => `${x} ${x === 1 ? um : varios}`;
       if (c.devolvidos > 0) {
         pendencias.push({
+          app: 'comunicacao',
           texto: n(c.devolvidos, 'pedido seu foi devolvido para você ajustar', 'pedidos seus foram devolvidos para você ajustar'),
           detalhe: 'Veja o que a Comunicação pediu e reenvie.',
           href: '/comunicacao',
@@ -164,6 +173,7 @@ export default async function Portal() {
       }
       if (c.revisar > 0) {
         pendencias.push({
+          app: 'comunicacao',
           texto: n(c.revisar, 'pedido aguarda revisão', 'pedidos aguardam revisão'),
           detalhe: 'Comece a revisão, devolva ou envie para aprovação.',
           href: '/comunicacao/pedidos?fila=revisar',
@@ -172,6 +182,7 @@ export default async function Portal() {
       }
       if (c.urgentes > 0) {
         pendencias.push({
+          app: 'comunicacao',
           texto: n(c.urgentes, 'pedido urgente na revisão', 'pedidos urgentes na revisão'),
           detalhe: 'Pedidos feitos fora da antecedência mínima.',
           href: '/comunicacao/pedidos?fila=revisar',
@@ -180,6 +191,7 @@ export default async function Portal() {
       }
       if (c.publicarHoje > 0) {
         pendencias.push({
+          app: 'comunicacao',
           texto: n(c.publicarHoje, 'pedido para publicar hoje', 'pedidos para publicar hoje'),
           detalhe: 'Já estão agendados para hoje.',
           href: '/comunicacao/pedidos?fila=agendados',
@@ -188,6 +200,7 @@ export default async function Portal() {
       }
       if (c.aprovar > 0) {
         pendencias.push({
+          app: 'comunicacao',
           texto: n(c.aprovar, 'pedido aguarda a sua aprovação', 'pedidos aguardam a sua aprovação'),
           detalhe: 'Aprove, peça ajustes ou recuse.',
           href: '/comunicacao/pedidos?fila=aprovar',
@@ -240,27 +253,44 @@ export default async function Portal() {
             Nada pendente por aqui.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-borda overflow-hidden rounded-cartao border border-borda bg-superficie">
-            {pendencias.map((p) => (
-              <li key={String(p.texto)} className="flex flex-wrap items-center gap-4 px-5 py-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-aviso-fundo text-aviso">
-                  <IconeAtencao tamanho={18} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold">{p.texto}</p>
-                  <p className="text-sm text-texto-suave">{p.detalhe}</p>
-                </div>
-                {p.acao && (
-                  <Link
-                    href={p.href}
-                    className="inline-flex items-center gap-1 rounded-md px-3 py-2 text-sm font-semibold text-destaque hover:bg-destaque-suave"
-                  >
-                    {p.acao}
-                    <IconeSeta tamanho={16} />
-                  </Link>
-                )}
-              </li>
-            ))}
+          <ul className="mt-3 space-y-4">
+            {agruparPendencias(pendencias, apps.map((x) => x.id)).map((g) => {
+              const doApp = g.app ? apps.find((x) => x.id === g.app) : undefined;
+              const nome = doApp?.nome ?? 'Plataforma';
+              const Icone = ICONES[g.app ? iconeDoApp(g.app) : 'acessos'];
+              return (
+                <li key={g.app ?? 'plataforma'} data-app={g.app ?? undefined} className="overflow-hidden rounded-cartao border border-borda bg-superficie">
+                  <div className="flex items-center gap-3 border-b border-borda bg-destaque-suave px-5 py-3">
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-superficie text-destaque">
+                      <Icone tamanho={20} />
+                    </span>
+                    <h3 className="font-bold text-texto">{nome}</h3>
+                    <span className="ml-auto text-sm text-texto-suave">
+                      {g.itens.length} {g.itens.length === 1 ? 'pendência' : 'pendências'}
+                    </span>
+                  </div>
+                  <ul className="divide-y divide-borda">
+                    {g.itens.map((p) => (
+                      <li key={String(p.texto)} className="flex flex-wrap items-center gap-4 px-5 py-4">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold">{p.texto}</p>
+                          <p className="text-sm text-texto-suave">{p.detalhe}</p>
+                        </div>
+                        {p.acao && (
+                          <Link
+                            href={p.href}
+                            className="inline-flex min-h-11 items-center gap-1 rounded-md px-3 py-2 text-sm font-semibold text-destaque hover:bg-destaque-suave"
+                          >
+                            {p.acao}
+                            <IconeSeta tamanho={16} />
+                          </Link>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
@@ -282,7 +312,7 @@ export default async function Portal() {
             <CartaoApp
               key={x.id}
               href={x.itens[0]?.href ?? x.rota}
-              icone={x.id === 'requisicoes' ? <IconeRequisicao tamanho={24} /> : x.id === 'avaliacao' ? <IconeAvaliacao tamanho={24} /> : x.id === 'comunicacao' ? <IconeComunicacao tamanho={24} /> : <IconeOrcamento tamanho={24} />}
+              icone={(() => { const Icone = ICONES[iconeDoApp(x.id)]; return <Icone tamanho={24} />; })()}
               nome={x.nome}
               descricao={x.descricao}
               atalhos={x.itens.slice(1, 4)}

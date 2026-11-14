@@ -274,3 +274,247 @@ mudou. Se a entrega ficar grande demais para conferir, o PR diz onde cortar.
    e faz pulsar de leve só a linha ou o valor que mudou; recarregar a página não pisca de novo.
 5. Com "reduzir movimento" ligado no computador, nada anima e todas as informações aparecem.
 6. Tema claro e escuro, celular e impressão conferidos; `npm run verificar` e `npm run build` verdes.
+
+## Menu, navegação, leiaute dos painéis e movimento nos gráficos (proposta #118)
+
+Completa a proposta #109 (efeitos de acabamento), que não incluía o movimento dos gráficos. Vale
+para todos os apps. A barra do topo com busca é a issue #117 e fica de fora.
+
+### Objetivo e para quem
+Quem usa o Elo reconhece de relance em que app, em que grupo e em que tela está, acha o que procura
+sem rolar o menu, vê as pendências com a cor do app e percebe nos gráficos o que mudou. Todas as
+pessoas, em especial quem usa o Orçamento (menu mais longo).
+
+### O que já existe (conferido no código)
+- `src/ui/casca.tsx`: o menu mostra os filhos do app só quando a pessoa está dentro dele; os
+  títulos de grupo (`secao`) são um texto pequeno sem recuo próprio; o rodapé tem usuário, "Sair",
+  seletor de tema e versão sempre à mostra.
+- `src/plataforma/navegacao.ts`: `ICONE_DO_MODULO` mapeia Orçamento, Parcerias e `handshake` para o
+  mesmo ícone; `projetos` não está no mapa e cai em "planilhas". A tela inicial
+  (`src/app/(elo)/page.tsx`) também usa o ícone do Orçamento para Parcerias e Projetos.
+- `src/app/globals.css`: Parcerias reutiliza a cor do Orçamento; Projetos não tem cor.
+- Pendências da tela inicial: todas com o ícone âmbar de atenção, sem app de origem.
+- `src/ui/graficos.tsx`: nenhum componente anima; o `Linhas` usa `polyline` (não anima por CSS).
+- Textos: a tela de entrada diz "em breve, a avaliação diagnóstica"; o título do mês no calendário
+  e nos indicadores da Comunicação usa `capitalize` do CSS e vira "Novembro De 2026".
+- `TabelaDados` já rola na horizontal, mas sem sinal de que há mais colunas.
+
+### Decisões da Diretoria
+- Cores (issue #118, 13/11/2026): **Parcerias em lilás e Projetos em oliva**
+  (lilás #7E3F98 claro / #D2A2EA escuro; oliva #5F6B12 claro / #B8C65A escuro). Contraste de texto
+  conferido nos dois temas pelo Arquiteto (todos acima de 4,5:1).
+- Observação do Product Owner: conferir na prévia, nos dois temas e com simulação de daltonismo, se
+  o oliva se confunde com o verde dos alertas (ver "Critérios de pronto").
+
+### Usuários e permissões
+Nada muda: o menu continua mostrando só o que a pessoa pode abrir (`menuDoUsuario`). Nenhuma aba,
+permissão ou regra de negócio é criada ou alterada.
+
+### Telas
+
+**1. Menu lateral** (`casca.tsx`; computador e celular)
+
+Quem usa e o que quer: chegar a uma tela de um app. Caminho mais curto: app → (grupo, se fechado) →
+tela, no máximo 2 cliques e nenhuma rolagem para achar um grupo.
+
+Três níveis, distintos por recuo, peso e espaço (nunca só por cor):
+- **App**: ícone na cor do app, nome em peso forte; é o único nível com ícone. Só o app atual vem
+  expandido; os outros ficam numa linha.
+- **Grupo** (`secao`): cabeçalho recolhível, botão com seta que gira (`aria-expanded`), texto em
+  peso médio e recuado em relação ao app, com um pouco mais de espaço acima. Clicar abre ou fecha.
+  Apps cujo menu não tem grupos (Parcerias hoje) mostram as telas direto, sem cabeçalho.
+- **Tela**: recuada mais um nível, com a linha guia à esquerda; a atual com o traço na cor do app e
+  o texto em destaque.
+
+Comportamento dos grupos:
+1. Ao entrar numa tela, o grupo dela abre (e só ele, no primeiro acesso); os outros ficam
+   recolhidos.
+2. Se a pessoa abriu ou fechou um grupo, o menu lembra (`localStorage`, chave própria por app e
+   grupo, igual ao já feito com `elo-menu`); sem armazenamento, vale até recarregar.
+3. Navegar para uma tela dentro de um grupo recolhido sempre o abre, mesmo que a pessoa o tenha
+   fechado antes (a tela atual nunca fica escondida).
+4. No menu recolhido (só ícones), os grupos não aparecem; o app abre o primeiro item como hoje.
+5. Teclado: a seta é um botão (Enter e espaço abrem e fecham), na ordem natural; o foco fica visível.
+6. Com 7 grupos no Orçamento: 7 cabeçalhos mais as telas do grupo aberto (no máximo 6) cabem sem
+   rolagem num computador comum.
+
+Nomes de grupo: nenhum grupo repete o nome do app. Em Projetos, o grupo "Projetos" passa a se
+chamar **"Ideias e projetos"** (`src/modulos/projetos/manifesto.ts`, alteração autorizada por esta
+proposta); o grupo "Diretoria" fica. O Desenvolvedor confere os demais manifestos e lista qualquer
+repetição que encontrar, sem renomear sem decisão.
+
+**Rodapé do menu**: uma linha só, com as iniciais, o nome e um botão de menu do usuário. O menu do
+usuário (abre por cima, fecha com Esc e ao clicar fora, no teclado e no toque) traz: nome e
+perfis, tema (claro, escuro, automático), versão da plataforma e "Sair da plataforma". No menu
+recolhido, só as iniciais, que abrem o mesmo menu. Peça nova em `src/ui/` (menu do usuário), o que
+mexe no Núcleo; esta proposta pede isso.
+
+**Ícones e cores por app**: cada app tem ícone próprio e cor própria, e o mesmo ícone no menu, no
+cartão do início e nas pendências:
+
+| App | Ícone | Cor |
+| --- | --- | --- |
+| Orçamento | atual (calculadora) | petróleo |
+| Requisições, Comunicação, Avaliação | atuais | atuais |
+| Parcerias | novo: duas mãos que se encontram (ou dois elos), traço igual aos demais | lilás |
+| Projetos | novo: bandeira sobre um caminho com marcos (as portas de decisão) | oliva |
+
+`ICONE_DO_MODULO` e a tela inicial passam a usar um mapa único de ícone por app (hoje há dois
+trechos que repetem a escolha). O ícone novo entra em `icones.tsx`; a cor entra em `globals.css`
+(três blocos por app: claro, escuro e escuro automático) e na tabela "Cores por app" de
+`docs/identidade-visual.md`. Parcerias deixa de compartilhar a regra do Orçamento. Os tons
+`--destaque-forte` e `--destaque-suave` seguem o padrão dos outros apps.
+
+**2. Tela inicial** (`src/app/(elo)/page.tsx`)
+
+Primeira dobra: a faixa "Precisa da sua atenção" vem primeiro; a ação principal de cada pendência é
+o verbo dela ("Aprovar", "Revisar").
+- Cada pendência ganha o campo `app` e mostra o ícone e a cor do app de origem no lugar do ícone
+  âmbar; o nome do app vem escrito junto (a cor nunca vai sozinha).
+- Pendências do mesmo app vêm juntas, num bloco com cabeçalho (ícone, nome do app e quantidade),
+  na ordem dos apps do menu. Pendências da plataforma (atualização de estrutura, pessoas sem
+  perfil) vêm num último bloco "Plataforma", com ícone de Administração e cor ardósia.
+- Sem pendências: mantém a mensagem atual de confirmação.
+- Grade de apps: os cartões da mesma linha têm a mesma altura; os atalhos ficam sempre no pé do
+  cartão, de modo que o ícone e o nome alinham entre cartões.
+- Celular: os blocos de pendência empilham; a ação continua com 44 px de altura.
+
+**3. Textos**
+- Tela de entrada: troca "em breve, a avaliação diagnóstica" por uma frase que não prometa app
+  futuro: "Os apps da sua instituição em um só lugar: orçamento, requisições, comunicação,
+  avaliação e mais. Cada pessoa vê só o que o seu perfil permite." (sem nome próprio).
+- Mês: o título do calendário e o da tela de indicadores da Comunicação deixam de usar
+  `capitalize`; só a primeira letra vira maiúscula ("Novembro de 2026"). Mesma regra para qualquer
+  texto de data que o Desenvolvedor encontrar.
+
+**4. Painéis longos: atalhos para as seções**
+
+Decisão: **índice de seções com âncoras**, e não abas. Abas escondem o panorama e pioram a
+impressão. A peça nova `AtalhosSecoes` (`src/ui/pagina.tsx`) é uma faixa de pílulas ("Neste painel")
+no topo, que fica visível ao rolar, leva à seção com rolagem suave (sem animação com "menos
+movimento") e marca a seção em foco. Em celular, a faixa rola na horizontal. Cada seção é um
+`<section>` com título e `id`. Entra em painéis com 5 ou mais blocos.
+
+Painel geral do Orçamento, hoje 11 blocos, passa a 5 seções (os blocos e seus textos não mudam):
+
+| Seção | Blocos |
+| --- | --- |
+| Indicadores | Indicadores |
+| O ano em foco | Receita e despesa mês a mês; Sobra ou falta em cada mês; Fontes de recurso |
+| Comparar exercícios | Despesa mês a mês por exercício; Despesa por área; Despesa por grupo de gasto |
+| Receita | Segurança da receita; De onde vem a receita; Liberdade de uso da receita |
+| Resumo | Resumo dos exercícios |
+
+O Desenvolvedor confere os outros painéis; os que tiverem 5 ou mais blocos usam a mesma peça e
+entram na lista do PR.
+
+**5. Tabelas largas** (`TabelaDados`)
+- A tabela nunca corta coluna sem aviso: rola na horizontal dentro do cartão, com a **primeira
+  coluna fixa** à esquerda e uma **sombra na borda** do lado em que há mais colunas (some quando a
+  pessoa chega ao fim). Quando rola, aparece a dica "Role para o lado para ver mais colunas" (texto,
+  não só sombra). O "Resumo dos exercícios" é o caso de conferência.
+- Tabelas que já cabem não mudam.
+
+**6. Gráficos com movimento** (`src/ui/graficos.tsx`; todos os componentes, em todos os apps)
+
+Pergunta que cada gráfico responde não muda; muda só como ele aparece e se atualiza.
+- **Ao abrir** (uma vez, quando o gráfico entra na tela): barras crescem da base, linhas se
+  desenham da esquerda para a direita, pontos surgem em seguida, barras de `Indicadores` e
+  `Barras100` se preenchem; 0,4 s (dentro do limite de 0,2 a 0,6 s).
+- **Ao trocar de ano, aba ou filtro**: barras, linhas e pontos se movem da posição antiga para a
+  nova (0,4 s). Séries que entram ou saem esmaecem. O valor do `NumeroQueConta` ao lado já conta;
+  sem mudança em cima dele.
+- **Sem animação**: com "reduzir movimento", tudo aparece direto; ao passar o mouse ou focar, a
+  dica aparece sem atraso.
+- Não animar o que muda a cada tecla ou a cada passagem do mouse (dica, destaque da coluna).
+- A animação não pode esconder valor: no fim do movimento, a posição é a exata, e "Ver os números"
+  e a leitura ao lado já mostram o valor final desde o primeiro instante.
+- Para o movimento funcionar na troca, o gráfico não pode ser remontado: as telas não colocam a
+  `key` do ano no componente e o mesmo gráfico recebe os dados novos.
+- Implementação a critério do Desenvolvedor, desde que funcione nos navegadores atuais (o
+  `polyline` do `Linhas` não anima por CSS). A sugestão é um gancho de interpolação com
+  `requestAnimationFrame`, com a conta da interpolação em função pura e teste.
+
+**7. Estados**: nenhuma tela ganha ação nova que grave dados, então não há novos estados de
+gravação ou erro. Vazio, sem dados e `null` continuam como a habilidade `graficos` manda.
+
+### Regras de negócio (com teste)
+1. O estado dos grupos do menu (aberto ou fechado, o que a pessoa escolheu) é calculado por função
+   pura: a tela atual sempre vem aberta; a escolha da pessoa vale para os demais; sem escolha,
+   só o grupo da tela atual abre. Teste: caminho em grupo recolhido abre; escolha lembrada vale;
+   app sem grupos não tem cabeçalho.
+2. Nenhum grupo de nenhum manifesto tem o mesmo nome do app (teste sobre `MODULOS`).
+3. Todo app ativo tem ícone próprio e cor própria no mapa único; dois apps não compartilham o
+   ícone nem a cor (teste sobre o mapa e `globals.css`).
+4. As cores lilás e oliva passam de 4,5:1 sobre o fundo e o cartão nos dois temas (teste de
+   contraste com os valores da identidade visual) e ficam a pelo menos a diferença de tom das
+   demais cores de app.
+5. Pendências da tela inicial têm `app`; o agrupamento mantém a ordem dos apps do menu e põe a
+   plataforma por último (função pura com teste).
+6. A formatação do mês só põe maiúscula na primeira letra ("Novembro de 2026").
+7. A interpolação dos gráficos é função pura com teste (início, meio, fim; série que entra ou sai;
+   "menos movimento" retorna o valor final direto).
+8. O menu continua mostrando só o que o `Autorizador` permite (os testes de navegação atuais
+   continuam passando).
+
+### Fica de fora
+- Barra do topo com busca (issue #117).
+- Reorganizar os 7 grupos do Orçamento (sugestão abaixo); mudar regra, permissão, aba ou número.
+- Biblioteca de gráficos ou de animação; som.
+- Formulários: não foram avaliados e não mudam.
+
+### Frentes
+`telas` (menu, rodapé, ícones, cores, tela inicial, atalhos, tabela, textos) e `graficos`
+(movimento). Sem `regras e dados` nem `infraestrutura`: nenhuma aba nova. Muda o Núcleo `src/ui/`
+(`casca.tsx`, `graficos.tsx`, `tabela-dados.tsx`, `pagina.tsx`, `icones.tsx`, menu do usuário),
+`src/plataforma/navegacao.ts` e `globals.css`, como a proposta pede; o único módulo tocado é o
+nome do grupo em `src/modulos/projetos/manifesto.ts` e a seção das telas do Painel geral do
+Orçamento (agrupar blocos, sem alterar conteúdo).
+
+### Entrega
+Uma entrega, em passos com commits separados: (1) cores e ícones por app, mapa único, testes;
+(2) menu com níveis e grupos recolhíveis, rodapé compacto; (3) tela inicial (pendências por app,
+cartões iguais, textos); (4) atalhos de seção e Painel geral; (5) tabelas largas; (6) movimento dos
+gráficos. No fim, atualiza a tabela "Movimento" da habilidade `telas` (esmaecer e pontos que se
+movem passam a existir), a habilidade `graficos`, "Cores por app" e a estrutura do menu em
+`docs/identidade-visual.md`. Se ficar grande demais para conferir, o PR diz onde cortar (a ordem
+acima já é a de corte: 6 e 5 por último).
+
+### Melhorias sugeridas (a Diretoria decide; não entram nesta entrega)
+- Reagrupar o menu do Orçamento em menos grupos (por exemplo, juntar "Execução" e "Tesouraria", e
+  "Histórico" com os painéis), se depois da mudança o menu ainda parecer longo.
+- Mostrar na grade da tela inicial o número de pendências de cada app (a identidade visual já prevê).
+- Botão "Recolher todos os grupos" no menu.
+
+### Decisões tomadas sozinho (custo se estiverem erradas)
+- **Só o app atual abre**; os outros ficam numa linha. Custo: um clique a mais para trocar de app.
+- **"Sair" fica dentro do menu do usuário.** Custo: um clique a mais para sair; se incomodar, o
+  botão volta ao rodapé.
+- **Grupo "Projetos" renomeado para "Ideias e projetos".** Nome é troca de uma linha.
+- **Ícones novos** (aperto de mãos para Parcerias, bandeira com marcos para Projetos). Custo:
+  trocar o desenho.
+- **Atalhos de seção em vez de abas.** Custo: se a Diretoria preferir abas, é refazer o leiaute do
+  Painel geral.
+- **Primeira coluna fixa e sombra nas tabelas largas.** Custo: ajuste de componente.
+- **Duração 0,4 s e movimento ao abrir e ao trocar.** Custo: um número.
+- **Sem ADR**: não há decisão de arquitetura (só interface e `localStorage`, como o `elo-menu`).
+
+### Critérios de pronto (na prévia)
+1. Orçamento no perfil Diretoria: app, grupo e tela se distinguem de relance, nos dois temas; o
+   grupo da tela atual vem aberto, os outros recolhidos, e todo o menu cabe sem rolar; abrir um
+   grupo, navegar e voltar mantém a escolha.
+2. O rodapé ocupa uma linha; tema, versão e "Sair" estão no menu do usuário, que abre pelo teclado
+   e fecha com Esc.
+3. Orçamento, Parcerias e Projetos têm ícones diferentes e cores petróleo, lilás e oliva. O oliva
+   não se confunde com o verde de "Tudo em dia" e de "Aprovado" nos dois temas (conferir também com
+   simulação de daltonismo do navegador, sem depender só da cor: o nome e o ícone sempre vêm).
+4. Nenhum grupo repete o nome do app (Projetos mostra "Ideias e projetos").
+5. Na tela inicial, cada pendência tem o ícone e a cor do app, as do mesmo app estão juntas, e os
+   cartões da grade têm a mesma altura.
+6. A tela de entrada não cita "em breve, a avaliação diagnóstica"; o calendário mostra
+   "Novembro de 2026".
+7. O Painel geral do Orçamento tem a faixa "Neste painel" com 5 atalhos que levam às seções.
+8. O "Resumo dos exercícios" mostra a sombra e a dica de que há mais colunas à direita.
+9. No Painel geral, ao trocar o ano, barras e linhas se movem até os novos valores; ao abrir, elas
+   aparecem crescendo. Com "reduzir movimento" ligado, tudo aparece direto e completo.
+10. No celular, o menu continua abrindo como botão, os grupos recolhem e nada passa da largura.

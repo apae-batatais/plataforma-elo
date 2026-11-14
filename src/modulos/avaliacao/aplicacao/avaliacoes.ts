@@ -12,6 +12,7 @@ import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { atualizar, inserir, lerTabelas, type Planilhas, type Registro } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
+import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import {
   barreirasDoTexto,
   barreirasParaTexto,
@@ -364,4 +365,38 @@ export async function painelDaAvaliacao(
       return { ...d, servicoNome: r.servico_nome, indice: indiceDeCuidado(d), idade: idadeEm(r.nascimento, r.data_avaliacao), chave: chavePessoa(r) };
     });
   return { ...montarPainel(lista, hoje), todos: quem.temPermissao(PERM.painel), servicosDisponiveis };
+}
+
+// ---------------------------------------------------------------------------
+// Visão de ligação (ADR-022): números agregados do serviço para a Ficha do serviço
+// ---------------------------------------------------------------------------
+
+export interface AvaliacaoDoServico {
+  ano: number;
+  /** Avaliações aplicadas no ano (inclusive reavaliações). */
+  avaliacoesNoAno: number;
+  /** Pessoas avaliadas no ano; só a quantidade, nunca quem. */
+  pessoas: number;
+  indiceMedioDeCuidado: number | null;
+  reavaliacoesAtrasadas: number;
+}
+
+/** Só agregados, para quem acompanha o painel do serviço (`avaliacao.painel`). Nenhum dado de pessoa. */
+export async function avaliacaoDoServico(
+  p: Planilhas,
+  quem: Autorizador,
+  servico: string,
+  opcoes: { agora?: Date } = {},
+): Promise<Ligacao<AvaliacaoDoServico>> {
+  if (!podeVerPainel(quem, servico)) return ligacaoSemPermissao();
+  const agora = opcoes.agora ?? new Date();
+  const ano = Number(hojeEm(agora).slice(0, 4));
+  const painel = await painelDaAvaliacao(p, quem, { servico, de: `${ano}-01`, ate: `${ano}-12` }, { agora });
+  return ligacaoOk({
+    ano,
+    avaliacoesNoAno: painel.avaliacoes,
+    pessoas: painel.total,
+    indiceMedioDeCuidado: painel.mediaIndice,
+    reavaliacoesAtrasadas: painel.reavaliacao.atrasadas,
+  });
 }

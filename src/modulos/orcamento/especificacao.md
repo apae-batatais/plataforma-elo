@@ -511,7 +511,7 @@ R1: `telas`, `regras e dados`. R2: ver Parcerias. R3 e R4: `telas`, `regras e da
 
 ## Ajustes da onda 2 (issue #116): receita e realizado ligados a projeto
 
-- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-022. Contexto: `src/modulos/projetos/especificacao.md`,
+- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-023. Contexto: `src/modulos/projetos/especificacao.md`,
   seção "Ligações, onda 2" (evento de captação). Depende da Execução 1C.1 (`Realizado`) e da onda 1 (issue #115).
 - **Aba `Realizado`**: + `projeto_id` e `projeto_codigo` (cópia), opcionais, em linhas de despesa e de receita.
   A grade **Execução › Informar realizado** ganha o campo opcional **"Projeto"** em cada linha (lista dos projetos

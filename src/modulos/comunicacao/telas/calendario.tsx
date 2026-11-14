@@ -3,6 +3,7 @@
  * Recebem os dados prontos e as ações do servidor por parâmetro (a rota decide de onde vêm).
  */
 import Link from 'next/link';
+import { maiusculaInicial } from '@/ui/texto';
 import { estiloBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
@@ -55,8 +56,8 @@ export function Controles({ visao, mes, anterior, seguinte, atual }: { visao: Vi
         <Link href={enderecoCalendario(visao, anterior)} className={botaoDeNavegacao}>
           Mês anterior
         </Link>
-        <h2 className="min-w-40 px-2 text-center text-lg font-bold capitalize" aria-live="polite">
-          {nomeDoMes(mes)}
+        <h2 className="min-w-40 px-2 text-center text-lg font-bold" aria-live="polite">
+          {maiusculaInicial(nomeDoMes(mes))}
         </h2>
         <Link href={enderecoCalendario(visao, seguinte)} className={botaoDeNavegacao}>
           Próximo mês

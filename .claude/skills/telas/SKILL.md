@@ -35,7 +35,9 @@ que mais pesa:
 | Registros encerrados, com "Reativar" | `Excluidos` (`excluidos.tsx`) |
 | Ano (exercício) | `SeletorAno` (`seletor-ano.tsx`), controle segmentado igual em todas as telas |
 | Gráficos e números de destaque | `graficos.tsx` (veja "Gráficos") |
-| Ícones | `icones.tsx`, em SVG; ícone novo entra lá, com o mesmo traço |
+| Ícones | `icones.tsx`, em SVG; ícone novo entra lá, com o mesmo traço. Ícone e cor de cada app: `src/plataforma/icones-dos-apps.ts` e `globals.css` |
+| Painel com 5 ou mais blocos | `AtalhosSecoes` (`atalhos-secoes.tsx`): faixa "Neste painel" com âncoras; cada seção é um `<section id>` com título |
+| Menu | Grupos recolhíveis em `casca.tsx` (estado em `grupos-do-menu.ts`); menu do usuário em `menu-usuario.tsx`. Nenhum grupo repete o nome do app |
 
 ## Cores e temas
 
@@ -73,6 +75,7 @@ movimento" no computador, nada anima (a regra já está em `src/app/globals.css`
 | Entrar num app, trocar de tema | Cores esmaecem em vez de piscar (já pronto em `globals.css`) |
 | Janela de detalhe | Desliza por cima, com o fundo escurecido e desfocado |
 | Gravou | Confirmação em verde (`Notificacao`) e o que mudou pisca uma vez |
+| Gráfico abre ou troca de dados | Barras crescem, linhas se desenham e, ao trocar ano, aba ou filtro, tudo vai até a nova posição (0,4 s; pronto em `graficos.tsx`) |
 | Trocar de aba ou filtro | Conteúdo esmaece; pontos do gráfico vão até a nova posição |
 
 Peças prontas em `src/ui/` (proposta #109): **`NumeroQueConta`** (número grande que sobe; passe o texto
@@ -80,7 +83,7 @@ já formatado, com `chave` para também piscar ao gravar), **`PiscaOndeMudou`** 
 gravação altera, com `chave` estável = id do registro, nunca nome; `TabelaDados` já pisca as linhas),
 classe **`cartao-brilho`** (cartão clicável como um todo) e classe **`anel-pulsante`** (só o cartão de
 app da tela inicial com pendência vencida, sempre com a `Etiqueta` de texto). Não crie versão própria
-dentro do app. Número que muda a cada tecla (índice ao vivo de formulário) não conta. Ainda sem peça:
+dentro do app. Número que muda a cada tecla (índice ao vivo de formulário) não conta. Gráficos já se movem (proposta #118, `use-valores-animados.ts`). Ainda sem peça:
 grade que acende em sequência, janela que desliza com fundo desfocado, esmaecer ao trocar aba ou
 filtro e dicas em ícones; avise no PR de entrega se a tela precisar de um deles.
 

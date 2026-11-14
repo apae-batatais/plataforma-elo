@@ -1,8 +1,8 @@
-# ADR-022 — Ligações entre apps, onda 2: escrita pela plataforma, números de pessoas protegidos e permissão de cada app
+# ADR-023 — Ligações entre apps, onda 2: escrita pela plataforma, números de pessoas protegidos e permissão de cada app
 
 - Situação: proposta (14/11/2026), a aprovar com a especificação da issue #116
 - Data: 14/11/2026
-- Proposta de origem: issue #116 (onda 2 de 3). Estende a ADR-013 e se apoia nas ADRs 011, 020 e 021.
+- Proposta de origem: issue #116 (onda 2 de 3). Estende a ADR-013 e se apoia nas ADRs 011, 020, 021 e 022 (onda 1).
 
 ## Contexto
 A ADR-013 define ligações **só de leitura**, sem permissão própria e só com nomes de cadastro; a ADR-020

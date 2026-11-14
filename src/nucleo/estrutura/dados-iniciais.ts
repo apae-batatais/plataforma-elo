@@ -39,4 +39,10 @@ export const PERMISSOES_INICIAIS: { perfil: string; permissao: string }[] = [
   { perfil: 'coordenacao_servico', permissao: 'core.pessoas.editar' },
   { perfil: 'coordenacao_servico', permissao: 'core.vinculos.editar' },
   { perfil: 'tecnico_avaliador', permissao: 'core.pessoas.ver' },
+  // Ficha do serviço (ligações entre apps): global para quem acompanha tudo, no escopo para quem coordena ou avalia.
+  { perfil: 'diretoria', permissao: 'plataforma.servicos.ver' },
+  { perfil: 'financeiro', permissao: 'plataforma.servicos.ver' },
+  { perfil: 'leitura', permissao: 'plataforma.servicos.ver' },
+  { perfil: 'coordenacao_servico', permissao: 'plataforma.servicos.ver' },
+  { perfil: 'tecnico_avaliador', permissao: 'plataforma.servicos.ver' },
 ];

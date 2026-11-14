@@ -118,7 +118,7 @@ Nenhum nesta entrega.
 
 ## Ajustes da onda 2 (issue #116): números do serviço para outros apps
 
-- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-022. Contexto: `src/modulos/projetos/especificacao.md`,
+- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-023. Contexto: `src/modulos/projetos/especificacao.md`,
   seção "Ligações, onda 2" (regras L1 a L6).
 - A Avaliação passa a oferecer, no seu `index.ts`, a função **`indicadoresDoServico(servico)`**, entregue pela
   plataforma a Projetos e Parcerias (que não importam a Avaliação). Devolve só **dois** números, por serviço atual:

@@ -2,7 +2,7 @@
 
 - Situação: aprovada pela Diretoria; entrega P1 (base) construída, P2 a P7 pendentes
 - Dono do produto: Diretoria
-- Proposta de origem: issue #107; ligações da onda 2: issue #116. Arquitetura: ADR-011, ADR-013, ADR-021 e ADR-022.
+- Proposta de origem: issue #107; ligações da onda 2: issue #116. Arquitetura: ADR-011, ADR-013, ADR-021, ADR-022 e ADR-023.
 - Referência do método: Guia Project DPro (PMD Pro), 2ª edição, PM4NGOs, 2020 (licença Creative
   Commons Atribuição-NãoComercial 4.0). O app usa os **conceitos** do método (fases, portas de decisão,
   termo de abertura, tolerâncias, marco lógico) e **não copia o texto do guia**. A fonte é citada na Ajuda
@@ -159,7 +159,10 @@ Conselho**, que dá a decisão final.
     mais dias que o configurado (padrão 30), aparece na carteira.
 
 **Ligações com outros apps (entrega P7)**
-26. O app **nunca importa outro módulo** (ADR-013). Cada ligação usa um catálogo declarado em `projetos` e
+26. **Atualizado em 14/11/2026 (issue #115):** as ligações com Orçamento, Requisições e Comunicação passam a ser
+    especificadas em `docs/especificacao-ligacoes-entre-apps.md` (ADR-022) e construídas nas entregas L1 a L6 dessa
+    especificação. Parcerias, Pessoas e Avaliação ficam com a onda 2 (issue #116). O que segue vale para elas.
+    O app **nunca importa outro módulo** (ADR-013). Cada ligação usa um catálogo declarado em `projetos` e
     entregue pela plataforma: Parcerias (termo), Orçamento (fonte, orçamento e realizado do projeto),
     Requisições (compras), Cadastro de pessoas e Avaliação (contagem de beneficiários e indicadores),
     Comunicação (lançamento e divulgação). App ausente vira "ligação indisponível", nunca erro.
@@ -225,7 +228,7 @@ ligada à #107, nesta ordem.
 | P4 | **Fase 4**: acompanhamento, problemas, relatórios, pedidos de mudança e versões do Termo | Mudança dentro e fora da tolerância |
 | P5 | **Fase 5**: check-list, relatório final, lições aprendidas e consulta | Encerrar com lições |
 | P6 | **Carteira** da Diretoria | Carteira inteira numa tela |
-| P7 | **Ligações** com Parcerias (depende da entrega R2, issue #95), Orçamento, Requisições, Pessoas e Avaliação, Comunicação. Detalhadas nas ondas 1 (issue #115) e 2 (issue #116, seção "Ligações, onda 2" abaixo) | Cada ligação sem cadastro repetido |
+| P7 | **Ligações** com Parcerias (depende da entrega R2, issue #95), Orçamento, Requisições, Pessoas e Avaliação, Comunicação. Onda 1 (Orçamento, Requisições e Comunicação): `docs/especificacao-ligacoes-entre-apps.md` (issue #115). Onda 2: issue #116, seção "Ligações, onda 2" abaixo | Cada ligação sem cadastro repetido |
 
 ## Decisões tomadas sozinho (com o custo se estiverem erradas)
 
@@ -256,7 +259,7 @@ ligada à #107, nesta ordem.
 
 ## Ligações, onda 2 (issue #116): termo de parceria, indicadores vindos de pessoas e evento de captação
 
-- Situação: especificação aguardando aprovação da Diretoria. Arquitetura: ADR-022 (novo) e ADR-013.
+- Situação: especificação aguardando aprovação da Diretoria. Arquitetura: ADR-023 (novo) e ADR-013.
 - Respostas da Diretoria (comentário de 13/11/2026): contagem do cadastro só de **pessoas com vínculo ativo no
   serviço**; da Avaliação só o **índice médio de necessidade de cuidado** e a **% de pessoas com reavaliação em
   dia**; **mínimo de 5 pessoas** para um número aparecer ("poucos casos para divulgar"); evento de captação com
@@ -272,7 +275,7 @@ ligada à #107, nesta ordem.
 
 ### Usuários e permissões (o que muda)
 
-Nenhum perfil novo. **Cada ligação respeita a permissão do app que guarda o dado** (ADR-022):
+Nenhum perfil novo. **Cada ligação respeita a permissão do app que guarda o dado** (ADR-023):
 
 | Dado mostrado no projeto | Quem vê |
 | --- | --- |
@@ -450,7 +453,7 @@ o realizado com o campo Projeto". Sem permissão do Orçamento → "O Financeiro
 
 ### Frentes
 
-- **Regras e dados**: abas e colunas acima, regras L1 a L21, leitura entre apps (ADR-022), permissões e auditoria.
+- **Regras e dados**: abas e colunas acima, regras L1 a L21, leitura entre apps (ADR-023), permissões e auditoria.
 - **Telas**: as quatro acima e os ajustes de Parcerias e Orçamento descritos nas especificações deles.
   Nenhum componente novo em `src/ui/`; todos os de `telas` e `graficos` já existem.
 - **Infraestrutura**: nenhuma planilha nova. Colunas e abas novas entram por "Preparar estrutura".
@@ -482,7 +485,7 @@ o realizado com o campo Projeto". Sem permissão do Orçamento → "O Financeiro
 4. **Rascunho de termo é um estado novo em Parcerias**, fora de todos os cálculos. Se errado, o rascunho
    contaminaria o orçamento e os alertas (custo médio, por isso o teste da regra L14).
 5. **Escrever em Parcerias a partir do Projetos** (a ADR-013 só previa leitura) por uma função da plataforma,
-   descrita na ADR-022. Se a Diretoria preferir só leitura, o rascunho passa a ser criado à mão pelo Financeiro
+   descrita na ADR-023. Se a Diretoria preferir só leitura, o rascunho passa a ser criado à mão pelo Financeiro
    (custo médio: perde a economia da ligação).
 6. **A decisão da porta vale mesmo se o rascunho falhar**, com botão para refazer. Se errado, a decisão ficaria
    presa a um app auxiliar (custo médio).

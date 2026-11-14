@@ -15,7 +15,7 @@ Tem tema claro e tema escuro, com o mesmo desenho e as mesmas regras. Deve parec
 
 Toda tela tem menu lateral, barra no topo e conteúdo em cartões. A tela inicial tem pendências no topo e a grade de apps logo abaixo.
 
-- **Menu lateral** à esquerda, um tom acima do fundo, com um ícone de traço em cada item. Só aparecem os apps e as telas que existem e a que a pessoa tem acesso. O item atual fica com um traço à esquerda na cor do app e o texto em destaque. O menu pode ser recolhido para mostrar só os ícones.
+- **Menu lateral** à esquerda, um tom acima do fundo. Só aparecem os apps e as telas que existem e a que a pessoa tem acesso. Três níveis, distintos por recuo, peso e espaço (nunca só por cor): o **app** (ícone na cor do app e nome em peso forte; só o app aberto vem expandido), o **grupo** (cabeçalho recolhível com seta; o grupo da tela atual vem aberto, os outros recolhidos, e a escolha da pessoa fica lembrada) e a **tela** (recuada, com linha guia; a atual com o traço na cor do app). Nenhum grupo repete o nome do app. O rodapé tem uma linha só (iniciais e nome) e abre o menu do usuário (nome e perfis, tema, versão e "Sair da plataforma"). O menu pode ser recolhido para mostrar só os ícones.
 - **Barra no topo:** busca à esquerda; nome da organização e de quem entrou à direita. Dentro de um app, o nome do app aparece ao lado da busca.
 - **Cartões** de cantos bem arredondados (20 px), um tom acima do fundo, com uma borda fina.
 - **Números do topo** em cartões: um círculo com ícone, a frase do que o número significa e o número bem grande.
@@ -61,8 +61,10 @@ A marca é grafite; o destaque de cada tela é a cor do app aberto. Todas as cor
 | Questionários | Magenta | #A8197F | #F27ACF |
 | Avaliação de Serviços Sociais (antes Avaliação Diagnóstica) | Cobre | #8C4A2F | #E0A07E |
 | Comunicação | Azul-celeste | #0369A1 | #5CC8F5 |
+| Parcerias | Lilás (decisão de 13/11/2026, proposta #118) | #7E3F98 | #D2A2EA |
+| Projetos | Oliva (decisão de 13/11/2026, proposta #118; esverdeado: conferir sempre com nome e ícone, longe dos alertas) | #5F6B12 | #B8C65A |
 
-Dentro do app, a cor dele marca o item atual do menu, os filtros escolhidos, os links, o ícone e os gráficos de uma série só. O botão principal continua grafite em todos os apps.
+Cada app tem também ícone próprio (o mesmo no menu, no cartão do início e nas pendências), definido em `src/plataforma/icones-dos-apps.ts`. Dentro do app, a cor dele marca o item atual do menu, os filtros escolhidos, os links, o ícone e os gráficos de uma série só. O botão principal continua grafite em todos os apps.
 
 ### Gráficos
 
@@ -87,6 +89,7 @@ O movimento mostra o que importa, nunca enfeita. Tudo é rápido: entre 0,2 e 0,
 - **Entrar num app:** a cor de destaque troca para a do app com um esmaecer rápido.
 - **Janela de detalhe:** desliza por cima da tela, com o fundo escurecido e desfocado.
 - **Gravou:** a confirmação aparece em verde, e o que mudou na tela pisca uma vez para mostrar onde mudou.
+- **Gráficos:** ao entrar na tela, barras crescem da base, linhas se desenham da esquerda para a direita e as barras de percentual se preenchem (0,4 s). Ao trocar ano, aba ou filtro, barras, linhas e pontos se movem da posição antiga até a nova, no mesmo gráfico (sem recriá-lo). "Ver os números" e a leitura ao lado já mostram o valor final.
 - **Trocar de aba ou de filtro:** o conteúdo troca com um esmaecer rápido; os pontos do gráfico se movem até a nova posição.
 - **Trocar de tema:** claro e escuro trocam com um esmaecer rápido, sem piscar.
 - Quem pediu ao computador menos movimento vê tudo sem animação.

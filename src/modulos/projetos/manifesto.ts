@@ -16,9 +16,9 @@ export const manifesto = defineModulo({
   rota: '/projetos',
   permissaoAcesso: 'projetos.acessar',
   menu: [
-    { rotulo: 'Meus projetos e ideias', caminho: '/', permissao: 'projetos.acessar', secao: 'Projetos' },
-    { rotulo: 'Nova ideia', caminho: '/nova', permissao: 'projetos.propor', secao: 'Projetos' },
-    { rotulo: 'Ideias à espera de responsável', caminho: '/ideias', permissao: 'projetos.assumir', secao: 'Projetos' },
+    { rotulo: 'Meus projetos e ideias', caminho: '/', permissao: 'projetos.acessar', secao: 'Ideias e projetos' },
+    { rotulo: 'Nova ideia', caminho: '/nova', permissao: 'projetos.propor', secao: 'Ideias e projetos' },
+    { rotulo: 'Ideias à espera de responsável', caminho: '/ideias', permissao: 'projetos.assumir', secao: 'Ideias e projetos' },
     { rotulo: 'Todos os projetos', caminho: '/todos', permissao: 'projetos.ver_todos', secao: 'Diretoria' },
     { rotulo: 'Configurações', caminho: '/configuracoes', permissao: 'projetos.configurar', secao: 'Diretoria' },
   ],

@@ -2,3 +2,4 @@
 export { manifesto } from './manifesto';
 export { TABELAS_COMUNICACAO } from './dados/tabelas';
 export { popularComunicacaoFicticia } from './dados/ficticios';
+export { publicacoesDoServico, type PublicacoesDoServico } from './aplicacao/pedidos';
