@@ -3,8 +3,7 @@
  * Nada é guardado; cada app já filtrou pelo que a pessoa pode ver.
  */
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
-import { lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { Servicos } from '@/nucleo/estrutura/tabelas';
+import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 import { hojeEmBrasilia, type ItemDaAgenda } from '@/nucleo/modulos/agenda-busca';
 import { FONTES } from './fontes-agenda-busca';
 import { MODULOS } from './registro-modulos';

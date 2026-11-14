@@ -94,6 +94,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         sair={sair}
         faixa={demonstracao ? faixaDemonstracao : undefined}
         instituicao={app.instituicao.nome}
+        comBusca={!usuario.estruturaPendente}
       >
         <Suspense>
           <Notificacao />

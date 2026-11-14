@@ -24,6 +24,7 @@ export function navegacaoDoUsuario(
     grupos.push({
       itens: [
         { rotulo: 'Início', href: '/', icone: 'inicio' },
+        { rotulo: 'Agenda', href: '/agenda', icone: 'agenda' },
         // Quem não pode ver pessoas (ex.: Funcionário) veria uma lista vazia.
         ...(autorizador.temPermissaoAlgumEscopo('core.pessoas.ver') ? [{ rotulo: 'Pessoas', href: '/nucleo/pessoas', icone: 'pessoas' as const }] : []),
         // Ficha do serviço (ligações entre apps). "Fichas de serviço" evita confundir com o cadastro, em Administração.

@@ -177,6 +177,14 @@ export const IconeBusca = (p: Props) => (
     <path d="m16 16 4.5 4.5" />
   </Icone>
 );
+/** Agenda: calendário com uma data marcada. */
+export const IconeAgenda = (p: Props) => (
+  <Icone {...p}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+    <path d="M3.5 10h17M8 3v4M16 3v4" />
+    <circle cx="12" cy="15" r="1.6" />
+  </Icone>
+);
 export const IconeDividir = (p: Props) => (
   <Icone {...p}>
     <path d="M4 12h16M12 4v16" />
@@ -228,6 +236,8 @@ export const IconeProjetos = (p: Props) => (
 /** Ícones que o menu e a tela inicial usam pelo nome (um lugar só para a escolha). */
 export const ICONES = {
   inicio: IconeInicio,
+  agenda: IconeAgenda,
+  busca: IconeBusca,
   pessoas: IconePessoas,
   orcamento: IconeOrcamento,
   requisicoes: IconeRequisicao,
