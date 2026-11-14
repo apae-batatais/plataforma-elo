@@ -343,3 +343,36 @@ Na prévia, com a demonstração (dados fictícios):
       a simulação de um serviço mostra a parcela e quantas pessoas têm 100% nele
 - [ ] **P3:** informar a provisão e o saldo da reserva de um mês fechado mostra a sugestão da previsão com a proporção;
       "Usar como previsão" cria as linhas; o painel mostra "Reserva cobre X% do passivo"
+
+## Continuação #142: construção de P2 e P3 (14/11/2026)
+
+A especificação acima segue aprovada e **nenhuma regra mudou**. A #142 só libera a construção de P2 e P3
+(a P1 foi entregue no PR #130). Conferido com o código de `main` e com os PRs abertos (#137 cedidos C1, #139
+painel de sustentabilidade), estes são os esclarecimentos para o Desenvolvedor:
+
+1. **Duas entregas, dois PRs:** P2 (passivo) primeiro, depois P3 (provisão e reserva). Ao fim da P2 o painel já
+   funciona sem reserva (mostra o `EstadoVazio` da regra P3.5, a ser ligado na P3).
+2. **Parâmetros novos** (`aviso_dias_base`, `aviso_dias_por_ano`, `aviso_dias_max`, `multa_fgts`): entram em
+   `PARAMETROS` (`dominio/folha.ts`) em **grupo próprio** (por exemplo, `passivo`), como a #137 fez com `cessao`.
+   A validação genérica de 0 a 100 do grupo `encargos` não vale para eles: `aviso_dias_*` são dias inteiros
+   (base 0 a 365, por ano 0 a 30, máximo 0 a 365) e `multa_fgts` fica de 0 a 100. Depois de a #137 entrar,
+   atualizar o ramo com a `main` e manter os dois grupos.
+3. **Rateio por fonte (P2.10):** R3 e R4 ainda não existem. Use `FontesFolha` (cadastro atual), como a regra já
+   prevê; quando R4 entrar, a troca é só da função que lê o percentual da fonte.
+4. **Cedidos (P2.1, P3.5):** a #137 cria a aba de cedidos. Se ela já estiver na `main`, o teste de P2.1 usa um
+   cedido fictício; se não, vale o teste alternativo da regra. Cedido nunca entra na base.
+5. **Ligação com o painel de sustentabilidade (#139):** o cartão "cobertura do passivo" do bloco Fôlego usa o
+   indicador `cobertura_passivo`. A P3 deve expor uma função de domínio que devolve passivo, reserva do último
+   mês com saldo e a cobertura (ou "sem dado"), para o painel reaproveitar sem recalcular. Quem lê a reserva
+   no painel exige `tesouraria.ver` (regra da #139); nas telas desta especificação continua `execucao.ver`
+   (somente leitura). As duas coexistem: cada tela usa a sua permissão.
+6. **Indicadores novos** da tabela acima entram no registro de indicadores do Orçamento na entrega que os
+   calcula: `passivo_trabalhista` e `ferias_em_dobro` na P2; `cobertura_passivo` na P3.
+
+### Decisões tomadas sozinho nesta continuação
+
+| Decisão | Custo se estiver errada |
+| --- | --- |
+| Entregar P2 e P3 em dois PRs (e não um só) | Um PR a mais para a Diretoria conferir; juntar é só abrir um PR único |
+| Parâmetros do passivo em grupo próprio, com limites próprios | Se os limites forem estreitos, a Diretoria não consegue configurar; ajustar o limite é uma linha |
+| Não mexer nas regras já aprovadas | Nenhum; qualquer divergência que o Desenvolvedor achar vira pergunta na #142 |
