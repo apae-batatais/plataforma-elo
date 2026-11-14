@@ -205,3 +205,41 @@ export const IconeRecolher = (p: Props) => (
     <path d="M9 4v16M15.5 10 13.5 12l2 2" />
   </Icone>
 );
+
+/** Parcerias: dois elos que se encontram. */
+export const IconeParcerias = (p: Props) => (
+  <Icone {...p}>
+    <rect x="2.5" y="8" width="12" height="8" rx="4" />
+    <rect x="9.5" y="8" width="12" height="8" rx="4" />
+  </Icone>
+);
+/** Projetos: bandeira sobre um caminho com marcos (as portas de decisão). */
+export const IconeProjetos = (p: Props) => (
+  <Icone {...p}>
+    <path d="M6 3v10" />
+    <path d="M6 4h9l-1.8 3L15 10H6" />
+    <circle cx="5" cy="20" r="1.5" />
+    <circle cx="12" cy="17" r="1.5" />
+    <circle cx="19" cy="20" r="1.5" />
+    <path d="M6.5 19.5 10.7 17.6M13.3 17.6l4.2 1.9" />
+  </Icone>
+);
+
+/** Ícones que o menu e a tela inicial usam pelo nome (um lugar só para a escolha). */
+export const ICONES = {
+  inicio: IconeInicio,
+  pessoas: IconePessoas,
+  orcamento: IconeOrcamento,
+  requisicoes: IconeRequisicao,
+  comunicacao: IconeComunicacao,
+  avaliacao: IconeAvaliacao,
+  parcerias: IconeParcerias,
+  projetos: IconeProjetos,
+  acessos: IconeChave,
+  servicos: IconeServicos,
+  areas: IconeAreas,
+  planilhas: IconePlanilha,
+  ajuda: IconeAjuda,
+} as const;
+
+export type NomeIcone = keyof typeof ICONES;

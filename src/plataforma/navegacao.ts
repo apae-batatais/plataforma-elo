@@ -4,10 +4,9 @@
  */
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
-import type { GrupoNavegacao, NomeIcone } from '@/ui/casca';
+import type { GrupoNavegacao } from '@/ui/casca';
+import { iconeDoApp } from './icones-dos-apps';
 import { MODULOS } from './registro-modulos';
-
-const ICONE_DO_MODULO: Record<string, NomeIcone> = { calculator: 'orcamento', wallet: 'orcamento', handshake: 'orcamento', clipboard: 'requisicoes', stethoscope: 'avaliacao', megaphone: 'comunicacao' };
 
 export function navegacaoDoUsuario(
   autorizador: Autorizador,
@@ -35,7 +34,7 @@ export function navegacaoDoUsuario(
         itens: apps.map((a) => ({
           rotulo: a.nome,
           href: a.rota,
-          icone: ICONE_DO_MODULO[a.icone] ?? 'planilhas',
+          icone: iconeDoApp(a.id),
           alerta: opcoes.alertasApps?.[a.rota],
           filhos: a.itens.map((i) => ({ rotulo: i.rotulo, href: i.href, secao: i.secao })),
         })),
