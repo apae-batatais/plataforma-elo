@@ -30,6 +30,8 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
       planilha de origem com base na estrutura do Elo (decisão da Diretoria em 09/11/2026). As linhas entram
       na mesma aba `Realizado`. Depende de a Diretoria definir o modelo ou de uma amostra da exportação do
       WK Radar (com dados fictícios ou anonimizados).
+- [ ] Casar o realizado da contabilidade pelo código da conta contábil dos grupos e fontes (o campo vem da
+      proposta #127, 14/11/2026); código nas Contas da Tesouraria e nos Serviços; somar painéis por código.
 - [ ] Realizado por lançamento (fornecedor, documento, fila "A classificar", regras de classificação), se a
       Diretoria quiser o detalhe.
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
