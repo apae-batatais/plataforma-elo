@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { BotaoBaixar } from '@/modulos/orcamento/telas/botao-baixar';
 import { redirect } from 'next/navigation';
 import { lerPrevisao } from '@/modulos/orcamento/aplicacao/previsao';
 import { CATEGORIA, COTACAO_CURTA, PRIORIDADE_CURTA } from '@/modulos/orcamento/dominio/previsao';
@@ -43,6 +44,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
         acoes={
           <>
             <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/despesas?ano=${a}`} />
+            <BotaoBaixar href={`/orcamento/previsao/baixar/despesas?ano=${prev.ano}`} rotulo={`Baixar planilha (ano ${prev.ano})`} vazio={prev.despesas.length === 0 && !(prev.folha?.linhas.length)} />
             {podeLancar && (
               <JanelaFormulario
                 rotulo={
@@ -111,8 +113,8 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                 descricao: d.descricao,
                 area: d.areaNome,
                 servico: d.servicoNome,
-                grupo: d.grupoNome,
-                fonte: d.fonte_id ? d.fonteNome : 'A definir',
+                grupo: d.grupoCodigo ? `${d.grupoNome} ${d.grupoCodigo}` : d.grupoNome,
+                fonte: d.fonte_id ? (d.fonteCodigo ? `${d.fonteNome} ${d.fonteCodigo}` : d.fonteNome) : 'A definir',
                 categoria: CATEGORIA[d.categoria],
                 prioridade: d.prioridade ? PRIORIDADE_CURTA[d.prioridade] : null,
                 cotacao: d.cotacao ? COTACAO_CURTA[d.cotacao] : null,
@@ -132,9 +134,17 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                 grupo: (
                   <>
                     {d.grupoNome} {d.rh && <Etiqueta tipo="info">RH</Etiqueta>}
+                    {d.grupoCodigo && <span className="block text-xs tabular-nums text-texto-suave">{d.grupoCodigo}</span>}
                   </>
                 ),
-                fonte: d.fonte_id ? d.fonteNome : <Etiqueta tipo="atencao">A definir</Etiqueta>,
+                fonte: d.fonte_id ? (
+                  <>
+                    {d.fonteNome}
+                    {d.fonteCodigo && <span className="block text-xs tabular-nums text-texto-suave">{d.fonteCodigo}</span>}
+                  </>
+                ) : (
+                  <Etiqueta tipo="atencao">A definir</Etiqueta>
+                ),
                 categoria: d.categoria === 'projetos' ? <Etiqueta tipo="info">{CATEGORIA.projetos}</Etiqueta> : CATEGORIA.operacional,
                 prioridade: d.prioridade ? (
                   <span className={`whitespace-nowrap ${d.prioridade === 'ui' ? 'font-semibold text-erro' : 'text-texto-suave'}`}>{PRIORIDADE_CURTA[d.prioridade]}</span>

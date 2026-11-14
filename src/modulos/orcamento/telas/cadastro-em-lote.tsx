@@ -18,20 +18,20 @@ const TEXTOS = {
   grupo: {
     instrucao: (
       <>
-        Uma linha por grupo: <strong>Nome</strong> e, se for de Recursos Humanos (fora da folha), escreva <strong>RH</strong> na coluna ao lado.
+        Uma linha por grupo: <strong>Nome</strong> e, se for de Recursos Humanos (fora da folha), escreva <strong>RH</strong> na coluna ao lado. Se quiser, acrescente em seguida o <strong>Código da conta</strong> da contabilidade (opcional).
       </>
     ),
-    exemplo: 'Material de consumo\nServiços de terceiros\nRPA\tRH',
+    exemplo: 'Material de consumo\t\t3.1.02.001\nServiços de terceiros\nRPA\tRH',
     singular: 'grupo',
     plural: 'grupos',
   },
   fonte: {
     instrucao: (
       <>
-        Uma linha por fonte, nesta ordem: <strong>Nome</strong>, <strong>Natureza</strong> (pública ou própria) e <strong>Uso</strong> (livre ou restrito).
+        Uma linha por fonte, nesta ordem: <strong>Nome</strong>, <strong>Natureza</strong> (pública ou própria) e <strong>Uso</strong> (livre ou restrito). Se quiser, acrescente o <strong>Código da conta</strong> da contabilidade (opcional).
       </>
     ),
-    exemplo: 'Subvenção municipal\tpública\trestrito\nDoações\tprópria\tlivre',
+    exemplo: 'Subvenção municipal\tpública\trestrito\t4.1.01.001\nDoações\tprópria\tlivre',
     singular: 'fonte',
     plural: 'fontes',
   },
@@ -109,6 +109,9 @@ export function CadastroEmLoteOrcamento({ tipo, conferir, cadastrar }: { tipo: T
                     </>
                   )}
                   <th scope="col" className="px-3 py-2 font-semibold">
+                    Código da conta
+                  </th>
+                  <th scope="col" className="px-3 py-2 font-semibold">
                     Situação
                   </th>
                 </tr>
@@ -128,6 +131,7 @@ export function CadastroEmLoteOrcamento({ tipo, conferir, cadastrar }: { tipo: T
                         <td className="px-3 py-2">{l.uso ? USO[l.uso] : '—'}</td>
                       </>
                     )}
+                    <td className="px-3 py-2 tabular-nums">{l.codigo_conta ?? '—'}</td>
                     <td className="px-3 py-2">
                       {l.situacao === 'ok' ? (
                         <Etiqueta tipo="sucesso">Pronto</Etiqueta>

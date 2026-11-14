@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { BotaoBaixar } from '@/modulos/orcamento/telas/botao-baixar';
 import { redirect } from 'next/navigation';
 import { lerPrevisao } from '@/modulos/orcamento/aplicacao/previsao';
 import { CAPTACAO, NATUREZA, USO, type Captacao } from '@/modulos/orcamento/dominio/previsao';
@@ -41,6 +42,7 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
         acoes={
           <>
             <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/receitas?ano=${a}`} />
+            <BotaoBaixar href={`/orcamento/previsao/baixar/receitas?ano=${prev.ano}`} rotulo={`Baixar planilha (ano ${prev.ano})`} vazio={prev.receitas.length === 0} />
             {podeLancar && (
               <JanelaFormulario
                 rotulo={
@@ -112,7 +114,7 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
               destaque: emEdicao?.id === r.id,
               valores: {
                 descricao: r.descricao,
-                fonte: r.fonteNome,
+                fonte: r.fonteCodigo ? `${r.fonteNome} ${r.fonteCodigo}` : r.fonteNome,
                 natureza: NATUREZA[r.natureza],
                 uso: USO[r.uso],
                 area: r.areaNome ?? 'Geral',
@@ -125,6 +127,12 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
                   <>
                     <span className="font-semibold">{r.descricao}</span>
                     {r.observacao && <span className="block text-xs italic text-texto-suave">{r.observacao}</span>}
+                  </>
+                ),
+                fonte: (
+                  <>
+                    {r.fonteNome}
+                    {r.fonteCodigo && <span className="block text-xs tabular-nums text-texto-suave">{r.fonteCodigo}</span>}
                   </>
                 ),
                 area: r.areaNome ?? <span className="text-texto-suave">Geral</span>,

@@ -28,3 +28,7 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Realizado (1C.1): aba `Realizado` na planilha `orcamento_execucao`, totais mensais informados à mão (sem coluna pessoal).
   Informar/corrigir/remover: `orcamento.realizado.editar` (Financeiro); ver: `orcamento.execucao.ver` (Coordenação só o seu escopo,
   sem receitas). Salvar o mês é tudo ou nada (versão lida); remover encerra (`ativo = FALSE`). Regras puras em `dominio/realizado.ts`.
+- Código da conta contábil (#127): coluna opcional `codigo_conta` em `GruposGasto` e `Fontes` (texto até 30 caracteres, único entre
+  os ativos de cada cadastro; regras em `dominio/codigo-conta.ts`). Aparece nas listas, no lote, na importação de itens
+  (casa por nome ou código) e em "Baixar planilha" (CSV, `aplicacao/baixar-planilha.ts`, rota `previsao/baixar/[arquivo]`).
+  Sem plano de contas no Elo; o código não é dado pessoal.
