@@ -159,7 +159,10 @@ Conselho**, que dá a decisão final.
     mais dias que o configurado (padrão 30), aparece na carteira.
 
 **Ligações com outros apps (entrega P7)**
-26. O app **nunca importa outro módulo** (ADR-013). Cada ligação usa um catálogo declarado em `projetos` e
+26. **Atualizado em 14/11/2026 (issue #115):** as ligações com Orçamento, Requisições e Comunicação passam a ser
+    especificadas em `docs/especificacao-ligacoes-entre-apps.md` (ADR-022) e construídas nas entregas L1 a L6 dessa
+    especificação. Parcerias, Pessoas e Avaliação ficam com a onda 2 (issue #116). O que segue vale para elas.
+    O app **nunca importa outro módulo** (ADR-013). Cada ligação usa um catálogo declarado em `projetos` e
     entregue pela plataforma: Parcerias (termo), Orçamento (fonte, orçamento e realizado do projeto),
     Requisições (compras), Cadastro de pessoas e Avaliação (contagem de beneficiários e indicadores),
     Comunicação (lançamento e divulgação). App ausente vira "ligação indisponível", nunca erro.
@@ -225,7 +228,7 @@ ligada à #107, nesta ordem.
 | P4 | **Fase 4**: acompanhamento, problemas, relatórios, pedidos de mudança e versões do Termo | Mudança dentro e fora da tolerância |
 | P5 | **Fase 5**: check-list, relatório final, lições aprendidas e consulta | Encerrar com lições |
 | P6 | **Carteira** da Diretoria | Carteira inteira numa tela |
-| P7 | **Ligações** com Parcerias (depende da entrega R2, issue #95), Orçamento, Requisições, Pessoas e Avaliação, Comunicação | Cada ligação sem cadastro repetido |
+| P7 | **Ligações** (Orçamento, Requisições e Comunicação: ver `docs/especificacao-ligacoes-entre-apps.md`; as demais, onda 2, issue #116) com Parcerias (depende da entrega R2, issue #95), Orçamento, Requisições, Pessoas e Avaliação, Comunicação | Cada ligação sem cadastro repetido |
 
 ## Decisões tomadas sozinho (com o custo se estiverem erradas)
 

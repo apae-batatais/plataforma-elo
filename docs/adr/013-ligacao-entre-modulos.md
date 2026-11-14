@@ -28,3 +28,7 @@ tipos. Com isso, `CatalogoOrcamento`, `gruposDeGastoAtivos` e `src/plataforma/ca
 removidos: hoje nenhum módulo usa outro. As colunas `grupo_id` e `grupo_nome` continuam na aba
 de requisições, preenchidas só nos pedidos feitos antes da mudança. A decisão acima continua
 valendo como o caminho para a próxima ligação entre módulos.
+
+## Atualização (14/11/2026)
+A ADR-022 estende este caminho: leituras com valores e permissão do app dono, portas de entrada para gravar
+em outro app e a Ficha do serviço na plataforma. O resto desta decisão continua valendo.
