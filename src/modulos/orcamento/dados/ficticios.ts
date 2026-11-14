@@ -3,12 +3,12 @@
  * Nomes, cargos e valores são inventados; só têm o mesmo formato da folha real.
  */
 import { Faker, base, pt_BR } from '@faker-js/faker';
-import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { anoAtualBrasilia } from '../dominio/historico';
 import { distribuir, valorDoItem } from '../dominio/previsao';
 import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
-import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos } from './tabelas';
+import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -405,4 +405,23 @@ export async function popularHistoricoFicticia(p: Planilhas): Promise<void> {
     }),
     autor,
   );
+}
+
+/** Cedidos fictícios (C1 da #125): um do poder público com a cessão perto do fim e um aprendiz de empresa. */
+export async function popularCedidosFicticia(p: Planilhas): Promise<void> {
+  const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const hoje = new Date();
+  const em = (dias: number) => new Date(hoje.getTime() + dias * 86_400_000).toISOString().slice(0, 10);
+  const ano = anoAtualBrasilia();
+  const publico = await inserir(p, Cedentes, { nome: 'Órgão público (exemplo)', tipo: 'poder_publico' }, autor);
+  const empresa = await inserir(p, Cedentes, { nome: 'Empresa com cota de aprendiz (exemplo)', tipo: 'empresa_aprendiz' }, autor);
+  const lista = [
+    { cedente: publico.id, colaborador: 'Profissional cedido (exemplo 1)', funcao: 'Assistente social (exemplo)', fim: em(30), valor: 4200, tipo: 'informado' as const, servico: 'ur' },
+    { cedente: empresa.id, colaborador: 'Aprendiz cedido (exemplo 2)', funcao: 'Aprendiz administrativo (exemplo)', fim: `${ano + 1}-06-30`, valor: 1300, tipo: 'equivalente' as const, servico: 'administracao' },
+  ];
+  for (const x of lista) {
+    const c = await inserir(p, Cedidos, { colaborador: x.colaborador, funcao: x.funcao, carga_horaria: 120, cedente_id: x.cedente, inicio: `${ano}-01-01`, fim_previsto: x.fim, observacao: null }, autor);
+    await inserir(p, ValoresCedidos, { cedido_id: c.id, vigencia: `${ano}-01-01`, valor_mensal: x.valor, tipo_valor: x.tipo }, autor);
+    await inserir(p, LotacaoCedidos, { cedido_id: c.id, lote: `demo-${c.id}`, servico: x.servico, percentual: 100, vigencia: `${ano}-01-01` }, autor);
+  }
 }

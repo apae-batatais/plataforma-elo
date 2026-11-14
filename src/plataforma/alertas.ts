@@ -4,6 +4,7 @@
  * instituição, para não ler as planilhas a cada página.
  */
 import 'server-only';
+import { contadorDeAvisosDeCessao } from '@/modulos/orcamento/aplicacao/cedidos';
 import { contadoresComunicacao } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { contadoresRequisicoes } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
@@ -34,6 +35,14 @@ export async function alertasDoMenu(autorizador: Autorizador): Promise<Record<st
         if (n > 0) r['/comunicacao'] = String(n);
       } catch {
         // Planilha da Comunicação ainda não configurada: a página do app explica.
+      }
+    }
+    if (autorizador.temPermissaoAlgumEscopo('orcamento.folha.ver')) {
+      try {
+        const n = await contadorDeAvisosDeCessao(app.planilhas, autorizador);
+        if (n > 0) r['/orcamento'] = String(n);
+      } catch {
+        // Abas dos cedidos ainda não preparadas: a página do app explica.
       }
     }
     return r;

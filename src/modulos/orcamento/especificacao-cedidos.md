@@ -1,6 +1,6 @@
 # Especificação — Orçamento: profissionais cedidos no custo dos serviços
 
-- Situação: para aprovação (proposta #125, 14/11/2026)
+- Situação: C1 entregue (proposta #125, 14/11/2026); C2 pendente. Na C1, "Quem cede" ficou em `/orcamento/cedidos/cedentes` (menu Folha de pagamento), porque o Departamento Pessoal não entra nas rotas da Previsão; o campo de termo (Parcerias) fica para a C2.
 - Dono do produto: Diretoria
 - Complementa `especificacao.md` (Folha 1A, Previsão 1B, Análise por área, indicadores) e
   `especificacao-folha-caixa-passivo.md` (caixa e passivo: **cedidos ficam fora**). Arquitetura: ADR-011 e
@@ -176,7 +176,7 @@ Seguem as habilidades `telas` e `graficos` e `docs/identidade-visual.md`; nenhum
 - **Celular e teclado:** a lista vira cartões (nome, função e fim previsto em cima); formulário em uma coluna,
   ordem natural dos campos; janela fecha com Esc e devolve o foco ao botão que a abriu.
 
-### 2. Quem cede (Cadastros › Quem cede, `/orcamento/previsao/cedentes`) — C1
+### 2. Quem cede (Cadastros › Quem cede, `/orcamento/cedidos/cedentes`) — C1
 
 - **Quem usa:** Departamento Pessoal e Financeiro. Lista de cedentes (nome, tipo, termo, cedidos ativos, valor
   mensal de hoje) e **"Adicionar quem cede"**. Campos: Nome*; Tipo* (Poder público, Empresa com cota de
@@ -215,7 +215,7 @@ Seguem as habilidades `telas` e `graficos` e `docs/identidade-visual.md`; nenhum
   que fazer ("Sem os cedidos, a folha pesa 71% da receita: acima da referência de 65%").
 - **Sem permissão:** quem não vê folha não vê a parcela por serviço; vê só o total no painel geral.
 
-### 5. Participação de quem cede (Painéis › Participação de quem cede, `/orcamento/previsao/cedentes/participacao`) — C2
+### 5. Participação de quem cede (Painéis › Participação de quem cede, `/orcamento/cedidos/cedentes/participacao`) — C2
 
 - **Pergunta que responde:** quanto cada parceiro aporta em pessoas (e em dinheiro, quando há termo)?
 - **Forma:** **tabela com barra de proporção** (comparação entre poucas categorias; componentes de
