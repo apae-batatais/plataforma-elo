@@ -23,6 +23,8 @@ export interface CustoDosCedidos {
   porServico: Map<string, number[]>;
   /** Receita por cedente, mês a mês (igual à despesa, somada por quem cede). */
   porCedente: Map<string, { tipo: TipoCedente; mensal: number[] }>;
+  /** Despesa por serviço e por cedente (para a Ficha do serviço e a leitura da #131), sem dado pessoal. */
+  porServicoCedente: Map<string, { servico: string; cedenteId: string; tipo: TipoCedente; mensal: number[] }>;
   /** Profissionais por serviço (cada cedido ativo conta com o percentual da lotação, no último mês com valor). */
   profissionais: Map<string, number>;
   /** Cedidos que ficaram fora por falta de valor ou lotação. */
@@ -44,6 +46,7 @@ export function dividirEmCentavos(centavos: number, linhas: LinhaRateio[]): numb
 export function custoDosCedidos(ano: number, cedidos: CedidoParaCusto[]): CustoDosCedidos {
   const porServico = new Map<string, number[]>();
   const porCedente = new Map<string, { tipo: TipoCedente; mensal: number[] }>();
+  const porServicoCedente = new Map<string, { servico: string; cedenteId: string; tipo: TipoCedente; mensal: number[] }>();
   const profissionais = new Map<string, number>();
   let semNumero = 0;
   for (const c of cedidos) {
@@ -62,6 +65,10 @@ export function custoDosCedidos(ano: number, cedidos: CedidoParaCusto[]): CustoD
         const linha = porServico.get(l.centro) ?? zeros();
         linha[mes - 1] += partes[i] / 100;
         porServico.set(l.centro, linha);
+        const chave = `${l.centro}\u0000${c.cedenteId}`;
+        const sc = porServicoCedente.get(chave) ?? { servico: l.centro, cedenteId: c.cedenteId, tipo: c.tipoCedente, mensal: zeros() };
+        sc.mensal[mes - 1] += partes[i] / 100;
+        porServicoCedente.set(chave, sc);
       });
       const ced = porCedente.get(c.cedenteId) ?? { tipo: c.tipoCedente, mensal: zeros() };
       ced.mensal[mes - 1] += partes.reduce((s, v) => s + v, 0) / 100;
@@ -77,7 +84,8 @@ export function custoDosCedidos(ano: number, cedidos: CedidoParaCusto[]): CustoD
   const arred = (l: number[]) => l.map((v) => Math.round(v * 100) / 100);
   for (const [k, v] of porServico) porServico.set(k, arred(v));
   for (const v of porCedente.values()) v.mensal = arred(v.mensal);
-  return { porServico, porCedente, profissionais, semNumero };
+  for (const v of porServicoCedente.values()) v.mensal = arred(v.mensal);
+  return { porServico, porCedente, porServicoCedente, profissionais, semNumero };
 }
 
 export const somaAno = (l: number[]) => Math.round(l.reduce((s, v) => s + v, 0) * 100) / 100;

@@ -757,7 +757,7 @@ const folhaNo = (id: string, nome: string, mensal: number[], detalhe?: string): 
 });
 
 /** Monta a árvore da tabela mês a mês. Os totais de cada nível são a soma dos filhos. */
-export function arvoreMensal(prev: Pick<Previsao, 'despesas' | 'receitas' | 'folha'>): { receita: NoArvore; despesa: NoArvore } {
+export function arvoreMensal(prev: Pick<Previsao, 'despesas' | 'receitas' | 'folha'> & Partial<Pick<Previsao, 'cedidos' | 'incluiCedidos' | 'receitasCedidos' | 'opcoes'>>): { receita: NoArvore; despesa: NoArvore } {
   const porChave = <T,>(lista: T[], chave: (x: T) => string) => {
     const m = new Map<string, T[]>();
     for (const x of lista) m.set(chave(x), [...(m.get(chave(x)) ?? []), x]);
@@ -773,6 +773,13 @@ export function arvoreMensal(prev: Pick<Previsao, 'despesas' | 'receitas' | 'fol
   );
   if (prev.folha && prev.folha.linhas.length) {
     grupos.push(no('d:__folha__', 'Folha de pagamento (automática)', prev.folha.linhas.map((l) => folhaNo(`d:__folha__:${l.servico}`, l.nome, l.mensal, l.areaNome))));
+  }
+
+  // Cedidos (C2): linhas automáticas, somente leitura, "sem passar pelo caixa".
+  if (prev.incluiCedidos && prev.cedidos) {
+    const nomeServico = new Map((prev.opcoes?.servicos ?? []).map((s) => [s.codigo, s.nome]));
+    grupos.push(no(`d:${GRUPO_CEDIDOS}`, NOME_GRUPO_CEDIDOS, prev.cedidos.porServico.map((c) => folhaNo(`d:${GRUPO_CEDIDOS}:${c.servico}`, `Pessoal cedido — ${nomeServico.get(c.servico) ?? c.servico}`, c.mensal, 'Automático'))));
+    fontes.push(no(`r:${FONTE_CEDIDOS}`, NOME_FONTE_CEDIDOS, (prev.receitasCedidos ?? []).map((r) => folhaNo(`r:${FONTE_CEDIDOS}:${r.cedenteId}`, r.descricao, r.meses, 'Garantida, sem passar pelo caixa'))));
   }
 
   return { receita: no('receita', 'Receita', fontes), despesa: no('despesa', 'Despesa', grupos) };

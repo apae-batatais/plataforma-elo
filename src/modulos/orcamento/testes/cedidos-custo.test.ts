@@ -15,6 +15,9 @@ import { resumoFolha } from '../aplicacao/folha';
 import { popularFolhaFicticia, popularPrevisaoFicticia } from '../dados/ficticios';
 import { TABELAS_ORCAMENTO } from '../dados/tabelas';
 import { custoDosCedidos, dividirEmCentavos } from '../dominio/cedidos-custo';
+import { custoDoServico } from '../aplicacao/ligacao';
+import { cedidosPorServicoECedente, participacaoDeQuemCede } from '../aplicacao/participacao';
+import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { manifesto } from '../manifesto';
 
 let p: Planilhas;
@@ -167,5 +170,46 @@ describe('acesso', () => {
     expect(JSON.stringify(c)).not.toContain('Pessoa cedida');
     // Coordenação (folha.ver só no escopo) não tem a visão global: fica sem a parcela.
     expect((await cedidosDoAno(p, await coordUr(), ANO)).temCedidos).toBe(false);
+  });
+});
+
+describe('participação de quem cede e leituras por serviço', () => {
+  it('por tipo e por cedente, em reais e em % do custo; cedente sem cedido aparece zerado', async () => {
+    await cadastrar();
+    await salvarCedente(p, await dp(), { nome: 'Outro parceiro (fictício)', tipo: 'outro', observacao: null });
+    const r = await participacaoDeQuemCede(p, await financeiro(), ANO);
+    const c = await cedidosDoAno(p, await financeiro(), ANO);
+    expect(r.total).toBe(c.anual);
+    expect(r.porTipo.reduce((s, t) => s + t.valor, 0)).toBeCloseTo(r.total, 2);
+    expect(r.porCedente).toHaveLength(3);
+    expect(r.porCedente.find((x) => x.tipo === 'outro')!.pessoas).toBe(0);
+    expect(r.porTipo.find((t) => t.tipo === 'poder_publico')!.percentual).toBeCloseTo((36000 / r.custoTotal) * 100, 1);
+    expect(JSON.stringify(r)).not.toContain('Pessoa cedida');
+  });
+
+  it('quem não vê folha não abre a participação', async () => {
+    await cadastrar();
+    await expect(participacaoDeQuemCede(p, await coordUr(), ANO)).rejects.toThrow(ErroPermissao);
+  });
+
+  it('leitura por serviço e cedente respeita o escopo e não traz nome de pessoa', async () => {
+    await cadastrar();
+    const todos = await cedidosPorServicoECedente(p, await financeiro(), ANO);
+    expect(todos.map((x) => x.servico).sort()).toEqual(['administracao', 'ur', 'ur']);
+    const soUr = await cedidosPorServicoECedente(p, await coordUr(), ANO);
+    expect(soUr.every((x) => x.servico === 'ur')).toBe(true);
+    expect(soUr.length).toBeGreaterThan(0);
+    expect(JSON.stringify(todos)).not.toContain('Pessoa cedida');
+  });
+
+  it('Ficha do serviço: cedidos por cedente sem nome de pessoa; o realizado não muda', async () => {
+    const antes = await custoDoServico(p, await financeiro(), 'ur', { ano: ANO });
+    await cadastrar();
+    const l = await custoDoServico(p, await financeiro(), 'ur', { ano: ANO });
+    if (l.estado !== 'ok' || antes.estado !== 'ok') throw new Error('esperava ok');
+    expect(l.dados.realizado).toBe(antes.dados.realizado);
+    expect(l.dados.previsto).toBe(antes.dados.previsto);
+    expect(l.dados.cedidos.map((x) => x.cedente).sort()).toEqual(['Empresa (fictícia)', 'Órgão público (fictício)']);
+    expect(JSON.stringify(l.dados)).not.toContain('Pessoa cedida');
   });
 });

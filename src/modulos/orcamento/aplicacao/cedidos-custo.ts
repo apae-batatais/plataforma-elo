@@ -19,6 +19,8 @@ export interface CedidosDoAno {
   anual: number;
   porServico: { servico: string; mensal: number[]; anual: number }[];
   porCedente: { cedenteId: string; nome: string; tipo: TipoCedente; tipoRotulo: string; mensal: number[]; anual: number }[];
+  /** Por serviço e por cedente (sem dado pessoal). */
+  porServicoCedente: { servico: string; cedenteId: string; nome: string; tipo: TipoCedente; tipoRotulo: string; mensal: number[]; anual: number }[];
   /** Cada cedido ativo conta com o percentual da lotação. */
   profissionais: Map<string, number>;
   /** Cedidos ativos no ano que ficaram de fora por falta de valor ou lotação. */
@@ -27,11 +29,16 @@ export interface CedidosDoAno {
 
 const ultimoDia = (ano: number, mes: number) => new Date(Date.UTC(ano, mes, 0)).toISOString().slice(0, 10);
 
-export const SEM_CEDIDOS = (ano: number): CedidosDoAno => ({ ano, temCedidos: false, mensal: Array(12).fill(0), anual: 0, porServico: [], porCedente: [], profissionais: new Map(), semNumero: 0 });
+export const SEM_CEDIDOS = (ano: number): CedidosDoAno => ({ ano, temCedidos: false, mensal: Array(12).fill(0), anual: 0, porServico: [], porCedente: [], porServicoCedente: [], profissionais: new Map(), semNumero: 0 });
 
 /** Totais do ano. Sem `orcamento.folha.ver` (global) devolve "sem cedidos". */
 export async function cedidosDoAno(p: Planilhas, quem: Autorizador, ano: number): Promise<CedidosDoAno> {
   if (!quem.temPermissao('orcamento.folha.ver')) return SEM_CEDIDOS(ano);
+  return calcularCedidosDoAno(p, ano);
+}
+
+/** Cálculo sem conferir permissão: quem chama já conferiu a sua (Ficha do serviço, leitura por cedente). Nunca devolve nome de pessoa. */
+export async function calcularCedidosDoAno(p: Planilhas, ano: number): Promise<CedidosDoAno> {
   const [cedentes, cedidos, valores, lotacoes] = await lerTabelas(p, [Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos] as const);
   const ativos = cedidos.ativos();
   if (ativos.length === 0) return SEM_CEDIDOS(ano);
@@ -71,6 +78,9 @@ export async function cedidosDoAno(p: Planilhas, quem: Autorizador, ano: number)
     porServico: [...r.porServico].map(([servico, m]) => ({ servico, mensal: m, anual: somaAno(m) })).sort((a, b) => b.anual - a.anual),
     porCedente: [...r.porCedente]
       .map(([id, x]) => ({ cedenteId: id, nome: cedente.get(id)?.nome ?? '—', tipo: x.tipo, tipoRotulo: ROTULO_TIPO_CEDENTE[x.tipo], mensal: x.mensal, anual: somaAno(x.mensal) }))
+      .sort((a, b) => b.anual - a.anual),
+    porServicoCedente: [...r.porServicoCedente.values()]
+      .map((x) => ({ servico: x.servico, cedenteId: x.cedenteId, nome: cedente.get(x.cedenteId)?.nome ?? '—', tipo: x.tipo, tipoRotulo: ROTULO_TIPO_CEDENTE[x.tipo], mensal: x.mensal, anual: somaAno(x.mensal) }))
       .sort((a, b) => b.anual - a.anual),
     profissionais: r.profissionais,
     semNumero: r.semNumero,
