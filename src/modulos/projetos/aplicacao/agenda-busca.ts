@@ -4,12 +4,12 @@ import { lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { contem, MAX_RESULTADOS_POR_APP, type ItemDaAgenda, type ResultadoDaBusca } from '@/nucleo/modulos/agenda-busca';
 import { Projetos } from '../dados/tabelas';
 import { ETAPAS_ENCERRADAS, NOME_ETAPA } from '../dominio/projeto';
-import { lerConfig, podeVerProjeto } from './comum';
+import { equipesAtivas, lerConfig, podeVerProjeto } from './comum';
 
 async function projetosVisiveis(p: Planilhas, quem: Autorizador) {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) return [];
-  const [[projetos], config] = await Promise.all([lerTabelas(p, [Projetos] as const), lerConfig(p)]);
-  return projetos.ativos().filter((r) => podeVerProjeto(quem, r, config));
+  const [[projetos], config, equipes] = await Promise.all([lerTabelas(p, [Projetos] as const), lerConfig(p), equipesAtivas(p)]);
+  return projetos.ativos().filter((r) => podeVerProjeto(quem, r, config, equipes.get(r.id)));
 }
 
 /** Início e fim previstos dos projetos abertos. */

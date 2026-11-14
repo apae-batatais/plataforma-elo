@@ -49,6 +49,22 @@ export default async function Configuracoes() {
             <input name="limite" inputMode="decimal" defaultValue={config.limiteAlcada ?? ''} className={`${estiloEntrada} max-w-48`} />
           </Campo>
         </Secao>
+        <Secao id="t-tolerancias" titulo="Tolerâncias sugeridas no Termo de Abertura" descricao="O Termo já vem com estes valores; o responsável pode mudá-los em cada projeto. Zero significa nenhuma margem.">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Custo por linha do orçamento (%)" dica="ex.: 10">
+              <input name="tol_custo_linha" inputMode="decimal" defaultValue={config.tolerancias.custoLinhaPct} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Custo no total (%)" dica="ex.: 5">
+              <input name="tol_custo_total" inputMode="decimal" defaultValue={config.tolerancias.custoTotalPct} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Atraso no fim do projeto (dias)" dica="ex.: 15">
+              <input name="tol_prazo_fim" inputMode="numeric" defaultValue={config.tolerancias.prazoFimDias} className={estiloEntrada} />
+            </Campo>
+            <Campo rotulo="Atraso em cada marco (dias)" dica="ex.: 7">
+              <input name="tol_prazo_marco" inputMode="numeric" defaultValue={config.tolerancias.prazoMarcoDias} className={estiloEntrada} />
+            </Campo>
+          </div>
+        </Secao>
         <Secao id="t-banca" titulo="Quem dá parecer e quem decide pela alçada" descricao="E-mails, separados por vírgula. A pessoa precisa ter acesso ao Elo.">
           <div className="space-y-4">
             {PAPEIS.map((x) => (
