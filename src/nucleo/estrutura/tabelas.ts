@@ -128,6 +128,22 @@ export const Atribuicoes = definirTabela({
   }),
 });
 
+// Encarregado de dados (DPO, LGPD) ---------------------------------------
+export const Encarregados = definirTabela({
+  planilha: 'nucleo',
+  aba: 'Encarregados',
+  esquema: z.object({
+    nome: texto(),
+    tipo: z.enum(['fisica', 'juridica']),
+    /** Só dígitos: CPF (11) ou CNPJ (14). */
+    documento: texto(),
+    email: z.preprocess((v) => String(v ?? '').trim().toLowerCase(), z.email()),
+    inicio: dataOpcional(),
+    fim: dataOpcional(),
+  }),
+  sigilo: { documento: 'pessoal' },
+});
+
 // Auditoria (planilha própria, somente inclusão) ---------------------------
 export const ACOES_AUDITORIA = ['leitura', 'inclusao', 'alteracao', 'encerramento', 'exportacao', 'entrada', 'estrutura'] as const;
 
@@ -147,7 +163,7 @@ export const RegistrosAuditoria = definirTabela({
 
 export const TABELAS_DO_NUCLEO = [
   Unidades, Areas, Servicos, Pessoas, Papeis, VinculosFamiliares, VinculosServico,
-  Usuarios, Perfis, PerfilPermissoes, Atribuicoes, RegistrosAuditoria,
+  Usuarios, Perfis, PerfilPermissoes, Atribuicoes, Encarregados, RegistrosAuditoria,
 ] as const;
 
 // Tipos dos registros ------------------------------------------------------
@@ -159,4 +175,5 @@ export type RegVinculoServico = Registro<typeof VinculosServico.esquema>;
 export type RegUsuario = Registro<typeof Usuarios.esquema>;
 export type RegPerfil = Registro<typeof Perfis.esquema>;
 export type RegPerfilPermissao = Registro<typeof PerfilPermissoes.esquema>;
+export type RegEncarregado = Registro<typeof Encarregados.esquema>;
 export type RegAtribuicao = Registro<typeof Atribuicoes.esquema>;

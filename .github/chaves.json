@@ -13,5 +13,10 @@
     "nome": "NETLIFY_AUTH_TOKEN",
     "vence": null,
     "renovar": "app.netlify.com → User settings → Applications → Personal access tokens; troque o valor em plataforma-elo → Settings → Secrets and variables → Actions → NETLIFY_AUTH_TOKEN."
+  },
+  {
+    "nome": "ROTINA_TOKEN",
+    "vence": null,
+    "renovar": "Gere uma chave nova (mínimo 32 caracteres aleatórios) e troque o mesmo valor em dois lugares: plataforma-elo → Settings → Secrets and variables → Actions → ROTINA_TOKEN, e a variável de ambiente ROTINA_TOKEN no site da Netlify (depois, publique de novo)."
   }
 ]

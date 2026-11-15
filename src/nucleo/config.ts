@@ -52,6 +52,8 @@ export interface Instituicao {
   /** Pasta da instituição no Drive compartilhado, onde o Elo cria as planilhas (ADR-018). */
   pasta?: string;
   administradoresIniciais: string[];
+  /** E-mail institucional de envio ("não-responda@"), do domínio da instituição (ADR-027). Sem ele, o Elo não envia e-mail. */
+  remetenteEmail?: string;
   /** Unidades gravadas por "Preparar estrutura" quando a aba está vazia. */
   unidades: readonly { codigo: string; nome: string }[];
 }
@@ -131,6 +133,7 @@ export const INSTITUICOES_DEMONSTRACAO: Instituicao[] = [
     situacao: 'ativa',
     planilhas: {},
     administradoresIniciais: [],
+    remetenteEmail: 'nao-responda@exemplo.local',
     unidades: UNIDADES_FICTICIAS,
   },
   {
@@ -142,6 +145,7 @@ export const INSTITUICOES_DEMONSTRACAO: Instituicao[] = [
     situacao: 'ativa',
     planilhas: {},
     administradoresIniciais: [],
+    remetenteEmail: 'nao-responda@exemplo.local',
     unidades: UNIDADES_FICTICIAS,
   },
 ];
