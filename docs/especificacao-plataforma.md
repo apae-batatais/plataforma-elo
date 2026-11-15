@@ -70,7 +70,7 @@ Fase 2, entrega 1 (06/11/2026): módulo Avaliação de Serviços Sociais, com av
 - [x] Publicação na Netlify pelo GitHub (oficial manual, prévia por PR)
 - [x] Google Cloud: conta de serviço e ID do cliente OAuth
 - [x] Planilhas Núcleo e Auditoria criadas e compartilhadas com a conta de serviço
-- [ ] Capacidade de Indicadores (cálculo e painel)
+- [ ] Capacidade de Indicadores (cálculo e painel): especificação em `docs/especificacao-indicadores.md` (#57)
 
 ## Textos e demonstração sem nomes próprios (proposta #97)
 

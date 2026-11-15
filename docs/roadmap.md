@@ -201,6 +201,16 @@ Ficou para depois (14/11/2026):
 - [ ] Busca em Avaliação (dado sensível; só com pedido da Diretoria).
 - [ ] Sugestões ao digitar e filtro por app nos resultados da busca.
 
+## Painel de indicadores (issue #57, especificação em `docs/especificacao-indicadores.md`)
+
+Ficou para depois (15/11/2026):
+
+- [ ] Indicadores novos que cruzam apps.
+- [ ] Avaliação, Parcerias e Projetos no painel (hoje não têm indicador pronto).
+- [ ] A Ficha do serviço passar a usar a mesma função de cálculo dos módulos.
+- [ ] Foto mensal guardada, painel em PDF, alerta de indicador fora da referência e indicadores por serviço.
+- [ ] Painel para coordenações ou Leitura (hoje só a Diretoria).
+
 ## Motor de avaliação (issue #62, especificação em `src/modulos/avaliacao/especificacao.md`, ADR-026)
 
 Ficou para depois (15/11/2026):
