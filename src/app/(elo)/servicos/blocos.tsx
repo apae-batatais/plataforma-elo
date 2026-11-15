@@ -132,6 +132,12 @@ function CustoComDados({ c }: { c: NonNullable<Extract<FichaDoServico['custo'], 
           </p>
         </div>
       </div>
+      {c.cedidos.length > 0 && (
+        <p className="text-sm text-texto-suave">
+          <strong className="text-texto">Pessoal cedido em {c.ano}, fora do previsto e do realizado acima:</strong>{' '}
+          {c.cedidos.map((x) => `${x.cedente} (${x.tipo}): ${reais(x.previsto)}`).join('; ')}. Despesa e receita de mesmo valor, sem passar pelo caixa.
+        </p>
+      )}
     </div>
   );
 }

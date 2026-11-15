@@ -5,3 +5,4 @@ export { popularCedidosFicticia, popularFolhaFicticia, popularHistoricoFicticia,
 export { custoDoServico, type CustoDoServico } from './aplicacao/ligacao';
 export { painelSustentabilidade, type CatalogoParcerias } from './aplicacao/sustentabilidade';
 export type { TermoDoPainel } from './dominio/sustentabilidade';
+export { cedidosPorServicoECedente, type CedidoDoServicoPorCedente } from './aplicacao/participacao';

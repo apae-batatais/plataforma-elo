@@ -27,6 +27,8 @@ import {
 } from '../dados/tabelas';
 import { parametrosCom } from '../dominio/folha';
 import { ErroValidacaoFolha, resumoFolha } from './folha';
+import { cedidosDoAno, type CedidosDoAno } from './cedidos-custo';
+import { contaComoPublico } from '../dominio/cedidos-custo';
 
 /** Mesmo tipo de erro da folha: as telas já sabem mostrá-lo. */
 export const ErroPrevisao = ErroValidacaoFolha;
@@ -490,7 +492,20 @@ export interface Previsao {
     porCaptacao: Record<Captacao, number>;
   };
   indicadores: Indicadores;
+  /** Os mesmos indicadores sem os cedidos (para mostrar o outro valor ao lado). */
+  indicadoresSemCedidos: Indicadores;
+  /** Cedidos do ano (C2): despesa por serviço e receita por cedente, sem nome de pessoa. */
+  cedidos: CedidosDoAno;
+  /** Os totais acima já incluem os cedidos (despesa e receita de mesmo valor, sem passar pelo caixa). */
+  incluiCedidos: boolean;
+  /** Receita automática de cedidos, uma linha por cedente (somente leitura). */
+  receitasCedidos: { cedenteId: string; descricao: string; tipoRotulo: string; publica: boolean; meses: number[]; valor: number }[];
 }
+
+export const FONTE_CEDIDOS = '__cedidos__';
+export const GRUPO_CEDIDOS = '__cedidos__';
+export const NOME_GRUPO_CEDIDOS = 'Pessoal cedido (automático)';
+export const NOME_FONTE_CEDIDOS = 'Cedidos (sem passar pelo caixa)';
 
 const soma12 = (a: number[], b: number[]) => a.map((v, i) => v + b[i]);
 const zeros = () => Array(12).fill(0) as number[];
@@ -508,7 +523,7 @@ function agrupar<T>(lista: T[], chave: (x: T) => string, nome: (x: T) => string,
     .sort((a, b) => b.anual - a.anual);
 }
 
-export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?: number): Promise<Previsao> {
+export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?: number, opcoes: { incluirCedidos?: boolean } = {}): Promise<Previsao> {
   exigirVer(quem);
   const [exercicios, despesasT, receitasT, gruposT, fontesT, fontesFolhaT, servicosT, areasT, ajustesT, regrasT] = await lerTabelas(p, [
     Exercicios, Despesas, Receitas, GruposGasto, Fontes, FontesFolha, Servicos, Areas, Ajustes, RegrasRateio,
@@ -633,19 +648,45 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
       fonte: l.fonte_id ?? A_DEFINIR, fonteNome: l.fonteNome, meses: l.mensal,
     })),
   ];
+  // Cedidos (C2): despesa por serviço e receita por cedente, do mesmo valor, só nos totais "com cedidos".
+  const cedidos = await cedidosDoAno(p, quem, ano);
+  const incluiCedidos = (opcoes.incluirCedidos ?? true) && cedidos.temCedidos;
+  const receitasCedidos = cedidos.porCedente.map((c) => ({
+    cedenteId: c.cedenteId, descricao: `Cedidos — ${c.nome}`, tipoRotulo: c.tipoRotulo, publica: contaComoPublico(c.tipo), meses: c.mensal, valor: c.anual,
+  }));
+  const partesCedidos: Parte[] = cedidos.porServico.map((c) => {
+    const s = servico.get(c.servico);
+    return { area: s?.area ?? '—', areaNome: s?.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área', grupo: GRUPO_CEDIDOS, grupoNome: NOME_GRUPO_CEDIDOS, rh: true, fonte: FONTE_CEDIDOS, fonteNome: NOME_FONTE_CEDIDOS, meses: c.mensal };
+  });
+  const receitasTotais = incluiCedidos ? [...receitas.map((r) => ({ meses: r.meses, fonte_id: r.fonte_id, fonteNome: r.fonteNome })), ...cedidos.porCedente.map((c) => ({ meses: c.mensal, fonte_id: FONTE_CEDIDOS, fonteNome: NOME_FONTE_CEDIDOS }))] : receitas.map((r) => ({ meses: r.meses, fonte_id: r.fonte_id, fonteNome: r.fonteNome }));
+  if (incluiCedidos) partes.push(...partesCedidos);
   const despesaMensal = partes.reduce((acc, x) => soma12(acc, x.meses), zeros()).map(arred);
-  const receitaMensal = receitas.reduce((acc, x) => soma12(acc, x.meses), zeros()).map(arred);
+  const receitaMensal = receitasTotais.reduce((acc, x) => soma12(acc, x.meses), zeros()).map(arred);
   const anual = (l: number[]) => arred(l.reduce((s, v) => s + v, 0));
   const rh = arred(partes.filter((x) => x.rh).reduce((s, x) => s + x.meses.reduce((a, b) => a + b, 0), 0));
   const aDefinir = partes.filter((x) => x.fonte === A_DEFINIR);
   const somaReceita = (f: (r: LinhaReceita) => boolean) => arred(receitas.filter(f).reduce((s, r) => s + r.valor, 0));
+  const extra = incluiCedidos ? cedidos.anual : 0;
+  const extraPublico = incluiCedidos ? arred(receitasCedidos.filter((r) => r.publica).reduce((t, r) => t + r.valor, 0)) : 0;
   const porCaptacao = {
-    garantida: somaReceita((r) => r.captacao === 'garantida'),
+    garantida: arred(somaReceita((r) => r.captacao === 'garantida') + extra),
     negociacao: somaReceita((r) => r.captacao === 'negociacao'),
     a_captar: somaReceita((r) => r.captacao === 'a_captar'),
   };
   const despesaAnual = anual(despesaMensal);
   const receitaAnual = anual(receitaMensal);
+  const base = {
+    receitaPublica: somaReceita((r) => r.natureza === 'publica'),
+    receitaLivre: somaReceita((r) => r.uso === 'livre'),
+    garantida: somaReceita((r) => r.captacao === 'garantida'),
+  };
+  // Cedido é despesa e receita de mesmo valor: o resultado é igual nas duas visões; cedido nunca é recurso livre.
+  const indicadoresCom = calcularIndicadores({
+    despesa: despesaAnual, receita: receitaAnual, rh, receitaPublica: arred(base.receitaPublica + extraPublico), receitaLivre: base.receitaLivre, receitaGarantida: porCaptacao.garantida,
+  });
+  const indicadoresSem = calcularIndicadores({
+    despesa: arred(despesaAnual - extra), receita: arred(receitaAnual - extra), rh: arred(rh - extra), receitaPublica: base.receitaPublica, receitaLivre: base.receitaLivre, receitaGarantida: base.garantida,
+  });
 
   return {
     ano,
@@ -676,17 +717,14 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
       porArea: agrupar(partes, (x) => x.area, (x) => x.areaNome, (x) => x.meses),
       porGrupo: agrupar(partes, (x) => x.grupo, (x) => x.grupoNome, (x) => x.meses),
       despesaPorFonte: agrupar(partes, (x) => x.fonte, (x) => x.fonteNome, (x) => x.meses),
-      receitaPorFonte: agrupar(receitas, (x) => x.fonte_id, (x) => x.fonteNome, (x) => x.meses),
+      receitaPorFonte: agrupar(receitasTotais, (x) => x.fonte_id, (x) => x.fonteNome, (x) => x.meses),
       porCaptacao,
     },
-    indicadores: calcularIndicadores({
-      despesa: despesaAnual,
-      receita: receitaAnual,
-      rh,
-      receitaPublica: somaReceita((r) => r.natureza === 'publica'),
-      receitaLivre: somaReceita((r) => r.uso === 'livre'),
-      receitaGarantida: porCaptacao.garantida,
-    }),
+    indicadores: indicadoresCom,
+    indicadoresSemCedidos: indicadoresSem,
+    cedidos,
+    incluiCedidos,
+    receitasCedidos,
   };
 }
 
@@ -719,7 +757,7 @@ const folhaNo = (id: string, nome: string, mensal: number[], detalhe?: string): 
 });
 
 /** Monta a árvore da tabela mês a mês. Os totais de cada nível são a soma dos filhos. */
-export function arvoreMensal(prev: Pick<Previsao, 'despesas' | 'receitas' | 'folha'>): { receita: NoArvore; despesa: NoArvore } {
+export function arvoreMensal(prev: Pick<Previsao, 'despesas' | 'receitas' | 'folha'> & Partial<Pick<Previsao, 'cedidos' | 'incluiCedidos' | 'receitasCedidos' | 'opcoes'>>): { receita: NoArvore; despesa: NoArvore } {
   const porChave = <T,>(lista: T[], chave: (x: T) => string) => {
     const m = new Map<string, T[]>();
     for (const x of lista) m.set(chave(x), [...(m.get(chave(x)) ?? []), x]);
@@ -735,6 +773,13 @@ export function arvoreMensal(prev: Pick<Previsao, 'despesas' | 'receitas' | 'fol
   );
   if (prev.folha && prev.folha.linhas.length) {
     grupos.push(no('d:__folha__', 'Folha de pagamento (automática)', prev.folha.linhas.map((l) => folhaNo(`d:__folha__:${l.servico}`, l.nome, l.mensal, l.areaNome))));
+  }
+
+  // Cedidos (C2): linhas automáticas, somente leitura, "sem passar pelo caixa".
+  if (prev.incluiCedidos && prev.cedidos) {
+    const nomeServico = new Map((prev.opcoes?.servicos ?? []).map((s) => [s.codigo, s.nome]));
+    grupos.push(no(`d:${GRUPO_CEDIDOS}`, NOME_GRUPO_CEDIDOS, prev.cedidos.porServico.map((c) => folhaNo(`d:${GRUPO_CEDIDOS}:${c.servico}`, `Pessoal cedido — ${nomeServico.get(c.servico) ?? c.servico}`, c.mensal, 'Automático'))));
+    fontes.push(no(`r:${FONTE_CEDIDOS}`, NOME_FONTE_CEDIDOS, (prev.receitasCedidos ?? []).map((r) => folhaNo(`r:${FONTE_CEDIDOS}:${r.cedenteId}`, r.descricao, r.meses, 'Garantida, sem passar pelo caixa'))));
   }
 
   return { receita: no('receita', 'Receita', fontes), despesa: no('despesa', 'Despesa', grupos) };

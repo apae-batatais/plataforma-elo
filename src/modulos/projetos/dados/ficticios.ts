@@ -7,6 +7,7 @@ import { atualizar, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/ta
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { salvarConfig } from '../aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
+import { adicionarMembro, avancarFase, salvarDocumento } from '../aplicacao/fases';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
 import { Projetos } from '../dados/tabelas';
 import { CONFIG_PADRAO } from '../dominio/projeto';
@@ -62,6 +63,16 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   await darParecer(p, await como(p, FINANCEIRO), abertaCinco.portaId, 'financeiro', 'com_ressalvas', 'Texto fictício: conferir a contrapartida.', { agora: dia(13) });
   await darParecer(p, await como(p, JURIDICO), abertaCinco.portaId, 'juridico', 'satisfatorio', null, { agora: dia(14) });
   await decidirPorta(p, diretoria, abertaCinco.portaId, 1, 'seguir', 'Texto fictício: a ideia atende à necessidade; segue para a alçada.', { agora: dia(15) });
+  // 6. Porte enxuto na fase 2: proposta pronta, Termo ainda por preencher (a pessoa responsável abre a tela "Fase atual").
+  const seis = await cadastrarIdeia(p, func, { ...base, porte: 'enxuto', titulo: 'Oficina de leitura (exemplo)', resumo: 'Ideia fictícia: oficina semanal de leitura para as famílias.', valorEstimado: 6000 }, { agora: dia(17), enviar: true });
+  await assumirIdeia(p, coord, seis.id, 1, { agora: dia(18) });
+  const abertaSeis = await abrirPorta(p, coord, seis.id, 2, { agora: dia(19) });
+  await darParecer(p, await como(p, TECNICO), abertaSeis.portaId, 'tecnico', 'satisfatorio', null, { agora: dia(20) });
+  await decidirPorta(p, diretoria, abertaSeis.portaId, 1, 'seguir', 'Texto fictício: vale seguir.', { agora: dia(21) });
+  await salvarDocumento(p, coord, seis.id, 'proposta', { descricao: 'Texto fictício: encontros semanais de leitura com as famílias.' }, true, null, { agora: dia(22) });
+  const [apos] = await lerTabelas(p, [Projetos] as const);
+  await avancarFase(p, coord, seis.id, apos.porId(seis.id)!.versao, { agora: dia(23) });
+  await adicionarMembro(p, coord, seis.id, FUNCIONARIO, 'Apoio às oficinas', { agora: dia(24) });
   // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
   const datas: [string, string, string][] = [
     [quatro.id, '2026-12-01', '2027-02-26'],

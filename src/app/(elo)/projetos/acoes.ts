@@ -6,7 +6,19 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { salvarConfig } from '@/modulos/projetos/aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia, cancelarProjeto, editarIdeia, enviarParaAssumir, retomarProjeto, trocarResponsavel, type DadosIdeia } from '@/modulos/projetos/aplicacao/ideias';
+import {
+  adicionarItemMarco,
+  adicionarMembro,
+  alterarItemMarco,
+  avancarFase,
+  encerrarMembro,
+  encerrarRisco,
+  registrarRisco,
+  retirarItemMarco,
+  salvarDocumento,
+} from '@/modulos/projetos/aplicacao/fases';
 import { abrirPorta, darParecer, decidirPorta } from '@/modulos/projetos/aplicacao/portas';
+import { GRAUS, NIVEIS_MARCO, TIPOS_DOCUMENTO, type Grau, type NivelMarco, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
 import {
   DECISOES,
   ErroProjetos,
@@ -65,6 +77,11 @@ function lerIdeia(f: FormData): DadosIdeia {
   };
 }
 
+const numeroDe = (f: FormData, campo: string) => {
+  const t = texto(f, campo).replace(/\./g, '').replace(',', '.');
+  return t === '' ? 0 : Number(t);
+};
+const fichaDe = (id: string, parte = '') => `/projetos/${id}${parte}`;
 const ficha = (id: string) => `/projetos/${id}`;
 
 export async function acaoSalvarIdeia(f: FormData) {
@@ -113,7 +130,7 @@ export async function acaoCancelarProjeto(f: FormData) {
 
 export async function acaoAbrirPorta(f: FormData) {
   const id = texto(f, 'id');
-  await executar(() => ficha(id), ficha(id), 'Porta 1 aberta. Agora esperam os pareceres.', ({ usuario, app }) => abrirPorta(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))));
+  await executar(() => ficha(id), ficha(id), 'Porta aberta. Agora esperam os pareceres.', ({ usuario, app }) => abrirPorta(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))));
 }
 
 export async function acaoDarParecer(f: FormData) {
@@ -157,9 +174,96 @@ export async function acaoSalvarConfig(f: FormData) {
           pareceresPorta1: { completo: pareceres('completo'), enxuto: pareceres('enxuto') },
           designados: Object.fromEntries(PAPEIS_DESIGNADOS.map((papel) => [papel, lerEmails(texto(f, `designados_${papel}`))])) as never,
           proponenteDecide: texto(f, 'proponente_decide') === 'sim',
+          tolerancias: {
+            custoLinhaPct: numeroDe(f, 'tol_custo_linha'),
+            custoTotalPct: numeroDe(f, 'tol_custo_total'),
+            prazoFimDias: numeroDe(f, 'tol_prazo_fim'),
+            prazoMarcoDias: numeroDe(f, 'tol_prazo_marco'),
+          },
         },
         { versoes },
       );
     },
   );
+}
+
+const lista = <T extends string>(valores: readonly T[], v: string): T => ((valores as readonly string[]).includes(v) ? (v as T) : ('' as T));
+
+export async function acaoSalvarDocumento(f: FormData) {
+  const id = texto(f, 'id');
+  const tipo = lista<TipoDocumento>(TIPOS_DOCUMENTO, texto(f, 'tipo'));
+  const pronto = texto(f, 'pronto') === 'sim';
+  const conteudo = Object.fromEntries([...f.entries()].filter(([k]) => k.startsWith('c_')).map(([k, v]) => [k.slice(2), String(v)]));
+  const versaoDoc = texto(f, 'versao_doc');
+  await executar(
+    () => fichaDe(id),
+    fichaDe(id, `/fase/${tipo}`),
+    pronto ? 'Documento salvo e marcado como pronto.' : 'Rascunho salvo.',
+    ({ usuario, app }) => salvarDocumento(app.planilhas, usuario.autorizador, id, tipo, conteudo, pronto, versaoDoc === '' ? null : Number(versaoDoc)),
+  );
+}
+
+export async function acaoAvancarFase(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(() => fichaDe(id), fichaDe(id), 'Fase 1 concluída. O projeto está na fase 2.', ({ usuario, app }) => avancarFase(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))));
+}
+
+function lerItemMarco(f: FormData) {
+  return {
+    nivel: lista<NivelMarco>(NIVEIS_MARCO, texto(f, 'nivel')),
+    descricao: texto(f, 'descricao'),
+    indicador: texto(f, 'indicador') || null,
+    fonteVerificacao: texto(f, 'fonte') || null,
+    pressuposto: texto(f, 'pressuposto') || null,
+    acima: texto(f, 'acima') || null,
+  };
+}
+
+export async function acaoSalvarItemMarco(f: FormData) {
+  const id = texto(f, 'id');
+  const item = texto(f, 'item');
+  const volta = fichaDe(id, '/marco-logico');
+  if (item) {
+    await executar(() => volta, volta, 'Item alterado.', ({ usuario, app }) => alterarItemMarco(app.planilhas, usuario.autorizador, id, item, Number(texto(f, 'versao_item')), lerItemMarco(f)));
+    return;
+  }
+  await executar(() => volta, volta, 'Item incluído.', ({ usuario, app }) => adicionarItemMarco(app.planilhas, usuario.autorizador, id, lerItemMarco(f)));
+}
+
+export async function acaoRetirarItemMarco(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/marco-logico');
+  await executar(() => volta, volta, 'Item retirado. Ele continua guardado.', ({ usuario, app }) => retirarItemMarco(app.planilhas, usuario.autorizador, id, texto(f, 'item'), Number(texto(f, 'versao_item'))));
+}
+
+export async function acaoRegistrarRisco(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/riscos');
+  await executar(() => volta, volta, 'Risco registrado.', ({ usuario, app }) =>
+    registrarRisco(app.planilhas, usuario.autorizador, id, {
+      descricao: texto(f, 'descricao'),
+      probabilidade: lista<Grau>(GRAUS, texto(f, 'probabilidade')),
+      impacto: lista<Grau>(GRAUS, texto(f, 'impacto')),
+      resposta: texto(f, 'resposta') || null,
+      dono: texto(f, 'dono') || null,
+    }),
+  );
+}
+
+export async function acaoEncerrarRisco(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/riscos');
+  await executar(() => volta, volta, 'Risco encerrado.', ({ usuario, app }) => encerrarRisco(app.planilhas, usuario.autorizador, id, texto(f, 'risco'), Number(texto(f, 'versao_risco'))));
+}
+
+export async function acaoAdicionarMembro(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/equipe');
+  await executar(() => volta, volta, 'Pessoa incluída na equipe.', ({ usuario, app }) => adicionarMembro(app.planilhas, usuario.autorizador, id, texto(f, 'email'), texto(f, 'funcao')));
+}
+
+export async function acaoEncerrarMembro(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/equipe');
+  await executar(() => volta, volta, 'Participação encerrada.', ({ usuario, app }) => encerrarMembro(app.planilhas, usuario.autorizador, id, texto(f, 'membro'), Number(texto(f, 'versao_membro'))));
 }

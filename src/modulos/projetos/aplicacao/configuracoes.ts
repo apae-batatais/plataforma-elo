@@ -19,6 +19,10 @@ function paraLinhas(c: Config): Record<(typeof CHAVES_CONFIG)[number], string> {
     pareceres_completo: c.pareceresPorta1.completo.join(','),
     pareceres_enxuto: c.pareceresPorta1.enxuto.join(','),
     proponente_decide: c.proponenteDecide ? 'sim' : 'nao',
+    tol_custo_linha: String(c.tolerancias.custoLinhaPct),
+    tol_custo_total: String(c.tolerancias.custoTotalPct),
+    tol_prazo_fim: String(c.tolerancias.prazoFimDias),
+    tol_prazo_marco: String(c.tolerancias.prazoMarcoDias),
     ...(Object.fromEntries(PAPEIS_DESIGNADOS.map((papel) => [`designados_${papel}`, c.designados[papel].join(',')])) as Record<string, string>),
   } as Record<(typeof CHAVES_CONFIG)[number], string>;
 }
@@ -30,6 +34,7 @@ export async function salvarConfig(p: Planilhas, quem: Autorizador, nova: Config
   for (const porte of PORTES) {
     for (const t of nova.pareceresPorta1[porte]) if (!TIPOS_PARECER.includes(t)) throw new ErroProjetos('Tipo de parecer desconhecido.');
   }
+  for (const n of Object.values(nova.tolerancias)) if (!Number.isFinite(n) || n < 0) throw new ErroProjetos('As tolerâncias precisam ser zero ou maiores.');
   const agora = opcoes.agora ?? new Date();
   const [linhas] = await lerTabelas(p, [ConfigProjetos] as const);
   const valores = paraLinhas(nova);

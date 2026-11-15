@@ -17,6 +17,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Sustentabilidade financeira', caminho: '/sustentabilidade', permissao: 'orcamento.sustentabilidade.ver', secao: 'Painéis' },
     { rotulo: 'Previsão do ano', caminho: '/previsao', permissao: 'orcamento.painel.ver', secao: 'Painéis' },
     { rotulo: 'Análise por área', caminho: '/previsao/areas', permissao: 'orcamento.painel.ver', secao: 'Painéis' },
+    { rotulo: 'Participação de quem cede', caminho: '/cedidos/cedentes/participacao', permissao: 'orcamento.folha.ver', secao: 'Painéis' },
     { rotulo: 'Despesas', caminho: '/previsao/despesas', permissao: 'orcamento.painel.ver', secao: 'Planejamento' },
     { rotulo: 'Receitas', caminho: '/previsao/receitas', permissao: 'orcamento.painel.ver', secao: 'Planejamento' },
     { rotulo: 'Propostas', caminho: '/previsao/propostas', permissao: 'orcamento.previsao.propor', secao: 'Planejamento' },

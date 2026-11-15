@@ -13,6 +13,7 @@ import { FormularioConfirmado } from '@/ui/confirmar';
 import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
+import { SeletorCedidos } from '@/modulos/orcamento/telas/seletor-cedidos';
 import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from '@/ui/tabela-dados';
 import { acaoCancelarItem, acaoSalvarReceita } from '../acoes';
@@ -22,13 +23,14 @@ export const metadata: Metadata = { title: 'Receitas' };
 const TIPO_CAPTACAO: Record<Captacao, 'sucesso' | 'info' | 'atencao'> = { garantida: 'sucesso', negociacao: 'info', a_captar: 'atencao' };
 const resumoMeses = (r: { distribuicao: string; meses: number[] }) => (r.distribuicao === 'manual' ? `mês a mês: ${faixaDeMeses(r.meses)}` : faixaDeMeses(r.meses));
 
-export default async function Receitas({ searchParams }: { searchParams: Promise<{ ano?: string; editar?: string }> }) {
+export default async function Receitas({ searchParams }: { searchParams: Promise<{ ano?: string; editar?: string; cedidos?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
-  const prev = await lerPrevisao(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined);
-  const base = `/orcamento/previsao/receitas?ano=${prev.ano}`;
+  const incluir = sp.cedidos !== '0';
+  const prev = await lerPrevisao(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined, { incluirCedidos: incluir });
+  const base = `/orcamento/previsao/receitas?ano=${prev.ano}${incluir ? '' : '&cedidos=0'}`;
   const emEdicao = sp.editar && prev.podeEditar ? prev.receitas.find((r) => r.id === sp.editar) : undefined;
   const total = prev.totais.receita.anual;
   const podeLancar = prev.podeEditar && prev.opcoes.fontes.length > 0;
@@ -41,7 +43,8 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
         descricao="O que se espera receber, por fonte de recurso e área, e a situação da captação de cada receita."
         acoes={
           <>
-            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/receitas?ano=${a}`} />
+            <SeletorCedidos temCedidos={prev.cedidos.temCedidos} incluir={incluir} total={prev.cedidos.anual} href={(i) => `/orcamento/previsao/receitas?ano=${prev.ano}${i ? '' : '&cedidos=0'}`} />
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/receitas?ano=${a}${incluir ? '' : '&cedidos=0'}`} />
             <BotaoBaixar href={`/orcamento/previsao/baixar/receitas?ano=${prev.ano}`} rotulo={`Baixar planilha (ano ${prev.ano})`} vazio={prev.receitas.length === 0} />
             {podeLancar && (
               <JanelaFormulario
@@ -165,6 +168,33 @@ export default async function Receitas({ searchParams }: { searchParams: Promise
               },
             }))}
           />
+
+          {prev.incluiCedidos && (
+            <section aria-label="Receitas de cedidos" className="space-y-2">
+              <h3 className="font-bold">Cedidos (automático, sem passar pelo caixa)</h3>
+              <p className="text-sm text-texto-suave">
+                Uma linha por quem cede, com o mesmo valor da despesa de pessoal cedido. Só leitura: não aceita edição, captação nem exclusão. Entra como receita garantida.
+              </p>
+              <TabelaDados
+                legenda="Receitas de cedidos por quem cede"
+                totalRotulo="Total de cedidos"
+                colunas={[
+                  { chave: 'descricao', rotulo: 'Receita' },
+                  { chave: 'tipo', rotulo: 'Tipo', secundaria: true },
+                  { chave: 'captacao', rotulo: 'Captação' },
+                  { chave: 'valor', rotulo: 'Valor', tipo: 'moeda', somar: true },
+                ]}
+                linhas={prev.receitasCedidos.map((r) => ({
+                  id: r.cedenteId,
+                  valores: { descricao: r.descricao, tipo: r.tipoRotulo, captacao: 'Garantida', valor: r.valor },
+                  celulas: {
+                    descricao: <span className="font-semibold">{r.descricao}</span>,
+                    captacao: <Etiqueta tipo="sucesso">Garantida, sem passar pelo caixa</Etiqueta>,
+                  },
+                }))}
+              />
+            </section>
+          )}
         </div>
       )}
     </div>

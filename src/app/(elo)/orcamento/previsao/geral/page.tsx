@@ -11,6 +11,7 @@ import { Barras100, BarrasHorizontais, Indicadores, Linhas, ResultadoMensal } fr
 import { CabecalhoPagina, EstadoVazio, Etiqueta } from '@/ui/pagina';
 import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from '@/ui/tabela-dados';
+import { outroValor, SeletorCedidos } from '@/modulos/orcamento/telas/seletor-cedidos';
 import { AtalhosSecoes } from '@/ui/atalhos-secoes';
 import { NumeroQueConta } from '@/ui/numero-que-conta';
 
@@ -64,12 +65,13 @@ function Variacao({ atual, anterior, anoAnterior, pontos }: { atual: number | nu
   );
 }
 
-export default async function PainelGeral({ searchParams }: { searchParams: Promise<{ ano?: string }> }) {
+export default async function PainelGeral({ searchParams }: { searchParams: Promise<{ ano?: string; cedidos?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
-  const painel = await painelGeral(app.planilhas, usuario.autorizador);
+  const incluir = sp.cedidos !== '0';
+  const painel = await painelGeral(app.planilhas, usuario.autorizador, { incluirCedidos: incluir });
   const anos = painel.anos.slice(-4);
 
   if (anos.length === 0) {
@@ -129,7 +131,12 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
           </span>
         }
         descricao={anterior ? `Números de ${atual.ano} comparados com ${anterior.ano}. Os gráficos de vários anos mostram ${rotulos.join(', ')}.` : `Números de ${atual.ano}.`}
-        acoes={<SeletorAno anos={anos.map((a) => a.ano)} atual={atual.ano} href={(a) => `/orcamento/previsao/geral?ano=${a}`} />}
+        acoes={
+          <div className="flex flex-wrap items-center gap-3">
+            <SeletorCedidos temCedidos={painel.anos.some((a) => a.temCedidos)} incluir={incluir} total={atual.cedidos} href={(i) => `/orcamento/previsao/geral?ano=${atual.ano}${i ? '' : '&cedidos=0'}`} />
+            <SeletorAno anos={anos.map((a) => a.ano)} atual={atual.ano} href={(a) => `/orcamento/previsao/geral?ano=${a}${incluir ? '' : '&cedidos=0'}`} />
+          </div>
+        }
       />
 
       <dl className="grid gap-3 sm:grid-cols-3">
@@ -156,26 +163,26 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
               valor: atual.indicadores.folhaSobreReceita,
               referencia: { valor: REFERENCIAS.folhaSobreReceita, sentido: 'ate' },
               anteriores: anteriores.map((a) => ({ rotulo: String(a.ano), valor: a.indicadores.folhaSobreReceita })),
-              explicacao: `Recursos Humanos (folha + itens de RH: ${reais(atual.rh)}) ÷ receita.`,
+              explicacao: `Recursos Humanos (folha + itens de RH${atual.cedidos ? ' + cedidos' : ''}: ${reais(atual.rh)}) ÷ receita.${outroValor(atual.indicadoresSemCedidos.folhaSobreReceita, incluir, atual.temCedidos)}`,
             },
             {
               nome: 'Dependência de recursos públicos',
               valor: atual.indicadores.dependenciaPublica,
               referencia: { valor: REFERENCIAS.dependenciaPublica, sentido: 'ate' },
               anteriores: anteriores.map((a) => ({ rotulo: String(a.ano), valor: a.indicadores.dependenciaPublica })),
-              explicacao: 'Receita de fontes públicas (inclui Projeto Incentivado) ÷ receita.',
+              explicacao: `Receita de fontes públicas (inclui Projeto Incentivado e cedidos do poder público) ÷ receita.${outroValor(atual.indicadoresSemCedidos.dependenciaPublica, incluir, atual.temCedidos)}`,
             },
             {
               nome: 'Recursos livres',
               valor: atual.indicadores.recursosLivres,
               anteriores: anteriores.map((a) => ({ rotulo: String(a.ano), valor: a.indicadores.recursosLivres })),
-              explicacao: 'Receita de uso livre ÷ receita: o que pode pagar qualquer despesa.',
+              explicacao: `Receita de uso livre ÷ receita: o que pode pagar qualquer despesa. Cedido nunca é recurso livre.${outroValor(atual.indicadoresSemCedidos.recursosLivres, incluir, atual.temCedidos)}`,
             },
             {
               nome: 'Receita garantida',
               valor: atual.indicadores.receitaGarantida,
               anteriores: anteriores.map((a) => ({ rotulo: String(a.ano), valor: a.indicadores.receitaGarantida })),
-              explicacao: 'Receita com termo ou contrato assinado ÷ receita.',
+              explicacao: `Receita com termo ou contrato assinado ÷ receita.${outroValor(atual.indicadoresSemCedidos.receitaGarantida, incluir, atual.temCedidos)}`,
             },
           ]}
         />

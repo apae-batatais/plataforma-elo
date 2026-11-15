@@ -1,5 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
+import { lerFase } from '@/modulos/projetos/aplicacao/fases';
+import { AbasProjeto } from '@/modulos/projetos/telas/abas-projeto';
+import { NOME_ITEM } from '@/modulos/projetos/dominio/fases';
+import { FormularioConfirmado } from '@/ui/confirmar';
+import Link from 'next/link';
 import { lerFicha, type PortaDetalhe } from '@/modulos/projetos/aplicacao/portas';
 import { servicosParaEscolher } from '@/modulos/projetos/aplicacao/ideias';
 import {
@@ -23,6 +28,7 @@ import { Campo, estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
 import {
   acaoAbrirPorta,
+  acaoAvancarFase,
   acaoAssumirIdeia,
   acaoCancelarProjeto,
   acaoDarParecer,
@@ -133,6 +139,7 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
   const f = await lerFicha(planilhas, usuario.autorizador, id);
   if (!f) notFound();
   const { projeto: r, pode } = f;
+  const fase = await lerFase(planilhas, usuario.autorizador, id);
   const campos = { id: r.id, versao: r.versao };
 
   return (
@@ -175,6 +182,8 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
         }
       />
 
+      {['fase_1', 'fase_2', 'fase_3', 'em_porta'].includes(r.etapa) && <AbasProjeto id={r.id} atual="resumo" />}
+
       <Secao id="t-resumo" titulo="Resumo">
         <p className="whitespace-pre-line">{r.resumo}</p>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
@@ -185,8 +194,56 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
           <div><dt className="text-texto-suave">Responsável</dt><dd className="font-medium">{r.responsavel ?? 'Ainda sem responsável'}</dd></div>
           <div><dt className="text-texto-suave">Serviço</dt><dd className="font-medium">{r.servico ?? '—'}</dd></div>
         </dl>
-        {r.etapa === 'fase_1' && <div className="mt-4"><Aviso tipo="info">A porta 1 foi aprovada. As fases do projeto chegam nas próximas entregas do app.</Aviso></div>}
+        {(r.etapa === 'fase_3') && <div className="mt-4"><Aviso tipo="sucesso">O Termo de Abertura foi aprovado (valor aprovado {moeda(r.valor_aprovado)}). O planejamento da fase 3 chega na próxima entrega do app.</Aviso></div>}
       </Secao>
+
+      {fase && fase.fase && (
+        <Secao id="t-fase" titulo={`Fase ${fase.fase} · O que falta para a próxima porta`} descricao={fase.fase === 1 ? 'Conclua os itens abaixo e passe para a fase 2.' : 'Conclua os itens abaixo para abrir a porta 2 (Termo de Abertura).'}>
+          <ul className="divide-y divide-borda">
+            {fase.itens.map((i) => (
+              <li key={i.item} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{i.nome}</span>
+                  {i.pronto ? <Etiqueta tipo="sucesso">Pronto</Etiqueta> : <Etiqueta tipo="atencao">{i.falta[0] ?? 'Falta'}</Etiqueta>}
+                </span>
+                <Link
+                  href={i.item === 'marco_logico' ? `/projetos/${r.id}/marco-logico` : i.item === 'riscos' ? `/projetos/${r.id}/riscos` : `/projetos/${r.id}/fase/${i.item}`}
+                  className="inline-flex min-h-10 items-center rounded-md border border-borda px-3 font-semibold hover:bg-superficie-2"
+                >
+                  {fase.podeAlterar ? (i.pronto ? 'Ver ou alterar' : `Preencher ${NOME_ITEM[i.item].toLowerCase()}`) : 'Ver'}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {fase.podeAvancar && (
+              <FormularioConfirmado
+                acao={acaoAvancarFase}
+                campos={{ id: r.id, versao: r.versao }}
+                rotulo="Concluir a fase 1 e ir para a fase 2"
+                titulo="Concluir a fase 1?"
+                mensagem="Você poderá continuar editando o marco lógico e os riscos, mas os documentos da fase 1 deixam de ser alterados."
+                confirmar="Concluir a fase 1"
+                variante="primario"
+                perigoso={false}
+              />
+            )}
+            {fase.podeAbrirPorta2 && (
+              <FormularioConfirmado
+                acao={acaoAbrirPorta}
+                campos={{ id: r.id, versao: r.versao }}
+                rotulo="Abrir porta de decisão"
+                titulo="Abrir a porta 2?"
+                mensagem="Depois de aberta, os documentos da fase ficam travados até a decisão."
+                confirmar="Abrir a porta 2"
+                variante="primario"
+                perigoso={false}
+              />
+            )}
+            {!fase.podeAlterar && <p className="text-sm text-texto-suave">Só quem gerencia o projeto preenche esta fase.</p>}
+          </div>
+        </Secao>
+      )}
 
       {f.portas.map((d) => (
         <BlocoPorta key={d.porta.id} d={d} f={f} pode={d.porta.situacao !== 'decidida'} />
