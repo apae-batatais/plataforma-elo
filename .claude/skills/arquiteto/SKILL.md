@@ -74,7 +74,12 @@ app que outra proposta também toca) são o lugar onde as especificações se en
 - **Frentes**: `telas`, `regras e dados`, `infraestrutura` (as que se aplicam). O Desenvolvedor usa
   as habilidades dessas frentes. A frente `telas` inclui os gráficos (habilidade `graficos`).
 - **Entregas**: proposta grande é dividida em entregas pequenas, cada uma conferível na prévia.
-  Se forem muitas, sugira abrir uma issue por entrega.
+  Se forem muitas, abra uma **sub-issue** por entrega (decisão de 15/11/2026) — nunca uma issue
+  solta sem vínculo com a proposta original. Crie a issue normalmente e depois ligue como
+  sub-issue com `gh api repos/apae-batatais/plataforma-elo/issues/<nº da proposta>/sub_issues -X
+  POST -F sub_issue_id=<id numérico da entrega, não o número #>` (o `id` numérico vem de
+  `gh api repos/apae-batatais/plataforma-elo/issues/<nº da entrega> --jq .id`). A ordem das
+  sub-issues é a ordem de construção das entregas dentro da proposta.
 - **Critérios de pronto**: como a Diretoria confere na prévia.
 
 ## Telas e usabilidade
