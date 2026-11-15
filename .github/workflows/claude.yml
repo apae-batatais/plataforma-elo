@@ -2,6 +2,7 @@
 #
 # A Diretoria escreve "@claude" e o pedido num comentário de issue ou de PR (por exemplo,
 # "@claude atualize este PR com a main") e o Claude Code atende ali mesmo.
+# Se falhar, marca a issue ou o PR com "falha de agente" para o DevOps resolver.
 
 name: Claude
 
@@ -43,3 +44,19 @@ jobs:
           claude_args: >-
             --max-turns 150
             --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash"
+
+      # Só em falha: busca as funções da esteira na main e marca a issue ou o PR para o DevOps.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Marcar a falha
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { marcarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await marcarFalha({ github, context, core, agente: 'claude', numero: (context.payload.issue ?? context.payload.pull_request).number });
