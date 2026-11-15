@@ -135,3 +135,94 @@ Nenhum nesta entrega.
   suspeita de violação de direitos.
 - Testes: serviço com 4 pessoas não revela valor; com 5 revela; pessoa com duas avaliações conta uma vez; serviço
   sem avaliação → `sem_dados`; a resposta não tem campos além dos três; o painel e o indicador existentes não mudam.
+
+## Motor de avaliação e ligação com o Cadastro Único (issue #62)
+
+- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-026 (que detalha a ADR-006 e a ADR-007).
+- Decisões da Diretoria na issue: o motor nasce **já pensado para os três eixos** (Assistência Social, Educação e
+  Saúde/CER); a avaliação se liga ao Cadastro Único **direto por `pessoa_id`**.
+
+### Objetivo e para quem
+
+Dar à equipe de cada eixo instrumentos com escala (itens, domínios, escala de 0 a 3), aplicados em ciclos, com escore,
+ligados à pessoa do Cadastro Único, para ver a evolução. Quem avalia: os mesmos perfis do módulo (Diretoria, coordenação
+de serviço e técnico avaliador), no escopo do serviço.
+
+### Entregas (ordem de construção)
+
+1. **Motor** em `src/capacidades/motor-avaliacao/`: funções puras (sem planilha e sem tela) de instrumento versionado,
+   validação das respostas, escore por domínio e total, e comparação entre ciclos. Testado com um instrumento fictício.
+2. **Aplicação por pessoa** no módulo `avaliacao`: abas, casos de uso, permissões e telas para aplicar um instrumento a uma
+   pessoa do Cadastro Único, fechar o ciclo e ver o comparativo.
+3. **Vínculo das avaliações antigas**: a equipe confirma, uma a uma, a pessoa do Cadastro Único de cada avaliação por iniciais.
+
+### Decisões tomadas sozinho (a Diretoria não respondeu)
+
+- **Primeiro instrumento:** nenhum instrumento real está descrito nos documentos, e não vamos inventar. O motor é
+  construído e testado com um instrumento **fictício** (escala 0 a 3). Instrumentos reais entram quando a Diretoria
+  enviar nome e perguntas (sem dados reais), como entrega nova. *Custo se errado:* se a Diretoria queria o questionário atual
+  como instrumento do motor, a conversão vira a próxima entrega, sem refazer o motor.
+- **Ciclo:** período de avaliação de uma pessoa (inicial ou anual). Fecha quando a equipe conclui e assina; depois não se
+  edita, e a correção cria nova aplicação ligada à anterior (ADR-007). **Enquadramento** é a classificação resultante do
+  escore (faixas definidas por instrumento), com **justificativa obrigatória**. *Custo se errado:* só mudam as regras 6 a 9.
+
+### Usuários e permissões
+
+Sem permissão nova de entrada: `avaliacao.avaliar` aplica, fecha e corrige; `avaliacao.painel` vê agregados (mínimo de 5
+pessoas, como no restante do módulo). Uma pessoa só aparece na escolha se `podeVerPessoa` do `Autorizador` permitir e se
+tiver vínculo ativo com um serviço do escopo de quem avalia. Perfis sem acesso aos atendidos continuam sem ver nada.
+
+### Entidades (mesma planilha `avaliacao_assistencia`; nenhuma aba nova no Núcleo)
+
+| Aba          | O que guarda                                                                                                                    | Sigilo                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Instrumentos | Código, versão, eixo, nome, domínios e itens (texto e escala), faixas de enquadramento; `ativo` e se já foi usado               | nenhum (sem dado de pessoa)    |
+| Aplicacoes   | `pessoa_id`, instrumento e versão, serviço, tipo (inicial/anual), data, situação (aberta/fechada), `corrige` (id anterior), profissional, registro, justificativa do enquadramento | pessoal: `pessoa_id`; sensível: respostas e justificativa |
+| Respostas    | `aplicacao_id`, item, valor (0 a 3) ou "não se aplica"                                                                          | sensível                       |
+| LigacoesPessoa | `avaliacao_id` (aba Avaliacoes), `pessoa_id`, quem confirmou e quando                                                         | pessoal                        |
+
+Todas declaradas com `definirTabela` e registradas em "Preparar estrutura". O painel e o comparativo mostram iniciais, nunca o nome.
+
+### Regras de negócio (com teste)
+
+1. Instrumento depois da primeira aplicação não muda; qualquer alteração cria nova versão (ADR-007). Teste: editar instrumento usado é recusado.
+2. Cada aplicação guarda a versão exata do instrumento usada; o comparativo só soma ciclos da **mesma versão** e avisa quando as versões diferem.
+3. Resposta: inteiro de 0 a 3 (ou "não se aplica" quando o item permitir). Aplicação só fecha com todos os itens respondidos.
+4. Escore do domínio = soma dos itens respondidos; total = soma dos domínios; itens "não se aplica" saem do cálculo e o escore é mostrado com o número de itens considerados.
+5. Enquadramento = faixa do instrumento em que o total cai; fechar exige justificativa não vazia.
+6. Aplicação **fechada não é editada**; a correção cria nova aplicação (`corrige` = id anterior) e a anterior fica visível no histórico.
+7. Uma pessoa não tem duas aplicações abertas do mesmo instrumento ao mesmo tempo.
+8. `pessoa_id` precisa existir, estar ativo e ser visível a quem avalia (`Autorizador`); senão a gravação é recusada.
+9. Reavaliação anual vence 12 meses após a última aplicação fechada da pessoa naquele instrumento (mesma regra 9 do módulo).
+10. Ligação das avaliações antigas: só quem tem `avaliacao.avaliar` no serviço da avaliação confirma; confirmar grava a linha em `LigacoesPessoa` e **não altera** a avaliação original. O comparativo passa a usar `pessoa_id` quando há ligação; sem ela, continua por iniciais + nascimento + sexo (regra 8 acima).
+11. Auditoria: inclusão e alteração (colunas, nunca valores); `leitura` ao abrir uma aplicação ou o comparativo; fechamento e correção.
+12. Nada é apagado: aplicação aberta desistida fica com `ativo = FALSE` e motivo.
+13. Gravação com a versão lida (aviso se outra pessoa alterou).
+14. Painel: agregados por instrumento, serviço e período, só com 5 pessoas ou mais (`numeroAgregado`).
+
+Testes de acesso: técnico do serviço A não vê pessoa do serviço B; Conselho só vê o painel; Financeiro e Administração não veem nada; Diretoria vê tudo.
+
+### Telas (entrega 2) — componentes de `src/ui/` já existentes
+
+1. **Instrumentos** (`/avaliacao/instrumentos`, quem tem `avaliacao.avaliar`): lista por eixo com versão e situação; ação principal "Aplicar a uma pessoa". Vazio: "Nenhum instrumento cadastrado ainda."
+2. **Aplicar instrumento** (`/avaliacao/aplicar/<instrumento>`): escolha da pessoa (lista só das visíveis; busca por nome; mostra iniciais depois de escolhida), um bloco por domínio com os itens e botões de 0 a 3 (rótulo sempre visível, teclado e celular em uma coluna). Botões "Salvar rascunho" e "Concluir e assinar". Erro mantém tudo o que foi digitado.
+3. **Aplicação** (`/avaliacao/aplicacao/<id>`): escore por domínio e total, enquadramento e justificativa; "Corrigir" cria nova aplicação. Ação sem volta: **"Concluir e assinar"**, com confirmação que explica que depois só dá para corrigir criando nova aplicação.
+4. **Comparativo da pessoa**: reaproveita o comparativo atual, com escore por ciclo (barras do componente de gráficos, título em forma de conclusão, ex.: "Escore total caiu 4 pontos"), "Ver os números" e aviso de versões diferentes.
+5. **Ligar avaliações antigas** (`/avaliacao/ligar`): lista de avaliações sem ligação, com iniciais, serviço e data, e a pessoa sugerida; botão "Confirmar ligação". Sem permissão: "Você não avalia neste serviço."
+Estados comuns: gravando ("Salvando…"), gravou ("Salvo"), erro (texto em português, sem perder o digitado), sem permissão.
+Sugestão (não pedida): lembrete na lista de pessoas do serviço com reavaliação vencendo.
+
+### Fica de fora
+
+Instrumentos reais (aguardam material da Diretoria); editor de instrumentos pela tela (nesta fase, instrumentos entram como dados cadastrados pela equipe técnica do Elo); módulos de Educação e Saúde/CER; busca por avaliações (dado sensível); migração do questionário atual para o motor.
+
+### Frentes
+
+`regras e dados` (motor, abas, casos de uso, auditoria, testes) e `telas` (entrega 2 e 3). Sem `infraestrutura`.
+
+### Critérios de pronto
+
+- Entrega 1: testes do motor com o instrumento fictício (versão, escore, faixa, comparação).
+- Entrega 2: na prévia, aplicar o instrumento fictício a uma pessoa fictícia, concluir, ver o comparativo e confirmar que corrigir cria nova aplicação.
+- Entrega 3: ligar uma avaliação antiga e ver o comparativo passar a usar a pessoa do Cadastro Único.
+- `npm run verificar` e `npm run build` verdes.

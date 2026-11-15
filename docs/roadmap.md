@@ -201,6 +201,15 @@ Ficou para depois (14/11/2026):
 - [ ] Busca em Avaliação (dado sensível; só com pedido da Diretoria).
 - [ ] Sugestões ao digitar e filtro por app nos resultados da busca.
 
+## Motor de avaliação (issue #62, especificação em `src/modulos/avaliacao/especificacao.md`, ADR-026)
+
+Ficou para depois (15/11/2026):
+
+- [ ] Instrumentos reais com escala (aguardam nome e perguntas da Diretoria, sem dados reais).
+- [ ] Converter o questionário diagnóstico atual em instrumento do motor.
+- [ ] Editor de instrumentos pela tela.
+- [ ] Módulos de Educação e Saúde/CER usando o motor.
+
 ## Educação: avaliação de evolução (issue #163, especificação em `src/modulos/educacao/especificacao.md`, ADR-029)
 
 Ficou para depois (15/11/2026):
