@@ -92,12 +92,13 @@ jobs:
             5. Faça commit do merge e push no ramo do PR. Responda no PR, em até três linhas, quais
                arquivos tinham conflito e que tudo passou.
             6. Se um conflito não puder ser resolvido mantendo os dois lados (as duas entregas mudam a
-               mesma regra de jeitos diferentes), não adivinhe: não faça push, explique no PR o que
-               conflita, com opções numeradas, e ponha a etiqueta "pergunta aberta"
-               (`gh pr edit ${{ env.PR }} --add-label "pergunta aberta"`).
+               mesma regra de jeitos diferentes), não adivinhe e não faça push: comente no PR, para o
+               DevOps, quais arquivos e regras conflitam e ponha a etiqueta "falha de agente"
+               (`gh pr edit ${{ env.PR }} --add-label "falha de agente"`). Não pergunte à Diretoria:
+               o DevOps decide se é técnico ou se precisa de decisão de escopo.
             Para textos longos em comentários, grave o texto num arquivo e use `--body-file`.
 
-      # Só em falha: busca as funções da esteira na main e avisa no PR.
+      # Só em falha: busca as funções da esteira na main e marca o PR para o DevOps.
       - if: failure()
         uses: actions/checkout@v5
         with:
@@ -105,10 +106,10 @@ jobs:
           path: _esteira
           sparse-checkout: .github/scripts
 
-      - name: Avisar a falha no PR
+      - name: Marcar a falha
         if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            const { avisarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
-            await avisarFalha({ github, context, core, agente: 'atualizar', numero: process.env.PR });
+            const { marcarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await marcarFalha({ github, context, core, agente: 'atualizar', numero: process.env.PR });

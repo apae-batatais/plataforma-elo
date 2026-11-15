@@ -1,59 +1,27 @@
 // Cuidados com os agentes (Arquiteto, Desenvolvedor, ajustes e pedidos "@claude").
 //
-// 1. Aviso de falha: quando um agente falha, a issue ou o PR recebe um comentário com o link do
-//    registro e a etiqueta "pergunta aberta". Assim a falha aparece na caixa da Diretoria em vez
-//    de deixar o trabalho parado em silêncio.
+// Falha de agente é assunto técnico: quem resolve é o DevOps, nunca a Diretoria
+// (docs/metodologia.md, "Scrum Master e DevOps: quem resolve o quê").
+// 1. Marca de falha: quando um agente falha, a issue ou o PR recebe a etiqueta "falha de agente",
+//    sem comentário (não chama a Diretoria). O DevOps acha a marca no raio-x, lê o registro e
+//    roda de novo ou corrige; ao resolver, tira a etiqueta.
 // 2. Atualização de PRs em conflito: depois que algo entra na main, os PRs de proposta abertos
 //    que ficaram em conflito são entregues ao workflow "Atualizar PR", que une o ramo com a main.
 //
 // As funções puras têm teste em tests/fluxo/agentes.test.ts.
 
-import { ETIQUETA_ENTREGA, ETIQUETA_ESPECIFICACAO, ETIQUETA_PERGUNTA } from './fluxo-quadro.mjs';
+import { ETIQUETA_ENTREGA, ETIQUETA_ESPECIFICACAO } from './fluxo-quadro.mjs';
 
-/** Como a Diretoria pede uma nova tentativa, conforme o agente que falhou. */
-const COMO_TENTAR_DE_NOVO = {
-  arquiteto: 'Para tentar de novo, responda aqui com qualquer texto (por exemplo, "tente de novo").',
-  desenvolvedor: 'Para tentar de novo, responda aqui com qualquer texto (por exemplo, "tente de novo").',
-  ajuste: 'Para tentar de novo, peça os ajustes outra vez ("Request changes" com os comentários).',
-  claude: 'Para tentar de novo, repita o pedido num comentário com "@claude".',
-  atualizar: 'Para tentar de novo, comente "@claude atualize este PR com a main".',
-};
-
-const NOMES = {
-  arquiteto: 'O Arquiteto',
-  desenvolvedor: 'O Desenvolvedor',
-  ajuste: 'O ajuste pedido',
-  claude: 'O pedido ao "@claude"',
-  atualizar: 'A atualização deste PR com a main',
-};
+export const ETIQUETA_FALHA = 'falha de agente';
 
 /**
- * Texto do aviso de falha de um agente.
- * @param {{ agente: keyof typeof NOMES, endereco: string }} p endereco = link do registro da execução
+ * Marca a issue ou o PR com "falha de agente". Usado no último passo dos workflows dos agentes,
+ * só quando algo falhou. Não comenta: o e-mail do GitHub iria para a Diretoria.
  */
-export function mensagemFalha({ agente, endereco }) {
-  if (!NOMES[agente]) throw new Error(`agente desconhecido: ${agente}`);
-  return [
-    `**${NOMES[agente]} falhou e parou sem terminar.** Nada foi perdido do que já estava no GitHub.`,
-    '',
-    `- Registro da execução: ${endereco}`,
-    '- Causas comuns: limite de uso da assinatura do Claude (passa sozinho em algumas horas), chave vencida ou falha momentânea do GitHub. O DevOps lê o registro no próximo raio-x.',
-    `- ${COMO_TENTAR_DE_NOVO[agente]}`,
-    '',
-    `A etiqueta "${ETIQUETA_PERGUNTA}" fica aqui até você responder.`,
-  ].join('\n');
-}
-
-/**
- * Comenta o aviso de falha na issue ou no PR e põe a etiqueta "pergunta aberta".
- * Usado no último passo dos workflows dos agentes, só quando algo falhou.
- */
-export async function avisarFalha({ github, context, core, agente, numero }) {
+export async function marcarFalha({ github, context, core, agente, numero }) {
   const { owner, repo } = context.repo;
-  const endereco = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
-  await github.rest.issues.createComment({ owner, repo, issue_number: Number(numero), body: mensagemFalha({ agente, endereco }) });
-  await github.rest.issues.addLabels({ owner, repo, issue_number: Number(numero), labels: [ETIQUETA_PERGUNTA] });
-  core.notice(`Aviso de falha publicado em #${numero}`);
+  await github.rest.issues.addLabels({ owner, repo, issue_number: Number(numero), labels: [ETIQUETA_FALHA] });
+  core.notice(`${agente}: falha marcada em #${numero} para o DevOps`);
 }
 
 /**

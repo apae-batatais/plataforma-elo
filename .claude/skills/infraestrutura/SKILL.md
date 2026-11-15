@@ -40,9 +40,14 @@ Cuidados:
 - Ações feitas com o `GITHUB_TOKEN` não disparam outros workflows (exceto `workflow_dispatch`).
   Quem precisa encadear passos chama o próximo direto (veja `aprovacao.yml`).
 - Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`, `agentes.mjs`), com teste em `tests/fluxo/`.
-- **Falha de agente nunca fica em silêncio**: todo workflow que roda o Claude Code termina com o
-  passo "Avisar a falha" (`if: failure()`), que comenta na issue ou no PR com o link do registro e
-  põe a etiqueta "pergunta aberta". Workflow de agente novo leva o mesmo passo.
+- **Falha de agente é assunto do DevOps, nunca da Diretoria.** Todo workflow que roda o Claude Code
+  termina com o passo "Marcar a falha" (`if: failure()`), que põe a etiqueta "falha de agente" na
+  issue ou no PR, sem comentar. Workflow de agente novo leva o mesmo passo. No raio-x, o DevOps
+  procura essa etiqueta, lê o registro, roda de novo a execução que falhou (re-run dos jobs que
+  falharam) ou corrige, e tira a etiqueta. Só leva à Diretoria o que for prioridade, escopo ou custo
+  (ou falta de crédito, permissão ou chave, que só ela resolve).
+- **Merge recusado depois do "Approve"** (conflito ou outro motivo técnico): a Aprovação chama a
+  atualização ou marca "falha de agente"; o DevOps conclui o merge, porque a aprovação já foi dada.
 
 ## Secrets e variáveis (nomes; os valores você nunca recebe nem pede)
 

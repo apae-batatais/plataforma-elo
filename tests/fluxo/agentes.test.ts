@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { atualizarConflitos, avisarFalha, candidatoAAtualizar, mensagemFalha, situacaoDoMerge } from '../../.github/scripts/agentes.mjs';
+import { atualizarConflitos, candidatoAAtualizar, marcarFalha, situacaoDoMerge } from '../../.github/scripts/agentes.mjs';
 
 const REPO = 'org/elo';
 const contexto = { repo: { owner: 'org', repo: 'elo' }, serverUrl: 'https://github.com', runId: 42 };
@@ -26,28 +26,12 @@ function pr(number: number, extra: Partial<PR> = {}): PR {
   };
 }
 
-describe('aviso de falha dos agentes', () => {
-  it('traz o link do registro e diz como tentar de novo, conforme o agente', () => {
-    const texto = mensagemFalha({ agente: 'desenvolvedor', endereco: 'https://exemplo/runs/1' });
-    expect(texto).toContain('O Desenvolvedor falhou');
-    expect(texto).toContain('https://exemplo/runs/1');
-    expect(texto).toContain('responda aqui');
-    expect(mensagemFalha({ agente: 'claude', endereco: 'x' })).toContain('"@claude"');
-    expect(mensagemFalha({ agente: 'ajuste', endereco: 'x' })).toContain('Request changes');
-    expect(mensagemFalha({ agente: 'atualizar', endereco: 'x' })).toContain('@claude atualize este PR com a main');
-  });
-
-  it('recusa agente desconhecido', () => {
-    expect(() => mensagemFalha({ agente: 'outro' as never, endereco: 'x' })).toThrow('agente desconhecido');
-  });
-
-  it('comenta na issue e põe a etiqueta "pergunta aberta"', async () => {
+describe('falha de agente', () => {
+  it('marca a issue para o DevOps, sem comentar (não chama a Diretoria)', async () => {
     const github = { rest: { issues: { createComment: vi.fn(), addLabels: vi.fn() } } };
-    await avisarFalha({ github, context: contexto, core: core(), agente: 'arquiteto', numero: '131' });
-    expect(github.rest.issues.createComment).toHaveBeenCalledWith(
-      expect.objectContaining({ issue_number: 131, body: expect.stringContaining('https://github.com/org/elo/actions/runs/42') }),
-    );
-    expect(github.rest.issues.addLabels).toHaveBeenCalledWith(expect.objectContaining({ issue_number: 131, labels: ['pergunta aberta'] }));
+    await marcarFalha({ github, context: contexto, core: core(), agente: 'desenvolvedor', numero: '131' });
+    expect(github.rest.issues.addLabels).toHaveBeenCalledWith(expect.objectContaining({ issue_number: 131, labels: ['falha de agente'] }));
+    expect(github.rest.issues.createComment).not.toHaveBeenCalled();
   });
 });
 
