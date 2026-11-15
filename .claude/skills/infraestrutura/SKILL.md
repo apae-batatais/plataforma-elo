@@ -28,6 +28,7 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
 | `tipo-do-pr.yml` | Confere a etiqueta "PR: especificação" ou "PR: entrega" com a referência à issue |
 | `claude-desenvolvedor.yml` | Claude Code constrói a proposta com especificação aprovada |
 | `claude.yml` | Pedido livre com "@claude" num comentário |
+| `atualizar-pr.yml` | Depois de cada merge, confere os PRs de proposta abertos e une com a main os que ficaram em conflito (também à mão, com o número do PR) |
 | `vencimentos.yml` | Aviso semanal de chave perto de vencer (`.github/chaves.json`) |
 
 Cuidados:
@@ -38,7 +39,10 @@ Cuidados:
   filtre no `if` do job os eventos que não fazem nada.
 - Ações feitas com o `GITHUB_TOKEN` não disparam outros workflows (exceto `workflow_dispatch`).
   Quem precisa encadear passos chama o próximo direto (veja `aprovacao.yml`).
-- Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`), com teste em `tests/fluxo/`.
+- Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`, `agentes.mjs`), com teste em `tests/fluxo/`.
+- **Falha de agente nunca fica em silêncio**: todo workflow que roda o Claude Code termina com o
+  passo "Avisar a falha" (`if: failure()`), que comenta na issue ou no PR com o link do registro e
+  põe a etiqueta "pergunta aberta". Workflow de agente novo leva o mesmo passo.
 
 ## Secrets e variáveis (nomes; os valores você nunca recebe nem pede)
 

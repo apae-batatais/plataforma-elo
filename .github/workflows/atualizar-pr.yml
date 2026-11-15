@@ -1,0 +1,114 @@
+# Atualizar PR com a main (docs/metodologia.md, ADR-019).
+#
+# Várias propostas andam ao mesmo tempo e mexem nos mesmos arquivos. Quando uma entra na main,
+# as outras podem ficar em conflito. Este workflow:
+#  - conferir: procura os PRs de proposta abertos ("PR: especificação" ou "PR: entrega") em
+#    conflito com a main e chama a atualização de cada um. Roda depois de cada merge feito pela
+#    Aprovação (que o chama direto, porque o merge com o GITHUB_TOKEN não dispara o push) e em
+#    todo push na main feito de outro jeito. À mão: Actions → Atualizar PR → Run workflow, sem número.
+#  - atualizar: o Claude Code une o ramo do PR com a main, mantendo os dois lados, verifica e
+#    responde no PR. À mão: Run workflow informando o número do PR.
+# Funções em .github/scripts/agentes.mjs, com teste em tests/fluxo/agentes.test.ts.
+
+name: Atualizar PR
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Número do PR a atualizar (vazio = conferir todos os PRs abertos)
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+  actions: write
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: github.event_name == 'push' || inputs.pr == ''
+    # Só a conferência mais recente importa: uma nova cancela a anterior.
+    concurrency:
+      group: atualizar-pr-conferir
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const { atualizarConflitos } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/agentes.mjs`);
+            const enviados = await atualizarConflitos({ github, context, core });
+            core.info(enviados.length ? `Atualização chamada para: ${enviados.map((n) => `#${n}`).join(', ')}` : 'Nenhum PR em conflito');
+
+  atualizar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: github.event_name == 'workflow_dispatch' && inputs.pr != ''
+    concurrency:
+      group: atualizar-pr-${{ inputs.pr }}
+      cancel-in-progress: false
+    env:
+      PR: ${{ inputs.pr }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # A conferência chama esta atualização pela automação do GitHub (github-actions).
+          allowed_bots: github-actions
+          claude_args: >-
+            --max-turns 100
+            --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash"
+          prompt: |
+            O PR #${{ env.PR }} ficou em conflito com a main. Trabalhe sozinho, sem esperar resposta.
+            Sua tarefa é só atualizar o ramo com a main; não mude o que a entrega faz.
+
+            1. Leia o CLAUDE.md, em especial "Atualizar o ramo com a main".
+            2. `gh pr checkout ${{ env.PR }}`, depois `git fetch origin main` e `git merge origin/main`.
+            3. Resolva cada conflito mantendo o código dos dois lados (em listas, imports e exports,
+               una os dois; seções novas dos dois lados ficam uma depois da outra). Nunca apague o
+               trabalho que veio da main nem o do PR para o conflito sumir.
+            4. Confirme que não sobrou marcador (`grep -rn "^<<<<<<<\|^>>>>>>>" src docs tests`) e rode
+               `npm run verificar` e `npm run build` até tudo passar.
+            5. Faça commit do merge e push no ramo do PR. Responda no PR, em até três linhas, quais
+               arquivos tinham conflito e que tudo passou.
+            6. Se um conflito não puder ser resolvido mantendo os dois lados (as duas entregas mudam a
+               mesma regra de jeitos diferentes), não adivinhe: não faça push, explique no PR o que
+               conflita, com opções numeradas, e ponha a etiqueta "pergunta aberta"
+               (`gh pr edit ${{ env.PR }} --add-label "pergunta aberta"`).
+            Para textos longos em comentários, grave o texto num arquivo e use `--body-file`.
+
+      # Só em falha: busca as funções da esteira na main e avisa no PR.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Avisar a falha no PR
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { avisarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await avisarFalha({ github, context, core, agente: 'atualizar', numero: process.env.PR });

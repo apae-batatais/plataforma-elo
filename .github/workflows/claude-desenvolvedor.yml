@@ -5,6 +5,7 @@
 #  - à mão: Actions → Desenvolvedor → Run workflow, informando o número da issue;
 #  - quando a Diretoria comenta numa issue em construção (resposta a uma pergunta).
 # Entrega um PR com "Entrega #n", já verificado, com a prévia publicada pelo workflow Publicar.
+# Se falhar, avisa na issue (etiqueta "pergunta aberta"); a resposta da Diretoria chama de novo.
 
 name: Desenvolvedor
 
@@ -121,3 +122,19 @@ jobs:
                tomadas sozinho (com o custo se estiverem erradas). A prévia é publicada sozinha.
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
             (evita barras invertidas antes das aspas).
+
+      # Só em falha: busca as funções da esteira na main e avisa na issue ou no PR.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Avisar a falha
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { avisarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await avisarFalha({ github, context, core, agente: 'desenvolvedor', numero: process.env.ISSUE });

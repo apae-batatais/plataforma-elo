@@ -7,6 +7,7 @@
 #
 # Precisa do Secret CLAUDE_CODE_OAUTH_TOKEN (token da assinatura do Claude) e do app do
 # Claude instalado no repositório.
+# Se falhar, avisa na issue (etiqueta "pergunta aberta"); a resposta da Diretoria chama de novo.
 
 name: Arquiteto
 
@@ -82,3 +83,19 @@ jobs:
             7. Comente na issue o link do PR, em uma linha.
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
             (evita barras invertidas antes das aspas).
+
+      # Só em falha: busca as funções da esteira na main e avisa na issue ou no PR.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Avisar a falha
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { avisarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await avisarFalha({ github, context, core, agente: 'arquiteto', numero: context.payload.issue.number });

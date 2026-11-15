@@ -2,6 +2,7 @@
 #
 # A Diretoria escreve "@claude" e o pedido num comentário de issue ou de PR (por exemplo,
 # "@claude atualize este PR com a main") e o Claude Code atende ali mesmo.
+# Se falhar, avisa na issue ou no PR (etiqueta "pergunta aberta").
 
 name: Claude
 
@@ -43,3 +44,19 @@ jobs:
           claude_args: >-
             --max-turns 150
             --allowedTools "Read,Write,Edit,Glob,Grep,Skill,Bash"
+
+      # Só em falha: busca as funções da esteira na main e avisa na issue ou no PR.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Avisar a falha
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { avisarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await avisarFalha({ github, context, core, agente: 'claude', numero: (context.payload.issue ?? context.payload.pull_request).number });

@@ -3,6 +3,9 @@
 # - "Approve" da Diretoria num PR: confere o tipo do PR (etiqueta "PR: especificação" ou
 #   "PR: entrega", conferida com a referência à issue), faz o merge, move o cartão e, se for
 #   especificação, chama o Desenvolvedor. Depois do merge de uma entrega, chama o Verificar na main. Tipo que não combina: não faz o merge e explica no PR.
+# - Depois de cada merge, chama "Atualizar PR" para conferir os outros PRs abertos; se o merge
+#   falhar por conflito, chama a atualização do próprio PR.
+# - Se o ajuste falhar, avisa no PR (etiqueta "pergunta aberta").
 # - "Request changes" da Diretoria num PR: o Claude Code ajusta o PR conforme os comentários.
 #
 # Revisões em PR já fechado (com ou sem merge) são ignoradas.
@@ -75,8 +78,16 @@ jobs:
             try {
               await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'squash', commit_title: `${pr.title} (#${pr.number})` });
             } catch (e) {
-              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number,
-                body: `Não consegui fazer o merge depois da aprovação: ${e.message}. Se houver conflito com a main, comente "@claude atualize este PR com a main".` });
+              const { situacaoDoMerge } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/agentes.mjs`);
+              const { data: atual } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+              let body = `Não consegui fazer o merge depois da aprovação: ${e.message}.`;
+              if (situacaoDoMerge(atual) === 'conflito') {
+                await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'atualizar-pr.yml', ref: 'main', inputs: { pr: String(pr.number) } });
+                body += ' Há conflito com a main: já chamei a atualização deste PR. Quando ela responder aqui, confira e aprove de novo.';
+              } else {
+                body += ' Se houver conflito com a main, comente "@claude atualize este PR com a main".';
+              }
+              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
               core.setFailed(e.message);
               return;
             }
@@ -89,6 +100,9 @@ jobs:
               await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'verificar.yml', ref: 'main' });
               core.info('Verificar chamado para a main');
             }
+            // Os outros PRs abertos podem ter ficado em conflito com este merge: confere e atualiza.
+            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'atualizar-pr.yml', ref: 'main' });
+            core.info('Conferência de conflitos chamada');
             for (const issue of tipo.tipo === 'especificacao' ? tipo.issues : []) {
               await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'claude-desenvolvedor.yml', ref: 'main', inputs: { issue: String(issue) } });
               core.info(`Desenvolvedor chamado para a issue #${issue}`);
@@ -136,3 +150,19 @@ jobs:
                aberta" (`gh pr edit ${{ github.event.pull_request.number }} --add-label "pergunta aberta"`).
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
             (evita barras invertidas antes das aspas).
+
+      # Só em falha: busca as funções da esteira na main e avisa na issue ou no PR.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Avisar a falha
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { avisarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await avisarFalha({ github, context, core, agente: 'ajuste', numero: context.payload.pull_request.number });
