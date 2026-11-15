@@ -5,7 +5,7 @@ import { atualizar, ErroConflito, inserir, lerTabela, lerTabelas, type Planilhas
 import { Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { Projetos, type RegProjeto } from '../dados/tabelas';
 import { ErroProjetos, PORTES, proximoCodigo, TIPOS_PROJETO, type Etapa, type Porte, type TipoProjeto } from '../dominio/projeto';
-import { auditar, autoriaDe, lerConfig, podeAssumir, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
+import { auditar, autoriaDe, equipesAtivas, lerConfig, podeAssumir, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
 
 export interface DadosIdeia {
   titulo: string;
@@ -157,10 +157,10 @@ export type FiltroProjetos = 'meus' | 'aguardando' | 'todos';
 export async function listarProjetos(p: Planilhas, quem: Autorizador, filtro: FiltroProjetos): Promise<LinhaProjeto[]> {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) throw new ErroPermissao();
   if (filtro === 'todos' && !veTodos(quem)) throw new ErroPermissao();
-  const [projetos, config] = await Promise.all([lerTabela(p, Projetos), lerConfig(p)]);
+  const [projetos, config, equipes] = await Promise.all([lerTabela(p, Projetos), lerConfig(p), equipesAtivas(p)]);
   const eu = quem.email.toLowerCase();
   const escolhidos = projetos.ativos().filter((r) => {
-    if (!podeVerProjeto(quem, r, config)) return false;
+    if (!podeVerProjeto(quem, r, config, equipes.get(r.id))) return false;
     if (filtro === 'todos') return true;
     if (filtro === 'aguardando') return r.etapa === 'aguardando_responsavel' && podeAssumir(quem, r);
     return r.proponente.toLowerCase() === eu || r.responsavel?.toLowerCase() === eu;
