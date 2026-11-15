@@ -13,6 +13,9 @@
 4. O instrumento já existe e foi validado: são três formulários, um por serviço do eixo.
 5. (15/11/2026) Além do total de 0 a 30, o Elo mostra **subtotais por dimensão** (Evolução, Adequação, Barreira).
    É cálculo do Elo: não muda o instrumento nem as faixas de corte.
+6. (15/11/2026) Os subtotais já fazem parte do desenho validado do instrumento ("Base de Dados Consolidada": `Pts_Evolução`,
+   `Pts_Adequação`, `Pts_Barreira`, `Total_Pts`, `Classificação` e `Principal_Barreira`). O Elo só calcula e mostra esses campos;
+   não é funcionalidade nova.
 
 ## Objetivo e para quem
 
@@ -122,6 +125,7 @@ coordenação é gravado como coluna da aplicação (quem deu e quando).
 2. Cada aplicação guarda a versão usada. O comparativo só soma períodos da mesma versão e avisa quando diferem.
 3. Resposta: inteiro de 0 a 3. A aplicação só fecha com os 10 itens respondidos (não há "não se aplica" nesta entrega).
 4. **Total** = soma dos 10 itens (0 a 30). **Subtotais**: Evolução = itens 1 a 4 (0 a 12), Adequação = 5 e 6 (0 a 6), Barreira = 7 a 10 (0 a 12). Total = soma dos três subtotais.
+4a. **Principal barreira** (campo `Principal_Barreira` do desenho validado): a dimensão de **menor pontuação**. Como as dimensões têm máximos diferentes (12, 6 e 12), a comparação é pelo **percentual do máximo** de cada uma; em empate, mostram-se todas as empatadas. É calculada na leitura, como o total, e aparece na aplicação, no comparativo e no painel (quantas pessoas têm cada dimensão como principal). Classificação e subtotais seguem as regras 4 e 5.
 5. **Faixa** pelo total: 21–30, 11–20, 0–10 (limites incluídos). Fechar exige a justificativa do enquadramento (não vazia), como no motor.
 6. Item 7 (frequência): se a pessoa informa o percentual de 0 a 100, o Elo sugere a nota pelas faixas (<40 → 0, 40–59 → 1, 60–79 → 2, ≥80 → 3); a pessoa pode ajustar. O percentual **não é guardado**, só a nota.
 7. Período avaliado: início anterior ou igual ao fim, fim não futuro; data de ingresso não futura. Profissional e função são obrigatórios para fechar.
@@ -199,7 +203,8 @@ Três entregas, pequenas o bastante para ficar nesta issue (sem sub-issues; a Di
 6. **Reavaliação a cada 12 meses**, como na Assistência Social. A proposta não fala de periodicidade. _Custo:_ se Educação avalia por semestre ou bimestre, muda só a regra 13.
 7. **Percentual de frequência não é guardado**, só a nota do item 7 (menos dado sensível guardado).
 8. **Ciente da coordenação** é gravado na aplicação, sem exigir assinatura digital; a assinatura continua na ficha impressa.
-9. **Rota `/educacao`** e permissões `educacao.*`; o app nasce com o nome "Educação".
+9. **"Menor pontuação" da principal barreira medida em % do máximo da dimensão**, não em pontos brutos, porque Adequação só vai a 6 e perderia sempre. _Custo:_ se a equipe quer pontos brutos, muda só essa regra de cálculo e os textos do painel; nada gravado muda, pois o campo não é guardado.
+10. **Rota `/educacao`** e permissões `educacao.*`; o app nasce com o nome "Educação".
 
 ## Critérios de pronto
 
