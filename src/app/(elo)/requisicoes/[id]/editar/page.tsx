@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { detalharRequisicao, ErroRequisicao, opcoesDoFormulario } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { FormularioRequisicao } from '@/modulos/requisicoes/telas/formulario-requisicao';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import { projetosParaRequisicao } from '@/plataforma/ligacoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -30,6 +31,11 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
   // O tipo não muda no ajuste: se tiver sido excluído, continua aparecendo.
   if (!opcoes.tipos.some((t) => t.id === r.tipo_id) && d.tipo)
     opcoes.tipos.push({ id: d.tipo.id, nome: d.tipo.nome, formulario: d.tipo.formulario, descricao: null, areas: [], anexos: false, itens: [] });
+  const projetos = (await projetosParaRequisicao(app.planilhas, usuario.autorizador)) ?? [];
+  // O projeto já ligado continua escolhível, mesmo que tenha saído da lista de compras.
+  if (r.projeto_id && !projetos.some((x) => x.id === r.projeto_id))
+    projetos.push({ id: r.projeto_id, codigo: r.projeto_codigo ?? '', titulo: r.projeto_titulo ?? '', servico: null, atividades: [] });
+  if (projetos.length) opcoes.projetos = projetos;
   const pedido = [...d.historico].reverse().find((h) => h.acao === 'devolver');
   return (
     <div className="max-w-4xl">
@@ -74,6 +80,8 @@ export default async function AjustarRequisicao({ params }: { params: Promise<{ 
           itens: d.itens.map((i) => ({ quantidade: i.quantidade, unidade: i.unidade, descricao: i.descricao })),
           detalhes: d.detalhes,
           observacao: r.observacao,
+          projetoId: r.projeto_id,
+          atividadeId: r.atividade_id,
         }}
       />
     </div>

@@ -11,6 +11,9 @@ import {
   cancelarRequisicao,
   concluirRequisicao,
   decidirRequisicao,
+  detalharRequisicao,
+  type ConferenciaDaAprovacao,
+  corrigirValorGasto,
   enviarRequisicao,
   ErroRequisicao,
   incluirFeriadosNacionais,
@@ -31,6 +34,7 @@ import type { TipoAnexo } from '@/modulos/requisicoes/dominio/anexos';
 import type { Formulario } from '@/modulos/requisicoes/dominio/requisicao';
 import { ErroArquivo } from '@/nucleo/armazenamento/arquivos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { grupoDeGastoConferido, projetosParaRequisicao } from '@/plataforma/ligacoes';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { usuarioLogado } from '@/plataforma/sessao';
 
@@ -80,7 +84,11 @@ export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise
   const { usuario, app } = await contexto();
   let r: { id: string; numero: string; rota: { tipo: string } };
   try {
-    r = await enviarRequisicao(app.planilhas, usuario.autorizador, { ...lerFicha(f), nomeRequisitante: usuario.nome }, { arquivos: app.arquivos });
+    r = await enviarRequisicao(app.planilhas, usuario.autorizador, { ...lerFicha(f), nomeRequisitante: usuario.nome }, {
+      arquivos: app.arquivos,
+      // O servidor lê a lista de novo: a da tela não vale como prova (ADR-022).
+      projetos: await projetosParaRequisicao(app.planilhas, usuario.autorizador),
+    });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     if (erro instanceof SyntaxError) return { erro: 'A requisição veio incompleta. Tente de novo.' };
@@ -118,6 +126,7 @@ export async function acaoReenviarRequisicao(_: EstadoFicha, f: FormData): Promi
     await reenviarRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerFicha(f), {
       comentario: texto(f, 'comentario'),
       arquivos: app.arquivos,
+      projetos: await projetosParaRequisicao(app.planilhas, usuario.autorizador),
     });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
@@ -142,9 +151,18 @@ const MENSAGEM = {
 export async function acaoDecidir(f: FormData) {
   const id = texto(f, 'id');
   const acao = texto(f, 'acao') as 'aprovar' | 'devolver' | 'recusar';
-  await executar(`/requisicoes/${id}`, MENSAGEM[acao] ?? 'Feito.', ({ usuario, app }) =>
-    decidirRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), acao, texto(f, 'comentario') || null),
-  );
+  await executar(`/requisicoes/${id}`, MENSAGEM[acao] ?? 'Feito.', async ({ usuario, app }) => {
+    // Conferência opcional de quem aprova (R5): o grupo é conferido no cadastro do Orçamento.
+    const valor = numero(f, 'valor_estimado');
+    const grupoId = texto(f, 'grupo_id');
+    let conferencia: ConferenciaDaAprovacao | undefined;
+    if (acao === 'aprovar' && (Number.isFinite(valor) || grupoId)) {
+      const d = await detalharRequisicao(app.planilhas, usuario.autorizador, id);
+      const grupo = grupoId ? await grupoDeGastoConferido(app.planilhas, usuario.autorizador, d.centros.map((c) => c.servico), grupoId) : null;
+      conferencia = { valorEstimado: Number.isFinite(valor) ? valor : null, grupo };
+    }
+    await decidirRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), acao, texto(f, 'comentario') || null, { conferencia });
+  });
 }
 
 export async function acaoCancelar(f: FormData) {
@@ -167,7 +185,16 @@ export async function acaoConcluir(f: FormData) {
   await executar(`/requisicoes/${id}`, 'Atendimento concluído.', ({ usuario, app }) =>
     concluirRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), atendidos, texto(f, 'comentario') || null, {
       resultado: (texto(f, 'resultado') || undefined) as 'resolvido' | 'parcial' | undefined,
+      valorGasto: Number.isFinite(numero(f, 'valor_gasto')) ? numero(f, 'valor_gasto') : null,
     }),
+  );
+}
+
+export async function acaoCorrigirValorGasto(f: FormData) {
+  const id = texto(f, 'id');
+  const valor = numero(f, 'valor_gasto');
+  await executar(`/requisicoes/${id}`, 'Valor gasto atualizado.', ({ usuario, app }) =>
+    corrigirValorGasto(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), Number.isFinite(valor) ? valor : null),
   );
 }
 
