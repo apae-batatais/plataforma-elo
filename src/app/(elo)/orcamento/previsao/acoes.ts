@@ -23,6 +23,8 @@ import {
   aprovarExercicio, cotarProposta, decidirAjuste, decidirProposta, encerrarExercicio, proporDespesa, retirarProposta, solicitarAjuste,
 } from '@/modulos/orcamento/aplicacao/aprovacao';
 import type { TipoCentro } from '@/modulos/orcamento/dominio/analise-area';
+import { salvarLigacao, salvarOrigensDoPlano } from '@/modulos/orcamento/aplicacao/fontes-termo';
+import { catalogoParcerias } from '@/plataforma/catalogos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 
@@ -479,4 +481,26 @@ export async function acaoSalvarValoresBase(f: FormData) {
     return { servico: String(s), valor: Number.isFinite(v) ? v : null };
   });
   await executar('/orcamento/previsao/bases', 'Valores da base salvos.', ({ usuario, app }) => salvarValoresDaBase(app.planilhas, usuario.autorizador, base, ano, lista));
+}
+
+// ---------------------------------------------------------------------------
+// Fontes dos termos (R3a, #140)
+// ---------------------------------------------------------------------------
+
+export async function acaoSalvarLigacaoFonteTermo(f: FormData) {
+  await executar('/orcamento/previsao/fontes-termo', 'Ligação salva.', ({ usuario, app }) =>
+    salvarLigacao(app.planilhas, usuario.autorizador, catalogoParcerias(app.planilhas), {
+      fonteTermoId: texto(f, 'fonte_termo'),
+      fonteId: texto(f, 'fonte'),
+      contaId: texto(f, 'conta') || null,
+      versao: Number(texto(f, 'versao')) || 0,
+    }),
+  );
+}
+
+export async function acaoSalvarOrigensDoPlano(f: FormData) {
+  const categorias = f.getAll('categoria').map((c, i) => ({ categoria: String(c), origens: f.getAll(`origem_${i}`).map(String) }));
+  await executar('/orcamento/previsao/fontes-termo', 'Origens das categorias salvas.', ({ usuario, app }) =>
+    salvarOrigensDoPlano(app.planilhas, usuario.autorizador, catalogoParcerias(app.planilhas), texto(f, 'fonte_termo'), categorias),
+  );
 }
