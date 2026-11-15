@@ -13,6 +13,8 @@ import {
 import type { Captacao, Cotacao, Distribuicao, Prioridade } from '@/modulos/orcamento/dominio/previsao';
 import { encerrarBase, encerrarRegra, salvarBase, salvarRegra, salvarValoresDaBase } from '@/modulos/orcamento/aplicacao/regras-rateio';
 import type { BaseRegra, TipoParticipante } from '@/modulos/orcamento/dominio/rateio-custos';
+import { alterarOrigem, removerLimite, salvarLimite } from '@/modulos/orcamento/aplicacao/sustentabilidade';
+import { ErroSustentabilidade, type Origem } from '@/modulos/orcamento/dominio/sustentabilidade';
 import { salvarCentro } from '@/modulos/orcamento/aplicacao/analise-area';
 import { lerXlsx } from '@/modulos/orcamento/aplicacao/importacao';
 import { analisarImportacaoItens, descreverArquivoItens, importarItens, lerMapeamentoItens, type AnaliseItens } from '@/modulos/orcamento/aplicacao/importacao-itens';
@@ -34,7 +36,7 @@ async function contexto() {
   return { usuario, app: await obterAplicacao() };
 }
 
-const conhecido = (e: unknown) => e instanceof ErroValidacaoFolha || e instanceof ErroConflito || e instanceof ErroPermissao;
+const conhecido = (e: unknown) => e instanceof ErroValidacaoFolha || e instanceof ErroSustentabilidade || e instanceof ErroConflito || e instanceof ErroPermissao;
 const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 const numero = (f: FormData, campo: string) => {
   const t = texto(f, campo).replace(/\s/g, '');
@@ -503,4 +505,27 @@ export async function acaoSalvarOrigensDoPlano(f: FormData) {
   await executar('/orcamento/previsao/fontes-termo', 'Origens das categorias salvas.', ({ usuario, app }) =>
     salvarOrigensDoPlano(app.planilhas, usuario.autorizador, catalogoParcerias(app.planilhas), texto(f, 'fonte_termo'), categorias),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Painel de sustentabilidade financeira (#131)
+// ---------------------------------------------------------------------------
+
+export async function acaoAlterarOrigem(f: FormData) {
+  const origem = texto(f, 'origem');
+  const volta = texto(f, 'volta') || '/orcamento/sustentabilidade';
+  await executar(volta, 'Origem salva.', ({ usuario, app }) =>
+    alterarOrigem(app.planilhas, usuario.autorizador, { servico: texto(f, 'servico'), origem: origem === '' ? null : (origem as Origem) }),
+  );
+}
+
+export async function acaoSalvarLimite(f: FormData) {
+  const valor = numero(f, 'valor');
+  await executar('/orcamento/previsao/limites', 'Limite salvo.', ({ usuario, app }) =>
+    salvarLimite(app.planilhas, usuario.autorizador, { indicador: texto(f, 'indicador'), servico: texto(f, 'servico') || null, valor }),
+  );
+}
+
+export async function acaoRemoverLimite(f: FormData) {
+  await executar('/orcamento/previsao/limites', 'Limite removido.', ({ usuario, app }) => removerLimite(app.planilhas, usuario.autorizador, texto(f, 'id')));
 }

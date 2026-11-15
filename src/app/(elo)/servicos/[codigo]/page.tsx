@@ -7,7 +7,7 @@ import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { LinkBotao } from '@/ui/botao';
-import { formatarValor } from '@/ui/graficos';
+import { formatarValor } from '@/ui/formato';
 import { NumeroQueConta } from '@/ui/numero-que-conta';
 import { CabecalhoPagina } from '@/ui/pagina';
 import { Avaliacao, Custo, Projetos, Publicacoes, Requisicoes, Resumo, VagasEAtendidos, type LinksDosApps } from '../blocos';
