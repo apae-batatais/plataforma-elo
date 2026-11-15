@@ -239,6 +239,22 @@ export const CentrosCusto = definirTabela({
     vagas: numeroOpcional(),
     /** Regra de rateio do serviço (apoio e administrativo). */
     regra_rateio_id: textoOpcional(),
+    /** Origem do serviço (painel de sustentabilidade, #131). Vazio = vale a sugestão do termo. Só em serviço direto. */
+    origem: z.preprocess((v) => (v === undefined || v === null || v === '' ? null : v), z.enum(['contratado', 'propria_apoio', 'propria']).nullable()),
+  }),
+});
+
+/**
+ * Limites de alerta do painel de sustentabilidade (#131). Uma linha ativa por indicador (e serviço, só no peso do aporte).
+ * Limpar o limite encerra a linha (`ativo = FALSE`); nada é apagado.
+ */
+export const LimitesSustentabilidade = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'LimitesSustentabilidade',
+  esquema: z.object({
+    indicador: z.enum(['peso_aporte', 'meses_reserva', 'concentracao_financiador', 'margem_operacional']),
+    servico: textoOpcional(),
+    valor: numero(),
   }),
 });
 
@@ -499,4 +515,4 @@ export type RegCedido = Registro<typeof Cedidos.esquema>;
 export type RegValorCedido = Registro<typeof ValoresCedidos.esquema>;
 export type RegLotacaoCedido = Registro<typeof LotacaoCedidos.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade] as const;

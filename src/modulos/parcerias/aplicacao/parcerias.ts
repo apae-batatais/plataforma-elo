@@ -699,7 +699,11 @@ export interface TermoParaOrcamento {
   inicio: string;
   fim: string;
   unidadeMeta: string;
+  /** A unidade da meta é pessoa (o Núcleo consegue contar atendidos). */
+  unidadePessoa: boolean;
   servicos: string[];
+  /** Vagas de cada serviço no termo (só números, sem dado pessoal). */
+  vagasPorServico: { servico: string; vagasCusteadas: number | null; vagasOferecidas: number | null }[];
   recursosProprios: number | null;
   equipe: { funcao: string; pessoas: number; horasSemanais: number }[];
   fontes: {
@@ -729,7 +733,9 @@ export async function termosParaOrcamento(p: Planilhas, agora = new Date()): Pro
         inicio: f.inicio,
         fim: f.fim,
         unidadeMeta: f.unidadeMeta,
+        unidadePessoa: unidadeEhPessoa(f.unidadeMeta),
         servicos: f.servicos.map((s) => s.servico),
+        vagasPorServico: f.servicos.map((s) => ({ servico: s.servico, vagasCusteadas: s.vagasCusteadas, vagasOferecidas: s.vagasOferecidas })),
         recursosProprios: f.recursosProprios,
         equipe: f.equipe,
         fontes: f.fontes.map((x) => ({

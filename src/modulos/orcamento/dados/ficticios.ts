@@ -8,7 +8,7 @@ import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { anoAtualBrasilia } from '../dominio/historico';
 import { distribuir, valorDoItem } from '../dominio/previsao';
 import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
-import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos } from './tabelas';
+import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -318,6 +318,9 @@ export async function popularPrevisaoFicticia(p: Planilhas): Promise<void> {
     ],
     autor,
   );
+
+  // Limite de alerta do painel de sustentabilidade (a instituição define; aqui só na demonstração).
+  await inserirRegistros(p, (await lerTabelas(p, [LimitesSustentabilidade] as const))[0], [{ indicador: 'peso_aporte' as const, servico: null, valor: 10 }], autor);
 }
 
 // ---------------------------------------------------------------------------
