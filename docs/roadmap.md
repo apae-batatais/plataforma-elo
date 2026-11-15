@@ -189,3 +189,14 @@ Ficou para depois (14/11/2026):
 - [ ] Avisos por e-mail dos prazos (ligação com o Gmail, #63) e assinatura da agenda no Google Agenda.
 - [ ] Busca em Avaliação (dado sensível; só com pedido da Diretoria).
 - [ ] Sugestões ao digitar e filtro por app nos resultados da busca.
+
+## Saúde/CER: avaliação de evolução (issue #68, especificação em `src/modulos/saude/especificacao.md`, ADR-030)
+
+Ficou para depois (15/11/2026):
+
+- [ ] Texto de cada nível de nota (0 a 3) por item e opção "não se aplica", se a equipe tiver.
+- [ ] Prontuário, evolução clínica e agendamento de sessões do CER (fora do escopo da avaliação).
+- [ ] Escopo por equipe dentro do serviço (hoje, o escopo é o serviço).
+- [ ] Indicadores de Saúde como números do serviço em Projetos e Parcerias (ligações entre apps).
+- [ ] Peça comum de avaliação entre Educação e Saúde, se a repetição de código pesar.
+- [ ] Sugestões: lembrete de reavaliação, copiar profissional e função da última aplicação, mostrar a nota do período anterior no item.
