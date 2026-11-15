@@ -171,6 +171,10 @@ describe('termos fictícios nos formatos reais', () => {
     expect(mun.categorias).toHaveLength(2);
     expect(mun.permiteRemanejar).toBe(false);
     expect(edu.fontes.find((f) => f.nome === 'Cofinanciamento estadual')!.aportesParcelas).toHaveLength(6);
+    // Vagas por serviço e unidade de pessoa, para o painel de sustentabilidade (#131).
+    expect(edu.vagasPorServico).toEqual([{ servico: 'escola', vagasCusteadas: 100, vagasOferecidas: 120 }]);
+    expect(edu.unidadePessoa).toBe(true);
+    expect(c.find((t) => t.numero === '014/2026')!.unidadePessoa).toBe(false);
     const json = JSON.stringify(c);
     expect(json).not.toMatch(/@|cpf|pessoa_id|criado_por/i);
     // Termo encerrado sai do catálogo.

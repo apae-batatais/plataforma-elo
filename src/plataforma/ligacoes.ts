@@ -12,9 +12,9 @@ import { Servicos, type RegServico } from '@/nucleo/estrutura/tabelas';
 import { lerTabela } from '@/nucleo/armazenamento/tabela';
 import type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
 import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
-import type { NumerosDePessoas } from '@/modulos/parcerias';
+import { termosParaOrcamento, type NumerosDePessoas } from '@/modulos/parcerias';
 import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
-import { custoDoServico, saldoParaConferencia, type CustoDoServico, type SaldoParaConferencia } from '@/modulos/orcamento';
+import { custoDoServico, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type SaldoParaConferencia } from '@/modulos/orcamento';
 import { projetosDoServico, projetosParaCompra, type ProjetosDoServico } from '@/modulos/projetos';
 import { requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
 import { MODULOS } from './registro-modulos';
@@ -110,6 +110,29 @@ export function numerosDePessoas(p: Planilhas, opcoes: { desligados?: ReadonlySe
     async indicadoresDoServico(servico) {
       if (opcoes.desligados?.has('avaliacao') || !MODULOS.some((m) => m.id === 'avaliacao')) return null;
       return indicadoresDoServico(p, servico, { agora: opcoes.agora });
+    },
+  };
+}
+
+/**
+ * Termos de Parcerias entregues ao painel de sustentabilidade do Orçamento (ADR-022). Só números e nomes de
+ * parceiros; nenhum dado pessoal. Parcerias desligado devolve `null` e o painel mostra só o custo.
+ */
+export function catalogoDeParcerias(p: Planilhas, opcoes: { desligados?: ReadonlySet<string>; agora?: Date } = {}): CatalogoParcerias | null {
+  if (opcoes.desligados?.has('parcerias') || !MODULOS.some((m) => m.id === 'parcerias')) return null;
+  return {
+    async termos() {
+      return (await termosParaOrcamento(p, opcoes.agora)).map((t) => ({
+        id: t.id,
+        parceiro: t.parceiro,
+        numero: t.numero,
+        tipo: t.tipo,
+        inicio: t.inicio,
+        fim: t.fim,
+        unidadePessoa: t.unidadePessoa,
+        parcelas: t.fontes.flatMap((f) => [...f.parcelas, ...f.aportesParcelas]),
+        servicos: t.vagasPorServico.map((v) => ({ servico: v.servico, vagasCusteadas: v.vagasCusteadas })),
+      }));
     },
   };
 }
