@@ -6,6 +6,7 @@ import { BASE_RATEIO, type BaseRateio, type Matriz } from '@/modulos/orcamento/d
 import { ORIGEM_RATEIO } from '@/modulos/orcamento/dominio/rateio-custos';
 import { CATEGORIA, type Categoria } from '@/modulos/orcamento/dominio/previsao';
 import { reais } from '@/modulos/orcamento/telas/formato';
+import { SeletorCedidos } from '@/modulos/orcamento/telas/seletor-cedidos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -45,7 +46,7 @@ function TabelaMatriz({ matriz, legenda, totalRotulo }: { matriz: Matriz; legend
 export default async function AnalisePorArea({
   searchParams,
 }: {
-  searchParams: Promise<{ ano?: string; area?: string; base?: string; categoria?: string | string[] }>;
+  searchParams: Promise<{ ano?: string; area?: string; base?: string; categoria?: string | string[]; cedidos?: string }>;
 }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
@@ -57,8 +58,17 @@ export default async function AnalisePorArea({
     area: sp.area,
     base: sp.base as BaseRateio | undefined,
     categorias,
+    incluirCedidos: sp.cedidos !== '0',
   });
   const a = painel.analise;
+  const semPorCentro = new Map((painel.analiseSemCedidos?.rateio ?? []).map((r) => [r.codigo, r]));
+  const consulta = (incluir: boolean) => {
+    const q = new URLSearchParams({ ano: String(painel.ano), base: painel.base });
+    if (painel.area) q.set('area', painel.area.codigo);
+    for (const c of painel.categorias) q.append('categoria', c);
+    if (!incluir) q.set('cedidos', '0');
+    return `/orcamento/previsao/areas?${q}`;
+  };
 
   const cards = a
     ? [
@@ -76,10 +86,12 @@ export default async function AnalisePorArea({
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento/previsao' }, { rotulo: 'Análise por área' }]}
         titulo={`Análise por área ${painel.ano}`}
         descricao="Custo direto de cada centro, rateio do custo indireto da área e das despesas administrativas, custo per capita e resultado da área."
+        acoes={<SeletorCedidos temCedidos={painel.temCedidos} incluir={painel.incluiCedidos} total={Object.values(painel.cedidosPorServico).reduce((t, v) => t + v, 0)} href={consulta} />}
       />
 
       <form className="flex flex-wrap items-end gap-4 rounded-cartao border border-borda bg-superficie px-4 py-3" action="/orcamento/previsao/areas">
         <input type="hidden" name="ano" value={painel.ano} />
+        {!painel.incluiCedidos && painel.temCedidos && <input type="hidden" name="cedidos" value="0" />}
         <label className="block text-sm">
           <span className="font-semibold">Área</span>
           <select name="area" defaultValue={painel.area?.codigo} className={`${estiloEntrada} !mt-1 !min-h-9 !py-1.5`}>
@@ -180,7 +192,9 @@ export default async function AnalisePorArea({
                 { chave: 'total', rotulo: 'Total', tipo: 'moeda', somar: true },
                 { chave: 'atendidos', rotulo: 'Atendidos', tipo: 'numero', secundaria: true },
                 { chave: 'profissionais', rotulo: 'Profissionais', tipo: 'numero', secundaria: true },
-                { chave: 'perCapita', rotulo: 'Per capita mensal', tipo: 'moeda' },
+                ...(painel.incluiCedidos ? [{ chave: 'cedidos', rotulo: 'Cedidos (dentro de A)', tipo: 'moeda' as const, secundaria: true }] : []),
+                { chave: 'perCapita', rotulo: painel.incluiCedidos ? 'Per capita mensal, com cedidos' : 'Per capita mensal', tipo: 'moeda' },
+                ...(painel.incluiCedidos ? [{ chave: 'perCapitaSem', rotulo: 'Per capita mensal, sem cedidos', tipo: 'moeda' as const }] : []),
                 { chave: 'porSessao', rotulo: 'Por sessão', tipo: 'moeda', secundaria: true },
               ]}
               linhas={a.rateio.map((r) => ({
@@ -197,6 +211,8 @@ export default async function AnalisePorArea({
                   atendidos: r.atendidos,
                   profissionais: r.profissionais,
                   perCapita: r.perCapitaMensal,
+                  cedidos: painel.cedidosPorServico[r.codigo] ?? 0,
+                  perCapitaSem: semPorCentro.get(r.codigo)?.perCapitaMensal ?? null,
                   porSessao: r.porSessao,
                 },
                 celulas: {
@@ -205,6 +221,7 @@ export default async function AnalisePorArea({
                   peso: <span className="text-texto-suave">{pct(r.peso)}</span>,
                   total: <strong>{reais(r.total)}</strong>,
                   perCapita: r.perCapitaMensal === null ? <span className="text-texto-suave">sem atendidos</span> : reais(r.perCapitaMensal),
+                  perCapitaSem: semPorCentro.get(r.codigo)?.perCapitaMensal == null ? <span className="text-texto-suave">sem atendidos</span> : reais(semPorCentro.get(r.codigo)!.perCapitaMensal!),
                 },
               }))}
             />

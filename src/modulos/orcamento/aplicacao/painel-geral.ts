@@ -7,7 +7,7 @@ import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import { lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Exercicios } from '../dados/tabelas';
 import { arred, type Indicadores } from '../dominio/previsao';
-import { lerPrevisao } from './previsao';
+import { GRUPO_CEDIDOS, lerPrevisao } from './previsao';
 
 export interface ResumoDoAno {
   ano: number;
@@ -18,6 +18,14 @@ export interface ResumoDoAno {
   /** RH total: folha (automática ou consolidada) + grupos marcados como RH. */
   rh: number;
   indicadores: Indicadores;
+  /** Os mesmos indicadores sem cedidos (o outro valor, mostrado ao lado). */
+  indicadoresSemCedidos: Indicadores;
+  /** Há cedidos no ano (o seletor "Incluir cedidos" só aparece então). */
+  temCedidos: boolean;
+  /** Os números deste ano incluem os cedidos. */
+  incluiCedidos: boolean;
+  /** Quanto os cedidos somam no ano (despesa e receita de mesmo valor). */
+  cedidos: number;
   despesaMensal: number[];
   receitaMensal: number[];
   porArea: Record<string, number>;
@@ -43,23 +51,25 @@ export interface PainelGeral {
 
 export const GRUPO_RH = 'Recursos Humanos';
 
-export async function painelGeral(p: Planilhas, quem: Autorizador): Promise<PainelGeral> {
+export async function painelGeral(p: Planilhas, quem: Autorizador, opcoes: { incluirCedidos?: boolean } = {}): Promise<PainelGeral> {
   if (!quem.temPermissao('orcamento.painel.ver') && !quem.temPermissao('orcamento.previsao.editar')) throw new ErroPermissao();
   const [exercicios] = await lerTabelas(p, [Exercicios] as const);
   const lista = exercicios.ativos().sort((a, b) => a.ano - b.ano);
 
   const anos: ResumoDoAno[] = [];
   for (const e of lista) {
-    const prev = await lerPrevisao(p, quem, e.ano);
+    const prev = await lerPrevisao(p, quem, e.ano, opcoes);
     const t = prev.totais;
     const porArea = Object.fromEntries(t.porArea.map((g) => [g.nome, g.anual]));
     const porGrupo: Record<string, number> = {};
     const rhDoGrupo = new Map(prev.opcoes.grupos.map((g) => [g.nome, g.rh]));
     for (const g of t.porGrupo) {
-      const nome = g.chave === '__folha__' || rhDoGrupo.get(g.nome) || prev.despesas.some((d) => d.grupoNome === g.nome && d.rh) ? GRUPO_RH : g.nome;
+      const nome = g.chave === '__folha__' || g.chave === GRUPO_CEDIDOS || rhDoGrupo.get(g.nome) || prev.despesas.some((d) => d.grupoNome === g.nome && d.rh) ? GRUPO_RH : g.nome;
       porGrupo[nome] = arred((porGrupo[nome] ?? 0) + g.anual);
     }
     const soma = (f: (r: (typeof prev.receitas)[number]) => boolean) => arred(prev.receitas.filter(f).reduce((s, r) => s + r.valor, 0));
+    const cedPublica = prev.incluiCedidos ? arred(prev.receitasCedidos.filter((r) => r.publica).reduce((t, r) => t + r.valor, 0)) : 0;
+    const cedOutra = prev.incluiCedidos ? arred(prev.receitasCedidos.filter((r) => !r.publica).reduce((t, r) => t + r.valor, 0)) : 0;
     anos.push({
       ano: e.ano,
       situacao: e.situacao,
@@ -68,12 +78,16 @@ export async function painelGeral(p: Planilhas, quem: Autorizador): Promise<Pain
       resultado: prev.indicadores.resultado,
       rh: t.rh,
       indicadores: prev.indicadores,
+      indicadoresSemCedidos: prev.indicadoresSemCedidos,
+      temCedidos: prev.cedidos.temCedidos,
+      incluiCedidos: prev.incluiCedidos,
+      cedidos: prev.incluiCedidos ? prev.cedidos.anual : 0,
       despesaMensal: t.despesa.mensal,
       receitaMensal: t.receita.mensal,
       porArea,
       porGrupo,
-      receitaPublica: soma((r) => r.natureza === 'publica'),
-      receitaPropria: soma((r) => r.natureza === 'propria'),
+      receitaPublica: arred(soma((r) => r.natureza === 'publica') + cedPublica),
+      receitaPropria: arred(soma((r) => r.natureza === 'propria') + cedOutra),
       receitaLivre: soma((r) => r.uso === 'livre'),
       receitaRestrita: soma((r) => r.uso === 'restrita'),
       aDefinir: t.aDefinir.valor,
