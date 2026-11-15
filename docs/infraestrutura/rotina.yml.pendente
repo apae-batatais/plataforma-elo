@@ -1,3 +1,5 @@
+# ATENÇÃO: este arquivo ainda NÃO está ativo. O agente não tem permissão de criar workflows; a sessão DevOps
+# deve copiá-lo para .github/workflows/rotina.yml (ver o PR da entrega 1 da issue #63).
 # Rotina agendada do Elo (ADR-027).
 #
 # A cada 15 minutos, chama a rota protegida POST /api/rotina do site oficial. A rota roda as tarefas
