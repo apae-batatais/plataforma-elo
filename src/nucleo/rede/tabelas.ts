@@ -25,6 +25,8 @@ export const Instituicoes = definirTabela({
     pasta: textoOpcional(),
     /** E-mails dos administradores iniciais, separados por vírgula. */
     administradores_iniciais: textoOpcional(),
+    /** E-mail institucional de envio dos avisos ("não-responda@"), do domínio da instituição (ADR-027). */
+    remetente_email: textoOpcional(),
     /** Unidades iniciais, "codigo=Nome" separadas por ponto e vírgula. */
     unidades: textoOpcional(),
   }),

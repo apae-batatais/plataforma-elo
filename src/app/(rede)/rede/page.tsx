@@ -12,7 +12,7 @@ import { IconeEditar, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
-import { acaoMudarSituacao, acaoPrepararEstrutura, acaoPrepararEstruturaDeTodas, acaoSalvarInstituicao } from './acoes';
+import { acaoEmailDeTeste, acaoMudarSituacao, acaoPrepararEstrutura, acaoPrepararEstruturaDeTodas, acaoSalvarInstituicao } from './acoes';
 import { avisoDeEstrutura } from './estrutura-das-instituicoes';
 import { FormularioInstituicao } from './formulario-instituicao';
 import { PLANILHAS_DA_INSTITUICAO } from './planilhas';
@@ -228,6 +228,18 @@ export default async function Instituicoes({ searchParams }: { searchParams: Pro
                     <LinkBotao href={`/rede?editar=${i.id}`} scroll={false} variante="icone" aria-label={`Alterar ${i.nome}`} title="Alterar">
                       <IconeEditar tamanho={16} />
                     </LinkBotao>
+                    {i.remetenteEmail && (
+                      <FormularioConfirmado
+                        acao={acaoEmailDeTeste}
+                        campos={{ id: i.id }}
+                        rotulo="E-mail de teste"
+                        variante="fantasma"
+                        perigoso={false}
+                        titulo={`Enviar e-mail de teste da ${i.nome}?`}
+                        mensagem={`Manda uma mensagem curta, de ${i.remetenteEmail}, só para o seu e-mail, para confirmar que o envio está funcionando.`}
+                        confirmar="Enviar teste"
+                      />
+                    )}
                     {i.situacao === 'ativa' ? (
                       <FormularioConfirmado
                         acao={acaoMudarSituacao}

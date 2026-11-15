@@ -41,6 +41,8 @@ class PastasDaDemonstracao extends PastasMemoria {
   }
 }
 
+const dominioFicticio = (codigo: string) => (codigo === 'exemplo' ? 'exemplo.local' : 'modelo.local');
+
 let promessa: Promise<AplicacaoDaRede | null> | undefined;
 
 /** A planilha da rede, pronta (abas criadas). null quando a Operadora ainda não configurou a rede. */
@@ -66,13 +68,14 @@ async function montarRede(geral: ConfigGeral): Promise<AplicacaoDaRede | null> {
           codigo: i.codigo,
           nome: i.nome,
           nome_completo: i.nomeCompleto,
-          dominio: i.codigo === 'exemplo' ? 'exemplo.local' : 'modelo.local',
+          dominio: dominioFicticio(i.codigo),
           enderecos: null,
           situacao: 'ativa',
           // Na demonstração cada instituição usa planilhas em memória: os IDs são só ilustrativos.
           pasta: null,
           planilhas: JSON.stringify({ nucleo: `demonstracao-${i.codigo}-nucleo`, auditoria: `demonstracao-${i.codigo}-auditoria` }),
           administradores_iniciais: null,
+          remetente_email: `nao-responda@${dominioFicticio(i.codigo)}`,
           unidades: i.unidades.map((u) => `${u.codigo}=${u.nome}`).join('; '),
         },
         autor,

@@ -1,6 +1,6 @@
 # ADR-027 — Ligação do Elo com o Gmail (envio por conta de serviço e rotina agendada)
 
-- Situação: proposta (15/11/2026), a aprovar com a especificação da issue #63
+- Situação: aprovada com a especificação da issue #63 (15/11/2026); entrega 1 (peça de e-mail, remetente, rota e rotina) construída
 - Data: 15/11/2026
 
 ## Contexto
@@ -59,3 +59,11 @@ família de credencial que a ADR-011 já usa nas planilhas.
 - Nova dependência de configuração fora do código: delegação no Workspace, remetente no cadastro da
   instituição e o Secret `ROTINA_TOKEN`. Sem qualquer um, o Elo continua funcionando, só sem e-mail.
 - Se o plano gratuito do GitHub Actions apertar, a frequência da rotina pode cair para 30 ou 60 minutos.
+
+## Notas da entrega 1 (16/11/2026)
+- A peça é de toda a plataforma, não da Comunicação (comentário da Diretoria na issue #63: os avisos cobrem todos
+  os apps). Um app recebe `app.email` (pode ser nulo) na `Aplicacao` e nunca importa outro app; Requisições (#61)
+  e o painel de prazos (#57) usam o mesmo `app.email` em entregas próprias.
+- O agendador é o workflow `rotina.yml`, com os Secrets `ROTINA_URL` e `ROTINA_TOKEN` (e a variável `ROTINA_TOKEN`
+  na Netlify). As tarefas dos apps entram na lista `TAREFAS_DA_ROTINA` de `src/plataforma/rotina.ts`.
+- "E-mail de teste": botão na linha da instituição na área da rede; manda uma mensagem só para quem clicou.
