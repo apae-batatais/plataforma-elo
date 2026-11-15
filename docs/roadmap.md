@@ -211,6 +211,17 @@ Ficou para depois (15/11/2026):
 - [ ] Foto mensal guardada, painel em PDF, alerta de indicador fora da referência e indicadores por serviço.
 - [ ] Painel para coordenações ou Leitura (hoje só a Diretoria).
 
+## Educação: avaliação de evolução (issue #163, especificação em `src/modulos/educacao/especificacao.md`, ADR-029)
+
+Ficou para depois (15/11/2026):
+
+- [ ] Cadastro de turmas no Núcleo e escopo do educador por turma (hoje, turma = serviço).
+- [ ] Texto de cada nível de nota (0 a 3) por item, se a equipe tiver (hoje, legenda geral).
+- [ ] Revisão do instrumento: item 6 da Educação Infantil mistura turma, turno e acessibilidade; uniformizar "progresso" e "avanço" (nova versão).
+- [ ] Opção "não se aplica" nos itens.
+- [ ] Indicadores de Educação como números do serviço em Projetos e Parcerias (ligações entre apps).
+- [ ] Sugestões: lembrete de reavaliação, copiar profissional e função da última aplicação, mostrar a nota do período anterior no item.
+
 ## Saúde/CER: avaliação de evolução (issue #68, especificação em `src/modulos/saude/especificacao.md`, ADR-030)
 
 Ficou para depois (15/11/2026):
