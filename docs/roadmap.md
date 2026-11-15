@@ -189,3 +189,12 @@ Ficou para depois (14/11/2026):
 - [ ] Avisos por e-mail dos prazos (ligação com o Gmail, #63) e assinatura da agenda no Google Agenda.
 - [ ] Busca em Avaliação (dado sensível; só com pedido da Diretoria).
 - [ ] Sugestões ao digitar e filtro por app nos resultados da busca.
+
+## Motor de avaliação (issue #62, especificação em `src/modulos/avaliacao/especificacao.md`, ADR-026)
+
+Ficou para depois (15/11/2026):
+
+- [ ] Instrumentos reais com escala (aguardam nome e perguntas da Diretoria, sem dados reais).
+- [ ] Converter o questionário diagnóstico atual em instrumento do motor.
+- [ ] Editor de instrumentos pela tela.
+- [ ] Módulos de Educação e Saúde/CER usando o motor.
