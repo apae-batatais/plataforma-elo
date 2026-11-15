@@ -7,6 +7,7 @@ import { conferirLoginGoogle, ErroLogin } from '@/nucleo/sessao/google';
 import {
   autorizadorDaRede,
   ErroRede,
+  enviarEmailDeTeste,
   incluirAdministradorRede,
   mudarSituacao,
   painelDaRede,
@@ -15,6 +16,7 @@ import {
 } from '@/nucleo/rede/rede';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { configGeral } from '@/plataforma/instituicao';
+import { enviadorDaInstituicao } from '@/plataforma/email';
 import { esquecerInstituicoes } from '@/plataforma/rede';
 import { administradorDaRedeLogado, aplicacaoDaRedeAtual, encerrarSessaoRede, iniciarSessaoRede } from '@/plataforma/sessao-rede';
 import { prepararInstituicao, resumoDaPreparacao } from './preparar-instituicao';
@@ -66,6 +68,7 @@ export async function acaoSalvarInstituicao(
         dominio: texto(f, 'dominio').replace(/^@/, ''),
         enderecos: linhas(texto(f, 'enderecos')).map((e) => e.replace(/^https?:\/\//i, '').replace(/\/.*$/, '')),
         pasta: texto(f, 'pasta'),
+        remetenteEmail: texto(f, 'remetenteEmail'),
         administradoresIniciais: linhas(texto(f, 'administradoresIniciais')),
         unidades: texto(f, 'unidades')
           .split('\n')
@@ -119,6 +122,22 @@ export async function acaoMudarSituacao(f: FormData) {
   }[situacao];
   await executar('/rede', mensagem ?? 'Situação alterada.', (a) =>
     mudarSituacao(a.app.planilhas, a.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), situacao),
+  );
+}
+
+export async function acaoEmailDeTeste(f: FormData) {
+  const geral = configGeral();
+  let destino = '';
+  await executar(
+    '/rede',
+    'E-mail de teste enviado.',
+    async (a) => {
+      const i = (await painelDaRede(a.app.planilhas, a.autorizador)).instituicoes.find((x) => x.id === texto(f, 'id'));
+      if (!i) throw new ErroRede('Instituição não encontrada.');
+      await enviarEmailDeTeste(a.app.planilhas, a.autorizador, i, enviadorDaInstituicao(geral, i));
+      destino = geral.modo === 'demonstracao' ? 'Demonstração: o e-mail de teste foi registrado, mas nada saiu de verdade.' : `E-mail de teste enviado para ${a.email}. Confira a caixa de entrada.`;
+    },
+    () => destino,
   );
 }
 

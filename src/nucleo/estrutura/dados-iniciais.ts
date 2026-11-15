@@ -35,6 +35,7 @@ export const PERMISSOES_INICIAIS: { perfil: string; permissao: string }[] = [
   { perfil: 'administrador_plataforma', permissao: 'core.auditoria.ver' },
   { perfil: 'diretoria', permissao: 'core.pessoas.ver' },
   { perfil: 'diretoria', permissao: 'core.auditoria.ver' },
+  { perfil: 'diretoria', permissao: 'core.dpo.gerenciar' },
   { perfil: 'coordenacao_servico', permissao: 'core.pessoas.ver' },
   { perfil: 'coordenacao_servico', permissao: 'core.pessoas.editar' },
   { perfil: 'coordenacao_servico', permissao: 'core.vinculos.editar' },

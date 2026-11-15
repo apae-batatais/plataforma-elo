@@ -68,6 +68,22 @@ Na área da rede (Rede › Instituições), a Administração da rede:
 
 Com a R4, a Operadora cola só o link da pasta; ao salvar, o Elo confere e prepara sozinho.
 
+## 6b. E-mail de envio (opcional, ADR-027)
+O Elo pode enviar avisos por e-mail, sempre de um endereço institucional do tipo `nao-responda@<domínio>`
+(nunca da conta pessoal de alguém). Sem esse endereço, o Elo funciona igual, só sem e-mail.
+
+**Quem administra o Google Workspace da instituição faz uma vez:**
+1. Crie o usuário (ou grupo com envio permitido) `nao-responda@<domínio>`.
+2. No Google Cloud do Elo, ative a **Gmail API** (a Operadora faz isso uma vez para a rede).
+3. No Admin do Google Workspace: Segurança › Acesso e controle de dados › Controles da API ›
+   **Delegação em todo o domínio** › Adicionar. Informe o **ID do cliente** da conta de serviço do Elo
+   (a Operadora informa) e o único escopo `https://www.googleapis.com/auth/gmail.send`.
+   O Elo nunca recebe a senha de ninguém.
+
+**A Operadora faz:** na área da rede, em Instituições › Alterar, preenche **E-mail de envio** (precisa ser do
+domínio da instituição) e salva; depois clica em **E-mail de teste** na linha da instituição. O teste chega
+só para quem clicou. Se falhar, a mensagem diz o que conferir.
+
 ## 7. Primeiro acesso
 O administrador inicial entra pelo `elo.<domínio>` com o e-mail da instituição, cadastra a
 organização (unidades, áreas, serviços) e os acessos da equipe.

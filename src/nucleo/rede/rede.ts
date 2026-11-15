@@ -19,6 +19,7 @@ import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import type { Instituicao } from '@/nucleo/config';
 import { UNIDADES_PADRAO } from '@/nucleo/estrutura/dados-iniciais';
 import { conferirEstrutura, prepararEstrutura, type EstruturaDosModulos, type ResultadoPreparacao } from '@/nucleo/estrutura/preparar';
+import { emailDoDominio, ErroEmail, type EnviadorDeEmail } from '@/nucleo/email/email';
 import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import { AdministradoresRede, Instituicoes, SITUACOES_INSTITUICAO, type RegInstituicao } from './tabelas';
 
@@ -124,6 +125,7 @@ export function instituicaoDoRegistro(r: RegInstituicao): Instituicao {
     planilhas,
     pasta: r.pasta ?? undefined,
     administradoresIniciais: lista(r.administradores_iniciais),
+    remetenteEmail: r.remetente_email?.trim().toLowerCase() || undefined,
     unidades: unidades.length ? unidades : UNIDADES_PADRAO,
   };
 }
@@ -190,6 +192,8 @@ export const esquemaCadastro = z.object({
   /** Link da pasta no Drive compartilhado (ou o ID): o Elo cria as planilhas dentro dela (ADR-018). */
   pasta: z.string().trim().optional(),
   administradoresIniciais: z.array(z.email('E-mail de administrador inválido.')),
+  /** E-mail de envio dos avisos (ADR-027); vazio = a instituição não envia e-mail pelo Elo. */
+  remetenteEmail: z.string().trim().toLowerCase().optional(),
   unidades: z.array(z.object({ codigo: z.string(), nome: z.string() })),
 });
 export type DadosInstituicao = z.input<typeof esquemaCadastro>;
@@ -214,6 +218,9 @@ export async function salvarInstituicao(p: Planilhas, quem: Autorizador, dados: 
     if (!e.toLowerCase().endsWith(`@${d.dominio}`)) throw new ErroRede(`O administrador ${e} precisa ter e-mail @${d.dominio}.`);
   }
 
+  if (d.remetenteEmail && !emailDoDominio(d.remetenteEmail, d.dominio))
+    throw new ErroRede(`O e-mail de envio precisa ser do domínio da instituição (ex.: nao-responda@${d.dominio}).`);
+
   const outras = tabela
     .ativos()
     .filter((x) => x.id !== existente?.id)
@@ -232,6 +239,7 @@ export async function salvarInstituicao(p: Planilhas, quem: Autorizador, dados: 
     enderecos: d.enderecos.join(', ') || null,
     planilhas: JSON.stringify(planilhas),
     pasta,
+    remetente_email: d.remetenteEmail || null,
     administradores_iniciais: d.administradoresIniciais.map((e) => e.toLowerCase()).join(', ') || null,
     unidades: d.unidades.map((u) => `${u.codigo}=${u.nome}`).join('; ') || null,
   };
@@ -280,6 +288,30 @@ export async function mudarSituacao(
     registroId: id,
     detalhes: { colunas: ['situacao'], situacao },
   });
+}
+
+/**
+ * E-mail de teste (ADR-027): manda uma mensagem curta, do e-mail de envio da instituição, à própria pessoa que
+ * administra a rede, para confirmar a delegação no Google. Nada de dado da instituição vai na mensagem.
+ */
+export async function enviarEmailDeTeste(
+  p: Planilhas,
+  quem: Autorizador,
+  instituicao: { id: string; nome: string; remetenteEmail?: string },
+  enviador: EnviadorDeEmail | null,
+): Promise<void> {
+  exigir(quem);
+  if (!instituicao.remetenteEmail || !enviador) throw new ErroRede('Esta instituição ainda não tem o e-mail de envio. Informe-o no cadastro e salve.');
+  try {
+    await enviador.enviar({
+      para: [quem.email],
+      assunto: 'Elo: e-mail de teste',
+      texto: `Este é um e-mail de teste do Elo para a instituição ${instituicao.nome}.\n\nSe você recebeu, o envio está funcionando. Não é preciso responder.`,
+    });
+  } catch (erro) {
+    throw new ErroRede(erro instanceof ErroEmail ? erro.message : 'Não foi possível enviar o e-mail de teste.');
+  }
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'estrutura', entidade: 'Instituicoes', registroId: instituicao.id, detalhes: { email_de_teste: true } });
 }
 
 // ---------------------------------------------------------------------------

@@ -211,6 +211,15 @@ Ficou para depois (15/11/2026):
 - [ ] Foto mensal guardada, painel em PDF, alerta de indicador fora da referência e indicadores por serviço.
 - [ ] Painel para coordenações ou Leitura (hoje só a Diretoria).
 
+## Motor de avaliação (issue #62, especificação em `src/modulos/avaliacao/especificacao.md`, ADR-026)
+
+Ficou para depois (15/11/2026):
+
+- [ ] Instrumentos reais com escala (aguardam nome e perguntas da Diretoria, sem dados reais).
+- [ ] Converter o questionário diagnóstico atual em instrumento do motor.
+- [ ] Editor de instrumentos pela tela.
+- [ ] Módulos de Educação e Saúde/CER usando o motor.
+
 ## Educação: avaliação de evolução (issue #163, especificação em `src/modulos/educacao/especificacao.md`, ADR-029)
 
 Ficou para depois (15/11/2026):

@@ -81,6 +81,26 @@ export function FormularioInstituicao({
       </fieldset>
 
       <fieldset className="space-y-3">
+        <legend className="font-semibold">E-mail de envio</legend>
+        <Campo
+          rotulo="E-mail de envio"
+          dica="Ex.: nao-responda@seudominio. De onde saem os avisos do Elo; precisa ser do domínio da instituição. Sem ele, o Elo não envia e-mail (os avisos dentro do Elo continuam)."
+        >
+          <input
+            name="remetenteEmail"
+            type="email"
+            defaultValue={v('remetenteEmail', i?.remetenteEmail)}
+            placeholder="nao-responda@instituicao.org.br"
+            autoComplete="off"
+            className={estiloEntrada}
+          />
+        </Campo>
+        <p className="text-sm text-texto-suave">
+          Quem administra o Google Workspace da instituição precisa autorizar o Elo uma vez (delegação no domínio). O roteiro está no guia de adesão.
+        </p>
+      </fieldset>
+
+      <fieldset className="space-y-3">
         <legend className="font-semibold">Pasta no Drive da instituição</legend>
         <p className="text-sm text-texto-suave">
           A instituição cria um Drive compartilhado, inclui a conta de serviço do Elo como <strong>Gerente de conteúdo</strong> e envia o link da pasta. Cole-o

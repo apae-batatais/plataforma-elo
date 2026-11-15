@@ -14,6 +14,8 @@ import { configDaInstituicao, type Config, type ConfigGeral, type Instituicao } 
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { ESTRUTURA_DOS_MODULOS, popularDemonstracaoDosModulos, TABELAS_DOS_MODULOS } from '@/plataforma/registro-modulos';
+import type { EnviadorDeEmail } from '@/nucleo/email/email';
+import { enviadorDaInstituicao } from './email';
 import { configGeral, instituicaoAtual } from './instituicao';
 import { instituicoesDoElo } from './rede';
 
@@ -25,6 +27,8 @@ export interface Aplicacao {
   planilhas: Planilhas;
   /** Fotos e vídeos (ADR-014). Nulo enquanto a instituição não informar a pasta de anexos. */
   arquivos: ArmazenamentoArquivos | null;
+  /** Envio de e-mail (ADR-027). Nulo enquanto a instituição não informar o e-mail de envio: os avisos dentro do Elo continuam. */
+  email: EnviadorDeEmail | null;
 }
 
 const porInstituicao = new Map<string, Promise<Aplicacao>>();
@@ -38,7 +42,7 @@ export async function obterAplicacao(): Promise<Aplicacao> {
 
 export function aplicacaoDa(geral: ConfigGeral, inst: Instituicao, unica = geral.instituicoes.length === 1): Promise<Aplicacao> {
   // Mudou a configuração da instituição (ex.: planilhas no cadastro da rede)? Monta de novo.
-  const chave = `${geral.modo}:${inst.codigo}:${JSON.stringify(inst.planilhas)}:${unica}`;
+  const chave = `${geral.modo}:${inst.codigo}:${JSON.stringify(inst.planilhas)}:${inst.remetenteEmail ?? ''}:${unica}`;
   let p = porInstituicao.get(chave);
   if (!p) {
     p = montar(geral, inst, unica).catch((erro) => {
@@ -52,7 +56,7 @@ export function aplicacaoDa(geral: ConfigGeral, inst: Instituicao, unica = geral
 
 async function montar(geral: ConfigGeral, inst: Instituicao, unica: boolean): Promise<Aplicacao> {
   const config = configDaInstituicao(geral, inst);
-  const base = { config, instituicao: inst, unica };
+  const base = { config, instituicao: inst, unica, email: enviadorDaInstituicao(geral, inst) };
 
   if (config.modo === 'demonstracao') {
     const chaves = ['nucleo', 'auditoria', ...new Set(TABELAS_DOS_MODULOS.map((t) => t.planilha))];

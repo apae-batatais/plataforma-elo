@@ -1,0 +1,51 @@
+# ATENÇÃO: este arquivo ainda NÃO está ativo. O agente não tem permissão de criar workflows; a sessão DevOps
+# deve copiá-lo para .github/workflows/rotina.yml (ver o PR da entrega 1 da issue #63).
+# Rotina agendada do Elo (ADR-027).
+#
+# A cada 15 minutos, chama a rota protegida POST /api/rotina do site oficial. A rota roda as tarefas
+# de cada instituição ativa (envio agendado de e-mail, lembretes) e devolve só contagens.
+# Não gasta créditos de publicação da Netlify: é só uma chamada ao site já publicado.
+#
+# Precisa de dois Secrets no repositório (Settings → Secrets and variables → Actions):
+#   ROTINA_URL    endereço do site oficial, sem barra no fim (ex.: https://elo.instituicao.org.br)
+#   ROTINA_TOKEN  chave da rotina (mínimo 32 caracteres); a mesma deve estar na variável ROTINA_TOKEN da Netlify
+# Sem eles, o workflow só avisa e termina sem erro. Também pode ser rodado à mão (Actions → Rotina).
+# O agendador do GitHub pode atrasar alguns minutos; para releases e lembretes isso basta.
+
+name: Rotina
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: rotina
+  cancel-in-progress: false
+
+jobs:
+  rodar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Chamar a rotina
+        env:
+          ROTINA_URL: ${{ secrets.ROTINA_URL }}
+          ROTINA_TOKEN: ${{ secrets.ROTINA_TOKEN }}
+        run: |
+          if [ -z "$ROTINA_URL" ] || [ -z "$ROTINA_TOKEN" ]; then
+            echo "::notice::ROTINA_URL ou ROTINA_TOKEN não configurados: a rotina não rodou."
+            exit 0
+          fi
+          codigo=$(curl --silent --show-error --max-time 120 --retry 2 --retry-delay 10 \
+            --output resposta.json --write-out '%{http_code}' \
+            --request POST --header "Authorization: Bearer ${ROTINA_TOKEN}" \
+            "${ROTINA_URL%/}/api/rotina")
+          echo "Resposta: HTTP ${codigo}"
+          cat resposta.json; echo
+          if [ "$codigo" != "200" ]; then
+            echo "::error::A rotina respondeu HTTP ${codigo}."
+            exit 1
+          fi
