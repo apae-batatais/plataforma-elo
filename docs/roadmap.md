@@ -118,6 +118,12 @@ Fluxo completo sem nenhuma integração externa (especificação:
 - [ ] Em caso de falha, aviso à Comunicação e volta para "Agendado".
 - [ ] Confirmar antes se a Meta exige revisão do app.
 
+Especificada em 15/11/2026 (#64, ADR-028): conexão da conta de cada OSC pelo Elo (credenciais cifradas),
+post com imagem, Reel e carrossel, rotina compartilhada com a #63. A Meta exige revisão do app e
+verificação da empresa para outras OSCs usarem (pendência da Diretoria). Ficam para depois: história
+(story), comentários e mensagens, publicar no Facebook, escolher "primeiro comentário" e conta
+pessoal (a Meta só aceita conta profissional).
+
 ### Fase 4 · resultado das postagens
 
 - [ ] Alcance e curtidas das postagens do Instagram nos indicadores.
