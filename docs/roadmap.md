@@ -109,6 +109,11 @@ Fluxo completo sem nenhuma integração externa (especificação:
 - [ ] Verificação do app no Google para OSCs de outros domínios usarem o envio.
 - [ ] Aproveitar a mesma ligação para o aviso por e-mail do app Requisições.
 
+Especificada em 15/11/2026 (#63, ADR-027): envio pelo Elo por conta de serviço com delegação no domínio,
+remetente "não-responda@" cadastrado na instituição, rotina a cada 15 minutos. Ficam para depois:
+verificação do aplicativo pelo Google (só se alguma instituição não usar delegação no domínio), aviso de
+Requisições (#61) e botão "Enviar e-mail de teste" (sugestão).
+
 ### Fase 3 · publicação automática no Instagram
 
 - [ ] Conexão da conta profissional da OSC (ligada a uma página do Facebook).
