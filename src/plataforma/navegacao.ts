@@ -48,6 +48,7 @@ export function navegacaoDoUsuario(
   if (!estruturaPendente && autorizador.temPermissao('core.acessos.gerenciar')) admin.push({ rotulo: 'Acessos', href: '/admin/acessos', icone: 'acessos' });
   if (!estruturaPendente && autorizador.temPermissao('core.organizacao.gerenciar'))
     admin.push({ rotulo: 'Áreas', href: '/admin/areas', icone: 'areas' }, { rotulo: 'Serviços', href: '/admin/servicos', icone: 'servicos' });
+  if (!estruturaPendente && autorizador.temPermissao('core.dpo.gerenciar')) admin.push({ rotulo: 'Encarregado de dados', href: '/admin/encarregado', icone: 'acessos' });
   if (!opcoes.comRede && autorizador.temPermissao('core.organizacao.gerenciar'))
     admin.push({
       rotulo: 'Estrutura das planilhas',

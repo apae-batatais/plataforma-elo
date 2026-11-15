@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { lerEncarregadoPublico } from '@/nucleo/encarregado/encarregado';
+import { obterAplicacao } from '@/plataforma/aplicacao';
 import { instituicaoAtual } from '@/plataforma/instituicao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { LinkBotao, pequeno } from '@/ui/botao';
@@ -50,6 +53,7 @@ export default async function Ajuda() {
   if (!usuario) redirect('/entrar');
   const a = usuario.autorizador;
   const instituicao = await instituicaoAtual();
+  const encarregado = await lerEncarregadoPublico((await obterAplicacao()).planilhas, a);
   const decide = a.temPermissao('orcamento.previsao.editar');
   const pode = {
     decide,
@@ -71,6 +75,7 @@ export default async function Ajuda() {
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
+    dpo: a.temPermissao('core.dpo.gerenciar'),
   };
 
   const assuntos: Assunto[] = [
@@ -486,6 +491,29 @@ export default async function Ajuda() {
             </div>
           ))}
         </dl>
+        <Sub>Encarregado de dados (LGPD)</Sub>
+        {encarregado ? (
+          <p>
+            {encarregado.nome} ·{' '}
+            <a href={`mailto:${encarregado.email}`} className="underline">
+              {encarregado.email}
+            </a>
+          </p>
+        ) : (
+          <p>
+            A instituição ainda não indicou o encarregado de dados.{' '}
+            {pode.dpo && (
+              <Link href="/admin/encarregado" className="underline">
+                Cadastrar
+              </Link>
+            )}
+          </p>
+        )}
+        {pode.dpo && (
+          <p className="mt-2 text-texto-suave">
+            Para cadastrar, corrigir ou trocar o encarregado, use Administração › Encarregado de dados. Ao trocar, o anterior fica no histórico.
+          </p>
+        )}
         <Sub>Cuidados com os dados</Sub>
         <Itens
           itens={[
