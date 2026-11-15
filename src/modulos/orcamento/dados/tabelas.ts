@@ -458,4 +458,71 @@ export type RegPosto = Registro<typeof Postos.esquema>;
 export type RegComponentes = Registro<typeof Componentes.esquema>;
 export type RegRateio = Registro<typeof Rateios.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado] as const;
+// ---------------------------------------------------------------------------
+// Profissionais cedidos (C1 da #125)
+// ---------------------------------------------------------------------------
+
+/** Quem cede profissionais. Não é dado pessoal. `termo_id` e `termo_numero` ficam para a ligação com Parcerias (C2). */
+export const Cedentes = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'Cedentes',
+  esquema: z.object({
+    nome: texto(),
+    tipo: z.enum(['poder_publico', 'empresa_aprendiz', 'empresa_pcd', 'outro']),
+    termo_id: textoOpcional(),
+    termo_numero: textoOpcional(),
+    observacao: textoOpcional(),
+  }),
+});
+
+/** Profissional cedido: pessoa da equipe paga por quem cede. Mesmo sigilo dos funcionários da folha. */
+export const Cedidos = definirTabela({
+  planilha: PLANILHA_FOLHA,
+  aba: 'Cedidos',
+  esquema: z.object({
+    colaborador: textoOpcional(),
+    funcao: texto(),
+    carga_horaria: numeroOpcional(),
+    cedente_id: texto(),
+    inicio: data(),
+    fim_previsto: dataOpcional(),
+    /** Data em que a cessão realmente acabou. */
+    encerramento: dataOpcional(),
+    observacao: textoOpcional(),
+  }),
+  sigilo: { colaborador: 'pessoal' },
+});
+
+/** Valor mensal por vigência (só inclusões). */
+export const ValoresCedidos = definirTabela({
+  planilha: PLANILHA_FOLHA,
+  aba: 'ValoresCedidos',
+  esquema: z.object({
+    cedido_id: texto(),
+    vigencia: data(),
+    valor_mensal: numero(),
+    tipo_valor: z.enum(['informado', 'equivalente']),
+    observacao: textoOpcional(),
+  }),
+  sigilo: { valor_mensal: 'pessoal' },
+});
+
+/** Lotação por serviço, com vigência (igual a `Lotacoes`). */
+export const LotacaoCedidos = definirTabela({
+  planilha: PLANILHA_FOLHA,
+  aba: 'LotacaoCedidos',
+  esquema: z.object({
+    cedido_id: texto(),
+    lote: texto(),
+    servico: texto(),
+    percentual: numero(),
+    vigencia: data(),
+  }),
+});
+
+export type RegCedente = Registro<typeof Cedentes.esquema>;
+export type RegCedido = Registro<typeof Cedidos.esquema>;
+export type RegValorCedido = Registro<typeof ValoresCedidos.esquema>;
+export type RegLotacaoCedido = Registro<typeof LotacaoCedidos.esquema>;
+
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos] as const;

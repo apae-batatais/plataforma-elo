@@ -72,7 +72,12 @@ repositório: habilidades da conta da Diretoria no Claude não vão junto.
 ## Combinados
 
 - **Uma proposta = uma issue.** Proposta grande é dividida pelo Arquiteto em entregas; cada entrega
-  pode virar uma issue própria ligada à original.
+  vira uma **sub-issue** da proposta original (recurso nativo do GitHub, `issues/sub_issues`),
+  nunca uma issue solta sem vínculo. A proposta original mostra o progresso ("X de Y entregas") e
+  cada sub-issue segue o fluxo normal (especificação, construção, PR de entrega próprio). A ordem
+  das sub-issues dentro de uma proposta é a ordem de construção das entregas; a prioridade entre
+  propostas diferentes continua decidida pela ordem no quadro (decisão de 15/11/2026, a partir da
+  observação da Diretoria de que issues/PRs soltos perdiam o vínculo com a proposta original).
 - **Tipo do PR pela etiqueta**, que a Diretoria vê na lista de PRs:
   - especificação: etiqueta `PR: especificação` e o texto começando com a linha `Especifica #12`;
   - construção: etiqueta `PR: entrega` e o texto começando com a linha `Entrega #12`;

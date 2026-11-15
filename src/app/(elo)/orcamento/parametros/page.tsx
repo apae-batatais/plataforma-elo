@@ -27,6 +27,7 @@ const GRUPOS = [
     texto: 'Aviso prévio indenizado (dias base mais dias por ano de casa, até o máximo) e multa sobre o saldo do FGTS. Usados só no painel de passivo.',
     chaves: ['aviso_dias_base', 'aviso_dias_por_ano', 'aviso_dias_max', 'multa_fgts'],
   },
+  { titulo: 'Profissionais cedidos', texto: 'Quantos dias antes do fim previsto de uma cessão o Departamento Pessoal e a coordenação do serviço são avisados.', chaves: ['cessao_aviso_dias'] },
 ];
 
 export default async function Parametros() {
@@ -36,7 +37,7 @@ export default async function Parametros() {
   const c = await parametrosDaFolha(app.planilhas, usuario.autorizador);
   const cal = await calendarioDePagamentos(app.planilhas, usuario.autorizador);
   const def = new Map(PARAMETROS.map((p) => [p.chave as string, p]));
-  const sufixo = (k: string) => (k === 'ano' || k === 'reajuste_mes' || k.startsWith('aviso_dias') ? '' : '%');
+  const sufixo = (k: string) => (k === 'ano' || k === 'reajuste_mes' || k.startsWith('aviso_dias') || k === 'cessao_aviso_dias' ? '' : '%');
 
   return (
     <div className="max-w-4xl">

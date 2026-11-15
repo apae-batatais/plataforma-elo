@@ -2,6 +2,7 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { NOME_ITEM } from '../dominio/fases';
 import { Decisoes, HistoricoProjetos, Pareceres, Portas, Projetos, type RegDecisao, type RegHistorico, type RegParecer, type RegPorta, type RegProjeto } from '../dados/tabelas';
 import {
   destinoDaDecisao,
@@ -21,8 +22,10 @@ import {
   type NivelDecisao,
   type ResultadoParecer,
   type TipoParecer,
+  type TipoPorta,
 } from '../dominio/projeto';
-import { auditar, autoriaDe, designado, lerConfig, podeVerPareceres, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
+import { aprovarTermo, conteudoDe, lerFase } from './fases';
+import { auditar, autoriaDe, designado, equipesAtivas, lerConfig, podeVerPareceres, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
 
 const exigidosDe = (porta: Pick<RegPorta, 'pareceres_exigidos'>): TipoParecer[] =>
   (porta.pareceres_exigidos ?? '').split(',').filter((t): t is TipoParecer => (TIPOS_PARECER as readonly string[]).includes(t));
@@ -36,13 +39,23 @@ export async function abrirPorta(p: Planilhas, quem: Autorizador, projetoId: str
   if (r.versao !== versao) throw new ErroConflito(projetoId);
   if (!r.responsavel) throw new ErroProjetos('Ideia sem responsável não abre porta.');
   if (r.responsavel.toLowerCase() !== quem.email.toLowerCase() || !quem.temPermissaoAlgumEscopo('projetos.gerenciar')) throw new ErroPermissao('Só o responsável abre a porta.');
-  if (r.etapa !== 'ideia') throw new ErroProjetos('Só uma ideia com responsável, fora de outra porta, abre a porta 1.');
+  if (r.etapa !== 'ideia' && r.etapa !== 'fase_2') throw new ErroProjetos('Só uma ideia com responsável, ou um projeto com a fase 2 pronta, abre porta de decisão.');
   if (!r.titulo.trim() || !r.resumo.trim()) throw new ErroProjetos('Preencha o título e o resumo antes de abrir a porta.');
-  const valor = r.valor_estimado ?? 0;
+  const tipoPorta: TipoPorta = r.etapa === 'ideia' ? 'ideia' : 'termo';
+  let valor = r.valor_estimado ?? 0;
+  if (tipoPorta === 'termo') {
+    // Regra 6: não se abre porta com documento exigido em branco.
+    const fase = await lerFase(p, quem, r.id);
+    const falta = fase?.itens.filter((i) => !i.pronto) ?? [];
+    if (falta.length > 0) throw new ErroProjetos(`Antes de abrir a porta 2, complete: ${falta.map((i) => NOME_ITEM[i.item].toLowerCase()).join(', ')}.`);
+    const termo = fase?.documentos.termo_abertura;
+    const total = termo ? conteudoDe(termo).valor_total : null;
+    valor = typeof total === 'number' ? total : valor;
+  }
   const exigidos = pareceresExigidos(config, r.porte);
   const campos = {
     projeto_id: r.id,
-    tipo: 'ideia' as const,
+    tipo: tipoPorta,
     situacao: 'aberta' as const,
     valor_considerado: valor,
     exige_alcada: exigeAlcada(valor, config.limiteAlcada),
@@ -55,7 +68,7 @@ export async function abrirPorta(p: Planilhas, quem: Autorizador, projetoId: str
   await auditar(p, quem, 'inclusao', 'Portas', porta.id, Object.keys(campos), agora);
   const { colunasAlteradas } = await atualizar(p, Projetos, r.id, r.versao, { etapa: 'em_porta' }, autoriaDe(quem, agora));
   await auditar(p, quem, 'alteracao', 'Projetos', r.id, colunasAlteradas, agora);
-  await registrarHistorico(p, quem, r.id, 'Porta 1 aberta', campos.exige_alcada ? 'O valor passa do limite: a decisão sobe para a Presidência ou o Conselho.' : null, agora);
+  await registrarHistorico(p, quem, r.id, tipoPorta === 'ideia' ? 'Porta 1 aberta' : 'Porta 2 aberta (Termo de Abertura)', campos.exige_alcada ? 'O valor passa do limite: a decisão sobe para a Presidência ou o Conselho.' : null, agora);
   return { portaId: porta.id };
 }
 
@@ -111,7 +124,7 @@ export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: str
   const j = justificativa.trim();
   if (!j) throw new ErroProjetos('Escreva a justificativa da decisão.');
 
-  const destino = destinoDaDecisao(nivel, decisao, porta.exige_alcada);
+  const destino = destinoDaDecisao(nivel, decisao, porta.exige_alcada, porta.tipo);
   const campos = { porta_id: porta.id, projeto_id: projeto.id, nivel, decisor: quem.email, decisao, justificativa: j, em: agora.toISOString() };
   const nova = await inserir(p, Decisoes, campos, autoriaDe(quem, agora));
   await auditar(p, quem, 'inclusao', 'Decisoes', nova.id, Object.keys(campos), agora);
@@ -128,6 +141,8 @@ export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: str
     const r = await atualizar(p, Projetos, projeto.id, projeto.versao, { etapa: destino.etapa }, autoriaDe(quem, agora));
     await auditar(p, quem, 'alteracao', 'Projetos', projeto.id, r.colunasAlteradas, agora);
   }
+  // Regra 13: "seguir" final na porta 2 aprova o Termo de Abertura e grava o valor aprovado.
+  if (porta.tipo === 'termo' && destino.etapa === 'fase_3') await aprovarTermo(p, quem, projeto.id, agora);
   const quemDecidiu = nivel === 'alcada' ? 'Presidência ou Conselho' : 'Diretoria';
   await registrarHistorico(p, quem, projeto.id, `${quemDecidiu}: ${NOME_DECISAO[decisao].toLowerCase()}`, j, agora);
 }
@@ -202,9 +217,9 @@ export interface FichaProjeto {
 export async function lerFicha(p: Planilhas, quem: Autorizador, id: string): Promise<FichaProjeto | null> {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) throw new ErroPermissao();
   const config = await lerConfig(p);
-  const [projetos, portas, pareceres, decisoes, historico] = await lerTabelas(p, [Projetos, Portas, Pareceres, Decisoes, HistoricoProjetos] as const);
+  const [[projetos, portas, pareceres, decisoes, historico], equipes] = await Promise.all([lerTabelas(p, [Projetos, Portas, Pareceres, Decisoes, HistoricoProjetos] as const), equipesAtivas(p)]);
   const projeto = projetos.porId(id);
-  if (!projeto || !projeto.ativo || !podeVerProjeto(quem, projeto, config)) return null;
+  if (!projeto || !projeto.ativo || !podeVerProjeto(quem, projeto, config, equipes.get(projeto.id))) return null;
   const eu = quem.email.toLowerCase();
   const ehResponsavel = projeto.responsavel?.toLowerCase() === eu;
   const ehProponente = projeto.proponente.toLowerCase() === eu;
@@ -242,7 +257,7 @@ export async function lerFicha(p: Planilhas, quem: Autorizador, id: string): Pro
       enviar: ehProponente && projeto.etapa === 'rascunho',
       assumir: projeto.etapa === 'aguardando_responsavel' && quem.temPermissaoAlgumEscopo('projetos.gerenciar') && (projeto.servico ? quem.temPermissao('projetos.assumir', { tipo: 'servico', codigo: projeto.servico }) : quem.temPermissaoAlgumEscopo('projetos.assumir')),
       abrirPorta: ehResponsavel && projeto.etapa === 'ideia' && quem.temPermissaoAlgumEscopo('projetos.gerenciar'),
-      trocarResponsavel: veTodos(quem) && ['ideia', 'fase_1', 'parado'].includes(projeto.etapa),
+      trocarResponsavel: veTodos(quem) && ['ideia', 'fase_1', 'fase_2', 'fase_3', 'parado'].includes(projeto.etapa),
       retomar: projeto.etapa === 'parado' && quem.temPermissao('projetos.decidir'),
       cancelar: projeto.etapa !== 'cancelado' && projeto.etapa !== 'em_porta' && ((ehProponente && (projeto.etapa === 'rascunho' || projeto.etapa === 'aguardando_responsavel')) || ehResponsavel || veTodos(quem)),
       parecerDos:

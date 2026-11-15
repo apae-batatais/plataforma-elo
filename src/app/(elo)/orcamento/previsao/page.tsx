@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { SeletorCedidos } from '@/modulos/orcamento/telas/seletor-cedidos';
 import { SeletorAno } from '@/ui/seletor-ano';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -141,12 +142,13 @@ const pequeno = '!min-h-8 !px-3 !py-1 !text-sm';
 const pct = (v: number | null) => (v === null ? '—' : `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`);
 const SITUACAO = { elaboracao: 'Em elaboração', aprovado: 'Aprovado', encerrado: 'Encerrado' } as const;
 
-export default async function PainelPrevisao({ searchParams }: { searchParams: Promise<{ ano?: string }> }) {
+export default async function PainelPrevisao({ searchParams }: { searchParams: Promise<{ ano?: string; cedidos?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
-  const prev = await lerPrevisao(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined);
+  const incluir = sp.cedidos !== '0';
+  const prev = await lerPrevisao(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined, { incluirCedidos: incluir });
   const podeAbrir = usuario.autorizador.temPermissao('orcamento.previsao.editar');
   const t = prev.totais;
   const i = prev.indicadores;
@@ -172,7 +174,8 @@ export default async function PainelPrevisao({ searchParams }: { searchParams: P
         descricao="Situação do exercício, totais e a tabela mês a mês. Despesas incluem a folha de pagamento automática."
         acoes={
           <>
-            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao?ano=${a}`} />
+            <SeletorCedidos temCedidos={prev.cedidos.temCedidos} incluir={incluir} total={prev.cedidos.anual} href={(i) => `/orcamento/previsao?ano=${prev.ano}${i ? '' : '&cedidos=0'}`} />
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao?ano=${a}${incluir ? '' : '&cedidos=0'}`} />
             {podeAbrir && prev.exercicio && (
               <form action={acaoAbrirExercicio}>
                 <input type="hidden" name="ano" value={Math.max(...prev.anos) + 1} />

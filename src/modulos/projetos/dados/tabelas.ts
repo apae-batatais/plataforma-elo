@@ -10,6 +10,7 @@
  */
 import { z } from 'zod';
 import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
+import { GRAUS, NIVEIS_MARCO, SITUACOES_RISCO } from '../dominio/fases';
 import { DECISOES, ETAPAS, NIVEIS_DECISAO, PORTES, RESULTADOS_PARECER, SITUACOES_PORTA, TIPOS_PARECER, TIPOS_PORTA, TIPOS_PROJETO } from '../dominio/projeto';
 
 export const PLANILHA_PROJETOS = 'projetos';
@@ -32,6 +33,8 @@ export const Projetos = definirTabela({
     valor_estimado: numeroOpcional(),
     inicio_previsto: dataOpcional(),
     fim_previsto: dataOpcional(),
+    /** Total do Termo de Abertura aprovado na porta 2 (regra de borda 4). */
+    valor_aprovado: numeroOpcional(),
   }),
 });
 
@@ -102,9 +105,73 @@ export const HistoricoProjetos = definirTabela({
   }),
 });
 
-export const TABELAS_PROJETOS = [Projetos, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
+export const ProjetoDocumentos = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'ProjetoDocumentos',
+  esquema: z.object({
+    projeto_id: texto(),
+    /** Um dos TIPOS_DOCUMENTO (dominio/fases.ts). */
+    tipo: texto(),
+    /** Número da versão do documento (1, 2…); não é a versão da linha. */
+    numero: z.coerce.number().int().min(1),
+    /** Conteúdo estruturado (JSON validado em dominio/fases.ts). */
+    conteudo: texto(),
+    situacao: z.enum(['rascunho', 'aprovado', 'substituido']),
+    /** Marca "pronto" do próprio documento (não é aprovação). */
+    pronto: booleano(),
+  }),
+});
+
+export const MarcoLogico = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'MarcoLogico',
+  esquema: z.object({
+    projeto_id: texto(),
+    nivel: z.enum(NIVEIS_MARCO),
+    ordem: z.coerce.number().int().min(1),
+    descricao: texto(),
+    indicador: textoOpcional(),
+    fonte_verificacao: textoOpcional(),
+    pressuposto: textoOpcional(),
+    /** Id do item do nível imediatamente acima. */
+    acima: textoOpcional(),
+  }),
+});
+
+export const Riscos = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'Riscos',
+  esquema: z.object({
+    projeto_id: texto(),
+    descricao: texto(),
+    probabilidade: z.enum(GRAUS),
+    impacto: z.enum(GRAUS),
+    resposta: textoOpcional(),
+    dono: textoOpcional(),
+    situacao: z.enum(SITUACOES_RISCO),
+  }),
+});
+
+export const ProjetoEquipe = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'ProjetoEquipe',
+  esquema: z.object({
+    projeto_id: texto(),
+    email: texto(),
+    funcao: texto(),
+    inicio: texto(),
+    /** Preenchido quando a pessoa sai da equipe (nada é apagado). */
+    fim: dataOpcional(),
+  }),
+});
+
+export const TABELAS_PROJETOS = [Projetos, ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
 
 export type RegProjeto = Registro<typeof Projetos.esquema>;
+export type RegDocumento = Registro<typeof ProjetoDocumentos.esquema>;
+export type RegMarco = Registro<typeof MarcoLogico.esquema>;
+export type RegRisco = Registro<typeof Riscos.esquema>;
+export type RegEquipe = Registro<typeof ProjetoEquipe.esquema>;
 export type RegPorta = Registro<typeof Portas.esquema>;
 export type RegParecer = Registro<typeof Pareceres.esquema>;
 export type RegDecisao = Registro<typeof Decisoes.esquema>;

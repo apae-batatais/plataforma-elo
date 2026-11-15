@@ -11,5 +11,9 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
 - Pareceristas e decisores de alçada são **designados por e-mail** em `ConfigProjetos` (ADR-021); a permissão abre a
   ação e o caso de uso confere a designação.
 - Permissões: `projetos.<ação>`, no manifesto.
-- Situação: entrega **P1 (base)** pronta. Faltam P2 a P7 (fases, mudanças, encerramento, carteira, ligações).
-  `projetos.carteira` e `ProjetoEquipe` entram com as entregas que os usam.
+- Situação: entregas **P1 (base)** e **P2 (fases 1 e 2: documentos, marco lógico, riscos, equipe, Termo de Abertura e porta 2)**
+  prontas. Faltam P3 a P7 (atividades e orçamento, mudanças, encerramento, carteira, ligações). `projetos.carteira` entra com a P6.
+- Documentos das fases: conteúdo em JSON na aba `ProjetoDocumentos`, campos definidos em `dominio/fases.ts`. Conteúdo nunca vai
+  para auditoria nem histórico. Documento aprovado fica travado. `exigirTermoAprovado` (aplicacao/fases.ts) é a trava da regra 13:
+  as entregas de implementação (P4) devem chamá-la.
+- Equipe (`ProjetoEquipe`) vê o projeto, não altera nem vê pareceres; passe `equipesAtivas` ao `podeVerProjeto`.
