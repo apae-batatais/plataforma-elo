@@ -298,7 +298,7 @@ export interface Pendencias {
 }
 
 export async function pendenciasDoExercicio(p: Planilhas, quem: Autorizador, ano: number): Promise<Pendencias> {
-  const prev = await lerPrevisao(p, quem, ano);
+  const prev = await lerPrevisao(p, quem, ano, { incluirCedidos: false });
   const pend = { fontesADefinir: prev.totais.aDefinir.itens, propostasPendentes: prev.propostasPendentes, ajustesPendentes: prev.ajustesPendentes };
   return { ...pend, podeAprovar: prev.exercicio?.situacao === 'elaboracao' && pend.fontesADefinir === 0 && pend.propostasPendentes === 0 };
 }
@@ -345,7 +345,7 @@ export interface DadosAjuste {
 
 /** Valor atual (com os ajustes aprovados) de um item num mês; null se não existir no exercício. */
 async function saldos(p: Planilhas, quem: Autorizador, ano: number) {
-  const prev = await lerPrevisao(p, quem, ano);
+  const prev = await lerPrevisao(p, quem, ano, { incluirCedidos: false });
   const meses = new Map<string, number[]>([...prev.despesas.map((d) => [d.id, d.meses] as const), ...prev.receitas.map((r) => [r.id, r.meses] as const)]);
   return { prev, saldo: (id: string, mes: number) => meses.get(id)?.[mes - 1] ?? null };
 }
@@ -435,7 +435,7 @@ export interface LinhaAjuste {
 
 export async function listarAjustes(p: Planilhas, quem: Autorizador, anoEscolhido?: number) {
   if (!quem.temPermissao(PERM.ver) && !quem.temPermissao(PERM.editar) && !quem.temPermissao(PERM.aprovar)) throw new ErroPermissao();
-  const prev = await lerPrevisao(p, quem, anoEscolhido);
+  const prev = await lerPrevisao(p, quem, anoEscolhido, { incluirCedidos: false });
   const [ajustes] = await lerTabelas(p, [Ajustes] as const);
   const nome = new Map<string, string>([
     ...prev.despesas.map((d) => [d.id, `${d.descricao} · ${d.servicoNome}`] as const),

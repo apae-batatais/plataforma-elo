@@ -511,6 +511,138 @@ R1: `telas`, `regras e dados`. R2: ver Parcerias. R3 e R4: `telas`, `regras e da
 - [ ] Dados antigos (fonte do item, fonte da folha por serviço) dão o mesmo resultado nos painéis
 - [ ] `npm run verificar` e `npm run build` verdes; Diretoria confere na prévia com dados fictícios
 
+## Rateio de fonte, R3 e R4: detalhamento para a construção (issue #140)
+
+Continuação da #95. **Não muda nenhuma decisão aprovada** das seções R3 e R4 acima; só diz como construir, em
+que ordem e o que cada tela mostra. Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-020 (sem ADR nova).
+
+### O que já existe (conferido no código em 14/11/2026)
+
+- Parcerias (R2) já expõe `termosParaOrcamento` (`src/modulos/parcerias/index.ts`): termo, serviços, fontes com
+  `valorAtual`, `parcelas`, `aportesParcelas`, `recursosProprios`, `permiteRemanejar`, `categorias` (plano) e `equipe`
+  com horas. Nada em `src/plataforma` entrega isso ao Orçamento ainda.
+- Orçamento tem `Despesas.fonte_id`, `FontesFolha` (fonte por serviço), `Rateios` (lotação por `posto_id`, na aba
+  `Lotacoes`), `Contas.fonte_id` (conta vinculada), regras de rateio R1 e o resumo da folha. Falta tudo de `FontesTermo`,
+  `CategoriasPlanoOrigens`, `RateioFonte`, `RateioFonteFolha`, `horas_semanais` e o painel.
+- Passivo (P2.10) e Painel de sustentabilidade (S4) já preveem trocar `FontesFolha` pelo percentual do R4 e
+  reaproveitar o painel de comprometimento. Por isso o cálculo do percentual por fonte fica numa função única (decisão 3).
+
+### Entregas (cada uma conferível na prévia, nesta ordem)
+
+| Entrega | O que traz | Como a Diretoria confere |
+| --- | --- | --- |
+| **R3a** | Catálogo de Parcerias na plataforma; Cadastros › **Fontes dos termos** (ligar fonte do termo à Fonte do cadastro e à conta vinculada; categorias do plano e origem); avisos de conta | Ligar as fontes dos termos fictícios e ver o aviso "conta e fonte não combinam" |
+| **R3b** | **Rateio de fonte** em cada despesa; fonte do item "Várias"; avisos do plano de aplicação | Dividir uma despesa entre um termo e o recurso próprio; ver o aviso de categoria fora do plano |
+| **R4a** | Rateio de fonte na folha (`RateioFonteFolha`), `horas_semanais`, **Calcular pelas horas** e a base "horas dedicadas" | Dividir a fonte de um funcionário; calcular pelas horas |
+| **R4b** | Painel **Comprometimento das fontes**, contrapartida, caixa mês a mês e os dois indicadores | Ver o comprometido, o saldo, o alerta de glosa e a contrapartida por serviço |
+
+R3a, R3b e R4a podem ser três PRs seguidos; R4b só depois de R3b e R4a. Quem não ligar nenhuma fonte de termo vê o
+Orçamento exatamente como hoje (regra 10).
+
+### Decisões de construção (tomadas sem pergunta; ver o custo no PR)
+
+1. **Catálogo:** a plataforma ganha `src/plataforma/catalogos.ts`, que entrega ao Orçamento a interface
+   `CatalogoParcerias` (a mesma forma de `TermoParaOrcamento`), pelo caminho da ADR-013, como a ADR-020 já previa.
+   O Orçamento define a interface, não importa Parcerias. Parcerias desligado = catálogo vazio. É a única mudança
+   fora da pasta do Orçamento (precisa da aprovação desta especificação).
+2. **"Funcionário" é o posto** da aba `Funcionarios` (`posto_id`), a mesma chave da lotação (`Rateios`). O
+   `RateioFonteFolha` é gravado por lote, como a lotação: (`posto_id`, `lote`, `servico`, `fonte`, `percentual`,
+   `vigencia`); só inclusões, vale a vigência mais recente. A fonte é "termo:<id da fonte>" ou "cadastro:<id da Fonte
+   própria>". O mesmo desenho vale para `RateioFonte` da despesa, que também guarda `lote`.
+3. **Função única do percentual por fonte**, em `dominio/` (pura): `percentuaisDeFonte(linha, mês)`, usada pelo painel,
+   pelo resumo da folha e, depois, pelo passivo e pelo Painel de sustentabilidade. Ordem de busca: rateio próprio da
+   linha → rateio de 100% derivado de `FontesFolha` (folha) ou de `Despesas.fonte_id` (despesa) → "a definir". A
+   conversão é **só na leitura**: nenhum dado antigo é regravado.
+4. **Linha de custo** da despesa = item × serviço que o rateio de custos comuns (R1) atribui; o valor mensal da linha
+   é o valor do item nos meses da distribuição × a parte do serviço. O percentual de fonte vale sobre esse valor.
+5. **Comprometido do termo é acumulado por exercício, não só do exercício aberto**, porque o valor atual da fonte
+   cobre toda a vigência: soma os exercícios com orçamento cadastrado, mês a mês, dentro da vigência. A tela mostra o
+   quebrado por ano e, quando a vigência passa de um ano sem orçamento cadastrado, um aviso "faltam exercícios:
+   2027" (o comprometido está subestimado). A regra 2 de R4 continua valendo mês a mês.
+6. **Horas na base de rateio dos custos comuns**: o cálculo de R1 (`dominio/rateio-custos.ts`) ganha a base `horas`
+   (regra 7 de R4). Mexe só em código do Orçamento.
+7. **Vaga prevista** (posto sem ficha) também tem rateio de fonte e entra no comprometido, com o rótulo "vaga".
+8. **Aviso de vigência:** fonte de termo que vence antes de um mês com custo rateado nela entra como aviso "custo
+   depois do fim do termo" no painel (nunca bloqueia), porque o comprometido só conta até o fim da vigência.
+
+### Telas e usabilidade
+
+**Cadastros › Fontes dos termos** (R3a). Quem: Financeiro, ligando as fontes uma vez, e de novo a cada fonte nova.
+Caminho: abrir a tela, escolher a Fonte do cadastro e a conta em cada linha e **Salvar ligação** (3 cliques por fonte).
+- Primeira dobra: aviso "N fontes de termos ainda sem ligação" (quando houver) e a tabela das fontes (termo,
+  fonte, Fonte do cadastro, conta vinculada, situação). Ação principal: **Salvar ligação**.
+- Componentes: `CabecalhoPagina`, `Secao`, `Aviso`, `TabelaDados`, `Campo`, `BotaoEnviar`, `Etiqueta` ("Sem ligação",
+  "Ligada", "Conta e fonte não combinam"), `Janela` para as categorias do plano, `EstadoVazio`.
+- Estados: **vazio** (Parcerias desligado ou sem termos em vigor): "Nenhum termo em vigor. Cadastre o termo em
+  Parcerias para ligar as fontes aqui." **Gravando**: botão em andamento. **Gravou**: "Ligação salva." **Erro**: "A
+  planilha mudou enquanto você editava. Atualize a página e refaça só esta linha." (versão lida, nada digitado se
+  perde nas outras linhas). **Sem permissão**: lista só leitura com "Só o Financeiro liga as fontes."
+- Formulário: dois campos por fonte (Fonte do cadastro obrigatória; conta vinculada opcional, com dica "Escolha a
+  conta onde o repasse deste termo entra"). A mesma conta em duas fontes ativas mostra aviso, sem bloquear.
+- Categorias do plano (janela por fonte): cada categoria lida de Parcerias com "De onde vem" (um ou mais Grupos de
+  gasto e/ou "Folha de pessoal"). Sem origem = "sem categoria no plano" nos avisos, sem erro.
+- Celular: a tabela rola de lado e cada linha vira cartão empilhado; teclado: Tab percorre campo a campo, Enter salva.
+
+**Rateio de fonte na despesa** (R3b). Quem: Financeiro e Coordenação com `orcamento.previsao.editar`. Caminho: no
+formulário do item, seção **Fontes do recurso** com "Dividir entre fontes"; sem clicar nada o item segue com uma fonte.
+- A seção mostra, por serviço da linha de custo, as fontes oferecidas (só as que atendem o serviço na data, mais o
+  recurso próprio), percentual de cada uma e o **total em tempo real** ("Soma: 100%", em vermelho com texto
+  "Faltam 20%" fora disso). Botão **Dividir igualmente**.
+- Estados: gravar só liga com soma 100% em todas as linhas; erro "O rateio de <serviço> soma 90%. Ajuste para 100%." e
+  o que foi digitado fica na tela. Avisos do plano (`Aviso`): "Esta despesa não tem categoria no plano de aplicação
+  de <fonte>" e "O comprometido em <categoria> passa do valor do plano em R$ X"; nunca impedem gravar.
+- Na lista de itens, a coluna Fonte mostra "Várias" (com a dica da divisão ao passar o mouse).
+- Ação sem volta: nenhuma (o rateio é uma inclusão; voltar é incluir outra).
+
+**Rateio de fonte na folha** (R4a). Quem: Financeiro e Departamento Pessoal (`orcamento.folha.editar`). Fica na
+ficha do funcionário, ao lado da lotação (mesma tela e mesmo sigilo), e como grade na tela **Lotação**: cada linha de
+lotação ganha as colunas **Horas semanais** (opcional) e **Fontes** (uma ou mais, com percentual). Botão **Calcular
+pelas horas**: preenche os percentuais; sem horas, o aviso "Informe as horas semanais de cada serviço para calcular"
+e nada muda. Quem tem só `orcamento.folha.ver` vê apenas **totais por fonte**, sem nome (estado "sem permissão" para
+a ficha, com "Peça ao Departamento Pessoal ou ao Financeiro."). A equipe do termo (função e horas, de Parcerias) aparece
+como referência ao lado, sem ligar a pessoa. Abrir a ficha continua gravando a leitura individual na auditoria.
+
+**Painel "Comprometimento das fontes"** (R4b), Orçamento › Planejamento, para `orcamento.painel.ver`.
+Pergunta: *alguma fonte vai gastar mais do que tem, e quanto cada serviço consome de recurso próprio?*
+- Primeira dobra: faixa de alertas ("2 fontes acima do valor", "1 mês com gasto antes do repasse") e a **tabela das
+  fontes** (termo, fonte, valor atual, comprometido, saldo, %). Ação principal: abrir "Ver detalhe" da fonte em alerta.
+- Gráficos (todos com `descricao`, "Ver os números" e série ≤ 4):
+  1. *Quanto de cada fonte já está comprometido?* `Indicadores`, % comprometido de cada fonte com referência
+     tracejada em 100% (`sentido: 'ate'`). Título: "Fontes acima de 100% correm risco de glosa". Leitura ao lado: o que
+     fazer ("Reveja o rateio ou peça aditivo"). Sem dados: "—", nunca zero.
+  2. *Em que meses o gasto vem antes do repasse?* `Linhas` com duas séries (comprometido do mês, previsto a receber)
+     para a fonte escolhida, formato moeda. Título: "O gasto passa do repasse em <meses>". Sem cronograma em
+     Parcerias: o gráfico some e aparece "Cadastre o cronograma do termo para ver o caixa."
+  3. *Quanto cada serviço cobre com termos e com recurso próprio?* `Barras100` por serviço (termos × recurso próprio
+     × sem fonte). Título: "<Serviço> sustenta X% do custo com recurso próprio". Serviço sem custo não aparece.
+  4. Contrapartida: tabela por serviço (custo total, coberto pelos termos, recurso próprio, previsto em Parcerias).
+- Estados: sem fonte ligada → `EstadoVazio` "Ligue as fontes dos termos para ver o comprometimento" com o botão
+  **Ligar fontes dos termos**; exercício parcial → nota "faltam exercícios" (decisão 5); sem permissão → a tela não
+  aparece no menu.
+- Celular: tabela com rolagem lateral e gráficos em largura total; **Ver os números** é o caminho do leitor de tela.
+
+**Sugestões de melhoria (para a Diretoria decidir, fora desta entrega):** (a) mostrar na ficha do termo, em
+Parcerias, um atalho "Ver comprometimento no Orçamento" para quem tem as duas permissões (ligação entre apps, passa
+por `src/plataforma`); (b) aviso por e-mail ou na agenda quando uma fonte passar de 90% do valor.
+
+### Fica de fora (além do que a seção R4 já adia)
+
+Ligação entre pessoa e termo em Parcerias; alerta de glosa por categoria do plano na folha (só total, no aviso de
+R3, regra 9); exportar o painel em planilha.
+
+### Frentes e critérios de pronto
+
+Frentes: `telas`, `regras e dados`. **Fora do módulo:** `src/plataforma/catalogos.ts` (decisão 1), sem mudança no Núcleo.
+"Preparar estrutura" acrescenta as abas e colunas novas (`FontesTermo`, `CategoriasPlanoOrigens`, `RateioFonte`,
+`RateioFonteFolha`, `horas_semanais`) sem mexer nos dados.
+
+- [ ] R3a: ligação e conta com os termos fictícios no formato dos termos reais (3 contas; federal com 2 contas)
+- [ ] R3b: soma 100% por linha de custo, fontes só do serviço e da data, avisos do plano com e sem remanejamento
+- [ ] R4a: rateio por linha de lotação, sigilo por pessoa, "Calcular pelas horas" com arredondamento na maior linha
+- [ ] R4b: comprometido igual à soma das linhas; sem rateio nenhum, os painéis dão o mesmo número de hoje
+- [ ] Testes de acesso em cada entrega: quem vê por pessoa, quem vê totais, quem altera
+- [ ] `npm run verificar` e `npm run build` verdes; prévia conferida com dados fictícios
+
 ## Ajustes da onda 2 (issue #116): receita e realizado ligados a projeto
 
 - Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-023. Contexto: `src/modulos/projetos/especificacao.md`,

@@ -13,8 +13,8 @@ export const PORTES = ['enxuto', 'completo'] as const;
 export type Porte = (typeof PORTES)[number];
 export const NOME_PORTE: Record<Porte, string> = { enxuto: 'Enxuto', completo: 'Completo' };
 
-/** Etapa do projeto. Nesta entrega o ciclo vai até a decisão da porta 1; a fase 1 em diante vem nas próximas entregas. */
-export const ETAPAS = ['rascunho', 'aguardando_responsavel', 'ideia', 'em_porta', 'fase_1', 'parado', 'cancelado'] as const;
+/** Etapa do projeto. Até a entrega P2 o ciclo vai da ideia à porta 2 (Termo de Abertura); a fase 3 em diante vem nas próximas entregas. */
+export const ETAPAS = ['rascunho', 'aguardando_responsavel', 'ideia', 'em_porta', 'fase_1', 'fase_2', 'fase_3', 'parado', 'cancelado'] as const;
 export type Etapa = (typeof ETAPAS)[number];
 export const NOME_ETAPA: Record<Etapa, string> = {
   rascunho: 'Rascunho',
@@ -22,6 +22,8 @@ export const NOME_ETAPA: Record<Etapa, string> = {
   ideia: 'Ideia com responsável',
   em_porta: 'Em porta de decisão',
   fase_1: 'Fase 1 · Identificação e definição',
+  fase_2: 'Fase 2 · Configuração',
+  fase_3: 'Fase 3 · Planejamento',
   parado: 'Parado',
   cancelado: 'Cancelado',
 };
@@ -55,10 +57,10 @@ export const NOME_SITUACAO_PORTA: Record<SituacaoPorta, string> = {
   decidida: 'Decidida',
 };
 
-/** Só a porta 1 existe nesta entrega; as demais chegam com as fases (P2 em diante). */
-export const TIPOS_PORTA = ['ideia'] as const;
+/** Portas 1 (ideia) e 2 (Termo de Abertura); a 3 e a de encerramento chegam com P3 e P5. */
+export const TIPOS_PORTA = ['ideia', 'termo'] as const;
 export type TipoPorta = (typeof TIPOS_PORTA)[number];
-export const NOME_PORTA: Record<TipoPorta, string> = { ideia: 'Porta 1 · Ideia' };
+export const NOME_PORTA: Record<TipoPorta, string> = { ideia: 'Porta 1 · Ideia', termo: 'Porta 2 · Termo de Abertura' };
 
 export const PAPEIS_DESIGNADOS = ['tecnico', 'financeiro', 'juridico', 'alcada'] as const;
 export type PapelDesignado = (typeof PAPEIS_DESIGNADOS)[number];
@@ -73,6 +75,8 @@ export interface ConfigProjetos {
   designados: Record<PapelDesignado, string[]>;
   /** Se quem propôs a ideia pode decidir a própria porta. */
   proponenteDecide: boolean;
+  /** Tolerâncias sugeridas no Termo de Abertura (regra 15); 0 = nenhuma margem. */
+  tolerancias: { custoLinhaPct: number; custoTotalPct: number; prazoFimDias: number; prazoMarcoDias: number };
 }
 
 export const CONFIG_PADRAO: ConfigProjetos = {
@@ -80,6 +84,7 @@ export const CONFIG_PADRAO: ConfigProjetos = {
   pareceresPorta1: { completo: ['tecnico', 'financeiro', 'juridico'], enxuto: ['tecnico'] },
   designados: { tecnico: [], financeiro: [], juridico: [], alcada: [] },
   proponenteDecide: false,
+  tolerancias: { custoLinhaPct: 0, custoTotalPct: 0, prazoFimDias: 0, prazoMarcoDias: 0 },
 };
 
 /** Código sequencial por instituição (PRJ-0001), nunca reaproveitado: `existentes` inclui os inativos. */
@@ -122,9 +127,10 @@ export interface DestinoDaDecisao {
  * Regras 11 e 12. `seguir` da Diretoria com alçada exigida sobe e espera; `ajustar` e `parar` da
  * Diretoria valem sem subir. A decisão da alçada é final.
  */
-export function destinoDaDecisao(nivel: NivelDecisao, decisao: Decisao, exigeAlcadaNaPorta: boolean): DestinoDaDecisao {
+export function destinoDaDecisao(nivel: NivelDecisao, decisao: Decisao, exigeAlcadaNaPorta: boolean, porta: TipoPorta = 'ideia'): DestinoDaDecisao {
   if (nivel === 'diretoria' && decisao === 'seguir' && exigeAlcadaNaPorta) return { situacaoPorta: 'aguardando_alcada', etapa: null };
-  return { situacaoPorta: 'decidida', etapa: decisao === 'seguir' ? 'fase_1' : decisao === 'ajustar' ? 'ideia' : 'parado' };
+  const [seguir, ajustar]: [Etapa, Etapa] = porta === 'ideia' ? ['fase_1', 'ideia'] : ['fase_3', 'fase_2'];
+  return { situacaoPorta: 'decidida', etapa: decisao === 'seguir' ? seguir : decisao === 'ajustar' ? ajustar : 'parado' };
 }
 
 /** E-mails separados por vírgula, ponto e vírgula ou quebra de linha: minúsculos, sem repetição. */

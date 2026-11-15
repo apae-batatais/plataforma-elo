@@ -7,7 +7,7 @@ import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
 import { Projetos } from '../dados/tabelas';
 import { aceitaCompra, NOME_ETAPA, type Etapa } from '../dominio/projeto';
-import { lerConfig, podeVerProjeto } from './comum';
+import { equipesAtivas, lerConfig, podeVerProjeto } from './comum';
 
 export interface ProjetoDoServico {
   id: string;
@@ -27,10 +27,10 @@ export interface ProjetosDoServico {
 
 export async function projetosDoServico(p: Planilhas, quem: Autorizador, servico: string): Promise<Ligacao<ProjetosDoServico>> {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) return ligacaoSemPermissao();
-  const [projetos, config] = await Promise.all([lerTabela(p, Projetos), lerConfig(p)]);
+  const [projetos, config, equipes] = await Promise.all([lerTabela(p, Projetos), lerConfig(p), equipesAtivas(p)]);
   const lista = projetos
     .ativos()
-    .filter((r) => r.servico === servico && podeVerProjeto(quem, r, config))
+    .filter((r) => r.servico === servico && podeVerProjeto(quem, r, config, equipes.get(r.id)))
     .sort((a, b) => b.criado_em.localeCompare(a.criado_em))
     .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo, etapa: r.etapa, etapaNome: NOME_ETAPA[r.etapa] }));
   const contagem = new Map<Etapa, number>();
@@ -53,11 +53,11 @@ export interface ProjetoParaCompra {
 /** Projetos que a pessoa vê e que aceitam compra (em implementação). */
 export async function projetosParaCompra(p: Planilhas, quem: Autorizador): Promise<Ligacao<ProjetoParaCompra[]>> {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) return ligacaoSemPermissao();
-  const [projetos, config] = await Promise.all([lerTabela(p, Projetos), lerConfig(p)]);
+  const [projetos, config, equipes] = await Promise.all([lerTabela(p, Projetos), lerConfig(p), equipesAtivas(p)]);
   return ligacaoOk(
     projetos
       .ativos()
-      .filter((r) => aceitaCompra(r.etapa) && podeVerProjeto(quem, r, config))
+      .filter((r) => aceitaCompra(r.etapa) && podeVerProjeto(quem, r, config, equipes.get(r.id)))
       .sort((a, b) => a.codigo.localeCompare(b.codigo))
       // As atividades do projeto chegam com a entrega P3; até lá a lista é vazia.
       .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo, servico: r.servico, atividades: [] })),

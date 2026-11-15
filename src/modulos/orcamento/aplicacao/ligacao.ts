@@ -8,6 +8,7 @@ import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/
 import { Ajustes, Despesas, Exercicios, Fontes, GruposGasto, Realizado } from '../dados/tabelas';
 import { deltasDosAjustes, mesesComAjuste } from '../dominio/ajustes';
 import { mesAtualBrasilia } from '../dominio/tesouraria';
+import { calcularCedidosDoAno } from './cedidos-custo';
 
 export interface CustoPorFonte {
   fonte: string;
@@ -25,6 +26,8 @@ export interface CustoDoServico {
   /** Último mês (AAAA-MM) com realizado informado no serviço; nulo se nenhum. */
   ultimoMes: string | null;
   porFonte: CustoPorFonte[];
+  /** Cedidos no ano (valor previsto, por quem cede, sem nome de pessoa). O realizado acima não inclui cedidos. */
+  cedidos: { cedente: string; tipo: string; previsto: number }[];
 }
 
 const arred = (v: number) => Math.round(v * 100) / 100;
@@ -60,6 +63,10 @@ export async function custoDoServico(p: Planilhas, quem: Autorizador, servico: s
 
   const previsto = arred([...porFonte.values()].reduce((s, l) => s + l.previsto, 0));
   const total = arred(lancado.reduce((s, r) => s + r.valor, 0));
+  const cedidosAno = await calcularCedidosDoAno(p, ano);
+  const cedidos = cedidosAno.porServicoCedente
+    .filter((c) => c.servico === servico)
+    .map((c) => ({ cedente: c.nome, tipo: c.tipoRotulo, previsto: c.anual }));
   return ligacaoOk({
     ano,
     previsaoAprovada: aprovada,
@@ -70,6 +77,7 @@ export async function custoDoServico(p: Planilhas, quem: Autorizador, servico: s
     porFonte: [...porFonte.values()]
       .map((l) => ({ ...l, previsto: arred(l.previsto), realizado: arred(l.realizado) }))
       .sort((a, b) => b.previsto - a.previsto || b.realizado - a.realizado),
+    cedidos,
   });
 }
 

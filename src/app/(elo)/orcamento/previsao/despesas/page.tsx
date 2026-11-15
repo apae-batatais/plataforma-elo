@@ -15,6 +15,7 @@ import { IconeEditar, IconeLixeira, IconeMais } from '@/ui/icones';
 import { JanelaFormulario } from '@/ui/janela';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
 import { SelecaoAutomatica } from '@/ui/selecao-automatica';
+import { SeletorCedidos } from '@/modulos/orcamento/telas/seletor-cedidos';
 import { SeletorAno } from '@/ui/seletor-ano';
 import { TabelaDados } from '@/ui/tabela-dados';
 import { acaoCancelarItem, acaoFonteDaFolha, acaoSalvarDespesa } from '../acoes';
@@ -24,13 +25,15 @@ export const metadata: Metadata = { title: 'Despesas' };
 const numero = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const resumoMeses = (d: { distribuicao: string; meses: number[] }) => (d.distribuicao === 'manual' ? `mês a mês: ${faixaDeMeses(d.meses)}` : faixaDeMeses(d.meses));
 
-export default async function Despesas({ searchParams }: { searchParams: Promise<{ ano?: string; editar?: string }> }) {
+export default async function Despesas({ searchParams }: { searchParams: Promise<{ ano?: string; editar?: string; cedidos?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
-  const prev = await lerPrevisao(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined);
-  const base = `/orcamento/previsao/despesas?ano=${prev.ano}`;
+  const incluir = sp.cedidos !== '0';
+  const prev = await lerPrevisao(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined, { incluirCedidos: incluir });
+  const base = `/orcamento/previsao/despesas?ano=${prev.ano}${incluir ? '' : '&cedidos=0'}`;
+  const nomeServico = new Map(prev.opcoes.servicos.map((x) => [x.codigo, x.nome]));
   const emEdicao = sp.editar && prev.podeEditar ? prev.despesas.find((d) => d.id === sp.editar) : undefined;
   const semFonte = prev.despesas.filter((d) => !d.fonte_id).length;
   const podeLancar = prev.podeEditar && prev.opcoes.grupos.length > 0;
@@ -43,7 +46,8 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
         descricao="Itens por serviço (centro de custo), grupo de gasto e fonte de recurso. A folha de pagamento entra sozinha, no fim da página."
         acoes={
           <>
-            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/despesas?ano=${a}`} />
+            <SeletorCedidos temCedidos={prev.cedidos.temCedidos} incluir={incluir} total={prev.cedidos.anual} href={(i) => `/orcamento/previsao/despesas?ano=${prev.ano}${i ? '' : '&cedidos=0'}`} />
+            <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/despesas?ano=${a}${incluir ? '' : '&cedidos=0'}`} />
             <BotaoBaixar href={`/orcamento/previsao/baixar/despesas?ano=${prev.ano}`} rotulo={`Baixar planilha (ano ${prev.ano})`} vazio={prev.despesas.length === 0 && !(prev.folha?.linhas.length)} />
             {podeLancar && (
               <JanelaFormulario
@@ -236,6 +240,29 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
               !prev.avisoFolha && <p className="text-sm text-texto-suave">Nenhum custo de folha em {prev.ano}.</p>
             )}
           </Secao>
+
+          {prev.incluiCedidos && (
+            <Secao
+              titulo="Pessoal cedido (automático)"
+              id="t-cedidos"
+              descricao="Profissionais cedidos por quem cede, por serviço da lotação. Calculado pelo Elo a partir do cadastro de cedidos; não é digitado, não passa pelo caixa e não entra no orçamento aprovado."
+            >
+              <TabelaDados
+                legenda="Pessoal cedido por serviço"
+                totalRotulo="Total de cedidos"
+                colunas={[
+                  { chave: 'servico', rotulo: 'Serviço' },
+                  { chave: 'situacao', rotulo: 'Origem', secundaria: true },
+                  { chave: 'anual', rotulo: 'No ano', tipo: 'moeda', somar: true },
+                ]}
+                linhas={prev.cedidos.porServico.map((c) => ({
+                  id: c.servico,
+                  valores: { servico: nomeServico.get(c.servico) ?? c.servico, situacao: 'Automática', anual: c.anual },
+                  celulas: { servico: <span className="font-semibold">{nomeServico.get(c.servico) ?? c.servico}</span>, situacao: <Etiqueta tipo="info">Automática, sem passar pelo caixa</Etiqueta> },
+                }))}
+              />
+            </Secao>
+          )}
         </div>
       )}
     </div>
