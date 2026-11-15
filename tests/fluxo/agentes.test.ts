@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { atualizarConflitos, candidatoAAtualizar, marcarFalha, situacaoDoMerge } from '../../.github/scripts/agentes.mjs';
+import { atualizarConflitos, candidatoAAtualizar, marcarFalha, motivoDoMergeRecusado, situacaoDoMerge } from '../../.github/scripts/agentes.mjs';
 
 const REPO = 'org/elo';
 const contexto = { repo: { owner: 'org', repo: 'elo' }, serverUrl: 'https://github.com', runId: 42 };
@@ -51,6 +51,12 @@ describe('atualização dos PRs em conflito', () => {
     expect(situacaoDoMerge({ mergeable: null, mergeable_state: 'dirty' })).toBe('conflito');
     expect(situacaoDoMerge({ mergeable: true })).toBe('ok');
     expect(situacaoDoMerge({ mergeable: null })).toBe('desconhecido');
+  });
+
+  it('merge recusado: a mensagem de conflito vale mesmo sem "mergeable" calculado', () => {
+    expect(motivoDoMergeRecusado(new Error('Pull Request has merge conflicts'), { mergeable: null })).toBe('conflito');
+    expect(motivoDoMergeRecusado(new Error('Base branch was modified'), { mergeable: false })).toBe('conflito');
+    expect(motivoDoMergeRecusado(new Error('Resource not accessible by integration'), { mergeable: true })).toBe('outro');
   });
 
   it('chama a atualização só para quem está em conflito, esperando o GitHub calcular', async () => {

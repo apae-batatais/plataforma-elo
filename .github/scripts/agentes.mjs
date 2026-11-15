@@ -51,6 +51,17 @@ export function situacaoDoMerge(pr) {
   return 'desconhecido';
 }
 
+/**
+ * Por que o GitHub recusou o merge. A mensagem do erro ("Pull Request has merge conflicts") vale
+ * como conflito mesmo quando a consulta ao PR ainda não tem "mergeable" calculado (vem null logo
+ * depois de outro merge).
+ * @returns {'conflito' | 'outro'}
+ */
+export function motivoDoMergeRecusado(erro, pr) {
+  if (/conflict/i.test(String(erro?.message ?? erro ?? ''))) return 'conflito';
+  return situacaoDoMerge(pr) === 'conflito' ? 'conflito' : 'outro';
+}
+
 const pausa = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /**
