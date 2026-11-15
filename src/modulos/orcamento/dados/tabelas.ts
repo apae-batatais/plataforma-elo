@@ -452,6 +452,27 @@ export const BasesRateioValores = definirTabela({
   esquema: z.object({ base_id: texto(), servico: texto(), ano: numero(), valor: numero() }),
 });
 
+/**
+ * Ligação de cada fonte de um termo (lida de Parcerias) com a Fonte do cadastro (natureza e uso) e com a
+ * conta vinculada da Tesouraria (R3a, #140). Uma linha ativa por fonte do termo; trocar a ligação altera a linha.
+ */
+export const FontesTermo = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'FontesTermo',
+  esquema: z.object({ fonte_termo_id: texto(), fonte_id: texto(), conta_id: textoOpcional() }),
+});
+
+/**
+ * De onde vem cada categoria do plano de aplicação de uma fonte de termo (R3a): uma linha por origem, que é
+ * "grupo:<id do Grupo de gasto>" ou "folha" (Folha de pessoal). Tirar uma origem encerra a linha (ativo = FALSE).
+ */
+export const CategoriasPlanoOrigens = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'CategoriasPlanoOrigens',
+  esquema: z.object({ fonte_termo_id: texto(), categoria: texto(), origem: texto() }),
+});
+
+export type RegFonteTermo = Registro<typeof FontesTermo.esquema>;
 export type RegRegraRateio = Registro<typeof RegrasRateio.esquema>;
 export type RegBaseRateio = Registro<typeof BasesRateio.esquema>;
 
@@ -541,4 +562,4 @@ export type RegCedido = Registro<typeof Cedidos.esquema>;
 export type RegValorCedido = Registro<typeof ValoresCedidos.esquema>;
 export type RegLotacaoCedido = Registro<typeof LotacaoCedidos.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, FontesTermo, CategoriasPlanoOrigens, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade] as const;

@@ -27,6 +27,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Grupos de gasto', caminho: '/previsao/grupos', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Fontes de recurso', caminho: '/previsao/fontes', permissao: 'orcamento.previsao.editar', secao: 'Cadastros' },
     { rotulo: 'Quem cede', caminho: '/cedidos/cedentes', permissao: 'orcamento.folha.ver_individual', secao: 'Folha de pagamento' },
+    { rotulo: 'Fontes dos termos', caminho: '/previsao/fontes-termo', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
     { rotulo: 'Regras de rateio', caminho: '/previsao/regras', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
     { rotulo: 'Bases próprias de rateio', caminho: '/previsao/bases', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },
     { rotulo: 'Centros de custo', caminho: '/previsao/centros', permissao: 'orcamento.painel.ver', secao: 'Cadastros' },

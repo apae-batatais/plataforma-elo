@@ -636,7 +636,7 @@ Frentes: `telas`, `regras e dados`. **Fora do módulo:** `src/plataforma/catalog
 "Preparar estrutura" acrescenta as abas e colunas novas (`FontesTermo`, `CategoriasPlanoOrigens`, `RateioFonte`,
 `RateioFonteFolha`, `horas_semanais`) sem mexer nos dados.
 
-- [ ] R3a: ligação e conta com os termos fictícios no formato dos termos reais (3 contas; federal com 2 contas)
+- [x] R3a (15/11/2026): ligação e conta com os termos fictícios no formato dos termos reais (3 contas; federal com 2 contas)
 - [ ] R3b: soma 100% por linha de custo, fontes só do serviço e da data, avisos do plano com e sem remanejamento
 - [ ] R4a: rateio por linha de lotação, sigilo por pessoa, "Calcular pelas horas" com arredondamento na maior linha
 - [ ] R4b: comprometido igual à soma das linhas; sem rateio nenhum, os painéis dão o mesmo número de hoje
