@@ -518,3 +518,126 @@ acima já é a de corte: 6 e 5 por último).
 9. No Painel geral, ao trocar o ano, barras e linhas se movem até os novos valores; ao abrir, elas
    aparecem crescendo. Com "reduzir movimento" ligado, tudo aparece direto e completo.
 10. No celular, o menu continua abrindo como botão, os grupos recolhem e nada passa da largura.
+
+## Cadastro do encarregado de dados (DPO) no Núcleo (proposta #168)
+
+**Objetivo**: cada instituição registra no Elo quem é o seu encarregado de dados (DPO), como a LGPD
+exige. O DPO pode ser **pessoa física** (alguém do quadro) ou **pessoa jurídica** (assessoria
+externa). **Para quem**: a Diretoria cadastra e mantém; todas as pessoas que entram no Elo podem
+ver quem é o encarregado e como falar com ele. **Origem**: pendência #69, respondida em 15/11/2026.
+**Frentes**: telas e regras e dados. Sem infraestrutura. Muda o Núcleo (aba nova, permissão nova,
+tela nova), a pedido da proposta. Não precisa de ADR: é uma aba comum do Núcleo.
+
+### Usuários e permissões
+| Quem | Vê | Altera |
+| --- | --- | --- |
+| Diretoria (`core.dpo.gerenciar`, nova, escopo global) | Nome, documento e e-mail, atual e histórico | Cadastra, corrige e troca |
+| Qualquer pessoa logada | Só nome e e-mail do encarregado atual (na página Ajuda) | Nada |
+| Administrador da plataforma | Como qualquer pessoa logada | Nada (a Diretoria é dona deste dado) |
+
+`PERMISSOES_INICIAIS` ganha `{ perfil: 'diretoria', permissao: 'core.dpo.gerenciar' }`; "Preparar
+estrutura" já grava permissões novas em planilhas existentes.
+
+### Entidade: aba `Encarregados` (planilha `nucleo`, `definirTabela`)
+| Coluna | Tipo | Sigilo |
+| --- | --- | --- |
+| `nome` | texto obrigatório (pessoa ou razão social) | — |
+| `tipo` | `fisica` ou `juridica` (obrigatório) | — |
+| `documento` | só dígitos, 11 (CPF) ou 14 (CNPJ) | `pessoal` |
+| `email` | e-mail válido, minúsculas | — |
+| `inicio` | data em que passou a valer | — |
+| `fim` | data em que deixou de valer (vazio = atual) | — |
+
+Usa as colunas-padrão (`ativo`, versão). Nada é apagado: trocar o encarregado encerra o registro
+anterior (`fim`, `ativo = FALSE`) e cria outro.
+
+### Regras de negócio (cada uma com teste)
+1. Só quem tem `core.dpo.gerenciar` cadastra, corrige ou troca; quem não tem recebe `ErroPermissao`
+   (testar Diretoria, Administrador, Financeiro e Leitura).
+2. Existe no máximo **um encarregado atual** (sem `fim`). Cadastrar com outro já atual é recusado
+   com a mensagem "Já existe um encarregado. Use Trocar encarregado."
+3. O tipo decide o documento: `fisica` exige CPF com 11 dígitos e dígitos verificadores corretos;
+   `juridica` exige CNPJ com 14 dígitos e dígitos verificadores corretos. O que a pessoa digita
+   pode ter pontos, barra e traço; grava-se só dígitos.
+4. E-mail obrigatório e válido. Nome obrigatório.
+5. **Corrigir dados** altera o registro atual (com a versão lida) e audita as colunas alteradas.
+6. **Trocar encarregado** encerra o atual com `fim` = data da troca e cria o novo com `inicio` igual
+   a essa data, nas duas gravações auditadas. A data não pode ser anterior ao `inicio` do atual.
+7. Auditoria (`registrarAuditoria`) em toda gravação, com as colunas, nunca os valores. Abrir a tela
+   de administração, que mostra o documento (coluna `pessoal`), registra `acao: 'leitura'`. A
+   página Ajuda mostra só nome e e-mail e não gera auditoria.
+8. A leitura para a página Ajuda passa pelo `Autorizador`: devolve apenas `nome` e `email`, nunca
+   `documento`, para quem não tem a permissão (testar que o documento não vaza).
+9. Sem encarregado cadastrado, a Ajuda mostra o aviso da seção Telas; nada quebra.
+10. A demonstração começa **sem** encarregado (para a Diretoria ver o estado vazio); os testes usam
+    dados de `tests/apoio/planilhas-teste.ts`, com CPF e CNPJ de teste válidos gerados no próprio teste.
+
+### Telas
+**Administração › Encarregado de dados** (`/admin/encarregado`), no menu Administração para quem
+tem a permissão.
+1. **Quem e caminho**: a Diretoria quer registrar ou trocar o encarregado. Cadastro inicial: 2
+   cliques (abrir o formulário, enviar). Trocar: 2 cliques e a confirmação.
+2. **Primeira dobra**: `CabecalhoPagina` ("Encarregado de dados", "A LGPD pede que a instituição
+   indique quem cuida dos dados pessoais e recebe pedidos dos titulares."). Abaixo, o cartão do
+   encarregado atual (nome, tipo, documento, e-mail, "desde dd/mm/aaaa"). Ações: **Corrigir dados**
+   e **Trocar encarregado**. Depois, o histórico em `TabelaDados` (nome, tipo, de, até).
+3. **Componentes de `src/ui/`**: `CabecalhoPagina`, `JanelaFormulario`, `Campo`, `BotaoEnviar`,
+   `FormularioConfirmado`, `TabelaDados`. Nenhuma peça nova.
+4. **Estados**:
+   - Vazio: "Nenhum encarregado cadastrado. Cadastre quem a instituição indicou para a LGPD." e o
+     botão **Cadastrar encarregado**.
+   - Gravando: "Salvando…". Gravou: "Encarregado salvo." Erro: a mensagem da regra (ex.: "CPF
+     inválido. Confira os 11 números."), com o formulário aberto e o que foi digitado mantido.
+   - Conflito de versão (outra pessoa mexeu): "Os dados mudaram enquanto você editava. Reabra e
+     tente de novo."
+   - Sem permissão: redireciona para o início, como as demais telas de administração.
+5. **Formulário**: campos `Tipo` (opções "Pessoa física" e "Pessoa jurídica", obrigatório), `Nome`
+   ("Nome da pessoa" ou "Razão social", muda conforme o tipo), `CPF` ou `CNPJ` (rótulo muda com o
+   tipo; dica "Pode digitar com pontos e traço."), `E-mail` (dica "Para onde os titulares vão
+   escrever."). Na troca, também `Data da troca` (hoje por padrão).
+6. **Ação sem volta**: **Trocar encarregado** pede confirmação: "O encarregado atual será
+   encerrado nesta data e o novo passa a valer. O histórico fica guardado."
+7. **Celular e teclado**: campos em coluna única; cartão e ações empilham; ordem do teclado: tipo,
+   nome, documento, e-mail, enviar; a janela fecha com Esc.
+8. Sem gráficos.
+
+**Ajuda** (`/ajuda`): bloco novo "Encarregado de dados (LGPD)" com nome e e-mail como link
+`mailto:`. Sem cadastro: "A instituição ainda não indicou o encarregado de dados." Para a Diretoria
+o aviso acrescenta o link "Cadastrar".
+
+**Sugestões de melhoria (a Diretoria decide)**: (a) avisar a Diretoria no início quando não há
+encarregado; (b) usar nome e e-mail do encarregado no termo de adesão e na política de privacidade
+(hoje `[a preencher]`); (c) campo de telefone.
+
+### Fica de fora
+Termo de adesão e política de privacidade preenchidos automaticamente; avisos ao titular; registro
+de pedidos de titulares; DPO da Operadora (é da Rede, `docs/especificacao-rede.md`); ligar o
+encarregado a uma `Pessoa` do Cadastro Único.
+
+### Entregas
+Uma só, pequena: aba, permissão, casos de uso com testes, tela de administração e bloco na Ajuda.
+Arquivos prováveis: `src/nucleo/estrutura/tabelas.ts` (`Encarregados` em `TABELAS_DO_NUCLEO`),
+`dados-iniciais.ts`, `src/nucleo/encarregado/` (casos de uso e testes), `src/app/(elo)/admin/
+encarregado/`, `src/app/(elo)/ajuda/page.tsx`, menu de Administração, manual.
+
+### Critérios de pronto (conferência na prévia)
+1. Como Diretoria, em Administração aparece "Encarregado de dados" com o estado vazio.
+2. Cadastrar pessoa física com CPF inválido mostra o erro e mantém o que foi digitado; com CPF
+   válido, salva e o cartão aparece.
+3. Trocar por uma pessoa jurídica (CNPJ válido) mostra o novo no cartão e o anterior no histórico.
+4. Em Ajuda, qualquer perfil vê nome e e-mail, sem o documento.
+5. Perfis sem a permissão não veem o item de menu e são redirecionados ao abrir o endereço.
+6. `npm run verificar` e `npm run build` verdes.
+
+### Decisões tomadas sozinho (e o custo se estiverem erradas)
+- **Só a Diretoria altera** (a proposta diz "Diretoria"). Se o Administrador também deveria, é uma
+  linha em `PERMISSOES_INICIAIS`.
+- **Histórico em vez de sobrescrever** (regra "nada é apagado"). Se bastar um registro só, é uma
+  simplificação pequena, mas se descobrirmos depois que precisávamos do histórico não dá para
+  recuperá-lo.
+- **Documento com sigilo `pessoal` e fora da Ajuda**: CPF de pessoa física é dado pessoal. Se a
+  Diretoria quiser o documento público (CNPJ costuma ser), muda só a Ajuda.
+- **Validação dos dígitos verificadores** do CPF e do CNPJ. Custo: recusa documentos de teste
+  inventados; os testes geram números válidos.
+- **E-mail do encarregado visível a todos os logados** (a LGPD pede divulgação dos dados de contato).
+- **Demonstração sem encarregado**, para mostrar o estado vazio.
