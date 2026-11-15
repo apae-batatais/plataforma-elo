@@ -14,9 +14,9 @@ import type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
 import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
 import { termosParaOrcamento, type NumerosDePessoas } from '@/modulos/parcerias';
 import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
-import { custoDoServico, type CatalogoParcerias, type CustoDoServico } from '@/modulos/orcamento';
-import { projetosDoServico, type ProjetosDoServico } from '@/modulos/projetos';
-import { requisicoesDoServico, type RequisicoesDoServico } from '@/modulos/requisicoes';
+import { custoDoServico, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type SaldoParaConferencia } from '@/modulos/orcamento';
+import { projetosDoServico, projetosParaCompra, type ProjetosDoServico } from '@/modulos/projetos';
+import { requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
 import { MODULOS } from './registro-modulos';
 
 export type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
@@ -135,4 +135,54 @@ export function catalogoDeParcerias(p: Planilhas, opcoes: { desligados?: Readonl
       }));
     },
   };
+}
+
+type Desligados = { desligados?: ReadonlySet<string> };
+
+/**
+ * Projetos que a pessoa pode escolher numa requisição (L2): os que ela vê e que estão em implementação.
+ * `null` = Projetos desligado, sem permissão ou falha: a requisição funciona sem o campo (G2).
+ * O servidor chama esta função de novo ao gravar; a lista da tela não vale como prova.
+ */
+export async function projetosParaRequisicao(p: Planilhas, quem: Autorizador, opcoes: Desligados = {}): Promise<ProjetoEscolhivel[] | null> {
+  const lida = await lerLigacao('projetos', () => projetosParaCompra(p, quem), opcoes);
+  return lida.estado === 'ok' ? lida.dados : null;
+}
+
+export interface ConferenciaDoCentro {
+  servico: string;
+  saldo: LigacaoLida<SaldoParaConferencia>;
+}
+
+/** Saldo do orçamento de cada centro de custo, para quem aprova (L2). Só aviso: nunca bloqueia a aprovação. */
+export async function conferenciaDosCentros(
+  p: Planilhas,
+  quem: Autorizador,
+  servicos: readonly string[],
+  grupoId: string | null,
+  opcoes: Desligados & { ano?: number } = {},
+): Promise<ConferenciaDoCentro[]> {
+  return Promise.all(
+    servicos.map(async (servico) => ({
+      servico,
+      saldo: await lerLigacao('orcamento', () => saldoParaConferencia(p, quem, servico, { grupoId, ano: opcoes.ano }), opcoes),
+    })),
+  );
+}
+
+/** Confere o grupo de gasto escolhido por quem aprova contra o cadastro do Orçamento (nome copiado). */
+export async function grupoDeGastoConferido(
+  p: Planilhas,
+  quem: Autorizador,
+  servicos: readonly string[],
+  grupoId: string,
+  opcoes: Desligados = {},
+): Promise<{ id: string; nome: string } | null> {
+  for (const c of await conferenciaDosCentros(p, quem, servicos.slice(0, 1), grupoId, opcoes)) {
+    if (c.saldo.estado === 'ok') {
+      const g = c.saldo.dados.grupos.find((x) => x.id === grupoId);
+      if (g) return g;
+    }
+  }
+  return null;
 }

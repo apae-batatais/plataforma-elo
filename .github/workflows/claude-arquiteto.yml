@@ -7,6 +7,7 @@
 #
 # Precisa do Secret CLAUDE_CODE_OAUTH_TOKEN (token da assinatura do Claude) e do app do
 # Claude instalado no repositório.
+# Se falhar, marca a issue com "falha de agente" para o DevOps resolver (sem chamar a Diretoria).
 
 name: Arquiteto
 
@@ -82,3 +83,19 @@ jobs:
             7. Comente na issue o link do PR, em uma linha.
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
             (evita barras invertidas antes das aspas).
+
+      # Só em falha: busca as funções da esteira na main e marca a issue ou o PR para o DevOps.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Marcar a falha
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { marcarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await marcarFalha({ github, context, core, agente: 'arquiteto', numero: context.payload.issue.number });

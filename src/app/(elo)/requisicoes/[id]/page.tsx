@@ -21,6 +21,9 @@ import { textoHoras } from '@/modulos/requisicoes/dominio/sla';
 import { dataHora, EtiquetaSituacao } from '@/modulos/requisicoes/telas/lista-requisicoes';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { conferenciaDosCentros } from '@/plataforma/ligacoes';
+import { CartaoConferencia } from '@/modulos/requisicoes/telas/cartao-conferencia';
+import { acaoCorrigirValorGasto } from '../acoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { LinkBotao, pequeno } from '@/ui/botao';
@@ -34,6 +37,7 @@ import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
 export const metadata: Metadata = { title: 'Requisição' };
 
+const moedaBR = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const numeroBR = (v: number) => v.toLocaleString('pt-BR', { maximumFractionDigits: 3 });
 
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
@@ -45,8 +49,15 @@ function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
   );
 }
 
-export default async function FichaRequisicao({ params }: { params: Promise<{ id: string }> }) {
+export default async function FichaRequisicao({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ grupo?: string; valor?: string }>;
+}) {
   const { id } = await params;
+  const consulta = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
@@ -67,6 +78,15 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
   const dataBR = (iso: string | null | undefined) => (iso ? iso.split('-').reverse().join('/') : '');
   const pode = (a: Acao) => d.acoes.includes(a);
   const campos = { id: r.id, versao: r.versao };
+  const valorConsulta = consulta.valor ? Number(consulta.valor.replace(/\s/g, '').replace(',', '.')) : NaN;
+  const grupoConsulta = consulta.grupo ?? '';
+  // Quem aprova vê o saldo antes de decidir; a plataforma lê o Orçamento com a permissão da pessoa.
+  const conferencia = pode('aprovar')
+    ? (await conferenciaDosCentros(app.planilhas, usuario.autorizador, d.centros.map((c) => c.servico), grupoConsulta || null)).map((c) => ({
+        ...c,
+        nome: d.centros.find((x) => x.servico === c.servico)?.nome ?? c.servico,
+      }))
+    : null;
   const mostrarAtendido = r.situacao === 'atendida' || r.situacao === 'atendida_parcial';
 
   return (
@@ -91,6 +111,15 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
         </Aviso>
       )}
 
+      {conferencia && (
+        <CartaoConferencia
+          centros={conferencia}
+          grupoId={grupoConsulta}
+          valor={Number.isFinite(valorConsulta) ? valorConsulta : null}
+          projeto={r.projeto_id ? { codigo: r.projeto_codigo ?? '', titulo: r.projeto_titulo ?? '', atividade: r.atividade_descricao } : null}
+        />
+      )}
+
       {d.acoes.length > 0 && (
         <Secao titulo="O que você pode fazer" id="t-acoes" className="print:hidden">
           <div className="space-y-5">
@@ -100,6 +129,8 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                   <input type="hidden" name="id" value={r.id} />
                   <input type="hidden" name="versao" value={r.versao} />
                   <input type="hidden" name="acao" value="aprovar" />
+                  {grupoConsulta && <input type="hidden" name="grupo_id" value={grupoConsulta} />}
+                  {Number.isFinite(valorConsulta) && <input type="hidden" name="valor_estimado" value={valorConsulta} />}
                   <BotaoEnviar enviando="Aprovando…">Aprovar</BotaoEnviar>
                 </form>
                 <form action={acaoDecidir} className="space-y-2">
@@ -149,6 +180,9 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                 <Campo rotulo="O que foi feito" dica="Quem pediu vê no histórico. Se ficou algo pendente, diga o quê e por quê.">
                   <textarea name="comentario" rows={3} required className={estiloEntrada} />
                 </Campo>
+                <Campo rotulo="Valor gasto (opcional)" dica="Aparece no projeto como compras ligadas; não substitui o realizado do Orçamento.">
+                  <input name="valor_gasto" inputMode="decimal" className={estiloEntrada} />
+                </Campo>
                 <BotaoEnviar enviando="Concluindo…">Concluir atendimento</BotaoEnviar>
               </form>
             )}
@@ -179,6 +213,9 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
                 <Campo rotulo="Comentário">
                   <textarea name="comentario" rows={2} className={estiloEntrada} />
                 </Campo>
+                <Campo rotulo="Valor gasto (opcional)" dica="Aparece no projeto como compras ligadas; não substitui o realizado do Orçamento.">
+                  <input name="valor_gasto" inputMode="decimal" className={estiloEntrada} />
+                </Campo>
                 <BotaoEnviar enviando="Concluindo…">Concluir atendimento</BotaoEnviar>
               </form>
             )}
@@ -198,6 +235,21 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
               </FormularioConfirmado>
             )}
           </div>
+        </Secao>
+      )}
+
+      {d.podeCorrigirValorGasto && (
+        <Secao titulo="Valor gasto" id="t-valor-gasto" className="print:hidden">
+          <form action={acaoCorrigirValorGasto} className="flex flex-wrap items-end gap-3">
+            <input type="hidden" name="id" value={r.id} />
+            <input type="hidden" name="versao" value={r.versao} />
+            <Campo rotulo="Valor gasto (opcional)" dica="Aparece no projeto como compras ligadas; não substitui o realizado do Orçamento.">
+              <input name="valor_gasto" inputMode="decimal" defaultValue={r.valor_gasto != null ? String(r.valor_gasto).replace('.', ',') : ''} className={estiloEntrada} />
+            </Campo>
+            <BotaoEnviar enviando="Salvando…" variante="secundario">
+              Salvar valor gasto
+            </BotaoEnviar>
+          </form>
         </Secao>
       )}
 
@@ -234,6 +286,14 @@ export default async function FichaRequisicao({ params }: { params: Promise<{ id
           <Dado rotulo="Centros de custo">{d.centros.map((c) => `${c.nome} (${numeroBR(c.percentual)}%)`).join(' · ')}</Dado>
           {r.recebida_por && <Dado rotulo="Recebida por">{r.recebida_por}</Dado>}
           {r.executada_por && <Dado rotulo="Executada por">{r.executada_por}</Dado>}
+          {r.projeto_id && (
+            <Dado rotulo="Projeto">
+              {r.projeto_codigo} · {r.projeto_titulo}
+              {r.atividade_descricao ? ` · ${r.atividade_descricao}` : ''}
+            </Dado>
+          )}
+          {r.valor_estimado != null && <Dado rotulo="Valor estimado (informado por quem aprovou)">{moedaBR(r.valor_estimado)}</Dado>}
+          {r.valor_gasto != null && <Dado rotulo="Valor gasto (informado por quem atendeu)">{moedaBR(r.valor_gasto)}</Dado>}
         </dl>
 
         {d.itens.length > 0 && (

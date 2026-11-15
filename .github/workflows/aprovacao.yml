@@ -3,6 +3,10 @@
 # - "Approve" da Diretoria num PR: confere o tipo do PR (etiqueta "PR: especificação" ou
 #   "PR: entrega", conferida com a referência à issue), faz o merge, move o cartão e, se for
 #   especificação, chama o Desenvolvedor. Depois do merge de uma entrega, chama o Verificar na main. Tipo que não combina: não faz o merge e explica no PR.
+# - Depois de cada merge, chama "Atualizar PR" para conferir os outros PRs abertos. Se o merge
+#   falhar (problema técnico), não chama a Diretoria: com conflito, chama a atualização do PR;
+#   com outro motivo, marca "falha de agente". O DevOps conclui o merge da aprovação já dada.
+# - Se o ajuste falhar, marca o PR com "falha de agente" para o DevOps resolver.
 # - "Request changes" da Diretoria num PR: o Claude Code ajusta o PR conforme os comentários.
 #
 # Revisões em PR já fechado (com ou sem merge) são ignoradas.
@@ -75,8 +79,17 @@ jobs:
             try {
               await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'squash', commit_title: `${pr.title} (#${pr.number})` });
             } catch (e) {
-              await github.rest.issues.createComment({ owner, repo, issue_number: pr.number,
-                body: `Não consegui fazer o merge depois da aprovação: ${e.message}. Se houver conflito com a main, comente "@claude atualize este PR com a main".` });
+              // Problema técnico: não chama a Diretoria; a aprovação dela já está registrada.
+              // Conflito: chama a atualização. Outro motivo: marca "falha de agente" para o DevOps.
+              // Em ambos, o DevOps conclui o merge depois (docs/metodologia.md).
+              const { situacaoDoMerge, ETIQUETA_FALHA } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/agentes.mjs`);
+              const { data: atual } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
+              if (situacaoDoMerge(atual) === 'conflito') {
+                await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'atualizar-pr.yml', ref: 'main', inputs: { pr: String(pr.number) } });
+                core.notice(`Merge do PR #${pr.number} recusado por conflito: atualização chamada`);
+              } else {
+                await github.rest.issues.addLabels({ owner, repo, issue_number: pr.number, labels: [ETIQUETA_FALHA] });
+              }
               core.setFailed(e.message);
               return;
             }
@@ -89,6 +102,9 @@ jobs:
               await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'verificar.yml', ref: 'main' });
               core.info('Verificar chamado para a main');
             }
+            // Os outros PRs abertos podem ter ficado em conflito com este merge: confere e atualiza.
+            await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'atualizar-pr.yml', ref: 'main' });
+            core.info('Conferência de conflitos chamada');
             for (const issue of tipo.tipo === 'especificacao' ? tipo.issues : []) {
               await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'claude-desenvolvedor.yml', ref: 'main', inputs: { issue: String(issue) } });
               core.info(`Desenvolvedor chamado para a issue #${issue}`);
@@ -136,3 +152,19 @@ jobs:
                aberta" (`gh pr edit ${{ github.event.pull_request.number }} --add-label "pergunta aberta"`).
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
             (evita barras invertidas antes das aspas).
+
+      # Só em falha: busca as funções da esteira na main e marca a issue ou o PR para o DevOps.
+      - if: failure()
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          path: _esteira
+          sparse-checkout: .github/scripts
+
+      - name: Marcar a falha
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { marcarFalha } = await import(`${process.env.GITHUB_WORKSPACE}/_esteira/.github/scripts/agentes.mjs`);
+            await marcarFalha({ github, context, core, agente: 'ajuste', numero: context.payload.pull_request.number });

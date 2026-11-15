@@ -39,6 +39,9 @@ import {
 import {
   conferirCentros,
   conferirItens,
+  conferirProjeto,
+  conferirValor,
+  type ProjetoEscolhivel,
   conferirTransicao,
   coordenadoresDoServico,
   ErroRequisicao,
@@ -235,6 +238,14 @@ export interface DadosRequisicao {
   observacao?: string | null;
   /** Fotos e vídeo já enviados à pasta de anexos (ADR-014). */
   anexos?: AnexoPedido[];
+  /** Compra de um projeto (L2): só o projeto é obrigatório; a atividade é opcional. */
+  projetoId?: string | null;
+  atividadeId?: string | null;
+}
+
+/** Lista de projetos lida pela plataforma na hora de gravar; `null` = Projetos indisponível. */
+export interface OpcoesProjetos {
+  projetos?: readonly ProjetoEscolhivel[] | null;
 }
 
 export interface AnexoPedido {
@@ -272,11 +283,13 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, opcoes
       .map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
       .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
     anexosAtivos: Boolean(opcoes.anexosAtivos),
+    /** A plataforma preenche com os projetos que a pessoa vê e que aceitam compra (ADR-022). */
+    projetos: undefined as ProjetoEscolhivel[] | undefined,
   };
 }
 
 /** Confere a ficha e devolve o que gravar (sem gravar). */
-function conferirFicha(d: Dados, requisitante: string, dados: DadosRequisicao) {
+function conferirFicha(d: Dados, requisitante: string, dados: DadosRequisicao, projetos: readonly ProjetoEscolhivel[] | null = null) {
   const erros: string[] = [];
   const tipo = d.tipos.ativos().find((t) => t.id === dados.tipoId);
   if (!tipo) erros.push('Escolha o tipo de requisição.');
@@ -297,19 +310,29 @@ function conferirFicha(d: Dados, requisitante: string, dados: DadosRequisicao) {
     if (!r.success) erros.push(...r.error.issues.map((i) => i.message));
     else detalhes = r.data;
   }
+  const ligacao = conferirProjeto(dados.projetoId, dados.atividadeId, dados.centros, projetos);
+  erros.push(...ligacao.erros);
   if (erros.length) throw new ErroRequisicao([...new Set(erros)].join(' '));
   const rota = rotaDeAprovacao(
     requisitante,
     dados.centros.map((c) => d.coordenacao(c.servico)),
   );
-  return { tipo: tipo!, detalhes, rota, itens };
+  return { tipo: tipo!, detalhes, rota, itens, projeto: ligacao.projeto, atividade: ligacao.atividade };
 }
+
+const colunasDeProjeto = (x: ReturnType<typeof conferirProjeto>) => ({
+  projeto_id: x.projeto?.id ?? null,
+  projeto_codigo: x.projeto?.codigo ?? null,
+  projeto_titulo: x.projeto?.titulo ?? null,
+  atividade_id: x.atividade?.id ?? null,
+  atividade_descricao: x.atividade?.descricao ?? null,
+});
 
 async function gravarHistorico(
   p: Planilhas,
   requisicaoId: string,
   quem: string,
-  acao: Acao,
+  acao: Acao | 'Valor gasto',
   de: Situacao | null,
   para: Situacao,
   agora: Date,
@@ -334,13 +357,13 @@ export async function enviarRequisicao(
   p: Planilhas,
   quem: Autorizador,
   dados: DadosRequisicao & { nomeRequisitante: string },
-  opcoes: { agora?: Date; arquivos?: ArmazenamentoArquivos | null } = {},
+  opcoes: { agora?: Date; arquivos?: ArmazenamentoArquivos | null } & OpcoesProjetos = {},
 ): Promise<{ id: string; numero: string; rota: RotaAprovacao }> {
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   conferirTransicao('enviar', null);
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
-  const { tipo, detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
+  const { tipo, detalhes, rota, itens, projeto, atividade } = conferirFicha(d, quem.email, dados, opcoes.projetos ?? null);
   const anexos = await conferirAnexosDaFicha(p, opcoes.arquivos ?? null, tipo, dados.anexos ?? [], null);
   const numero = proximoNumero(
     agora.getUTCFullYear(),
@@ -364,6 +387,7 @@ export async function enviarRequisicao(
       detalhes: detalhes ? JSON.stringify(detalhes) : null,
       observacao: dados.observacao?.trim() || null,
       enviada_em: agora.toISOString(),
+      ...colunasDeProjeto({ erros: [], projeto, atividade }),
     },
     autoria,
   );
@@ -420,7 +444,7 @@ export async function reenviarRequisicao(
   id: string,
   versao: number,
   dados: DadosRequisicao,
-  opcoes: { agora?: Date; comentario?: string; arquivos?: ArmazenamentoArquivos | null } = {},
+  opcoes: { agora?: Date; comentario?: string; arquivos?: ArmazenamentoArquivos | null } & OpcoesProjetos = {},
 ) {
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
@@ -428,7 +452,17 @@ export async function reenviarRequisicao(
   if (r.requisitante !== quem.email) throw new ErroPermissao('Só quem fez a requisição pode ajustá-la.');
   conferirTransicao('reenviar', r.situacao);
   if (dados.tipoId !== r.tipo_id) throw new ErroRequisicao('O tipo da requisição não pode mudar. Cancele e abra outra.');
-  const { tipo, detalhes, rota, itens } = conferirFicha(d, quem.email, dados);
+  // O projeto já gravado continua valendo se a pessoa não o mudou (ele pode ter saído da lista de compras depois).
+  const mantem = Boolean(dados.projetoId) && dados.projetoId === r.projeto_id && (dados.atividadeId ?? null) === (r.atividade_id ?? null);
+  const { tipo, detalhes, rota, itens, projeto, atividade } = conferirFicha(
+    d,
+    quem.email,
+    mantem ? { ...dados, projetoId: null, atividadeId: null } : dados,
+    opcoes.projetos ?? null,
+  );
+  const colunasProjeto = mantem
+    ? { projeto_id: r.projeto_id, projeto_codigo: r.projeto_codigo, projeto_titulo: r.projeto_titulo, atividade_id: r.atividade_id, atividade_descricao: r.atividade_descricao }
+    : colunasDeProjeto({ erros: [], projeto, atividade });
   // Anexos: os que continuam ficam; os tirados são encerrados; os novos entram.
   const anexos = dados.anexos ? await conferirAnexosDaFicha(p, opcoes.arquivos ?? null, tipo, dados.anexos, id) : null;
   const autoria = { email: quem.email, agora: () => agora };
@@ -446,6 +480,7 @@ export async function reenviarRequisicao(
       enviada_em: agora.toISOString(),
       decidida_em: null,
       decidida_por: null,
+      ...colunasProjeto,
     },
     autoria,
   );
@@ -478,6 +513,13 @@ export async function reenviarRequisicao(
   });
 }
 
+/** Valor estimado e grupo de gasto, informados por quem aprova só para conferir o saldo (R5). */
+export interface ConferenciaDaAprovacao {
+  valorEstimado?: number | null;
+  /** O nome vem do Orçamento (a plataforma confere o grupo); fica copiado na requisição. */
+  grupo?: { id: string; nome: string } | null;
+}
+
 /** Aprovar, devolver para ajuste ou recusar (coordenação ou Diretoria). */
 export async function decidirRequisicao(
   p: Planilhas,
@@ -486,7 +528,7 @@ export async function decidirRequisicao(
   versao: number,
   acao: 'aprovar' | 'devolver' | 'recusar',
   comentario: string | null,
-  opcoes: { agora?: Date } = {},
+  opcoes: { agora?: Date; conferencia?: ConferenciaDaAprovacao } = {},
 ) {
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
@@ -504,13 +546,24 @@ export async function decidirRequisicao(
   if (acao !== 'aprovar' && !comentario?.trim())
     throw new ErroRequisicao(acao === 'devolver' ? 'Escreva o que precisa ser ajustado.' : 'Escreva o motivo da recusa.');
   const para: Situacao = acao === 'aprovar' ? 'aprovada' : acao === 'devolver' ? 'devolvida' : 'recusada';
+  // Só a aprovação grava a conferência; nunca é obrigatória nem bloqueia (R5).
+  const conferencia: Record<string, unknown> = {};
+  if (acao === 'aprovar' && opcoes.conferencia) {
+    const { valorEstimado, grupo } = opcoes.conferencia;
+    if (valorEstimado != null) {
+      const erro = conferirValor(valorEstimado, 'Valor estimado');
+      if (erro) throw new ErroRequisicao(erro);
+      conferencia.valor_estimado = valorEstimado;
+    }
+    if (grupo) Object.assign(conferencia, { grupo_id: grupo.id, grupo_nome: grupo.nome });
+  }
   const autoria = { email: quem.email, agora: () => agora };
   const { colunasAlteradas } = await atualizar(
     p,
     Requisicoes,
     id,
     versao,
-    { situacao: para, decidida_em: agora.toISOString(), decidida_por: quem.email },
+    { situacao: para, decidida_em: agora.toISOString(), decidida_por: quem.email, ...conferencia },
     autoria,
   );
   await gravarHistorico(p, id, quem.email, acao, r.situacao, para, agora, comentario);
@@ -562,7 +615,7 @@ export async function concluirRequisicao(
   versao: number,
   atendidos: Record<string, number>,
   comentario: string | null,
-  opcoes: { agora?: Date; resultado?: 'resolvido' | 'parcial' } = {},
+  opcoes: { agora?: Date; resultado?: 'resolvido' | 'parcial'; valorGasto?: number | null } = {},
 ): Promise<Situacao> {
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
@@ -570,7 +623,8 @@ export async function concluirRequisicao(
   conferirTransicao('concluir', r.situacao);
   if (!podeAtender(quem, d, r)) throw new ErroPermissao('Só o setor responsável por este tipo de requisição pode atendê-la.');
   const tipo = d.tipoPorId.get(r.tipo_id);
-  if (tipo && FICHA_DE_SERVICO[tipo.formulario]) return concluirServico(p, quem, r, comentario, opcoes.resultado, agora);
+  if (tipo && FICHA_DE_SERVICO[tipo.formulario]) return concluirServico(p, quem, r, comentario, opcoes.resultado, agora, opcoes.valorGasto);
+  const valorGasto = conferirValorGasto(opcoes.valorGasto);
   const itens = (d.itensPor.get(id) ?? []).sort((a, b) => a.ordem - b.ordem);
   for (const i of itens) {
     const v = atendidos[i.id];
@@ -592,7 +646,7 @@ export async function concluirRequisicao(
     Requisicoes,
     id,
     versao,
-    { situacao: para, concluida_em: agora.toISOString(), executada_por: quem.email },
+    { situacao: para, concluida_em: agora.toISOString(), executada_por: quem.email, ...(valorGasto != null ? { valor_gasto: valorGasto } : {}) },
     autoria,
   );
   await gravarHistorico(p, id, quem.email, 'concluir', 'em_atendimento', para, agora, comentario);
@@ -606,6 +660,26 @@ export async function concluirRequisicao(
   return para;
 }
 
+function conferirValorGasto(v: number | null | undefined): number | null {
+  if (v == null) return null;
+  const erro = conferirValor(v, 'Valor gasto');
+  if (erro) throw new ErroRequisicao(erro);
+  return v;
+}
+
+/** Corrige o valor gasto depois de concluir (só quem atende; vai para o histórico e a auditoria). */
+export async function corrigirValorGasto(p: Planilhas, quem: Autorizador, id: string, versao: number, valor: number | null, opcoes: { agora?: Date } = {}) {
+  const agora = opcoes.agora ?? new Date();
+  const d = await ler(p, agora);
+  const r = acharComVersao(d, id, versao);
+  if (r.situacao !== 'atendida' && r.situacao !== 'atendida_parcial') throw new ErroRequisicao('O valor gasto só pode ser informado depois de concluir o atendimento.');
+  if (!podeAtender(quem, d, r)) throw new ErroPermissao('Só o setor responsável por este tipo de requisição pode informar o valor gasto.');
+  const novo = conferirValorGasto(valor);
+  const { colunasAlteradas } = await atualizar(p, Requisicoes, id, versao, { valor_gasto: novo }, { email: quem.email, agora: () => agora });
+  await gravarHistorico(p, id, quem.email, 'Valor gasto', r.situacao, r.situacao, agora, 'Valor gasto atualizado.');
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
+}
+
 /** Chamado (TI, manutenção…): concluído com o que foi feito e se resolveu tudo. */
 async function concluirServico(
   p: Planilhas,
@@ -614,7 +688,9 @@ async function concluirServico(
   comentario: string | null,
   resultado: 'resolvido' | 'parcial' | undefined,
   agora: Date,
+  valorGastoInformado?: number | null,
 ): Promise<Situacao> {
+  const valorGasto = conferirValorGasto(valorGastoInformado);
   if (resultado !== 'resolvido' && resultado !== 'parcial') throw new ErroRequisicao('Diga se o problema foi resolvido.');
   if (!comentario?.trim())
     throw new ErroRequisicao(resultado === 'resolvido' ? 'Descreva o que foi feito.' : 'Explique o que foi feito e o que ficou pendente.');
@@ -624,7 +700,7 @@ async function concluirServico(
     Requisicoes,
     r.id,
     r.versao,
-    { situacao: para, concluida_em: agora.toISOString(), executada_por: quem.email },
+    { situacao: para, concluida_em: agora.toISOString(), executada_por: quem.email, ...(valorGasto != null ? { valor_gasto: valorGasto } : {}) },
     { email: quem.email, agora: () => agora },
   );
   await gravarHistorico(p, r.id, quem.email, 'concluir', 'em_atendimento', para, agora, comentario);
@@ -732,6 +808,7 @@ export async function detalharRequisicao(p: Planilhas, quem: Autorizador, id: st
       .filter((a) => a.requisicao_id === id)
       .map((a) => ({ id: a.id, tipo: a.tipo, nome: a.nome, tamanho: a.tamanho, duracao: a.duracao, arquivoId: a.arquivo_id })),
     acoes: acoesPossiveis(quem, d, r),
+    podeCorrigirValorGasto: (r.situacao === 'atendida' || r.situacao === 'atendida_parcial') && podeAtender(quem, d, r),
     sla: sla(d, r, agora),
     expediente: d.expediente,
     encerrada: SITUACOES_ENCERRADAS.includes(r.situacao),
@@ -1323,4 +1400,46 @@ export async function buscar(p: Planilhas, quem: Autorizador, termo: string): Pr
       apoio: `${d.tipoPorId.get(r.tipo_id)?.nome ?? 'Requisição'} · ${NOME_SITUACAO[r.situacao]}`,
       href: `/requisicoes/${r.id}`,
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Compras ligadas a um projeto (R9): a plataforma só chama depois de confirmar que a pessoa vê o projeto
+// ---------------------------------------------------------------------------
+
+export interface CompraDoProjeto {
+  id: string;
+  numero: string;
+  tipo: string;
+  situacao: Situacao;
+  situacaoNome: string;
+  atividadeId: string | null;
+  atividade: string | null;
+  enviadaEm: string;
+  concluidaEm: string | null;
+  /** Informado por quem atendeu; não é o realizado oficial do Orçamento e não se soma a ele. */
+  valorGasto: number | null;
+}
+
+/** Requisições ligadas ao projeto, sem o nome de quem pediu. */
+export async function comprasDoProjeto(p: Planilhas, quem: Autorizador, projetoId: string): Promise<Ligacao<CompraDoProjeto[]>> {
+  if (!quem.temPermissaoAlgumEscopo('requisicoes.acessar')) return ligacaoSemPermissao();
+  const d = await ler(p, new Date());
+  return ligacaoOk(
+    d.requisicoes
+      .ativos()
+      .filter((r) => r.projeto_id === projetoId)
+      .sort((a, b) => b.enviada_em.localeCompare(a.enviada_em))
+      .map((r) => ({
+        id: r.id,
+        numero: r.numero,
+        tipo: d.tipoPorId.get(r.tipo_id)?.nome ?? '—',
+        situacao: r.situacao,
+        situacaoNome: NOME_SITUACAO[r.situacao],
+        atividadeId: r.atividade_id,
+        atividade: r.atividade_descricao,
+        enviadaEm: r.enviada_em,
+        concluidaEm: r.concluida_em,
+        valorGasto: r.valor_gasto,
+      })),
+  );
 }
