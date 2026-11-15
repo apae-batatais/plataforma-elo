@@ -109,6 +109,11 @@ Fluxo completo sem nenhuma integração externa (especificação:
 - [ ] Verificação do app no Google para OSCs de outros domínios usarem o envio.
 - [ ] Aproveitar a mesma ligação para o aviso por e-mail do app Requisições.
 
+Especificada em 15/11/2026 (#63, ADR-027): envio pelo Elo por conta de serviço com delegação no domínio,
+remetente "não-responda@" cadastrado na instituição, rotina a cada 15 minutos. Ficam para depois:
+verificação do aplicativo pelo Google (só se alguma instituição não usar delegação no domínio), aviso de
+Requisições (#61) e botão "Enviar e-mail de teste" (sugestão).
+
 ### Fase 3 · publicação automática no Instagram
 
 - [ ] Conexão da conta profissional da OSC (ligada a uma página do Facebook).
@@ -117,6 +122,12 @@ Fluxo completo sem nenhuma integração externa (especificação:
 - [ ] Publicação na hora marcada e gravação do link do post.
 - [ ] Em caso de falha, aviso à Comunicação e volta para "Agendado".
 - [ ] Confirmar antes se a Meta exige revisão do app.
+
+Especificada em 15/11/2026 (#64, ADR-028): conexão da conta de cada OSC pelo Elo (credenciais cifradas),
+post com imagem, Reel e carrossel, rotina compartilhada com a #63. A Meta exige revisão do app e
+verificação da empresa para outras OSCs usarem (pendência da Diretoria). Ficam para depois: história
+(story), comentários e mensagens, publicar no Facebook, escolher "primeiro comentário" e conta
+pessoal (a Meta só aceita conta profissional).
 
 ### Fase 4 · resultado das postagens
 
@@ -199,4 +210,15 @@ Ficou para depois (15/11/2026):
 - [ ] Revisão do instrumento: item 6 da Educação Infantil mistura turma, turno e acessibilidade; uniformizar "progresso" e "avanço" (nova versão).
 - [ ] Opção "não se aplica" nos itens.
 - [ ] Indicadores de Educação como números do serviço em Projetos e Parcerias (ligações entre apps).
+- [ ] Sugestões: lembrete de reavaliação, copiar profissional e função da última aplicação, mostrar a nota do período anterior no item.
+
+## Saúde/CER: avaliação de evolução (issue #68, especificação em `src/modulos/saude/especificacao.md`, ADR-030)
+
+Ficou para depois (15/11/2026):
+
+- [ ] Texto de cada nível de nota (0 a 3) por item e opção "não se aplica", se a equipe tiver.
+- [ ] Prontuário, evolução clínica e agendamento de sessões do CER (fora do escopo da avaliação).
+- [ ] Escopo por equipe dentro do serviço (hoje, o escopo é o serviço).
+- [ ] Indicadores de Saúde como números do serviço em Projetos e Parcerias (ligações entre apps).
+- [ ] Peça comum de avaliação entre Educação e Saúde, se a repetição de código pesar.
 - [ ] Sugestões: lembrete de reavaliação, copiar profissional e função da última aplicação, mostrar a nota do período anterior no item.

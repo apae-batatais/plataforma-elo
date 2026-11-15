@@ -124,9 +124,230 @@ Tipos de peça (fixos na fase 1): Post no Instagram, Reel no Instagram, Release,
 6. Temas sem publicação: só itens ativos do calendário; item desativado não é cobrado.
 7. Contatos: ao reativar um contato, o e-mail não pode repetir o de outro contato ativo.
 
+## Fase 2 · ligação com o Gmail (proposta #63, ADR-027)
+
+**Objetivo.** O Elo envia e-mails sozinho: avisos a quem precisa agir, lembrete à Comunicação no dia
+agendado e o envio de release e artigo na data e hora marcadas, com registro e aviso de falha. Substitui o
+"e-mail pronto" aberto à mão, que continua existindo como alternativa quando o envio automático não está
+ligado.
+
+**Decisão da Diretoria (comentário na issue, 15/11/2026).** Os e-mails saem de um endereço institucional
+do tipo "não-responda@", não da conta pessoal de alguém da Comunicação. A instituição informa qual é no
+cadastro dela. Leitura confirmada pelo Arquiteto: é conta de serviço com delegação no domínio (ADR-027).
+
+### Permissões
+| Perfil | Pode | Permissão |
+| --- | --- | --- |
+| Comunicação e coordenação | Escolher "enviar pelo Elo" ao agendar release e artigo; ver o resultado dos envios; tentar de novo um envio que falhou | `comunicacao.revisar` |
+| Coordenação e Diretoria | Ligar ou desligar os avisos por e-mail da instituição | `comunicacao.configurar` |
+| Administração da instituição (Núcleo/Rede) | Informar o remetente "não-responda@" | permissão já existente de administrar a instituição |
+| Quem pediu | Receber o aviso por e-mail dos próprios pedidos | — |
+
+### Entidades
+| Aba | O que guarda | Sigilo |
+| --- | --- | --- |
+| Envios (nova, planilha `comunicacao`) | Pedido, tipo (release, artigo, aviso, lembrete), assunto, destinatários (e-mails), data e hora de envio previstas, situação (pendente, enviado, falhou, cancelado), tentativas, enviado em, erro resumido | pessoal: destinatários |
+| Instituicoes (rede, alterada) | Coluna nova `remetente_email` | interno |
+| Configuracoes (comunicação, alterada) | `avisos_por_email` (liga/desliga, começa desligado) | interno |
+| Pedidos (alterada) | Coluna nova `envio_automatico` (verdadeiro/falso) | interno |
+
+### Regras de negócio (com teste)
+1. Sem `remetente_email` válido (do domínio da instituição) ou com `avisos_por_email` desligado, nenhum
+   e-mail de aviso ou lembrete é criado, e o agendamento automático não fica disponível; tudo continua
+   aparecendo no Elo.
+2. **Agendar com envio automático** (release e artigo): exige data e hora futuras, pelo menos um destino
+   ativo e remetente configurado. O Elo cria um `Envio` pendente. Reagendar atualiza o envio pendente
+   (nunca cria um segundo); cancelar ou devolver o pedido cancela o envio pendente.
+3. **Rotina**: a cada rodada, para cada `Envio` pendente com hora chegada, o Elo remonta os destinos a
+   partir de contatos e grupos **ativos naquele momento** (desativado sai), envia em Cco, anexa os arquivos
+   do pedido e marca `enviado`. O mesmo envio nunca sai duas vezes (versão da linha).
+4. **Sucesso**: o pedido continua Agendado até a Comunicação marcar Publicado, mas o envio registra
+   "enviado em" e o histórico do pedido recebe "Enviado pelo Elo". (Decisão tomada sozinho abaixo.)
+5. **Falha**: até 3 tentativas (+15 e +60 minutos). Esgotadas: envio `falhou`, pedido segue Agendado e
+   **não** pode virar Publicado por envio automático; aviso à Comunicação no Elo (pendência na tela
+   inicial) e por e-mail. A Comunicação pode "Tentar de novo" ou "Enviar à mão" (e-mail pronto).
+6. **Avisos por e-mail** (quando a pessoa precisa agir): devolvido para ajustar (a quem pediu), aguardando
+   revisão (à Comunicação, um resumo por rodada, não um e-mail por pedido), aguardando aprovação (à
+   coordenação) e publicado (a quem pediu). O texto não traz título nem descrição do pedido: só o número
+   (COM-AAAA-NNNN), o que fazer e o link.
+7. **Lembrete**: no dia agendado, às 8h de Brasília, a Comunicação recebe um resumo dos pedidos do dia
+   (post, reel e entrevista, que a Comunicação publica à mão).
+8. Uma pessoa recebe no máximo um e-mail de aviso por tipo e por rodada. No máximo 100 envios por
+   rodada; o que passar fica para a próxima.
+9. Quem vê e quem altera: `Envios` só é lida por `comunicacao.revisar` e é gravada pela plataforma
+   (rotina) e por ações de agendar, reagendar e tentar de novo; a rota da rotina recusa chamada sem a chave.
+10. Toda gravação registra auditoria só com colunas; nada é apagado (envio cancelado fica `cancelado`).
+
+### Telas
+Usam só componentes existentes de `src/ui/` (formulário, botão, aviso, tabela, selo); nenhuma peça nova.
+1. **Agendar (release e artigo)**: abaixo de data e hora, a escolha "Como enviar": "Enviar pelo Elo na
+   hora marcada" (preselecionada quando o envio automático está disponível) ou "Abrir e-mail pronto no
+   meu Gmail". Indisponível: o texto explica por quê ("A instituição ainda não informou o e-mail de
+   envio.") e leva a Comunicação ao caminho de hoje. Caminho mais curto: o mesmo número de cliques de hoje.
+2. **Detalhe do pedido**: faixa "Envio" com situação em texto e selo ("Enviado em 12/03 às 9h",
+   "Falhou: tente de novo"), botões "Tentar de novo" e "Enviar à mão". Estado de erro nunca perde o que a
+   pessoa digitou.
+3. **Configurações**: interruptor "Avisos por e-mail" (coordenação) e o remetente aparece só como leitura
+   ("Enviando por: <e-mail>", ou "Falta informar o e-mail de envio na administração da instituição").
+4. **Administração da instituição (Rede)**: campo "E-mail de envio" com dica "Ex.: nao-responda@seudominio",
+   validação do domínio e texto de ajuda que remete ao manual de configuração no Google.
+5. **Tela inicial**: aviso "N envios falharam" para a Comunicação, com link ao pedido.
+6. Celular e teclado: tudo em coluna única, botões com a mesma ordem de tabulação do restante do app.
+7. Sugestão de melhoria (para a Diretoria decidir): botão "Enviar e-mail de teste" na administração da
+   instituição, que manda uma mensagem à própria pessoa para confirmar a delegação.
+
+### Fica de fora
+Instagram automático (fase 3); aviso de Requisições (#61) e do painel de prazos (#57), que usam a peça em
+entregas próprias; verificação do aplicativo pelo Google; rastreio de abertura; resposta a e-mails; envio
+por conta pessoal; outros provedores de e-mail.
+
+### Frentes
+`regras e dados` (peça de e-mail do Núcleo, abas, rotina, testes de acesso), `telas` (agendar, detalhe,
+configurações, administração), `infraestrutura` (workflow `rotina.yml`, Secret `ROTINA_TOKEN`, roteiro de
+delegação no Google). Núcleo muda: peça nova `src/nucleo/email/` e coluna em `Instituicoes` (aprovação da
+especificação autoriza).
+
+### Entregas (ordem de construção)
+1. Peça de e-mail do Núcleo (Gmail e memória), remetente na instituição, rota e workflow da rotina, com
+   e-mail de teste. Conferência: enviar o e-mail de teste na prévia (demonstração, memória).
+2. Comunicação: aba `Envios`, agendar com envio automático, falha, tentar de novo.
+3. Comunicação: avisos e lembrete por e-mail.
+
+### Decisões tomadas sozinho (custo se estiverem erradas)
+- Revisão do Google dispensada nesta etapa (delegação interna). Se estiver errada: o envio real é
+  recusado e é preciso pedir verificação, que leva semanas. Mitiga: testar com a própria instituição
+  antes de abrir a outras.
+- Esta entrega cobre a Comunicação e deixa a peça pronta; Requisições (#61) entra em entrega própria.
+  Custo se errada: uma entrega a mais, sem retrabalho na peça.
+- Rotina pelo GitHub Actions a cada 15 minutos (ADR-027). Custo se errada: trocar de agendador.
+- Envio bem-sucedido não marca Publicado sozinho: a Comunicação confirma. Custo se errada: um clique a mais
+  por release; trocar para automático é pequena mudança.
+- Avisos por e-mail começam desligados e sem título do pedido no texto, por privacidade.
+
 ## Critérios de pronto
 
 - [x] Regras de negócio com testes
 - [x] Testes de acesso para cada aba (quem vê e quem altera)
 - [x] `npm run verificar` e `npm run build` verdes
 - [ ] Conferido pela Diretoria na prévia com dados fictícios, com os três perfis
+
+## Fase 3 · publicação automática no Instagram (proposta #64, ADR-028)
+
+**Objetivo.** Na hora marcada, o Elo publica no Instagram da própria instituição o post com imagem, o Reel
+ou o carrossel do pedido, grava o link do post e avisa a Comunicação se algo falhar. Substitui o
+agendamento à mão no Meta Business Suite, que continua como alternativa. Depende da fase 2 (#63, ADR-027):
+usa a mesma rotina e o mesmo padrão de fila.
+
+**Decisões da Diretoria (comentários da issue, 15/11/2026).** Outras OSCs usam já nesta entrega, cada uma
+com a própria conta; cobre post com imagem, Reel e carrossel; a Diretoria cria a conta profissional do
+Instagram e avisa; as credenciais de cada conta são cadastradas **dentro do Elo**, não só em Secrets.
+
+### Permissões
+| Perfil | Pode | Permissão |
+| --- | --- | --- |
+| Coordenação da Comunicação e Diretoria | Conectar, reconectar e desconectar a conta do Instagram da instituição | `comunicacao.configurar` |
+| Comunicação e coordenação | Escolher "Publicar pelo Elo" ao agendar; ver o resultado; "Tentar de novo" | `comunicacao.revisar` |
+| Todos os outros | Nada além do que já veem; nunca veem a chave | — |
+
+### Entidades
+| Aba | O que guarda | Sigilo |
+| --- | --- | --- |
+| Credenciais (nova, Núcleo, ADR-028) | Instituição, serviço (`instagram`), nome de usuário da conta, valor cifrado, vence em, situação, conectado por e em | sensível: valor cifrado; pessoal: conectado por |
+| Publicacoes (nova, planilha `comunicacao`) | Pedido, tipo (post, reel, carrossel), data e hora previstas, situação, tentativas, identificador do post na Meta, link, erro resumido, publicada em | interno |
+| Pedidos (alterada) | Coluna `publicacao_automatica` (verdadeiro/falso) | interno |
+| Anexos (lida) | Os arquivos que serão publicados | sensível: arquivo |
+
+### Regras de negócio (com teste)
+1. **Conectar**: só `comunicacao.configurar`. O Elo leva a pessoa à Meta, recebe o token e grava cifrado
+   (nunca em texto). Só uma conta ativa por instituição; conectar outra exige desconectar a atual. Conta
+   que não é profissional é recusada com explicação.
+2. **Segredo nunca aparece**: nenhuma tela, resposta de rota, log, auditoria ou erro mostra o valor. A
+   tela mostra só o nome de usuário, a situação e a validade.
+3. **Disponibilidade**: "Publicar pelo Elo" só aparece com conta `conectada` e para pedidos de post, reel
+   ou carrossel (hoje "Post no Instagram" e "Reel no Instagram"; a Comunicação escolhe "carrossel" quando
+   o pedido tem 2 a 10 imagens: decisão abaixo).
+4. **Mídia**: post exige 1 imagem JPG (a Meta não aceita WebP/PNG no contêiner; o Elo converte ao
+   publicar); carrossel 2 a 10 imagens; Reel exige 1 vídeo. O vídeo, hoje só um link do Drive (regra 9 da
+   fase 1), passa a poder ser anexado ao pedido de Reel, de até o limite medido na construção. Sem a
+   mídia exigida, não agenda.
+5. **Agendar com publicação automática**: exige data e hora futuras, mídia válida e confirmação de
+   imagem já feita no pedido. Cria `Publicacao` pendente; reagendar atualiza a pendente (nunca cria
+   segunda); cancelar ou devolver o pedido a cancela.
+6. **Rotina**: a cada rodada, para cada publicação pendente com hora chegada, o Elo cria o código de mídia
+   temporária, pede à Meta o contêiner, espera ficar pronto (Reel leva mais tempo e é acompanhado nas
+   rodadas seguintes), publica e grava o identificador e o link. O código temporário é encerrado ao fim,
+   com sucesso ou não. Nunca publica duas vezes o mesmo pedido.
+7. **Sucesso**: o pedido passa sozinho para **Publicado** com o link gravado (aqui, diferente do e-mail,
+   a Meta devolve o link, então não há o que confirmar à mão), e o histórico registra "Publicado pelo Elo".
+8. **Falha**: até 3 tentativas (+15 e +60 minutos). Esgotadas: publicação `falhou`, **o pedido volta para
+   Agendado**, e a Comunicação recebe aviso no Elo (pendência na tela inicial) e por e-mail, se a fase 2
+   estiver ligada, com o motivo em português ("A conta precisa ser reconectada", "A imagem não foi
+   aceita pelo Instagram"). A Comunicação pode "Tentar de novo" ou "Publicar à mão".
+9. **Token**: renovado pela rotina quando falta menos de 15 dias; falhando, situação `expirando` e aviso
+   na tela e na tela inicial; vencido, `expirada` e nenhuma publicação sai (as pendentes ficam
+   pendentes e o aviso explica; reconectar retoma).
+10. **Limites**: no máximo 50 publicações por conta em 24 horas e 25 por rodada; o excedente fica
+    pendente para a rodada seguinte, com aviso se atrasar mais de 1 hora.
+11. **Mídia temporária**: a rota só entrega o arquivo daquele código, até 1 hora, sem login; código
+    inexistente, vencido ou encerrado devolve "não encontrado" (sem pista do motivo); cada entrega vai
+    para a auditoria como leitura de dado sensível.
+12. **Quem vê e quem altera**: `Credenciais` é gravada só pela ação de conectar e pela rotina, lida só
+    pela camada de aplicação (o valor decifrado nunca sai dela); `Publicacoes` é lida por
+    `comunicacao.revisar`; a rota da rotina recusa chamada sem a chave. Toda gravação registra auditoria só
+    com colunas; nada é apagado.
+13. **Isolamento entre instituições**: a rotina só usa a credencial da instituição dona do pedido; teste
+    com duas instituições garante que uma nunca publica na conta da outra.
+
+### Telas
+Usam só componentes existentes de `src/ui/` (formulário, botão, aviso, selo, tabela); nenhuma peça nova.
+1. **Configurações → Instagram** (coordenação): sem conta, texto "Conecte o Instagram da instituição para
+   publicar na hora marcada" e botão **"Conectar Instagram"** (2 cliques mais a autorização na Meta). Com
+   conta: "Conectado como @usuario · válido até 10/01", selo da situação, botões "Reconectar" e
+   "Desconectar" (este pede confirmação: "O Elo deixa de publicar. Publicações já agendadas ficam
+   paradas até você conectar de novo."). Estados: conectando, erro da Meta ("Não foi possível conectar.
+   Confira se a conta é profissional e tente de novo."), instituição sem permissão no app da Meta ("O
+   Instagram desta instituição ainda não foi liberado pela Diretoria do Elo.") e sem permissão do perfil.
+2. **Agendar (post, reel)**: abaixo de data e hora, "Como publicar": "Publicar pelo Elo na hora marcada"
+   (preselecionada se a conta está conectada) ou "Eu publico à mão" (caminho de hoje). Indisponível: texto
+   com o motivo e botão para a configuração, se a pessoa tem permissão. Caminho mais curto igual ao de hoje.
+3. **Detalhe do pedido**: faixa "Instagram" com situação em texto e selo ("Publicado em 12/03 às 9h",
+   "Falhou: tente de novo"), link do post e botões "Tentar de novo" e "Publicar à mão". Se der erro, nada
+   do que a pessoa digitou se perde.
+4. **Tela inicial**: aviso "N publicações falharam" e "A conta do Instagram precisa ser reconectada".
+5. Celular e teclado: coluna única, mesma ordem de tabulação do restante do app; botões com texto, nunca
+   só ícone.
+6. Sugestões (para a Diretoria decidir): prévia de como o post fica antes de agendar; mostrar na lista a
+   publicação programada do dia.
+
+### Fica de fora
+Story, comentários e mensagens, Facebook, primeiro comentário, marcar pessoas, publicar por conta
+pessoal, resultado das postagens (fase 4), revisão do app na Meta (pendência da Diretoria, sem código),
+troca de provedor.
+
+### Frentes
+`regras e dados` (peça `credenciais` e cifra, adaptador Instagram, abas, rotina, rota de mídia, testes de
+acesso e de isolamento), `telas` (configuração, agendar, detalhe, tela inicial), `infraestrutura`
+(Secrets `META_APP_ID`, `META_APP_SECRET`, `ELO_CHAVE_CREDENCIAIS`, vencimentos em `.github/chaves.json`,
+rota pública de mídia e roteiro no manual). Núcleo muda: peça nova `src/nucleo/credenciais/` e aba
+`Credenciais` (a aprovação da especificação autoriza).
+
+### Entregas (ordem de construção, depois da #63)
+1. Peça de credenciais cifradas do Núcleo, tela "Conectar Instagram" e renovação do token. Conferência
+   na prévia: conectar e desconectar uma conta fictícia (demonstração, sem Meta de verdade).
+2. Post com imagem: aba `Publicacoes`, agendar, rota de mídia temporária, rotina, falha e "Tentar de
+   novo".
+3. Reel e carrossel (inclui anexar vídeo e os limites de tamanho medidos na hospedagem).
+
+### Decisões tomadas sozinho (custo se estiverem erradas)
+- **Depois da #63** (pergunta de fila sem resposta): a #64 reaproveita a rotina e a fila. Custo se errada:
+  a entrega 1 teria de criar a rotina, e a #63 passaria a reaproveitá-la.
+- **Conexão por "Entrar com Instagram" (Instagram Login), um app Meta para todo o Elo.** Custo se errada:
+  se a Meta exigir página do Facebook ligada, o fluxo muda para o login do Facebook (outra permissão, outra
+  revisão); a camada de credenciais e as regras não mudam.
+- **Credenciais cifradas na planilha do Núcleo, com chave mestra na Netlify.** Alternativa seria um cofre
+  externo. Custo se errada: migrar os valores para o cofre, sem mudar o contrato da peça.
+- **Publicado sozinho com sucesso**, ao contrário do e-mail, porque a Meta devolve o link.
+- **Falha devolve para Agendado** (como pede o roadmap), com aviso.
+- **Carrossel decidido pelo número de imagens do pedido**, sem novo tipo de peça (tipos continuam
+  fixos). Custo se errada: criar o tipo "Carrossel" no pedido (pequena mudança).
+- **Limite de 50 por dia** (menor valor documentado pela Meta) e mídia pública por até 1 hora.
