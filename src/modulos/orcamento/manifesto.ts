@@ -38,6 +38,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Importar ano fechado', caminho: '/historico/importar', permissao: 'orcamento.historico.editar', secao: 'Histórico' },
     { rotulo: 'Resumo da folha', caminho: '/', permissao: 'orcamento.folha.ver', secao: 'Folha de pagamento' },
     { rotulo: 'Folha completa', caminho: '/folha', permissao: 'orcamento.folha.ver_individual', secao: 'Folha de pagamento' },
+    { rotulo: 'Passivo trabalhista', caminho: '/passivo', permissao: 'orcamento.folha.ver', secao: 'Folha de pagamento' },
     { rotulo: 'Cedidos', caminho: '/cedidos', permissao: 'orcamento.folha.ver_individual', secao: 'Folha de pagamento' },
     { rotulo: 'Lotação', caminho: '/lotacao', permissao: 'orcamento.folha.editar', secao: 'Folha de pagamento' },
     { rotulo: 'Parâmetros', caminho: '/parametros', permissao: 'orcamento.folha.ver', secao: 'Folha de pagamento' },
@@ -79,5 +80,5 @@ export const manifesto = defineModulo({
     compras: ['orcamento.acessar', 'orcamento.previsao.cotar'],
   },
   eventos: { publica: [], consome: [] },
-  indicadores: ['custo_folha_centro', 'folha_sem_rateio', 'folha_sobre_receita', 'dependencia_recursos_publicos', 'recursos_livres', 'resultado_previsto'],
+  indicadores: ['custo_folha_centro', 'folha_sem_rateio', 'folha_sobre_receita', 'dependencia_recursos_publicos', 'recursos_livres', 'resultado_previsto', 'passivo_trabalhista', 'ferias_em_dobro'],
 });

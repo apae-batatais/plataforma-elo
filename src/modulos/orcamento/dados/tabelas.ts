@@ -96,6 +96,32 @@ export const CalendarioPagamento = definirTabela({
   }),
 });
 
+/** Períodos de férias já gozados (P2): base do cálculo das férias vencidas no passivo. */
+export const FeriasTiradas = definirTabela({
+  planilha: PLANILHA_FOLHA,
+  aba: 'FeriasTiradas',
+  esquema: z.object({
+    posto_id: texto(),
+    inicio: data(),
+    dias: numero(),
+    observacao: textoOpcional(),
+  }),
+  sigilo: { inicio: 'pessoal', dias: 'pessoal' },
+});
+
+/** Extrato do FGTS (P2): só inclusões; vale a linha mais recente. */
+export const SaldoFGTS = definirTabela({
+  planilha: PLANILHA_FOLHA,
+  aba: 'SaldoFGTS',
+  esquema: z.object({
+    posto_id: texto(),
+    referencia: data(),
+    valor: numero(),
+    observacao: textoOpcional(),
+  }),
+  sigilo: { valor: 'pessoal' },
+});
+
 export const Parametros = definirTabela({
   planilha: PLANILHA_FOLHA,
   aba: 'Parametros',
@@ -499,4 +525,4 @@ export type RegCedido = Registro<typeof Cedidos.esquema>;
 export type RegValorCedido = Registro<typeof ValoresCedidos.esquema>;
 export type RegLotacaoCedido = Registro<typeof LotacaoCedidos.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos] as const;
