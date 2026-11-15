@@ -124,6 +124,106 @@ Tipos de peça (fixos na fase 1): Post no Instagram, Reel no Instagram, Release,
 6. Temas sem publicação: só itens ativos do calendário; item desativado não é cobrado.
 7. Contatos: ao reativar um contato, o e-mail não pode repetir o de outro contato ativo.
 
+## Fase 2 · ligação com o Gmail (proposta #63, ADR-027)
+
+**Objetivo.** O Elo envia e-mails sozinho: avisos a quem precisa agir, lembrete à Comunicação no dia
+agendado e o envio de release e artigo na data e hora marcadas, com registro e aviso de falha. Substitui o
+"e-mail pronto" aberto à mão, que continua existindo como alternativa quando o envio automático não está
+ligado.
+
+**Decisão da Diretoria (comentário na issue, 15/11/2026).** Os e-mails saem de um endereço institucional
+do tipo "não-responda@", não da conta pessoal de alguém da Comunicação. A instituição informa qual é no
+cadastro dela. Leitura confirmada pelo Arquiteto: é conta de serviço com delegação no domínio (ADR-027).
+
+### Permissões
+| Perfil | Pode | Permissão |
+| --- | --- | --- |
+| Comunicação e coordenação | Escolher "enviar pelo Elo" ao agendar release e artigo; ver o resultado dos envios; tentar de novo um envio que falhou | `comunicacao.revisar` |
+| Coordenação e Diretoria | Ligar ou desligar os avisos por e-mail da instituição | `comunicacao.configurar` |
+| Administração da instituição (Núcleo/Rede) | Informar o remetente "não-responda@" | permissão já existente de administrar a instituição |
+| Quem pediu | Receber o aviso por e-mail dos próprios pedidos | — |
+
+### Entidades
+| Aba | O que guarda | Sigilo |
+| --- | --- | --- |
+| Envios (nova, planilha `comunicacao`) | Pedido, tipo (release, artigo, aviso, lembrete), assunto, destinatários (e-mails), data e hora de envio previstas, situação (pendente, enviado, falhou, cancelado), tentativas, enviado em, erro resumido | pessoal: destinatários |
+| Instituicoes (rede, alterada) | Coluna nova `remetente_email` | interno |
+| Configuracoes (comunicação, alterada) | `avisos_por_email` (liga/desliga, começa desligado) | interno |
+| Pedidos (alterada) | Coluna nova `envio_automatico` (verdadeiro/falso) | interno |
+
+### Regras de negócio (com teste)
+1. Sem `remetente_email` válido (do domínio da instituição) ou com `avisos_por_email` desligado, nenhum
+   e-mail de aviso ou lembrete é criado, e o agendamento automático não fica disponível; tudo continua
+   aparecendo no Elo.
+2. **Agendar com envio automático** (release e artigo): exige data e hora futuras, pelo menos um destino
+   ativo e remetente configurado. O Elo cria um `Envio` pendente. Reagendar atualiza o envio pendente
+   (nunca cria um segundo); cancelar ou devolver o pedido cancela o envio pendente.
+3. **Rotina**: a cada rodada, para cada `Envio` pendente com hora chegada, o Elo remonta os destinos a
+   partir de contatos e grupos **ativos naquele momento** (desativado sai), envia em Cco, anexa os arquivos
+   do pedido e marca `enviado`. O mesmo envio nunca sai duas vezes (versão da linha).
+4. **Sucesso**: o pedido continua Agendado até a Comunicação marcar Publicado, mas o envio registra
+   "enviado em" e o histórico do pedido recebe "Enviado pelo Elo". (Decisão tomada sozinho abaixo.)
+5. **Falha**: até 3 tentativas (+15 e +60 minutos). Esgotadas: envio `falhou`, pedido segue Agendado e
+   **não** pode virar Publicado por envio automático; aviso à Comunicação no Elo (pendência na tela
+   inicial) e por e-mail. A Comunicação pode "Tentar de novo" ou "Enviar à mão" (e-mail pronto).
+6. **Avisos por e-mail** (quando a pessoa precisa agir): devolvido para ajustar (a quem pediu), aguardando
+   revisão (à Comunicação, um resumo por rodada, não um e-mail por pedido), aguardando aprovação (à
+   coordenação) e publicado (a quem pediu). O texto não traz título nem descrição do pedido: só o número
+   (COM-AAAA-NNNN), o que fazer e o link.
+7. **Lembrete**: no dia agendado, às 8h de Brasília, a Comunicação recebe um resumo dos pedidos do dia
+   (post, reel e entrevista, que a Comunicação publica à mão).
+8. Uma pessoa recebe no máximo um e-mail de aviso por tipo e por rodada. No máximo 100 envios por
+   rodada; o que passar fica para a próxima.
+9. Quem vê e quem altera: `Envios` só é lida por `comunicacao.revisar` e é gravada pela plataforma
+   (rotina) e por ações de agendar, reagendar e tentar de novo; a rota da rotina recusa chamada sem a chave.
+10. Toda gravação registra auditoria só com colunas; nada é apagado (envio cancelado fica `cancelado`).
+
+### Telas
+Usam só componentes existentes de `src/ui/` (formulário, botão, aviso, tabela, selo); nenhuma peça nova.
+1. **Agendar (release e artigo)**: abaixo de data e hora, a escolha "Como enviar": "Enviar pelo Elo na
+   hora marcada" (preselecionada quando o envio automático está disponível) ou "Abrir e-mail pronto no
+   meu Gmail". Indisponível: o texto explica por quê ("A instituição ainda não informou o e-mail de
+   envio.") e leva a Comunicação ao caminho de hoje. Caminho mais curto: o mesmo número de cliques de hoje.
+2. **Detalhe do pedido**: faixa "Envio" com situação em texto e selo ("Enviado em 12/03 às 9h",
+   "Falhou: tente de novo"), botões "Tentar de novo" e "Enviar à mão". Estado de erro nunca perde o que a
+   pessoa digitou.
+3. **Configurações**: interruptor "Avisos por e-mail" (coordenação) e o remetente aparece só como leitura
+   ("Enviando por: <e-mail>", ou "Falta informar o e-mail de envio na administração da instituição").
+4. **Administração da instituição (Rede)**: campo "E-mail de envio" com dica "Ex.: nao-responda@seudominio",
+   validação do domínio e texto de ajuda que remete ao manual de configuração no Google.
+5. **Tela inicial**: aviso "N envios falharam" para a Comunicação, com link ao pedido.
+6. Celular e teclado: tudo em coluna única, botões com a mesma ordem de tabulação do restante do app.
+7. Sugestão de melhoria (para a Diretoria decidir): botão "Enviar e-mail de teste" na administração da
+   instituição, que manda uma mensagem à própria pessoa para confirmar a delegação.
+
+### Fica de fora
+Instagram automático (fase 3); aviso de Requisições (#61) e do painel de prazos (#57), que usam a peça em
+entregas próprias; verificação do aplicativo pelo Google; rastreio de abertura; resposta a e-mails; envio
+por conta pessoal; outros provedores de e-mail.
+
+### Frentes
+`regras e dados` (peça de e-mail do Núcleo, abas, rotina, testes de acesso), `telas` (agendar, detalhe,
+configurações, administração), `infraestrutura` (workflow `rotina.yml`, Secret `ROTINA_TOKEN`, roteiro de
+delegação no Google). Núcleo muda: peça nova `src/nucleo/email/` e coluna em `Instituicoes` (aprovação da
+especificação autoriza).
+
+### Entregas (ordem de construção)
+1. Peça de e-mail do Núcleo (Gmail e memória), remetente na instituição, rota e workflow da rotina, com
+   e-mail de teste. Conferência: enviar o e-mail de teste na prévia (demonstração, memória).
+2. Comunicação: aba `Envios`, agendar com envio automático, falha, tentar de novo.
+3. Comunicação: avisos e lembrete por e-mail.
+
+### Decisões tomadas sozinho (custo se estiverem erradas)
+- Revisão do Google dispensada nesta etapa (delegação interna). Se estiver errada: o envio real é
+  recusado e é preciso pedir verificação, que leva semanas. Mitiga: testar com a própria instituição
+  antes de abrir a outras.
+- Esta entrega cobre a Comunicação e deixa a peça pronta; Requisições (#61) entra em entrega própria.
+  Custo se errada: uma entrega a mais, sem retrabalho na peça.
+- Rotina pelo GitHub Actions a cada 15 minutos (ADR-027). Custo se errada: trocar de agendador.
+- Envio bem-sucedido não marca Publicado sozinho: a Comunicação confirma. Custo se errada: um clique a mais
+  por release; trocar para automático é pequena mudança.
+- Avisos por e-mail começam desligados e sem título do pedido no texto, por privacidade.
+
 ## Critérios de pronto
 
 - [x] Regras de negócio com testes
