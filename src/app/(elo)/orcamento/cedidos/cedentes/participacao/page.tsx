@@ -20,6 +20,8 @@ export default async function ParticipacaoDeQuemCede({ searchParams }: { searchP
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissao('orcamento.folha.ver')) redirect('/orcamento');
+  // O painel usa o custo total da previsão: sem ver a previsão, volta ao Orçamento em vez de quebrar.
+  if (!usuario.autorizador.temPermissao('orcamento.painel.ver') && !usuario.autorizador.temPermissao('orcamento.previsao.editar')) redirect('/orcamento');
   const app = await obterAplicacao();
   const anos = (await lerPrevisao(app.planilhas, usuario.autorizador, undefined, { incluirCedidos: false })).anos;
   const ano = Number(sp.ano) || anos.at(-1) || new Date().getFullYear();
