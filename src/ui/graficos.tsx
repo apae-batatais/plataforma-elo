@@ -12,7 +12,11 @@ import { NumeroQueConta } from '@/ui/numero-que-conta';
 import { useValoresAnimados } from '@/ui/use-valores-animados';
 import type { ValoresPorSerie } from '@/ui/movimento';
 
-export type Formato = 'moeda' | 'pct' | 'numero';
+import { formatarValor, type Formato } from './formato';
+
+// formatarValor fica em '@/ui/formato' (não é reexportado daqui): este módulo é 'use client' e
+// função dele chamada numa página do servidor quebra a página.
+export type { Formato };
 export interface Serie {
   nome: string;
   valores: number[];
@@ -35,16 +39,6 @@ export function naCorDoApp(series: Serie[]): Serie[] {
 const cor = (n: Serie['cor']) => (typeof n === 'string' ? `var(--${n})` : `var(--serie-${Math.min(Math.max(n, 1), 4)})`);
 /** Cor do texto escrito sobre uma área pintada com a cor da série (contraste garantido nos dois temas). */
 const sobre = (n: Serie['cor']) => (typeof n === 'string' ? `var(--sobre-${n})` : '#ffffff');
-
-export function formatarValor(v: number, formato: Formato, curto = false): string {
-  if (formato === 'pct') return `${v.toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%`;
-  if (formato === 'numero') return v.toLocaleString('pt-BR', { maximumFractionDigits: 1 });
-  if (!curto) return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const a = Math.abs(v);
-  if (a >= 1e6) return `R$ ${(v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`;
-  if (a >= 1e3) return `R$ ${(v / 1e3).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} mil`;
-  return `R$ ${v.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
-}
 
 /** Escala "bonita": topo arredondado e 4 linhas de grade. */
 function escala(maximo: number, minimo = 0) {

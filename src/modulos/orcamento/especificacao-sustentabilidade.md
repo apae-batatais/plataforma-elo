@@ -1,6 +1,6 @@
 # Especificação — Orçamento: Painel de sustentabilidade financeira
 
-- Situação: para aprovação (proposta #131, 14/11/2026)
+- Situação: aprovada (proposta #131); S1 entregue em 15/11/2026 (PR de entrega), S2 a S4 pendentes
 - Dono do produto: Diretoria
 - Complementa `especificacao.md` (Previsão, rateio dos custos comuns, indicadores),
   `especificacao-execucao-tesouraria.md` (Realizado, Tesouraria), `especificacao-folha-caixa-passivo.md` (passivo, #126),
