@@ -37,6 +37,13 @@ Cuidados:
   arredondando para cima, no mínimo 1 minuto): job pulado por `if` não gasta; PR só de `.md` não roda
   Verificar nem prévia; no PR o build fica só na prévia; `node_modules` em cache. Ao criar workflow,
   filtre no `if` do job os eventos que não fazem nada.
+- **Cota acabou em 16/11/2026** (organização com limite de gasto US$ 0: tudo para até o dia 1º).
+  Consumo estimado de 1º a 16/11: Verificar ~580 min, Publicar (prévias) ~390, Desenvolvedor ~350,
+  Arquiteto ~150, Atualizar PR ~150; Tipo do PR e Fluxo ~1 min por execução, mas centenas de
+  execuções. Regras desde então: trabalho curto filtra no `if` do job tudo o que não muda nada
+  (etiqueta que não é de tipo, envio de código no Tipo do PR); agente só instala dependências e
+  verifica quando o PR muda código (especificação é só `.md`). Ao criar workflow, estime as
+  execuções por dia × 1 minuto antes de ligar; agendamento frequente (ex.: a cada 15 min) não cabe.
 - Ações feitas com o `GITHUB_TOKEN` não disparam outros workflows (exceto `workflow_dispatch`).
   Quem precisa encadear passos chama o próximo direto (veja `aprovacao.yml`).
 - Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`, `agentes.mjs`), com teste em `tests/fluxo/`.

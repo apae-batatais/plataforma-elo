@@ -9,7 +9,9 @@ name: Tipo do PR
 
 on:
   pull_request:
-    types: [opened, reopened, edited, synchronize, labeled, unlabeled, ready_for_review]
+    # Sem "synchronize": envio de código não muda etiqueta nem texto do PR, e a Aprovação confere
+    # o tipo de novo antes do merge. Cada execução custa no mínimo 1 minuto do Actions.
+    types: [opened, reopened, edited, labeled, unlabeled, ready_for_review]
 
 permissions:
   contents: read
@@ -22,6 +24,11 @@ jobs:
   conferir:
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    # Etiqueta posta ou tirada só importa se for de tipo ("PR: …"); o resto (etapa, "pergunta
+    # aberta", "falha de agente") pula o job, que assim não gasta minutos.
+    if: >-
+      (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+      startsWith(github.event.label.name, 'PR: ')
     steps:
       - uses: actions/checkout@v5
         with:

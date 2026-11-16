@@ -63,12 +63,24 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Node e dependências só quando o PR muda código: especificação (só .md) não precisa.
+      - name: Ver se o PR muda código
+        id: codigo
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Se a consulta falhar, trata como código (instala e verifica): na dúvida, não pula a verificação.
+          if ! arquivos=$(gh pr diff "$PR" --name-only); then echo "sim=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if echo "$arquivos" | grep -qv '\.md$'; then echo "sim=true" >> "$GITHUB_OUTPUT"; else echo "sim=false" >> "$GITHUB_OUTPUT"; fi
+
       - uses: actions/setup-node@v5
+        if: steps.codigo.outputs.sim == 'true'
         with:
           node-version: 22
           cache: npm
 
       - run: npm ci
+        if: steps.codigo.outputs.sim == 'true'
 
       - uses: anthropics/claude-code-action@v1
         with:
@@ -87,10 +99,11 @@ jobs:
             3. Resolva cada conflito mantendo o código dos dois lados (em listas, imports e exports,
                una os dois; seções novas dos dois lados ficam uma depois da outra). Nunca apague o
                trabalho que veio da main nem o do PR para o conflito sumir.
-            4. Confirme que não sobrou marcador (`grep -rn "^<<<<<<<\|^>>>>>>>" src docs tests`) e rode
-               `npm run verificar` e `npm run build` até tudo passar.
+            4. Confirme que não sobrou marcador (`grep -rn "^<<<<<<<\|^>>>>>>>" src docs tests`).
+               Se o PR muda código (algum arquivo fora de .md), rode `npm run verificar` e `npm run build`
+               até tudo passar. Se só muda documentos (.md), não rode npm: gasta minutos sem conferir nada.
             5. Faça commit do merge e push no ramo do PR. Responda no PR, em até três linhas, quais
-               arquivos tinham conflito e que tudo passou.
+               arquivos tinham conflito e, se rodou, que a verificação passou.
             6. Se um conflito não puder ser resolvido mantendo os dois lados (as duas entregas mudam a
                mesma regra de jeitos diferentes), não adivinhe e não faça push: comente no PR, para o
                DevOps, quais arquivos e regras conflitam e ponha a etiqueta "falha de agente"
