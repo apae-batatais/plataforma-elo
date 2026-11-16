@@ -6,3 +6,4 @@ export { custoDoServico, saldoParaConferencia, type CustoDoServico, type GrupoDe
 export { painelSustentabilidade, type CatalogoParcerias } from './aplicacao/sustentabilidade';
 export type { TermoDoPainel } from './dominio/sustentabilidade';
 export { cedidosPorServicoECedente, type CedidoDoServicoPorCedente } from './aplicacao/participacao';
+export { indicadoresDaPlataforma as indicadoresOrcamento } from './aplicacao/indicadores-plataforma';

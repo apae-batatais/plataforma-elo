@@ -27,6 +27,7 @@ export function navegacaoDoUsuario(
         { rotulo: 'Agenda', href: '/agenda', icone: 'agenda' },
         // Quem não pode ver pessoas (ex.: Funcionário) veria uma lista vazia.
         ...(autorizador.temPermissaoAlgumEscopo('core.pessoas.ver') ? [{ rotulo: 'Pessoas', href: '/nucleo/pessoas', icone: 'pessoas' as const }] : []),
+        ...(autorizador.temPermissao('plataforma.indicadores.ver') ? [{ rotulo: 'Indicadores', href: '/indicadores', icone: 'indicadores' as const }] : []),
         // Ficha do serviço (ligações entre apps). "Fichas de serviço" evita confundir com o cadastro, em Administração.
         ...(autorizador.temPermissaoAlgumEscopo('plataforma.servicos.ver') ? [{ rotulo: 'Fichas de serviço', href: '/servicos', icone: 'servicos' as const }] : []),
       ],

@@ -46,4 +46,6 @@ export const PERMISSOES_INICIAIS: { perfil: string; permissao: string }[] = [
   { perfil: 'leitura', permissao: 'plataforma.servicos.ver' },
   { perfil: 'coordenacao_servico', permissao: 'plataforma.servicos.ver' },
   { perfil: 'tecnico_avaliador', permissao: 'plataforma.servicos.ver' },
+  // Painel de indicadores (ADR-025): só a Diretoria.
+  { perfil: 'diretoria', permissao: 'plataforma.indicadores.ver' },
 ];

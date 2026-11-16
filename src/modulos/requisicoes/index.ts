@@ -6,3 +6,4 @@ export { requisicoesDoServico, type RequisicoesDoServico } from './aplicacao/req
 export { itensDaAgenda, buscar } from './aplicacao/requisicoes';
 export { comprasDoProjeto, type CompraDoProjeto } from './aplicacao/requisicoes';
 export type { ProjetoEscolhivel } from './dominio/requisicao';
+export { indicadoresDaPlataforma as indicadoresRequisicoes } from './aplicacao/indicadores-plataforma';
