@@ -82,9 +82,9 @@ jobs:
               // Problema técnico: não chama a Diretoria; a aprovação dela já está registrada.
               // Conflito: chama a atualização. Outro motivo: marca "falha de agente" para o DevOps.
               // Em ambos, o DevOps conclui o merge depois (docs/metodologia.md).
-              const { situacaoDoMerge, ETIQUETA_FALHA } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/agentes.mjs`);
+              const { motivoDoMergeRecusado, ETIQUETA_FALHA } = await import(`${process.env.GITHUB_WORKSPACE}/.github/scripts/agentes.mjs`);
               const { data: atual } = await github.rest.pulls.get({ owner, repo, pull_number: pr.number });
-              if (situacaoDoMerge(atual) === 'conflito') {
+              if (motivoDoMergeRecusado(e, atual) === 'conflito') {
                 await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'atualizar-pr.yml', ref: 'main', inputs: { pr: String(pr.number) } });
                 core.notice(`Merge do PR #${pr.number} recusado por conflito: atualização chamada`);
               } else {
