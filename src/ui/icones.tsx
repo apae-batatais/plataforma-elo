@@ -76,6 +76,11 @@ export const IconeServicos = (p: Props) => (
     <path d="M9 21v-6h6v6M9 10.5h.01M15 10.5h.01" />
   </Icone>
 );
+export const IconeIndicadores = (p: Props) => (
+  <Icone {...p}>
+    <path d="M4 20h16M6 20v-6M12 20V6M18 20v-10" />
+  </Icone>
+);
 export const IconeAreas = (p: Props) => (
   <Icone {...p}>
     <rect x="3" y="3" width="7.5" height="7.5" rx="1.5" />
@@ -247,6 +252,7 @@ export const ICONES = {
   projetos: IconeProjetos,
   acessos: IconeChave,
   servicos: IconeServicos,
+  indicadores: IconeIndicadores,
   areas: IconeAreas,
   planilhas: IconePlanilha,
   ajuda: IconeAjuda,
