@@ -28,7 +28,7 @@ ou no próprio PR, a Aprovação não faz o merge, mesmo com "Approve".
 | Arquiteto de Soluções | Claude Code no GitHub, sozinho quando a issue é aberta | Lê a proposta, o código e os documentos; pergunta na issue o que não souber; escreve a especificação (e a ADR, se houver decisão de arquitetura); aponta melhorias | PR de especificação |
 | Desenvolvedor | Claude Code no GitHub, sozinho quando a especificação é aprovada | Constrói seguindo o `CLAUDE.md`, com testes, verificação e prévia | PR de entrega |
 | Automação | GitHub Actions | Move os cartões, faz o merge depois da aprovação e publica toda semana | — |
-| Scrum Master | Conversa "Scrum Master" no Claude | Acompanha o fluxo com a Diretoria, identifica impedimento (técnico ou de processo) e traz o que precisa de decisão; não mexe no repositório | Raio-x e avisos à Diretoria |
+| Scrum Master | Conversa "Scrum Master" no Claude | Acompanha o fluxo com a Diretoria, identifica impedimento (técnico ou de processo) e traz o que precisa de decisão; toda semana planeja com a Diretoria o que entra, conforme o saldo de minutos (ADR-031); não mexe no repositório | Raio-x, plano da semana e avisos à Diretoria |
 | DevOps | Tarefa agendada do Claude Code, a cada 4h em horário comercial (dias úteis), apontada para o repositório | Cuida da esteira: acompanha falhas, resolve o que for técnico e já combinado, corrige e melhora as automações e os agentes, controla custos, chaves e segurança; não constrói funcionalidade | PRs de infraestrutura e raio-x da esteira |
 
 ### Scrum Master e DevOps: quem resolve o quê
@@ -47,6 +47,18 @@ Os dois cuidam da esteira, nunca do código dos apps, mas em momentos diferentes
   quando vários itens competem pela atenção. Quando a Diretoria trouxer aqui algo técnico, o
   encaminhamento é para o DevOps (comentário na issue/PR), nunca uma correção direta nesta
   conversa.
+
+### Capacidade: plano da semana e fila de construção (ADR-031)
+
+- **Plano semanal**, junto com a publicação de sexta: o Scrum Master fecha com a Diretoria o que
+  entra na semana seguinte e em que ordem (a ordem dos cartões no quadro "Elo").
+- **Capacidade** = minutos do GitHub Actions do mês (2.000; renovam no dia 1º). O DevOps mostra no
+  raio-x o gasto estimado, o custo médio por entrega e quantas entregas ainda cabem.
+- **No máximo 2 entregas em construção.** Especificação aprovada entra na fila; entrega aprovada
+  abre vaga e a esteira chama a próxima. Quem espera resposta da Diretoria não ocupa vaga.
+- **Acima de 70%** do mês: aviso ao Scrum Master. **Acima de 85%**: pendência da Diretoria com a
+  etiqueta `cota: pausa`; nenhuma entrega nova começa até o "pode seguir" (as em construção
+  terminam).
 
 ## Quadro (backlog)
 

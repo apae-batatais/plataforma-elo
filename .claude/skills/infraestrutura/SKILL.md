@@ -28,6 +28,7 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
 | `tipo-do-pr.yml` | Confere a etiqueta "PR: especificação" ou "PR: entrega" com a referência à issue |
 | `claude-desenvolvedor.yml` | Claude Code constrói a proposta com especificação aprovada |
 | `claude.yml` | Pedido livre com "@claude" num comentário |
+| `fila.yml` | Fila de construção (ADR-031): no máximo 2 entregas em construção, na ordem do quadro; pausa com a etiqueta `cota: pausa` |
 | `atualizar-pr.yml` | Depois de cada merge, confere os PRs de proposta abertos e une com a main os que ficaram em conflito (também à mão, com o número do PR) |
 | `vencimentos.yml` | Aviso semanal de chave perto de vencer (`.github/chaves.json`) |
 
@@ -44,9 +45,13 @@ Cuidados:
   (etiqueta que não é de tipo, envio de código no Tipo do PR); agente só instala dependências e
   verifica quando o PR muda código (especificação é só `.md`). Ao criar workflow, estime as
   execuções por dia × 1 minuto antes de ligar; agendamento frequente (ex.: a cada 15 min) não cabe.
+- **Raio-x de consumo** (ADR-031): `node .github/scripts/consumo.mjs execucoes.json` com as execuções do mês
+  dá o gasto estimado por automação e a faixa (normal, aviso acima de 70%, pausa acima de 85%). Na
+  pausa, abra uma "pendência da Diretoria" com a etiqueta `cota: pausa`; com o "pode seguir", feche-a
+  e rode a Fila.
 - Ações feitas com o `GITHUB_TOKEN` não disparam outros workflows (exceto `workflow_dispatch`).
   Quem precisa encadear passos chama o próximo direto (veja `aprovacao.yml`).
-- Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`, `agentes.mjs`), com teste em `tests/fluxo/`.
+- Funções dos workflows ficam em `.github/scripts/` (`fluxo-quadro.mjs`, `vencimento-chaves.mjs`, `agentes.mjs`, `fila.mjs`, `consumo.mjs`), com teste em `tests/fluxo/`.
 - **Falha de agente é assunto do DevOps, nunca da Diretoria.** Todo workflow que roda o Claude Code
   termina com o passo "Marcar a falha" (`if: failure()`), que põe a etiqueta "falha de agente" na
   issue ou no PR, sem comentar. Workflow de agente novo leva o mesmo passo. No raio-x, o DevOps
