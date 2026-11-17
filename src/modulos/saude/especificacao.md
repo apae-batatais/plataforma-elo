@@ -1,6 +1,6 @@
 # Especificação — Módulo Saúde (avaliação de evolução no CER)
 
-- Situação: rascunho, aguardando aprovação da Diretoria (issue #68)
+- Situação: aprovada; entrega 1 (aplicar e fechar) construída, entregas 2 e 3 pendentes (issue #68)
 - Dono do produto: Diretoria
 - Arquitetura: ADR-030 (usa o motor da ADR-026 e as regras das ADR-006 e ADR-007)
 - Depende de: entrega 1 do motor de avaliação (issue #62, `src/capacidades/motor-avaliacao/`)
@@ -168,6 +168,10 @@ Se a Educação (#163) for construída antes, o desenvolvedor **copia o desenho*
 8. **"Menor pontuação" da principal barreira em % do máximo** da dimensão. _Custo:_ se for em pontos brutos, muda só o cálculo e os textos.
 9. **Uma pessoa pode ter avaliação no CER e em outro eixo**; cada uma é independente, ligadas só por `pessoa_id`. _Custo:_ nenhum.
 10. **Rota `/saude`**, permissões `saude.*`, nome do app "Saúde". _Custo:_ renomear depois mexe em rotas e permissões.
+11. **Permissão `saude.ciente`** (Diretoria e coordenação), separada de `saude.avaliar`, porque o técnico avalia mas não dá o ciente. _Custo:_ se o ciente puder ser de qualquer avaliador, é só acrescentar a permissão ao perfil.
+12. **Cor e ícone do app** (framboesa e coração com pulso), porque o teste de identidade visual exige cor e ícone próprios. Aguardam a Diretoria. _Custo:_ trocar é mexer em `globals.css`, `icones.tsx` e na tabela da identidade visual.
+13. **Texto de encaminhamento por faixa** escrito pelo Desenvolvedor a partir do nome da faixa; o documento não traz. _Custo:_ ajustar o texto em `dominio/cer.ts`.
+14. **Correção** abre a nova aplicação já preenchida com as respostas da anterior; só uma correção por aplicação. A anterior aparece como "Corrigida por outra" na lista.
 
 ## Critérios de pronto
 

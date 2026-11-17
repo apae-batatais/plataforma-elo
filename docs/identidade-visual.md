@@ -62,6 +62,7 @@ A marca é grafite; o destaque de cada tela é a cor do app aberto. Todas as cor
 | Avaliação de Serviços Sociais (antes Avaliação Diagnóstica) | Cobre | #8C4A2F | #E0A07E |
 | Comunicação | Azul-celeste | #0369A1 | #5CC8F5 |
 | Parcerias | Lilás (decisão de 13/11/2026, proposta #118) | #7E3F98 | #D2A2EA |
+| Saúde | Framboesa (escolhida pelo Desenvolvedor na entrega #68, aguarda a Diretoria; rosada, longe do vermelho de alerta: conferir sempre com nome e ícone) | #A32A52 | #F09AB4 |
 | Projetos | Oliva (decisão de 13/11/2026, proposta #118; esverdeado: conferir sempre com nome e ícone, longe dos alertas) | #5F6B12 | #B8C65A |
 
 Cada app tem também ícone próprio (o mesmo no menu, no cartão do início e nas pendências), definido em `src/plataforma/icones-dos-apps.ts`. Dentro do app, a cor dele marca o item atual do menu, os filtros escolhidos, os links, o ícone e os gráficos de uma série só. O botão principal continua grafite em todos os apps.

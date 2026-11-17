@@ -271,6 +271,26 @@
   }
 }
 
+[data-app='saude'] {
+  --destaque: #a32a52;
+  --destaque-forte: #86223f;
+  --destaque-suave: #f9eef2;
+}
+
+:root[data-tema='escuro'] [data-app='saude'] {
+  --destaque: #f09ab4;
+  --destaque-forte: #f4b3c7;
+  --destaque-suave: #3a2430;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='saude'] {
+    --destaque: #f09ab4;
+    --destaque-forte: #f4b3c7;
+    --destaque-suave: #3a2430;
+  }
+}
+
 /* Reservada na identidade visual para o próximo app:
    Questionários: magenta #a8197f (claro) / #f27acf (escuro) */
 
