@@ -37,6 +37,15 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
       comparam os saldos com o realizado.
 
+### Entrega 1C.2 · painel de execução e recursos livres, pontas para depois (17/11/2026, issue #185)
+
+Especificado em `src/modulos/orcamento/especificacao-execucao-tesouraria.md`, seção "Entrega 1C.2".
+
+- [ ] Perguntas P1 a P6 sobre o WK Radar (correspondências, nível do grupo, folha por área, "a classificar",
+      o que conta como realizado, diferença de cerca de R$ 166 mil): respondê-las junto com a importação.
+- [ ] Aba `Adiantamentos` própria, com baixa escolhida a cada ressarcimento, se a baixa automática não servir.
+- [ ] Exportar a tabela de execução em CSV; clicar no serviço para ver o detalhe filtrado.
+
 ### Folha em caixa, passivo e provisão · para depois (14/11/2026, issue #126)
 
 Especificado em `src/modulos/orcamento/especificacao-folha-caixa-passivo.md`.
