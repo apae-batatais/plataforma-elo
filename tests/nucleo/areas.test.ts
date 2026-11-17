@@ -13,7 +13,7 @@ let p: Planilhas;
 const leitura = () => lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
 const admin = async () => {
   const [usuarios, atribuicoes, perfilPermissoes, servicos] = await leitura();
-  return new Autorizador('diretoria@apaebatatais.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() }, { administradorInicial: true });
+  return new Autorizador('diretoria@inst-a-exemplo.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() }, { administradorInicial: true });
 };
 const area = async (codigo: string) => (await lerTabela(p, Areas)).todos().find((a) => a.codigo === codigo)!;
 
@@ -66,7 +66,7 @@ describe('áreas', () => {
 
   it('só quem gerencia a organização mexe nas áreas', async () => {
     const [usuarios, atribuicoes, perfilPermissoes, servicos] = await leitura();
-    const outro = new Autorizador('alguem@apaebatatais.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
+    const outro = new Autorizador('alguem@inst-a-exemplo.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
     const a = await area('saude');
     await expect(cadastrarArea(p, outro, { nome: 'Nova' })).rejects.toBeInstanceOf(ErroPermissao);
     await expect(editarArea(p, outro, a.id, a.versao, { nome: 'X' })).rejects.toBeInstanceOf(ErroPermissao);

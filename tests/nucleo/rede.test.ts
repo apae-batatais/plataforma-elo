@@ -32,10 +32,10 @@ const franca = (extra: Partial<DadosInstituicao> = {}): DadosInstituicao => ({
   codigo: 'apae-franca',
   nome: 'Apae Franca',
   nomeCompleto: 'Associação de Pais e Amigos dos Excepcionais de Franca',
-  dominio: 'apaefranca.org.br',
-  enderecos: ['elo.apaefranca.org.br'],
+  dominio: 'inst-b-exemplo.org.br',
+  enderecos: ['elo.inst-b-exemplo.org.br'],
   planilhas: { nucleo: ID(1), auditoria: ID(2) },
-  administradoresIniciais: ['ti@apaefranca.org.br'],
+  administradoresIniciais: ['ti@inst-b-exemplo.org.br'],
   unidades: [{ codigo: 'sede', nome: 'Apae Franca (Sede)' }],
   ...extra,
 });
@@ -51,7 +51,7 @@ beforeEach(async () => {
 describe('quem administra a rede', () => {
   it('o administrador inicial da configuração e os cadastrados na planilha; mais ninguém', async () => {
     expect((await operadora()).temPermissao('rede.instituicoes.gerenciar')).toBe(true);
-    const estranho = await autorizadorDaRede(rede, 'alguem@apaefranca.org.br', ['rede@operadora.org']);
+    const estranho = await autorizadorDaRede(rede, 'alguem@inst-b-exemplo.org.br', ['rede@operadora.org']);
     expect(estranho.temPermissao('rede.instituicoes.gerenciar')).toBe(false);
     await expect(painelDaRede(rede, estranho)).rejects.toBeInstanceOf(ErroPermissao);
     await expect(salvarInstituicao(rede, estranho, franca())).rejects.toBeInstanceOf(ErroPermissao);
@@ -81,11 +81,11 @@ describe('cadastro de instituições', () => {
     expect(i).toMatchObject({
       codigo: 'apae-franca',
       nome: 'Apae Franca',
-      dominio: 'apaefranca.org.br',
-      enderecos: ['elo.apaefranca.org.br'],
+      dominio: 'inst-b-exemplo.org.br',
+      enderecos: ['elo.inst-b-exemplo.org.br'],
       situacao: 'preparacao',
       planilhas: { nucleo: ID(1), auditoria: ID(2) },
-      administradoresIniciais: ['ti@apaefranca.org.br'],
+      administradoresIniciais: ['ti@inst-b-exemplo.org.br'],
       unidades: [{ codigo: 'sede', nome: 'Apae Franca (Sede)' }],
     });
   });
@@ -96,17 +96,17 @@ describe('cadastro de instituições', () => {
     const outra = (x: Partial<DadosInstituicao>) =>
       franca({
         codigo: 'apae-batatais',
-        dominio: 'apaebatatais.org.br',
-        enderecos: ['elo.apaebatatais.org.br'],
+        dominio: 'inst-a-exemplo.org.br',
+        enderecos: ['elo.inst-a-exemplo.org.br'],
         administradoresIniciais: [],
         ...x,
       });
     await expect(salvarInstituicao(rede, op, outra({ codigo: 'apae-franca' }))).rejects.toThrow(/código/);
-    await expect(salvarInstituicao(rede, op, outra({ dominio: 'apaefranca.org.br' }))).rejects.toThrow(/domínio/);
-    await expect(salvarInstituicao(rede, op, outra({ enderecos: ['elo.apaefranca.org.br'] }))).rejects.toThrow(/endereço/);
+    await expect(salvarInstituicao(rede, op, outra({ dominio: 'inst-b-exemplo.org.br' }))).rejects.toThrow(/domínio/);
+    await expect(salvarInstituicao(rede, op, outra({ enderecos: ['elo.inst-b-exemplo.org.br'] }))).rejects.toThrow(/endereço/);
     await expect(salvarInstituicao(rede, op, outra({ planilhas: { nucleo: ID(3) } }))).rejects.toThrow(/link da pasta/);
     await expect(salvarInstituicao(rede, op, outra({ planilhas: { nucleo: 'abc', auditoria: ID(4) } }))).rejects.toThrow(/ID da planilha/);
-    await expect(salvarInstituicao(rede, op, outra({ administradoresIniciais: ['ti@gmail.com'] }))).rejects.toThrow(/@apaebatatais.org.br/);
+    await expect(salvarInstituicao(rede, op, outra({ administradoresIniciais: ['ti@gmail.com'] }))).rejects.toThrow(/@inst-a-exemplo.org.br/);
     await expect(salvarInstituicao(rede, op, outra({ enderecos: ['https://elo.x.org.br/'] }))).rejects.toThrow(/sem https/);
     await salvarInstituicao(rede, op, outra({}));
     expect((await instituicoesCadastradas(rede)).map((i) => i.codigo).sort()).toEqual(['apae-batatais', 'apae-franca']);
