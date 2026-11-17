@@ -8,7 +8,7 @@ import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios }
 import { planilhasDeTeste } from '../apoio/planilhas-teste';
 
 let p: Planilhas;
-const DOMINIO = 'apaebatatais.org.br';
+const DOMINIO = 'inst-a-exemplo.org.br';
 
 async function como(email: string, opcoes: { administradorInicial?: boolean } = {}) {
   const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);

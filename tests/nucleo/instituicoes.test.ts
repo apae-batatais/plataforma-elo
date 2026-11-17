@@ -17,8 +17,8 @@ const CREDENCIAIS = {
 };
 const plan = (n: number) => ({ nucleo: `1Nucleo${n}xxxxxx`, auditoria: `1Auditoria${n}xxxx` });
 const DUAS = JSON.stringify([
-  { codigo: 'batatais', nome: 'Apae Batatais', dominio: 'apaebatatais.org.br', enderecos: ['elo.apaebatatais.org.br'], planilhas: plan(1) },
-  { codigo: 'franca', nome: 'Apae Franca', nomeCompleto: 'Apae de Franca', dominio: 'apaefranca.org.br', enderecos: ['https://Elo.ApaeFranca.org.br/'], planilhas: plan(2), administradoresIniciais: ['TI@apaefranca.org.br'] },
+  { codigo: 'batatais', nome: 'Apae Batatais', dominio: 'inst-a-exemplo.org.br', enderecos: ['elo.inst-a-exemplo.org.br'], planilhas: plan(1) },
+  { codigo: 'franca', nome: 'Apae Franca', nomeCompleto: 'Apae de Franca', dominio: 'inst-b-exemplo.org.br', enderecos: ['https://Elo.inst-b-exemplo.org.br/'], planilhas: plan(2), administradoresIniciais: ['TI@inst-b-exemplo.org.br'] },
 ]);
 
 describe('configuração das instituições', () => {
@@ -34,16 +34,16 @@ describe('configuração das instituições', () => {
   it('várias instituições pela variável INSTITUICOES; endereços normalizados', () => {
     const c = lerConfigGeral({ ...CREDENCIAIS, INSTITUICOES: DUAS });
     expect(c.instituicoes.map((i) => i.codigo)).toEqual(['batatais', 'franca']);
-    expect(c.instituicoes[1]).toMatchObject({ enderecos: ['elo.apaefranca.org.br'], administradoresIniciais: ['ti@apaefranca.org.br'], nomeCompleto: 'Apae de Franca' });
+    expect(c.instituicoes[1]).toMatchObject({ enderecos: ['elo.inst-b-exemplo.org.br'], administradoresIniciais: ['ti@inst-b-exemplo.org.br'], nomeCompleto: 'Apae de Franca' });
     // O atalho lerConfig devolve a visão da primeira, no formato usado pelas telas.
-    expect(lerConfig({ ...CREDENCIAIS, INSTITUICOES: DUAS })).toMatchObject({ modo: 'producao', dominio: 'apaebatatais.org.br' });
+    expect(lerConfig({ ...CREDENCIAIS, INSTITUICOES: DUAS })).toMatchObject({ modo: 'producao', dominio: 'inst-a-exemplo.org.br' });
   });
 
   it('recusa código repetido, endereço em duas instituições e instituição sem endereço', () => {
     const base = JSON.parse(DUAS);
     const comErro = (lista: unknown) => () => lerConfigGeral({ ...CREDENCIAIS, INSTITUICOES: JSON.stringify(lista) });
     expect(comErro([base[0], { ...base[1], codigo: 'batatais' }])).toThrow(/mais de uma vez/);
-    expect(comErro([base[0], { ...base[1], enderecos: ['elo.apaebatatais.org.br'] }])).toThrow(/mais de uma instituição/);
+    expect(comErro([base[0], { ...base[1], enderecos: ['elo.inst-a-exemplo.org.br'] }])).toThrow(/mais de uma instituição/);
     expect(comErro([base[0], { ...base[1], enderecos: [] }])).toThrow(/endereço de acesso/);
     expect(comErro('nada')).toThrow(ErroConfiguracao);
   });
@@ -73,8 +73,8 @@ describe('descoberta da instituição pelo endereço', () => {
   const duas = lerConfigGeral({ ...CREDENCIAIS, INSTITUICOES: DUAS });
 
   it('acha pelo endereço (sem diferenciar maiúsculas, com ou sem porta); endereço desconhecido não acha nada', () => {
-    expect(acharInstituicao(duas, 'elo.apaefranca.org.br')?.codigo).toBe('franca');
-    expect(acharInstituicao(duas, 'ELO.apaebatatais.org.br:443')?.codigo).toBe('batatais');
+    expect(acharInstituicao(duas, 'elo.inst-b-exemplo.org.br')?.codigo).toBe('franca');
+    expect(acharInstituicao(duas, 'ELO.inst-a-exemplo.org.br:443')?.codigo).toBe('batatais');
     expect(acharInstituicao(duas, 'plataforma-elo.netlify.app')).toBeNull();
     expect(acharInstituicao(duas, null)).toBeNull();
   });
@@ -101,7 +101,7 @@ describe('sessão por instituição', () => {
   const segredo = 'um-segredo-de-teste-com-mais-de-32-caracteres';
 
   it('a sessão de uma instituição não vale em outra; sessão antiga só com uma instituição', async () => {
-    const t = await assinarSessao(segredo, 'ana@apaefranca.org.br', 'Ana', 'franca');
+    const t = await assinarSessao(segredo, 'ana@inst-b-exemplo.org.br', 'Ana', 'franca');
     const s = (await lerSessao(segredo, t))!;
     expect(s.instituicao).toBe('franca');
     expect(sessaoValeNa(s, 'franca', false)).toBe(true);
