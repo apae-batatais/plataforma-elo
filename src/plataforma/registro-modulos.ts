@@ -36,7 +36,7 @@ export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
     Object.entries(m.permissoesRetiradas).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao }))),
   ),
   // Só enquanto o app Requisições estiver ativo: copia os feriados que ele guardava na aba própria.
-  feriadosAntigos: lerFeriadosAntigos,
+  feriadosAntigos: { planilha: 'requisicoes', ler: lerFeriadosAntigos },
 };
 
 /** Dados fictícios dos módulos, gravados só na demonstração (em memória). */

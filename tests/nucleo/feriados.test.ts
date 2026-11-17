@@ -7,6 +7,7 @@ import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Atribuicoes, Feriados, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { conferirFeriado, feriadosNacionais } from '@/nucleo/feriados/calendario';
 import { feriadosAtivos, incluirFeriado, incluirFeriadosNacionais, listarFeriados, tirarFeriado } from '@/nucleo/feriados/feriados';
+import { FeriadosRequisicoes } from '@/modulos/requisicoes/dados/tabelas';
 import { planilhasDeTeste } from '../apoio/planilhas-teste';
 
 let p: Planilhas;
@@ -79,12 +80,16 @@ describe('migração em "Preparar estrutura"', () => {
       { data: '2026-11-02', nome: 'Finados (repetido)' },
       { data: '2026-12-24', nome: 'Ponto facultativo' },
     ];
+    p = await planilhasDeTeste({ extras: ['requisicoes'] });
     const adm = await comPerfil('adm.teste@exemplo.local', 'administrador_plataforma');
     await incluirFeriado(p, adm, { data: '2026-11-02', nome: 'Já cadastrado' });
-    const r1 = await prepararEstrutura(p, { feriadosAntigos: antigos });
+    const r1 = await prepararEstrutura(p, { tabelas: [FeriadosRequisicoes], feriadosAntigos: { planilha: 'requisicoes', ler: antigos } });
     expect(r1.ajustes).toEqual(['1 feriados copiados para o Núcleo']);
-    const r2 = await prepararEstrutura(p, { feriadosAntigos: antigos });
+    const r2 = await prepararEstrutura(p, { tabelas: [FeriadosRequisicoes], feriadosAntigos: { planilha: 'requisicoes', ler: antigos } });
     expect(r2.ajustes).toEqual([]);
+    // Sem a planilha do módulo entre as preparadas, a migração é pulada.
+    const semModulo = await planilhasDeTeste();
+    expect((await prepararEstrutura(semModulo, { feriadosAntigos: { planilha: 'requisicoes', ler: antigos } })).ajustes).toEqual([]);
     const ativos = (await lerTabela(p, Feriados)).ativos();
     expect(ativos.map((f) => f.data).sort()).toEqual(['2026-11-02', '2026-12-24']);
     expect(ativos.find((f) => f.data === '2026-11-02')?.nome).toBe('Já cadastrado');

@@ -5,5 +5,5 @@
 - [x] 3. Requisições lê do Núcleo
 - [x] 4. Comunicação usa feriados nos dias úteis
 - [x] 5. Tela Administração › Feriados e menu
-- [ ] 6. `npm run verificar` e `npm run build` verdes
-- [ ] PR de entrega aberto
+- [x] 6. `npm run verificar` e `npm run build` verdes
+- [x] PR de entrega aberto

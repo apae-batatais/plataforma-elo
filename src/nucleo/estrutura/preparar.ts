@@ -28,7 +28,7 @@ export interface EstruturaDosModulos {
   /** Permissões que uma versão anterior deu e que deixaram de valer: "Preparar estrutura" desativa. */
   permissoesRetiradas?: readonly { perfil: string; permissao: string }[];
   /** Feriados que um módulo guardava por conta própria; "Preparar estrutura" copia para o Núcleo (sem repetir data). */
-  feriadosAntigos?: (p: Planilhas) => Promise<readonly { data: string; nome: string }[]>;
+  feriadosAntigos?: { planilha: string; ler: (p: Planilhas) => Promise<readonly { data: string; nome: string }[]> };
 }
 
 export async function prepararEstrutura(
@@ -76,8 +76,9 @@ export async function prepararEstrutura(
     ajustes.push(...aRetirar.map((x) => `permissão retirada: ${x.perfil} › ${x.permissao}`));
   }
 
-  if (modulos.feriadosAntigos) {
-    const copiados = await copiarFeriados(p, await modulos.feriadosAntigos(p), autor);
+  // Só quando a planilha do módulo está entre as preparadas (módulo ativo e planilha informada).
+  if (modulos.feriadosAntigos && porPlanilha.has(modulos.feriadosAntigos.planilha)) {
+    const copiados = await copiarFeriados(p, await modulos.feriadosAntigos.ler(p), autor);
     if (copiados) ajustes.push(`${copiados} feriados copiados para o Núcleo`);
   }
 
