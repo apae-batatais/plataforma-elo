@@ -1,6 +1,6 @@
 # Especificação — Módulo Educação (avaliação de evolução)
 
-- Situação: rascunho, aguardando aprovação da Diretoria (issue #163)
+- Situação: aprovada (PR #171); entrega 1 (aplicar e fechar) construída, entregas 2 e 3 pendentes (issue #163)
 - Dono do produto: Diretoria
 - Arquitetura: ADR-029 (usa o motor da ADR-026 e as regras das ADR-006 e ADR-007)
 - Depende de: entrega 1 do motor de avaliação (issue #62, `src/capacidades/motor-avaliacao/`)
@@ -205,6 +205,12 @@ Três entregas, pequenas o bastante para ficar nesta issue (sem sub-issues; a Di
 8. **Ciente da coordenação** é gravado na aplicação, sem exigir assinatura digital; a assinatura continua na ficha impressa.
 9. **"Menor pontuação" da principal barreira medida em % do máximo da dimensão**, não em pontos brutos, porque Adequação só vai a 6 e perderia sempre. _Custo:_ se a equipe quer pontos brutos, muda só essa regra de cálculo e os textos do painel; nada gravado muda, pois o campo não é guardado.
 10. **Rota `/educacao`** e permissões `educacao.*`; o app nasce com o nome "Educação".
+11. **Permissão `educacao.ciente`** (entrega 1). A regra 12 pede "perfil de coordenação ou Diretoria", mas o `Autorizador` só conhece permissões, não perfis. Criei a permissão `educacao.ciente` (Diretoria e coordenação de serviço), no escopo do serviço. _Custo:_ se a Diretoria quiser outro desenho, muda só o manifesto.
+12. **Instrumentos entram na aba na primeira vez que o app é usado** (idempotente, auditados como "sistema"), porque "Preparar estrutura" não grava dados. _Custo:_ nenhum visível; se preferir carga manual, vira uma ação da administração.
+13. **Legenda de encaminhamento por faixa**: o documento passado traz só o nome das três faixas; não inventei o texto de encaminhamento. A tela mostra a faixa e os pontos. _Custo:_ quando a Diretoria enviar os textos, entram como nova versão do instrumento.
+14. **Cor do app Educação: ocre** (#8A6D00 claro, #E6C85A escuro), escolhida por mim; o magenta continua reservado para Questionários. Dourado fica perto do aviso âmbar, por isso vem sempre com nome e ícone. _Custo:_ trocar só em `globals.css` e `docs/identidade-visual.md`.
+15. **Instrumento sugerido pelo nome do serviço** (contém "infantil", "fundamental" ou "trabalho"); se não bater, a pessoa escolhe. _Custo:_ se os serviços tiverem outros nomes, a sugestão não aparece, mas nada quebra.
+16. **Corrigir**: a aplicação corrigida continua na lista com a etiqueta "Corrigida" (o comparativo da entrega 2 usa só a vigente).
 
 ## Critérios de pronto
 

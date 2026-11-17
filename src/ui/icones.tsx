@@ -58,6 +58,13 @@ export const IconeAvaliacao = (p: Props) => (
     <path d="M9 4V3h6v1M7 14h2.5l1.5-3 2 5 1.5-2H17" />
   </Icone>
 );
+/** Educação: capelo de formatura. */
+export const IconeEducacao = (p: Props) => (
+  <Icone {...p}>
+    <path d="M2 9l10-5 10 5-10 5L2 9Z" />
+    <path d="M6 11.5V16c0 1.2 2.7 3 6 3s6-1.8 6-3v-4.5M22 9v6" />
+  </Icone>
+);
 export const IconeComunicacao = (p: Props) => (
   <Icone {...p}>
     <path d="M3 10v4a1 1 0 0 0 1 1h3l9 5V4L7 9H4a1 1 0 0 0-1 1Z" />
@@ -257,6 +264,7 @@ export const ICONES = {
   comunicacao: IconeComunicacao,
   avaliacao: IconeAvaliacao,
   saude: IconeSaude,
+  educacao: IconeEducacao,
   parcerias: IconeParcerias,
   projetos: IconeProjetos,
   acessos: IconeChave,
