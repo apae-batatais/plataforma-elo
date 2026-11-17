@@ -6,6 +6,12 @@
 #  - a Diretoria comenta numa issue que está em "Proposta" (resposta às perguntas do Arquiteto).
 # O Arquiteto pergunta na issue o que não souber ou abre o PR de especificação ("Especifica #n").
 #
+# Issue já aberta com a etiqueta "etapa: proposta" (por exemplo, migrada em lote do backlog ou
+# aberta pela conversa Product Owner já etiquetada) ainda conta como "sem etapa além de Proposta":
+# só uma etiqueta de etapa mais adiante (especificação, construção, etc.) impede o agente de rodar
+# na abertura. Achado em 17/11/2026: várias propostas (#66, #67, #184 a #186) nasceram puladas
+# ("skipped") porque a condição excluía qualquer etiqueta "etapa: …", inclusive a de proposta.
+#
 # Precisa do Secret CLAUDE_CODE_OAUTH_TOKEN (token da assinatura do Claude) e do app do
 # Claude instalado no repositório.
 # Se falhar, marca a issue com "falha de agente" para o DevOps resolver (sem chamar a Diretoria).
@@ -40,8 +46,9 @@ jobs:
     if: >-
       (github.event_name == 'issues' &&
         github.event.issue.user.login == 'diretoria823' &&
-        !contains(join(github.event.issue.labels.*.name, ','), 'etapa: ') &&
-        !contains(join(github.event.issue.labels.*.name, ','), 'pendência da Diretoria')) ||
+        !contains(join(github.event.issue.labels.*.name, ','), 'pendência da Diretoria') &&
+        (!contains(join(github.event.issue.labels.*.name, ','), 'etapa: ') ||
+          contains(github.event.issue.labels.*.name, 'etapa: proposta'))) ||
       (github.event_name == 'issue_comment' && !github.event.issue.pull_request &&
         github.event.comment.user.login == 'diretoria823' &&
         !contains(github.event.comment.body, '@claude') &&
