@@ -18,5 +18,15 @@
     "nome": "ROTINA_TOKEN",
     "vence": null,
     "renovar": "Gere uma chave nova (mínimo 32 caracteres aleatórios) e troque o mesmo valor em dois lugares: plataforma-elo → Settings → Secrets and variables → Actions → ROTINA_TOKEN, e a variável de ambiente ROTINA_TOKEN no site da Netlify (depois, publique de novo)."
+  },
+  {
+    "nome": "META_APP_SECRET",
+    "vence": null,
+    "renovar": "No painel de apps da Meta (developers.facebook.com), em Configurações do app, gere um segredo novo e troque o valor da variável de ambiente META_APP_SECRET no site da Netlify (depois, publique de novo). Quem conectou o Instagram não precisa reconectar."
+  },
+  {
+    "nome": "ELO_CHAVE_CREDENCIAIS",
+    "vence": null,
+    "renovar": "Trocar esta chave torna ilegíveis as credenciais já guardadas: depois de trocar a variável ELO_CHAVE_CREDENCIAIS no site da Netlify (mínimo 32 caracteres aleatórios; publique de novo), cada instituição precisa reconectar o Instagram em Comunicação › Configurações."
   }
 ]

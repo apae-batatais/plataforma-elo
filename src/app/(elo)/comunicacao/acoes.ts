@@ -10,6 +10,7 @@ import { iniciarEnvioAnexoComunicacao, type AnexoPedido } from '@/modulos/comuni
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { mudarSituacaoContato, mudarSituacaoGrupo, salvarContato, salvarGrupo } from '@/modulos/comunicacao/aplicacao/contatos';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
+import { desconectarInstagram, iniciarConexaoInstagram } from '@/modulos/comunicacao/aplicacao/instagram';
 import {
   ACOES_DA_DECISAO,
   ACOES_DA_REVISAO,
@@ -30,6 +31,8 @@ import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
+import { configGeral } from '@/plataforma/instituicao';
+import { provedorDeInstagram, retornoDoInstagram } from '@/plataforma/instagram';
 import { usuarioLogado } from '@/plataforma/sessao';
 
 async function contexto() {
@@ -126,6 +129,31 @@ export async function acaoSalvarAntecedencia(f: FormData) {
     '/comunicacao/configuracoes',
     'Antecedência mínima salva.',
     ({ usuario, app }) => salvarAntecedencia(app.planilhas, usuario.autorizador, t === '' ? Number.NaN : Number(t), { versao: v === '' ? null : Number(v) }),
+  );
+}
+
+/** Leva a pessoa à Meta para autorizar (na demonstração, volta direto com uma conta fictícia). */
+export async function acaoConectarInstagram() {
+  const { usuario, app } = await contexto();
+  const pagina = '/comunicacao/configuracoes';
+  const provedor = provedorDeInstagram(configGeral());
+  if (!provedor) redirect(comMensagem(pagina, 'erro', 'A ligação com o Instagram ainda não foi configurada pela Operadora do Elo.'));
+  let destino: string;
+  try {
+    destino = await iniciarConexaoInstagram(provedor, app.config.segredoSessao, usuario.autorizador, app.instituicao.codigo, await retornoDoInstagram());
+  } catch (erro) {
+    if (!conhecido(erro)) throw erro;
+    destino = comMensagem(pagina, 'erro', (erro as Error).message);
+  }
+  redirect(destino);
+}
+
+export async function acaoDesconectarInstagram() {
+  await executar(
+    () => '/comunicacao/configuracoes',
+    '/comunicacao/configuracoes',
+    'Instagram desconectado. O Elo deixa de publicar até você conectar de novo.',
+    ({ usuario, app }) => desconectarInstagram(app.planilhas, usuario.autorizador, app.instituicao.codigo),
   );
 }
 

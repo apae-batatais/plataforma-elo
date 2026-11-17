@@ -1,6 +1,6 @@
 # ADR-028 — Credenciais por instituição guardadas na plataforma e publicação no Instagram
 
-- Situação: proposta (15/11/2026), a aprovar com a especificação da issue #64
+- Situação: aceita (especificação da issue #64 aprovada); entrega 1 construída em 17/11/2026
 - Data: 15/11/2026
 
 ## Contexto
@@ -64,3 +64,13 @@ com trechos antigos dizendo 50; usar o menor, 50).
 - Limites de tamanho de resposta da hospedagem (Netlify) para vídeos grandes precisam ser medidos na
   construção (entrega 3); se não couberem, o limite de tamanho do vídeo na especificação diminui.
 - Depende da #63 (peça de rotina e padrão de fila, ADR-027), que deve entrar antes.
+
+## Como ficou na entrega 1 (17/11/2026)
+- Peça `src/nucleo/credenciais/`: `cifra.ts` (AES-256-GCM; a instituição e o serviço entram como dado autenticado,
+  então uma linha copiada para outra instituição não decifra), `credenciais.ts` (conectar, desconectar, segredo para
+  uso interno, renovação) e `instagram.ts` (Meta e provedor fictício da demonstração; estado da conexão assinado,
+  preso à pessoa e à instituição, com validade de 10 minutos).
+- A volta da Meta é `/comunicacao/instagram/retorno`, dentro do login do Elo. O endereço usa o domínio que a pessoa
+  está usando e precisa estar cadastrado no app da Meta.
+- A rotina ganhou a tarefa `credenciais.instagram`. Falhou a renovação: `expirando`; vencido: `expirada`.
+- Reconectar a mesma conta atualiza a linha; outra conta exige desconectar antes (nova linha, a antiga fica encerrada).

@@ -144,6 +144,28 @@ export const Encarregados = definirTabela({
   sigilo: { documento: 'pessoal' },
 });
 
+// Credenciais de serviços externos, por instituição (ADR-028) ----------------
+export const SERVICOS_DE_CREDENCIAL = ['instagram'] as const;
+export const SITUACOES_DE_CREDENCIAL = ['conectada', 'expirando', 'expirada', 'desconectada'] as const;
+
+export const Credenciais = definirTabela({
+  planilha: 'nucleo',
+  aba: 'Credenciais',
+  esquema: z.object({
+    instituicao: texto(),
+    servico: z.enum(SERVICOS_DE_CREDENCIAL),
+    /** Identificação da conta no serviço (ex.: nome de usuário do Instagram). */
+    conta: textoOpcional(),
+    /** Texto cifrado (AES-256-GCM). Vazio quando desconectada. Nunca sai da camada de aplicação. */
+    valor_cifrado: textoOpcional(),
+    vence_em: textoOpcional(),
+    situacao: z.enum(SITUACOES_DE_CREDENCIAL),
+    conectado_por: textoOpcional(),
+    conectado_em: textoOpcional(),
+  }),
+  sigilo: { valor_cifrado: 'sensivel', conectado_por: 'pessoal' },
+});
+
 // Auditoria (planilha própria, somente inclusão) ---------------------------
 export const ACOES_AUDITORIA = ['leitura', 'inclusao', 'alteracao', 'encerramento', 'exportacao', 'entrada', 'estrutura'] as const;
 
@@ -163,7 +185,7 @@ export const RegistrosAuditoria = definirTabela({
 
 export const TABELAS_DO_NUCLEO = [
   Unidades, Areas, Servicos, Pessoas, Papeis, VinculosFamiliares, VinculosServico,
-  Usuarios, Perfis, PerfilPermissoes, Atribuicoes, Encarregados, RegistrosAuditoria,
+  Usuarios, Perfis, PerfilPermissoes, Atribuicoes, Encarregados, Credenciais, RegistrosAuditoria,
 ] as const;
 
 // Tipos dos registros ------------------------------------------------------
@@ -176,4 +198,5 @@ export type RegUsuario = Registro<typeof Usuarios.esquema>;
 export type RegPerfil = Registro<typeof Perfis.esquema>;
 export type RegPerfilPermissao = Registro<typeof PerfilPermissoes.esquema>;
 export type RegEncarregado = Registro<typeof Encarregados.esquema>;
+export type RegCredencial = Registro<typeof Credenciais.esquema>;
 export type RegAtribuicao = Registro<typeof Atribuicoes.esquema>;

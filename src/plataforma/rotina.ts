@@ -9,18 +9,16 @@ import 'server-only';
 import { timingSafeEqual } from 'node:crypto';
 import type { Aplicacao } from './aplicacao';
 import { aplicacaoDa } from './aplicacao';
+import { tarefaDeCredenciais } from './credenciais';
+import type { TarefaDaRotina } from './tarefa-da-rotina';
+
+export type { TarefaDaRotina };
 import { configGeral } from './instituicao';
 import { instituicoesDoElo } from './rede';
 
-export interface TarefaDaRotina {
-  /** Identificador estável, usado no resultado (ex.: "comunicacao.envios"). */
-  id: string;
-  /** Roda a tarefa da instituição; devolve contagens (ex.: { enviados: 2 }). */
-  executar(app: Aplicacao, agora: Date): Promise<Record<string, number>>;
-}
 
-/** Tarefas dos apps. Vazia até a entrega 2 da proposta #63 (envios da Comunicação). */
-export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [];
+/** Tarefas da plataforma e dos apps (envios da Comunicação entram na entrega 2 da proposta #63). */
+export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [tarefaDeCredenciais];
 
 export interface ResultadoDaRotina {
   instituicoes: number;

@@ -14,3 +14,5 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   recebe inclusões; calendário e contatos são encerrados com `ativo = FALSE`.
 - Datas do dia sempre no horário de Brasília (`diaEmBrasilia`), nunca `toISOString().slice(0, 10)` direto.
 - Permissões: `comunicacao.<recurso>.<acao>`, declaradas no manifesto.
+- Instagram (ADR-028): `aplicacao/instagram.ts` usa a peça `src/nucleo/credenciais/`. O token nunca sai da camada de
+  aplicação (tela, rota, log, erro e auditoria não o mostram); só `comunicacao.configurar` conecta e desconecta.

@@ -17,6 +17,7 @@ instituições, que continuam no Drive de cada uma.
 | 5 | **Planilha da rede** e Drive "Elo · Operadora": transferir a propriedade | Operadora de hoje | A empresa abre a planilha e a área da rede |
 | 6 | **Variáveis da Netlify:** conferir `GOOGLE_CONTA_SERVICO`, `GOOGLE_CLIENT_ID`, `SESSAO_SEGREDO` e `REDE`. Cada valor é gerado no Google Cloud (os três primeiros) ou montado conforme `docs/especificacao-rede.md` (`REDE`) | Empresa | Site publicado de novo sem erro |
 | 6a | **Rotina agendada (ADR-027):** conferir os Secrets `ROTINA_URL` e `ROTINA_TOKEN` no GitHub e a variável `ROTINA_TOKEN` (o mesmo valor) na Netlify | Empresa | O workflow Rotina termina com sucesso |
+| 6b | **Instagram da Comunicação (ADR-028):** conferir as variáveis `META_APP_ID`, `META_APP_SECRET` (app Meta do Elo, titularidade da empresa) e `ELO_CHAVE_CREDENCIAIS` (chave que cifra as contas conectadas; perdê-la obriga cada instituição a reconectar) | Empresa | Em Comunicação › Configurações o botão "Conectar Instagram" aparece |
 | 7 | **Marca Elo e domínio da rede** em nome da empresa | Empresa | Registro e domínio na titularidade da empresa |
 | 8 | **Contratos:** termo novo ou aditivo com a empresa como Operadora (`docs/termo-adesao.md`); avisar cada instituição **antes** da troca | Empresa | Termo assinado por cada instituição |
 | 9 | **Conferência final:** cada instituição entra pelo próprio endereço; a Administração da rede vê o cadastro; publicação e login funcionam | Empresa | Lista de verificação abaixo |
