@@ -13,7 +13,7 @@ let p: Planilhas;
 const leitura = () => lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
 const admin = async () => {
   const [usuarios, atribuicoes, perfilPermissoes, servicos] = await leitura();
-  return new Autorizador('diretoria@apaebatatais.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() }, { administradorInicial: true });
+  return new Autorizador('diretoria@inst-a-exemplo.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() }, { administradorInicial: true });
 };
 const servico = async (codigo: string) => (await lerTabela(p, Servicos)).todos().find((s) => s.codigo === codigo)!;
 
@@ -62,8 +62,8 @@ describe('excluir e reativar serviço', () => {
 
   it('não exclui serviço com perfil de acesso ou atendido ligado a ele', async () => {
     const adm = await admin();
-    await cadastrarUsuario(p, adm, { email: 'coord@apaebatatais.org.br', nome: 'Coordenação Fictícia' }, null);
-    await atribuirPerfil(p, adm, { email: 'coord@apaebatatais.org.br', perfil: 'coordenacao_servico', escopoTipo: 'servico', escopo: 'oficina' });
+    await cadastrarUsuario(p, adm, { email: 'coord@inst-a-exemplo.org.br', nome: 'Coordenação Fictícia' }, null);
+    await atribuirPerfil(p, adm, { email: 'coord@inst-a-exemplo.org.br', perfil: 'coordenacao_servico', escopoTipo: 'servico', escopo: 'oficina' });
     const s = await servico('oficina');
     await expect(excluirServico(p, adm, s.id, s.versao)).rejects.toThrow(/perfil de acesso/);
 
@@ -75,7 +75,7 @@ describe('excluir e reativar serviço', () => {
 
   it('só quem gerencia a organização edita, exclui ou reativa', async () => {
     const [usuarios, atribuicoes, perfilPermissoes, servicos] = await leitura();
-    const outro = new Autorizador('alguem@apaebatatais.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
+    const outro = new Autorizador('alguem@inst-a-exemplo.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
     const s = await servico('oficina');
     await expect(editarServico(p, outro, s.id, s.versao, { nome: 'X', unidade: 'sede', area: 'saude', vagas: null })).rejects.toBeInstanceOf(ErroPermissao);
     await expect(excluirServico(p, outro, s.id, s.versao)).rejects.toBeInstanceOf(ErroPermissao);

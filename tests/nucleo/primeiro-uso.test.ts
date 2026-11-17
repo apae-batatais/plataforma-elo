@@ -12,7 +12,7 @@ import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
 import { Usuarios } from '@/nucleo/estrutura/tabelas';
 import { carregarUsuario, podeEntrar } from '@/nucleo/sessao/carregar';
 
-const ADMIN = { email: 'diretoria@apaebatatais.org.br', nome: 'Diretoria' };
+const ADMIN = { email: 'diretoria@inst-a-exemplo.org.br', nome: 'Diretoria' };
 
 function planilhasEmBranco(): Planilhas {
   return { armazenamento: new ArmazenamentoMemoria(['nucleo', 'auditoria']), idDe: (c) => c };
@@ -30,8 +30,8 @@ describe('primeiro uso com planilhas em branco', () => {
 
   it('qualquer outra pessoa não entra', async () => {
     const p = planilhasEmBranco();
-    expect(await podeEntrar(p, 'outra@apaebatatais.org.br', false)).toBe(false);
-    expect(await carregarUsuario(p, { email: 'outra@apaebatatais.org.br', nome: 'Outra' }, { administradorInicial: false })).toBeNull();
+    expect(await podeEntrar(p, 'outra@inst-a-exemplo.org.br', false)).toBe(false);
+    expect(await carregarUsuario(p, { email: 'outra@inst-a-exemplo.org.br', nome: 'Outra' }, { administradorInicial: false })).toBeNull();
   });
 
   it('planilha sem acesso: o login mostra o motivo, mesmo para a administradora inicial', async () => {

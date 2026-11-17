@@ -35,12 +35,15 @@ jobs:
   fluxo:
     runs-on: ubuntu-latest
     # Só roda quando o evento pode mudar uma etapa (job pulado não gasta minutos):
-    # - issue aberta, ou etiqueta "etapa: …" posta ou tirada;
+    # - issue aberta pela Diretoria ou por uma automação (repositório público: issue de outra pessoa
+    #   não vira proposta), ou etiqueta "etapa: …" posta ou tirada;
     # - PR com etiqueta de tipo ("PR: especificação" ou "PR: entrega"), fora de forks; etiqueta posta
     #   ou tirada num PR só conta se for de tipo ("pergunta aberta" e "falha de agente" não movem etapa);
     # - publicação oficial (não as prévias); sincronização à mão.
     if: >-
-      (github.event_name == 'issues' && (github.event.action == 'opened' || startsWith(github.event.label.name, 'etapa: '))) ||
+      (github.event_name == 'issues' &&
+        ((github.event.action == 'opened' && (github.event.issue.user.login == 'diretoria823' || github.event.issue.user.type == 'Bot')) ||
+          startsWith(github.event.label.name, 'etapa: '))) ||
       (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
         (contains(github.event.pull_request.labels.*.name, 'PR: especificação') || contains(github.event.pull_request.labels.*.name, 'PR: entrega')) &&
         ((github.event.action != 'labeled' && github.event.action != 'unlabeled') || startsWith(github.event.label.name, 'PR: '))) ||

@@ -19,7 +19,7 @@ const como = async (email: string, administradorInicial = false) => {
     { administradorInicial },
   );
 };
-const admin = () => como('diretoria@apaebatatais.org.br', true);
+const admin = () => como('diretoria@inst-a-exemplo.org.br', true);
 const prontas = (l: Awaited<ReturnType<typeof analisarUsuariosEmLote>>) =>
   l
     .filter((x) => ['novo', 'perfil', 'reativar'].includes(x.situacao))
@@ -27,13 +27,13 @@ const prontas = (l: Awaited<ReturnType<typeof analisarUsuariosEmLote>>) =>
 
 const LISTA = [
   'Nome\tE-mail\tPerfil\tVale para',
-  'Ana Exemplo\tANA.EXEMPLO@apaebatatais.org.br',
-  'Bruno Exemplo\tbruno.exemplo@apaebatatais.org.br\tCoordenação de serviço\tEducação',
-  'Carla Exemplo;carla.exemplo@apaebatatais.org.br;financeiro',
+  'Ana Exemplo\tANA.EXEMPLO@inst-a-exemplo.org.br',
+  'Bruno Exemplo\tbruno.exemplo@inst-a-exemplo.org.br\tCoordenação de serviço\tEducação',
+  'Carla Exemplo;carla.exemplo@inst-a-exemplo.org.br;financeiro',
   'Davi Exemplo\tdavi@gmail.com',
-  'Eva Exemplo\teva.exemplo@apaebatatais.org.br\tPerfil Inventado',
-  'Fábio Exemplo\tfabio.exemplo@apaebatatais.org.br\tFuncionário\tLugar Nenhum',
-  'Ana de novo\tana.exemplo@apaebatatais.org.br',
+  'Eva Exemplo\teva.exemplo@inst-a-exemplo.org.br\tPerfil Inventado',
+  'Fábio Exemplo\tfabio.exemplo@inst-a-exemplo.org.br\tFuncionário\tLugar Nenhum',
+  'Ana de novo\tana.exemplo@inst-a-exemplo.org.br',
   'Gil\tsem-arroba',
 ].join('\n');
 
@@ -47,18 +47,18 @@ describe('acessos em lote', () => {
   });
 
   it('lê a lista: perfil padrão Funcionário, perfil e escopo pelo nome, domínio institucional, repetidos e erros', async () => {
-    const r = await analisarUsuariosEmLote(p, await admin(), LISTA, 'apaebatatais.org.br');
+    const r = await analisarUsuariosEmLote(p, await admin(), LISTA, 'inst-a-exemplo.org.br');
     expect(r.map((l) => [l.email, l.perfil, l.escopoTipo, l.escopo, l.situacao])).toEqual([
-      ['ana.exemplo@apaebatatais.org.br', 'funcionario', 'global', null, 'novo'],
-      ['bruno.exemplo@apaebatatais.org.br', 'coordenacao_servico', 'area', 'educacao', 'novo'],
-      ['carla.exemplo@apaebatatais.org.br', 'financeiro', 'global', null, 'novo'],
+      ['ana.exemplo@inst-a-exemplo.org.br', 'funcionario', 'global', null, 'novo'],
+      ['bruno.exemplo@inst-a-exemplo.org.br', 'coordenacao_servico', 'area', 'educacao', 'novo'],
+      ['carla.exemplo@inst-a-exemplo.org.br', 'financeiro', 'global', null, 'novo'],
       ['davi@gmail.com', 'funcionario', 'global', null, 'erro'],
-      ['eva.exemplo@apaebatatais.org.br', null, 'global', null, 'erro'],
-      ['fabio.exemplo@apaebatatais.org.br', 'funcionario', 'global', null, 'erro'],
-      ['ana.exemplo@apaebatatais.org.br', 'funcionario', 'global', null, 'ja_existe'],
+      ['eva.exemplo@inst-a-exemplo.org.br', null, 'global', null, 'erro'],
+      ['fabio.exemplo@inst-a-exemplo.org.br', 'funcionario', 'global', null, 'erro'],
+      ['ana.exemplo@inst-a-exemplo.org.br', 'funcionario', 'global', null, 'ja_existe'],
       ['sem-arroba', 'funcionario', 'global', null, 'erro'],
     ]);
-    expect(r[3].problema).toMatch(/@apaebatatais.org.br/);
+    expect(r[3].problema).toMatch(/@inst-a-exemplo.org.br/);
     expect(r[4].problema).toMatch(/Perfil "Perfil Inventado" não encontrado/);
     expect(r[5].problema).toMatch(/"Lugar Nenhum" não é unidade, área nem serviço/);
     expect(r[1].escopoNome).toBe('Área Educação');
@@ -69,9 +69,9 @@ describe('acessos em lote', () => {
     const linhas = prontas(await analisarUsuariosEmLote(p, adm, LISTA, null));
     expect(await cadastrarUsuariosEmLote(p, adm, linhas, null)).toEqual({ novos: 4, reativados: 0, perfis: 4 }); // sem domínio exigido, o gmail passa
     const usuarios = (await lerTabela(p, Usuarios)).ativos().map((u) => u.email);
-    expect(usuarios).toEqual(expect.arrayContaining(['ana.exemplo@apaebatatais.org.br', 'bruno.exemplo@apaebatatais.org.br']));
-    expect((await lerTabela(p, Pessoas)).ativos().find((x) => x.email === 'ana.exemplo@apaebatatais.org.br')?.nome).toBe('Ana Exemplo');
-    const bruno = (await lerTabela(p, Atribuicoes)).ativos().find((a) => a.usuario_email === 'bruno.exemplo@apaebatatais.org.br');
+    expect(usuarios).toEqual(expect.arrayContaining(['ana.exemplo@inst-a-exemplo.org.br', 'bruno.exemplo@inst-a-exemplo.org.br']));
+    expect((await lerTabela(p, Pessoas)).ativos().find((x) => x.email === 'ana.exemplo@inst-a-exemplo.org.br')?.nome).toBe('Ana Exemplo');
+    const bruno = (await lerTabela(p, Atribuicoes)).ativos().find((a) => a.usuario_email === 'bruno.exemplo@inst-a-exemplo.org.br');
     expect([bruno?.perfil, bruno?.escopo_tipo, bruno?.escopo]).toEqual(['coordenacao_servico', 'area', 'educacao']);
     const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'Usuarios' || a.entidade === 'Atribuicoes');
     expect(aud.map((a) => [a.entidade, a.detalhes])).toEqual([
@@ -81,24 +81,24 @@ describe('acessos em lote', () => {
     expect(JSON.stringify(aud)).not.toMatch(/exemplo@/);
     await expect(cadastrarUsuariosEmLote(p, adm, linhas, null)).rejects.toThrow(/já foi cadastrada/);
     // A Ana entra e só vê o básico: pedir e acompanhar as próprias requisições.
-    const ana = await como('ana.exemplo@apaebatatais.org.br');
+    const ana = await como('ana.exemplo@inst-a-exemplo.org.br');
     expect(ana.temPermissao('core.acessos.gerenciar')).toBe(false);
     // Sem permissão de ver pessoas, o item Pessoas some do menu (a lista viria vazia).
     const menu = (aut: Autorizador) => navegacaoDoUsuario(aut, false).flatMap((g) => g.itens.map((i) => i.rotulo));
     expect(menu(ana)).not.toContain('Pessoas');
-    expect(menu(await como('bruno.exemplo@apaebatatais.org.br'))).toContain('Pessoas');
+    expect(menu(await como('bruno.exemplo@inst-a-exemplo.org.br'))).toContain('Pessoas');
   });
 
   it('quem já tem acesso só ganha o perfil; acesso desativado é reativado', async () => {
     const adm = await admin();
-    await cadastrarUsuario(p, adm, { nome: 'Gabi Exemplo', email: 'gabi@apaebatatais.org.br' }, null);
-    await cadastrarUsuario(p, adm, { nome: 'Hugo Exemplo', email: 'hugo@apaebatatais.org.br', perfil: 'funcionario' }, null);
-    const hugo = (await lerTabela(p, Usuarios)).ativos().find((u) => u.email === 'hugo@apaebatatais.org.br')!;
+    await cadastrarUsuario(p, adm, { nome: 'Gabi Exemplo', email: 'gabi@inst-a-exemplo.org.br' }, null);
+    await cadastrarUsuario(p, adm, { nome: 'Hugo Exemplo', email: 'hugo@inst-a-exemplo.org.br', perfil: 'funcionario' }, null);
+    const hugo = (await lerTabela(p, Usuarios)).ativos().find((u) => u.email === 'hugo@inst-a-exemplo.org.br')!;
     await desativarUsuario(p, adm, hugo.id, hugo.versao);
-    const r = await analisarUsuariosEmLote(p, adm, 'Gabi Exemplo\tgabi@apaebatatais.org.br\nHugo Exemplo\thugo@apaebatatais.org.br', null);
+    const r = await analisarUsuariosEmLote(p, adm, 'Gabi Exemplo\tgabi@inst-a-exemplo.org.br\nHugo Exemplo\thugo@inst-a-exemplo.org.br', null);
     expect(r.map((x) => x.situacao)).toEqual(['perfil', 'reativar']);
     expect(await cadastrarUsuariosEmLote(p, adm, prontas(r), null)).toEqual({ novos: 0, reativados: 1, perfis: 1 });
-    expect((await lerTabela(p, Usuarios)).ativos().some((u) => u.email === 'hugo@apaebatatais.org.br')).toBe(true);
+    expect((await lerTabela(p, Usuarios)).ativos().some((u) => u.email === 'hugo@inst-a-exemplo.org.br')).toBe(true);
     // O cadastro um a um com perfil já sai com o Funcionário.
     expect(
       (await lerTabela(p, Atribuicoes))
@@ -106,10 +106,10 @@ describe('acessos em lote', () => {
         .filter((a) => a.perfil === 'funcionario')
         .map((a) => a.usuario_email)
         .sort(),
-    ).toEqual(['gabi@apaebatatais.org.br', 'hugo@apaebatatais.org.br']);
+    ).toEqual(['gabi@inst-a-exemplo.org.br', 'hugo@inst-a-exemplo.org.br']);
   });
 
   it('só quem gerencia acessos usa o lote', async () => {
-    await expect(analisarUsuariosEmLote(p, await como('ninguem@apaebatatais.org.br'), LISTA, null)).rejects.toBeInstanceOf(ErroPermissao);
+    await expect(analisarUsuariosEmLote(p, await como('ninguem@inst-a-exemplo.org.br'), LISTA, null)).rejects.toBeInstanceOf(ErroPermissao);
   });
 });

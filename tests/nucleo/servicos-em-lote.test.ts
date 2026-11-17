@@ -12,7 +12,7 @@ import { planilhasDeTeste } from '../apoio/planilhas-teste';
 let p: Planilhas;
 const admin = async () => {
   const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
-  return new Autorizador('diretoria@apaebatatais.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() }, { administradorInicial: true });
+  return new Autorizador('diretoria@inst-a-exemplo.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() }, { administradorInicial: true });
 };
 
 const LISTA = [
@@ -64,7 +64,7 @@ describe('serviços em lote', () => {
 
   it('só quem gerencia a organização usa o cadastro em lote', async () => {
     const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
-    const outro = new Autorizador('alguem@apaebatatais.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
+    const outro = new Autorizador('alguem@inst-a-exemplo.org.br', { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() });
     await expect(analisarServicosEmLote(p, outro, LISTA)).rejects.toBeInstanceOf(ErroPermissao);
     await expect(cadastrarServicosEmLote(p, outro, [])).rejects.toBeInstanceOf(ErroPermissao);
   });

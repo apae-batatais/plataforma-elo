@@ -38,6 +38,9 @@ Cuidados:
   arredondando para cima, no mínimo 1 minuto): job pulado por `if` não gasta; PR só de `.md` não roda
   Verificar nem prévia; no PR o build fica só na prévia; `node_modules` em cache. Ao criar workflow,
   filtre no `if` do job os eventos que não fazem nada.
+- **Repositório público desde 17/11/2026 (ADR-032):** Actions sem cota; tudo no repositório,
+  issues, PRs, comentários e anexos é público. Gatilho por issue, comentário ou revisão sempre
+  confere o autor (`diretoria823` ou automação); PR de fork nunca recebe Secrets.
 - **Cota acabou em 16/11/2026** (organização com limite de gasto US$ 0: tudo para até o dia 1º).
   Consumo estimado de 1º a 16/11: Verificar ~580 min, Publicar (prévias) ~390, Desenvolvedor ~350,
   Arquiteto ~150, Atualizar PR ~150; Tipo do PR e Fluxo ~1 min por execução, mas centenas de
