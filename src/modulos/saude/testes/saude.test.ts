@@ -38,7 +38,10 @@ describe('instrumento do CER (dado do motor)', () => {
       // distribui o total pelos itens (máximo 3 por item)
       const v = Array(10).fill(0) as number[];
       let resto = total;
-      for (let i = 0; i < 10 && resto > 0; i++) (v[i] = Math.min(3, resto)), (resto -= v[i]!);
+      for (let i = 0; i < 10 && resto > 0; i++) {
+        v[i] = Math.min(3, resto);
+        resto -= v[i]!;
+      }
       return calcularEscore(INSTRUMENTO_CER, respostas(v)).enquadramento!.nome;
     };
     expect(faixa(0)).toMatch(/^Não evoluindo/);

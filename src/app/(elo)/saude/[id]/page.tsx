@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { detalharAplicacao, instrumentosDoCer, pessoasParaAvaliar, PERM } from '@/modulos/saude/aplicacao/avaliacoes';
+import { detalharAplicacao, pessoasParaAvaliar, PERM } from '@/modulos/saude/aplicacao/avaliacoes';
 import { ErroSaude } from '@/modulos/saude/dominio/cer';
 import { FormularioAplicacao } from '@/modulos/saude/telas/formulario-aplicacao';
 import { ResumoAplicacao } from '@/modulos/saude/telas/resumo-aplicacao';

@@ -5,4 +5,4 @@
 - [x] 3. Casos de uso e auditoria
 - [x] 4. Telas, cor e ícone
 - [x] 5. Testes, `npm run verificar` e `npm run build` verdes
-- [ ] PR de entrega aberto
+- [x] PR de entrega aberto
