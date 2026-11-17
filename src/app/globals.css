@@ -271,6 +271,26 @@
   }
 }
 
+[data-app='educacao'] {
+  --destaque: #8a6d00;
+  --destaque-forte: #6f5800;
+  --destaque-suave: #f6f1df;
+}
+
+:root[data-tema='escuro'] [data-app='educacao'] {
+  --destaque: #e6c85a;
+  --destaque-forte: #f0d880;
+  --destaque-suave: #3a331a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='educacao'] {
+    --destaque: #e6c85a;
+    --destaque-forte: #f0d880;
+    --destaque-suave: #3a331a;
+  }
+}
+
 /* Reservada na identidade visual para o próximo app:
    Questionários: magenta #a8197f (claro) / #f27acf (escuro) */
 
