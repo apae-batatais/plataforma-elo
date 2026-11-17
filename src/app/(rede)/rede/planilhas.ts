@@ -9,6 +9,7 @@ const NOMES: Record<string, string> = {
   parcerias: 'Parcerias',
   requisicoes: 'Requisições',
   avaliacao_assistencia: 'Avaliação de Serviços Sociais',
+  avaliacao_saude: 'Avaliação de Saúde',
   avaliacao_educacao: 'Educação (avaliações)',
   comunicacao: 'Comunicação',
   projetos: 'Projetos',

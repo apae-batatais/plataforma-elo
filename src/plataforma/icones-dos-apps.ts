@@ -9,6 +9,7 @@ export const ICONE_DO_APP: Record<string, NomeIcone> = {
   requisicoes: 'requisicoes',
   comunicacao: 'comunicacao',
   avaliacao: 'avaliacao',
+  saude: 'saude',
   parcerias: 'parcerias',
   projetos: 'projetos',
   educacao: 'educacao',

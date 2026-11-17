@@ -245,6 +245,14 @@ export const IconeProjetos = (p: Props) => (
   </Icone>
 );
 
+/** Saúde: coração com a linha do pulso, para a avaliação de evolução na reabilitação. */
+export const IconeSaude = (p: Props) => (
+  <Icone {...p}>
+    <path d="M12 20.5S4 16 4 9.8A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 8 2.2c0 6.2-8 10.7-8 10.7Z" />
+    <path d="M7.5 12h2.2l1.2-2.2 1.8 4 1.2-1.8h2.6" />
+  </Icone>
+);
+
 /** Ícones que o menu e a tela inicial usam pelo nome (um lugar só para a escolha). */
 export const ICONES = {
   inicio: IconeInicio,
@@ -255,6 +263,7 @@ export const ICONES = {
   requisicoes: IconeRequisicao,
   comunicacao: IconeComunicacao,
   avaliacao: IconeAvaliacao,
+  saude: IconeSaude,
   educacao: IconeEducacao,
   parcerias: IconeParcerias,
   projetos: IconeProjetos,
