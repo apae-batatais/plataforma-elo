@@ -127,7 +127,6 @@ describe('regras pequenas', () => {
 describe('casos de uso', () => {
   let p: Planilhas;
   let pessoaA: string;
-  let pessoaB: string;
 
   async function como(email: string) {
     const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
@@ -166,7 +165,7 @@ describe('casos de uso', () => {
     await prepararEstrutura(p, { tabelas: [...TABELAS_EDUCACAO] as never, perfis: manifesto.perfis, permissoes });
     await popularDadosFicticios(p);
     const [vinculos] = await lerTabelas(p, [VinculosServico] as const);
-    [pessoaA, pessoaB] = vinculos.ativos().filter((v) => v.servico === 'escola').map((v) => v.pessoa_id);
+    [pessoaA] = vinculos.ativos().filter((v) => v.servico === 'escola').map((v) => v.pessoa_id);
     await novoUsuario('educador.escola@exemplo.local', 'tecnico_avaliador', { tipo: 'servico', codigo: 'escola' });
     await novoUsuario('educador.transporte@exemplo.local', 'tecnico_avaliador', { tipo: 'servico', codigo: 'transporte' });
   });
