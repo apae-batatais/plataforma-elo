@@ -1,6 +1,6 @@
 # Especificação — Orçamento: Execução, Tesouraria e Histórico (Entregas 1C, 1D e 1E)
 
-- Situação: **aprovada em 07/11/2026 pela Diretoria**
+- Situação: **aprovada em 07/11/2026 pela Diretoria** (1D.2 detalhada em 17/11/2026, issue #186)
 - Dono do produto: Diretoria
 - Complementa `especificacao.md` deste módulo. Detalha a Entrega 1C (Execução), que lá está só em
   resumo, e propõe duas entregas novas: 1D (Tesouraria) e 1E (Histórico). Depois de aprovada, entra
@@ -204,6 +204,280 @@ já existem.
 2. **Valor negativo não é aceito.** Se errada, basta trocar a validação.
 3. **Natureza obrigatória em cada linha**, sugerida pelo grupo. Se não for útil, vira coluna opcional.
 4. **Sem aba `Adiantamentos` na 1C.1**; ela chega na 1C.2, quando o painel precisar.
+
+## Revisão de 17/11/2026 — Entrega 1D.2 detalhada (issue #186)
+
+A 1D.2 foi aprovada em 07/11/2026 e ajustada em 10/11/2026. Com a 1C.1 (realizado informado à mão) e a 1D.1
+(contas e saldos) já construídas, esta seção diz **como a 1D.2 é construída em cima do que existe**. Onde houver
+conflito com as regras 16 a 22 mais abaixo, vale esta seção. A Diretoria já respondeu "Ok" na issue; nenhuma
+decisão nova foi pedida (as faixas e o "N meses" continuam como **propostos**, e só valem depois de aprovados na
+própria tela Reserva).
+
+**A 1D.2 não espera a 1C.2.** Tudo o que ela precisa vem de `Realizado`, `Saldos`, `Contas` e da Previsão.
+Adiantamentos (aba da 1C.2) não entram; quando a 1C.2 existir, o cartão "adiantamentos em aberto" é
+acrescentado à Visão geral por ela.
+
+### Conteúdo da entrega
+
+| Parte | O que a pessoa ganha | Tela |
+| --- | --- | --- |
+| Conferências (regras 16 e 17) | Saber, mês a mês, se o saldo do extrato bate com o realizado informado | Tesouraria › Conferência |
+| Fim do ano (regras 18 e 19) | Quanto sobra ou falta em 31/12, em três cenários | Tesouraria › Fim do ano |
+| Reserva (regras 20 e 21) | Aprovar o mínimo da reserva e os pedidos de uso | Tesouraria › Reserva |
+| Visão geral (regra 22) | Seis sinais (ok, atenção, crítico) numa tela só | Visão geral |
+
+Como a entrega tem quatro telas, o Desenvolvedor faz uma tarefa e um commit por parte, nesta ordem:
+Conferência → Fim do ano → Reserva → Visão geral (a Visão geral usa os resultados das outras).
+
+### Regras de negócio da 1D.2 (com teste)
+
+Os números são sempre em centavos exatos (como `totaisPorClasse`). Nenhum total é digitado.
+
+**Conferência dos termos (regra 16)**
+
+- C1. Para cada conta **vinculada** ativa e cada mês: **saldo do mês** (extrato + ajustes de conciliação, como na 1D.1)
+  − (**saldo do mês anterior** + receita da fonte da conta no mês − despesa da fonte da conta no mês). A fonte é a da
+  conta (`fonte_id`); vale a classe e a fonte que a conta tinha **naquele mês** (`MudancasClasse`).
+- C2. **Diferença diferente de zero** é alerta; zero é "confere". A tela mostra o saldo do mês, o saldo anterior,
+  as entradas, as saídas e a diferença, para a pessoa ver de onde veio.
+- C3. **Sem dado, sem diferença falsa:** se faltar o saldo do mês, o saldo do mês anterior ou o realizado do mês
+  (nenhuma linha informada), a linha diz "faltam dados: saldo de agosto" (diz o que falta) e não calcula. Nunca
+  mostra zero no lugar de "sem dado".
+- C4. Duas contas vinculadas com a mesma fonte são conferidas **somadas** (a fonte é uma só no realizado); a
+  linha mostra as contas juntas.
+- C5. Pendência da Visão geral: quantidade de meses (do ano em andamento) com diferença; cada pendência leva à
+  conferência do mês.
+
+**Conferência do recurso livre (regra 17)**
+
+- C6. **Variação do saldo livre no mês** = (livre disponível + reserva do mês, com ajustes) − (o mesmo no mês
+  anterior). **Resultado do recurso livre no mês** = receita − despesa das linhas de `Realizado` cuja fonte tem uso
+  `livre` (regra R5 da 1C.1). **Diferença** = variação − resultado.
+- C7. Mesma regra de "sem dado" (C3). Diferença diferente de zero fica à vista para ser explicada: o Elo **não
+  corrige nada** e **não aceita justificativa digitada** (transferência para conta vinculada, rendimento e tarifa
+  aparecem como diferença e a pessoa registra o motivo em "Ajuste de conciliação" na tela Saldos do mês, que já existe).
+- C8. Ver as conferências: `orcamento.tesouraria.ver` (Diretoria e Financeiro). Coordenação e Leitura não veem
+  (a conferência mostra saldos).
+
+**Fim do ano (regras 18 e 19)**
+
+- F1. **Ponto de partida:** o **último mês do ano em andamento com saldo** das contas livres (disponível + reserva,
+  com ajustes). O "saldo livre" desta tela **inclui a reserva** (a folga da regra 19 desconta a reserva).
+  Sem nenhum saldo no ano: a tela diz "informe os saldos do mês" e não mostra cenário.
+- F2. **Cenário "repetir o ano anterior"** e **"repetir dois anos antes"**: saldo do ponto de partida + **resultado do
+  recurso livre dos meses depois do ponto de partida até dezembro** no ano de referência (receita − despesa das linhas
+  de `Realizado` com fonte livre). Cada um sai **com** e **sem** não recorrentes (a marcação `nao_recorrente` da 1C.1);
+  "sem" tira as linhas marcadas. São quatro números ao todo.
+- F3. **Cenário "pela Previsão":** receita livre prevista − despesa livre prevista dos meses depois do ponto de
+  partida até dezembro, somada ao saldo do ponto de partida. Usa a Previsão aprovada do ano (sem cedidos: cedido não
+  tem dinheiro, ver C2 de cedidos).
+- F4. **Ano de referência sem os meses informados:** o cenário mostra "sem dado" (os meses faltantes são listados),
+  nunca zero. Dado parcial **não** é completado com estimativa. No primeiro ano de uso da Execução, só o cenário da
+  Previsão aparece; é esperado.
+- F5. **Folga** = saldo livre previsto em dezembro − **reserva atual**, onde reserva atual = saldo da classe reserva
+  no ponto de partida. Folga negativa mostra "seria preciso usar a reserva em R$ X".
+- F6. A decisão de qual cenário alimenta o sinal "Fim do ano" é fixa: **"repetir o ano anterior" com não recorrentes**
+  (regra 22). Os outros são informativos.
+- F7. Ver: `orcamento.tesouraria.ver`.
+
+**Reserva (regras 20 e 21)**
+
+- R1. **Mínimo da reserva** = N × **folha média mensal do ano**. A folha média é o **custo de RH e encargos da
+  Previsão aprovada do ano ÷ 12** (sem cedidos). N começa em 2 (parâmetro com vigência).
+- R2. **Política** é uma linha da aba nova `PoliticaReserva` com vigência (mês de início): N meses e as faixas dos
+  seis sinais (regra 22). Só inclusões; a mais recente com situação `aprovada` e vigência até o mês vale. **Proposta**
+  é registrada pelo Financeiro (`orcamento.tesouraria.editar`); só vira `aprovada` quando a Diretoria aprova
+  (`orcamento.reserva.aprovar`). Sem política aprovada, a Visão geral usa as faixas de fábrica (as da tabela da
+  regra 22) para os sinais que não dependem da reserva, avisando "faixas ainda não aprovadas", e o sinal Reserva
+  fica "sem política aprovada".
+- R3. **Quem propõe não aprova** o próprio pedido: o Autorizador recusa se a mesma pessoa tem as duas permissões
+  (hoje só a Diretoria tem a de aprovar, mas a regra protege perfis futuros).
+- R4. **Uso da reserva** é um pedido na aba nova `UsosReserva`: valor, motivo, mês do pedido e **prazo de
+  recomposição** (mês). Valor maior que zero e maior que o saldo da reserva do último mês com saldo é recusado.
+  Situações: `pedido` → `aprovado` ou `recusado` (decisão da Diretoria, com motivo obrigatório na recusa) → `recomposto`
+  (o Financeiro marca quando devolveu, com o mês). O pedido não move saldo: o saldo continua vindo do extrato
+  digitado na Tesouraria; o uso aprovado serve de autorização e de lembrete.
+- R5. **Prazo de recomposição vencido** (aprovado, não recomposto, mês atual depois do prazo) é pendência da
+  Visão geral e vira alerta na tela Reserva.
+- R6. **Nada é apagado.** Pedido errado é "cancelado" pelo próprio Financeiro enquanto está em `pedido`
+  (encerra: `ativo = FALSE`). Depois de decidido, não muda; correção é um pedido novo.
+- R7. Toda gravação é auditada com as colunas alteradas (nunca os valores). **Aprovar ou recusar** registra a
+  decisão (quem e quando ficam em `atualizado_por` e `atualizado_em`). Abrir a tela Reserva não precisa de
+  auditoria de leitura (sem dado pessoal).
+- R8. Ver a política e os pedidos: `orcamento.tesouraria.ver`. Diretoria aprova e recusa; Financeiro propõe, pede,
+  cancela e marca recomposição; Coordenação e Leitura não veem.
+
+**Sinais da Visão geral (regra 22)**
+
+- S1. Seis sinais, na ordem do mais grave para o mais tranquilo (crítico, atenção, ok, sem dado). Cada um mostra
+  valor, situação **escrita** (não só cor), a regra em uma linha com as faixas em vigor e "Ver detalhes".
+- S2. **Livre disponível** = saldo da classe livre disponível do último mês com saldo ÷ **gasto médio mensal com
+  recurso livre** (despesa de fonte livre do Realizado ÷ meses informados do ano). Sem saldo ou sem realizado:
+  "sem dado".
+- S3. **Fim do ano** = folga do cenário de F6.
+- S4. **Execução** = (receita − despesa realizadas até o último mês informado) − (receita − despesa previstas até o
+  mesmo mês). A faixa "atenção" vai até −5% da receita prevista no mesmo período.
+- S5. **Folha sobre a receita** = custo de RH e encargos ÷ receita, **realizados** no ano até o último mês informado;
+  sem realizado, **previsto** do ano com a marca "previsto". (Regra de 27/10/2026: ok ≤ 60%, atenção até 65%.)
+- S6. **Gasto com recurso livre** = (variação % da despesa de fonte livre) − (variação % da receita livre recorrente)
+  contra o mesmo período do ano anterior, em pontos percentuais; só meses informados **nos dois anos** e sem não
+  recorrentes (R12 da 1C.1); sem ano anterior, "sem dado".
+- S7. **Reserva** = saldo da classe reserva ÷ mínimo aprovado (R1 e R2).
+- S8. **Quem vê quais:** Diretoria e Financeiro veem os seis. Quem só tem `orcamento.painel.ver` (Leitura) vê
+  **apenas** os sinais de execução, folha sobre a receita e gasto com recurso livre (não dependem de saldo); os de
+  saldo (livre disponível, fim do ano, reserva) **nem aparecem**, para não sugerir que o valor é zero. Coordenação
+  não vê a Visão geral (ela vê o realizado do seu escopo em Execução).
+- S9. As faixas de cada sinal vêm de `PoliticaReserva` (R2); a classificação é uma função pura que recebe o valor e
+  as faixas. Valor exatamente na fronteira conta como a situação **melhor** (ex.: 3,0 meses é ok).
+- S10. Cada sinal mostra de que dado veio e até quando ("saldos até setembro", "realizado até outubro"). Dado mais
+  velho que o mês anterior ao atual aparece com aviso "desatualizado".
+
+### Dados (1D.2)
+
+Planilha `orcamento_execucao` (já existe), sem coluna pessoal (não há `sigilo`). Duas abas novas, declaradas com
+`definirTabela` e registradas em "Preparar estrutura":
+
+- **`PoliticaReserva`**: `vigencia` (AAAA-MM), `meses_minimo`, `situacao` (`proposta`, `aprovada`, `recusada`),
+  `motivo` (obrigatório na recusa) e as faixas: `livre_ok`, `livre_atencao` (meses), `fim_ok` (R$), `exec_atencao`
+  (% da receita prevista), `folha_ok`, `folha_atencao` (%), `gasto_ok`, `gasto_atencao` (pontos), `reserva_ok`,
+  `reserva_atencao` (%). Só inclusões; a decisão atualiza `situacao` e `motivo` da própria linha, auditada.
+- **`UsosReserva`**: `mes_pedido`, `valor`, `motivo`, `prazo_recomposicao` (AAAA-MM), `situacao` (`pedido`,
+  `aprovado`, `recusado`, `recomposto`), `motivo_decisao`, `mes_recomposicao`.
+
+Nada de `Saldos`, `Contas`, `Realizado` ou `Historico` muda.
+
+### Permissões (1D.2)
+
+| Perfil | Pode | Permissões |
+| --- | --- | --- |
+| Diretoria | Ver tudo; aprovar a política e os usos da reserva | `orcamento.reserva.aprovar` (**nova**) mais as que já tem |
+| Financeiro | Ver; propor política; pedir, cancelar e marcar recomposição | já tem `tesouraria.ver` e `tesouraria.editar` |
+| Leitura | Só 3 sinais da Visão geral | já tem `painel.ver` |
+| Coordenação | Nada novo | — |
+
+Mudança no Núcleo: **nenhuma**. A permissão nova é declarada no manifesto do módulo e ligada ao perfil Diretoria
+por "Preparar estrutura", como as da 1D.1.
+
+### Telas (1D.2)
+
+Menu do Orçamento: grupo **Tesouraria** ganha "Conferência", "Fim do ano" e "Reserva"; a **Visão geral** entra no topo
+do grupo **Painéis**, e vira a primeira tela do módulo para quem tem `tesouraria.ver` ou `painel.ver` (hoje abre o
+Resumo da folha; a mudança é só do ponto de entrada do módulo, e quem não vê a Visão geral continua como está).
+Componentes de `src/ui/` (nenhum novo, nenhuma mudança no Núcleo): `Pagina`, `NumeroQueConta`, `Indicadores`,
+`Linhas`, `BarrasAgrupadas`, `TabelaDados`, `Aviso`, `Botao`, `BotaoEnviar`, `Campo`, `Confirmar`, `SeletorMes`
+(já usado em Saldos), `EstadoVazio`.
+
+**1. Visão geral** — *Quem:* Diretoria e Financeiro querem saber "estamos bem?". *Caminho:* abrir o app, 0 cliques
+até a resposta; 1 clique em "Ver detalhes" para a causa.
+- Primeira dobra: faixa de pendências (se houver) com atalhos ("2 contas sem saldo em outubro · Informar saldos";
+  "1 termo com diferença · Conferir"; "Falta informar o realizado de outubro"; "Recomposição da reserva vencida"),
+  depois os sinais do mais grave ao mais tranquilo. Ação principal: a primeira pendência.
+- Cada sinal é um cartão: nome, `NumeroQueConta` com o valor e o período, situação escrita, a regra e as faixas em
+  uma linha. Sinal baseado em meta ainda não aprovada leva "faixa proposta, ainda não aprovada".
+- Estados: **vazio** (sem saldos e sem realizado) "A Visão geral aparece depois que você informar os saldos do mês e
+  o realizado" com botões para as duas telas; **erro** de leitura: o `Aviso` padrão e "Tentar de novo"; **sem
+  permissão**: o menu nem mostra; a rota direta mostra a tela padrão de sem permissão.
+- Celular: cartões empilham em uma coluna; ordem de teclado é a ordem na tela.
+- Sem formulário e sem ação sem volta.
+
+**2. Tesouraria › Conferência** — *Quem:* Financeiro, para fechar o mês; Diretoria, para ver se confere.
+*Caminho:* Visão geral → pendência → conferência já no mês (1 clique).
+- Seletor de mês (como em Saldos; abre no mês anterior ao atual; 24 meses). Dois blocos: "Termos (contas
+  vinculadas)" e "Recurso livre". Cada linha tem a conta ou a fonte, os valores da conta e a diferença, com
+  "confere" (ícone e texto), "diferença de R$ X" ou "faltam dados: <o quê> · Informar".
+- Estado vazio: sem conta vinculada, "Nenhuma conta vinculada. Cadastre em Contas" (só o bloco de recurso livre
+  aparece). Sem ação de gravar nesta tela; o atalho "Ajuste de conciliação" leva à tela Saldos do mês.
+- Mobile: tabela com rolagem horizontal e a coluna da diferença fixa à direita.
+
+**3. Tesouraria › Fim do ano** — *Quem:* Diretoria, "vai sobrar ou faltar?". *Caminho:* menu, 1 clique.
+- Primeira dobra: `NumeroQueConta` "Folga prevista em dezembro" (cenário do sinal) com a frase "Se 2026 se repetir
+  como 2025 (com não recorrentes), sobram R$ X acima da reserva" (ou "faltam", com o aviso de uso da reserva); abaixo,
+  `Linhas` do saldo livre mês a mês do ano atual e dos dois anteriores, com a reserva como linha de referência
+  (até 3 séries de ano, `ano-1` a `ano-3`); título em forma de conclusão ("O saldo livre fecha o ano acima da
+  reserva"/"abaixo da reserva"). Mês sem saldo é buraco na linha, não zero. Ano em andamento marcado "parcial".
+- Tabela de cenários (`TabelaDados`): cenário, saldo previsto em dezembro, folga; as quatro de F2 e a de F3; "sem dado"
+  com o motivo. "Ver os números" já vem do gráfico.
+- Estado vazio e erro como na Visão geral; sem formulário.
+
+**4. Tesouraria › Reserva** — *Quem:* Diretoria aprova; Financeiro propõe e pede. *Caminho:* 2 cliques
+(abrir, "Aprovar").
+- Primeira dobra: política em vigor (N meses, mínimo em R$, reserva atual e % do mínimo no `Indicadores`, meta 100%),
+  proposta pendente de aprovação (se houver) com **Aprovar política** e **Recusar** (Diretoria), e **Pedir uso da
+  reserva** (Financeiro).
+- Formulário "Pedir uso da reserva": **Valor (R$)**, **Motivo**, **Recompor até (mês)**, todos obrigatórios, com a
+  dica de formato ("1.500,00", "mês/ano"); rótulo sempre visível; erro por campo, e **o que a pessoa digitou fica**.
+  Formulário "Propor política": **Meses de folha** e as faixas, já preenchidos com os valores em vigor.
+- **Ação sem volta:** aprovar a política e aprovar o uso (a decisão não se desfaz; corrigir é um novo pedido).
+  `Confirmar` explica: "Aprovar o uso de R$ X da reserva até a recomposição em <mês>. Isso não pode ser desfeito;
+  se mudar de ideia, será preciso um novo pedido." Recusar pede motivo.
+- Lista de usos com situação escrita, recomposição vencida em destaque (ícone e texto), e "Marcar como recomposto"
+  (Financeiro).
+- Estados: vazio "Nenhum pedido de uso da reserva"; gravando: botão desabilitado com "Gravando…"; gravou: `Aviso`
+  de sucesso "Pedido enviado para a Diretoria"; erro e sem permissão como nas outras telas. Quem não aprova nem vê
+  os botões de decisão.
+- Celular: formulários em uma coluna; ordem de teclado: valor, motivo, mês, enviar.
+
+**Gráficos:**
+- *Fim do ano:* pergunta "o saldo livre vai cobrir a reserva em dezembro?"; forma `Linhas` (evolução no tempo, poucas
+  séries); valores `moeda`; séries: ano atual, ano anterior e dois anos antes (3); leitura ao lado: a folga e o que
+  fazer ("se for negativa, peça o uso da reserva ou reduza gasto livre"); sem dados: `EstadoVazio` e, com ano
+  parcial, o rótulo "parcial".
+- *Reserva:* `Indicadores` (percentual contra o mínimo, `referencia.sentido: 'desde'`, 100%).
+
+**Melhorias de experiência sugeridas (não pedidas; a Diretoria decide):**
+1. Na Visão geral, "Copiar o resumo" para colar em e-mail ou ata do Conselho.
+2. Avisar por e-mail à Diretoria quando um pedido de uso da reserva é feito (hoje ela só vê ao abrir a tela).
+3. Em Conferência, "Marcar como explicada" com um texto curto, para a diferença que se repete todo mês (rendimento,
+   por exemplo) não aparecer vermelha para sempre. **Fica fora desta entrega** porque exige uma aba nova e uma
+   regra de "explicação" que a Diretoria ainda não definiu.
+
+### Fica de fora (1D.2)
+
+- Adiantamentos e ressarcimentos (1C.2); a Visão geral ganha o cartão quando existirem.
+- Projeção por caixa semanal, simulação de "e se" e metas por serviço.
+- Mover saldo automaticamente ao aprovar o uso da reserva; o saldo continua digitado do extrato.
+- Explicação digitada da diferença (melhoria 3) e e-mail de aviso (melhoria 2).
+- Painel geral da 1B usando os sinais (continua no roadmap).
+
+### Frentes
+
+`telas` (Visão geral, Conferência, Fim do ano, Reserva; gráficos da Fim do ano e da Reserva) e `regras e dados`
+(regras puras em `dominio/` para conferências, cenários, mínimo e sinais; casos de uso em `aplicacao/`; abas
+`PoliticaReserva` e `UsosReserva`; permissão nova; auditoria; testes). Sem `infraestrutura`: a planilha e a chave
+`orcamento_execucao` já existem.
+
+### Critérios de pronto (1D.2)
+
+- [ ] Testes de cada regra C1 a C8, F1 a F7, R1 a R8 e S1 a S10, incluindo quem vê e quem altera
+- [ ] Teste de acesso: Coordenação não vê Conferência, Fim do ano nem Reserva; Leitura vê só os 3 sinais sem saldo
+- [ ] Quem propõe não aprova (R3); pedido decidido não muda (R6)
+- [ ] Fronteira dos sinais (valor exatamente na faixa) e dado ausente nunca vira zero
+- [ ] "Preparar estrutura" cria as duas abas e liga `orcamento.reserva.aprovar` à Diretoria
+- [ ] Na prévia, com a demonstração: a Diretoria abre a Visão geral, aprova uma política proposta e um uso da
+      reserva; o Financeiro vê a diferença de um termo e os cenários do fim do ano
+- [ ] `npm run verificar` e `npm run build` verdes
+
+### Decisões tomadas sozinho nesta revisão
+
+1. **Cenários de fim do ano vêm do realizado** (resultado do recurso livre dos meses que faltam nos dois anos
+   anteriores), não da variação dos saldos. Motivo: só o realizado tem a marca "não recorrente" e só ele existe mês a
+   mês nos anos que o Elo já tem. *Custo se errada:* se a Diretoria preferir variação dos saldos, troca-se a função de
+   resultado por uma de saldos; muda um arquivo de regras e os testes, e os anos sem saldos mensais ficam "sem dado".
+2. **"Saldo livre" do fim do ano inclui a reserva**, e a folga desconta a reserva atual (como a regra 19 já diz).
+   *Custo:* se a Diretoria quiser a folga só do disponível, é um parâmetro.
+3. **Folha média do mínimo da reserva = RH e encargos da Previsão aprovada ÷ 12**, não o realizado. Motivo: a
+   referência de 2 meses (R$ 930 mil) foi calculada assim e não oscila com meses faltando. *Custo:* trocar a base é
+   trocar uma função.
+4. **A Visão geral é o ponto de entrada** para quem vê saldos ou painel, no lugar do Resumo da folha. *Custo:* se não
+   agradar, volta a rota inicial; nenhum dado é afetado.
+5. **Leitura não vê os sinais de saldo** (nem como "sem dado"). *Custo:* se a Diretoria quiser o Conselho vendo tudo,
+   é dar `tesouraria.ver` ao perfil, o que também abre as telas de saldos (decisão 4 das "Decisões pedidas").
+6. **Pedido de uso da reserva não move saldo** e fica fora do cálculo da folga. *Custo:* se errada, passa a ser
+   abatido no cenário, uma linha de código.
+7. **Conferência por mês**, sempre contra o mês anterior, e contas vinculadas da mesma fonte somadas (C4). *Custo:*
+   se a Diretoria quiser por conta isolada, é separar a soma.
+8. **Faixas dentro da própria linha da política** (colunas), e não numa aba de parâmetros solta, para a Diretoria
+   aprovar tudo junto. *Custo:* nova faixa vira coluna nova.
 
 ## Objetivo
 
@@ -507,3 +781,162 @@ Tomadas pelo agente durante a construção, sem resposta da Diretoria. Estão na
 - [ ] "Preparar estrutura" cria as abas novas no limite de 10 segundos
 - [ ] `npm run verificar` e `npm run build` verdes
 - [ ] Conferido pela Diretoria na prévia
+
+## Entrega 1C.2 — Painel de execução e recursos livres (issue #185, 17/11/2026)
+
+Detalha a 1C.2 da "Revisão de 10/11/2026". Lê o realizado que a 1C.1 já grava (aba `Realizado`) e o previsto
+da Previsão aprovada; **não importa o WK Radar** (as perguntas P1 a P6 da issue são da importação futura e
+não bloqueiam esta entrega). Onde houver conflito com as regras 8 a 12 originais, vale esta seção.
+
+### Objetivo e para quem
+
+Responder, sem planilha paralela: "estamos gastando o que previmos?", "quanto recurso livre cada serviço
+consome?", "quanto falta ressarcir dos termos?" e "como estamos contra o mesmo período do ano passado?".
+Usam: Diretoria e Financeiro (tudo), Coordenação de área (só despesa do seu escopo) e Leitura (só totais).
+
+### Usuários e permissões
+
+| Perfil | Vê | Permissão |
+| --- | --- | --- |
+| Diretoria, Financeiro | Tudo (despesa e receita, todos os serviços) | `orcamento.execucao.ver` |
+| Coordenação de área ou serviço | Só despesa dos serviços do escopo; sem receita, sem adiantamentos, sem comparação de receita | `orcamento.execucao.ver` (com escopo) |
+| Leitura | Só os totais do ano e do período (sem serviço, grupo, fonte nem adiantamentos) | `orcamento.painel.ver` |
+
+Ninguém altera nada nesta entrega: as telas são só de leitura (o realizado continua sendo informado na 1C.1,
+pelo Financeiro com `orcamento.realizado.editar`). Nenhuma permissão nova.
+
+### Dados
+
+Sem aba nova. Uma coluna nova **opcional** em `Realizado`: `fonte_termo_id` (texto), a fonte restrita do termo
+que o recurso livre adiantou. Obrigatória só em linha de despesa com natureza "adiantamento a termo"; vazia nas
+demais (sem dado pessoal, sem `sigilo`). Linhas de adiantamento já gravadas sem ela aparecem como "termo não
+informado" (regra 5), sem bloquear nada. A grade "Informar realizado" ganha o campo "Termo adiantado" quando a
+natureza escolhida é "adiantamento a termo". Mudança só dentro do Orçamento.
+
+### Regras de negócio (com teste)
+
+1. **Previsto do mês** de uma combinação serviço × grupo × fonte = previsto da Previsão **aprovada** do ano,
+   já com remanejamentos e suplementações aprovados (1B.2), distribuído pelos meses como a Previsão faz. Receita
+   por fonte. Sem Previsão aprovada, o painel mostra só o realizado e avisa.
+2. **Execução (%)** = realizado ÷ previsto, no período escolhido (janeiro até o último mês informado, ou um
+   mês). Sem previsto, a execução é "sem previsto" (nunca 0% nem infinito). Realizado sem linha na Previsão
+   entra numa linha "Fora da previsão".
+3. **Só meses informados contam.** O período padrão vai de janeiro ao último mês com realizado informado; o
+   previsto é cortado no mesmo mês, para não comparar 9 meses de realizado com 12 de previsto. Mês do meio
+   sem informação aparece como "sem dado" e fica fora das somas dos dois lados (previsto e realizado), com aviso
+   listando os meses.
+4. **Recurso livre por serviço** = soma das despesas cuja fonte tem uso `livre`, por serviço e natureza.
+   Despesa sem serviço vai para "Comum" (decisão de 05/11/2026). Mostra também a **receita livre** do período
+   e o **resultado do recurso livre** (receita livre − despesa livre).
+5. **Adiantamentos e ressarcimentos, por termo (fonte restrita).** Adiantado = soma das despesas "adiantamento a
+   termo" com aquele `fonte_termo_id`; ressarcido = soma das receitas "ressarcimento" cuja `fonte_id` é o termo.
+   **Saldo em aberto** = adiantado − ressarcido, acumulado de todos os anos (um adiantamento de dezembro pode ser
+   ressarcido em março). Saldo negativo (ressarcido a mais) aparece como "ressarcido a mais", nunca some.
+   **Há quantos dias:** conta a partir do fim do mês do adiantamento **mais antigo ainda em aberto**, baixando
+   do mais antigo para o mais novo (primeiro a entrar, primeiro a sair). Acima de 60 dias, a linha ganha a
+   etiqueta "Atenção" (indicador `adiantamentos_em_aberto`). Adiantamento sem termo informado aparece no fim,
+   como "Termo não informado — complete na grade do mês".
+6. **Comparação com o ano anterior** (regra 12 da 1C.1): só os meses informados nos **dois** anos; os não
+   recorrentes saem da comparação e aparecem numa linha à parte, com o motivo. Ano anterior sem nenhum mês
+   informado: o painel diz "sem realizado do ano anterior no Elo" (o Histórico da 1E não substitui aqui, regra 13
+   da 1C.1).
+7. **Nenhum total é digitado**; tudo é soma das linhas do `Realizado`, em centavos.
+8. **Quem vê o quê é filtrado antes de somar:** o total que a Coordenação vê é a soma só do escopo dela; o de
+   Leitura, só o agregado. Nenhum número fora do escopo vaza por subtração entre totais.
+9. **Auditoria:** são telas de totais, sem dado pessoal; não registram auditoria de leitura (como "Realizado do
+   ano"). O que existe de auditoria na gravação (1C.1) não muda.
+
+### Telas
+
+Menu **Execução** ganha **Painel de execução** (primeira tela do grupo para quem tem `execucao.ver`) e **Recursos
+livres**; **Realizado do ano** continua. Linha de contexto em todas: "Janeiro a setembro de 2026 · realizado
+informado até setembro".
+
+**1. Execução › Painel de execução** (Diretoria e Financeiro querem saber se a execução está no previsto, em um
+olhar; Coordenação, se o seu serviço está.)
+- Caminho: abrir o menu → 1 clique. "Ver os números" e o filtro de serviço não perdem nada ao trocar.
+- Primeira dobra: faixa de pendências (meses sem realizado, adiantamento acima de 60 dias; cada uma com atalho
+  para resolver), depois três `Indicadores`/números de destaque: **Despesa**, **Receita** e **Resultado** do
+  período, cada um com realizado, previsto e execução em %. Ação principal para o Financeiro: "Informar
+  realizado" (botão no cabeçalho).
+- Seguem: gráfico **ResultadoMensal** (título em conclusão, ex.: "Resultado ficou abaixo do previsto em 2 dos 9
+  meses", com a leitura ao lado: o que fazer, como "confira os meses de março e abril"; receita e despesa
+  realizadas, mês a mês); gráfico **BarrasHorizontais** "Execução por serviço" (série 1 = previsto, série 2 =
+  realizado, maior primeiro; no máximo 2 séries); tabela `TabelaDados` por área, serviço, grupo e fonte com
+  previsto, realizado, diferença e execução em %, com busca e ordenação.
+- Componentes de `src/ui/`: `CabecalhoPagina`, `Aviso`, `Indicadores`, `ResultadoMensal`, `BarrasHorizontais`,
+  `TabelaDados`, `SeletorAno`, `Etiqueta`, `EstadoVazio`. Nada novo no Núcleo.
+- Estados: **vazio** (sem nenhum mês informado): "Ainda não há realizado neste ano. O Financeiro informa mês a
+  mês em Informar realizado." com o botão só para quem pode; **sem Previsão aprovada**: aviso "Sem Previsão
+  aprovada em 2026: mostramos só o realizado" e as colunas de previsto somem; **sem permissão**: tela padrão de
+  acesso negado. Telas só de leitura: não há "gravando" nem erro de gravação; erro de leitura mostra "Não foi
+  possível carregar o painel. Tente de novo" com o botão.
+- Ação sem volta: nenhuma.
+- Celular e teclado: cartões empilham, tabela rola na horizontal, gráficos têm "Ver os números"; ordem de
+  tabulação: ano → período → pendências → cartões → gráficos → tabela.
+
+**2. Execução › Recursos livres** (Diretoria e Financeiro: quanto recurso livre cada serviço consome e se a conta
+fecha.)
+- Primeira dobra: números de destaque **Receita livre**, **Despesa livre** e **Resultado do recurso livre** do
+  período; abaixo, o resumo de adiantamentos ("Falta ressarcir R$ … em N termos; o mais antigo há N dias").
+- Gráfico **Linhas** "Receita livre × despesa livre por mês" (2 séries, `formato: moeda`, "sem dado" nos meses
+  não informados); gráfico **BarrasHorizontais** "Recurso livre por serviço" (maior primeiro; nota com a
+  natureza dominante); tabela serviço × natureza (RH, encargos, custeio, investimento, tarifas, adiantamento) com
+  total, e peso do serviço no total em %.
+- **Comparação com o ano anterior**: **BarrasAgrupadas** do mesmo período, os dois anos lado a lado, com
+  e sem não recorrentes (alternância "Sem não recorrentes" / "Com todos"), variação em % e em pontos contra a
+  receita livre; ano parcial marcado "parcial" (regra 26).
+- **Adiantamentos e ressarcimentos**: tabela por termo (adiantado, ressarcido, em aberto, há quantos dias,
+  etiqueta Atenção/Em dia). Sem adiantamento: "Nenhum adiantamento em aberto." (estado vazio, não erro).
+- Coordenação vê só a despesa livre dos seus serviços; as seções de receita e adiantamentos não aparecem para
+  ela (e nem o cabeçalho delas). Leitura não acessa esta tela.
+- Estados, celular e teclado: como na tela 1.
+
+**3. Realizado do ano** (já existe, 1C.1): ganha só o link "Ver o painel" no cabeçalho.
+**4. Visão geral e Painel geral** (1D.2 e 1B): **não** mudam nesta entrega; passam a mostrar a Execução
+na 1D.2.
+
+### Sugestões de melhoria (a Diretoria decide)
+
+- Ligar cada barra de serviço à tabela já filtrada naquele serviço (um clique para o detalhe).
+- Mostrar, no painel, a pendência de realizado já existente na tela inicial (regra R11) para o Financeiro
+  resolver sem sair do painel.
+- Exportar a tabela de execução em CSV, no mesmo padrão de "Baixar planilha" da Previsão.
+
+### Fica de fora
+
+Importação do realizado (WK Radar ou modelo) e as perguntas P1 a P6; tabelas de correspondência
+centro de custo ↔ serviço e conta ↔ grupo; lançamentos individuais; aba `Adiantamentos` própria; conferência
+dos termos e do recurso livre contra os saldos (regras 16 e 17, que ficam na 1D.2); Visão geral e sinais; uso da
+reserva; histórico vindo do realizado (regra 25 original).
+
+### Frentes
+
+`regras e dados` (leitura agregada do realizado e da Previsão, coluna `fonte_termo_id`, escopo, testes) e
+`telas` (duas telas novas com gráficos e a grade com o campo "Termo adiantado"). Sem `infraestrutura`.
+
+### Entregas
+
+Uma só entrega (1C.2), conferível na prévia. Depende da 1C.1, que já está no ar.
+
+### Critérios de pronto (1C.2)
+
+- [ ] Testes das regras 1 a 8, incluindo escopo (Coordenação só o seu; Leitura só o agregado; nada vaza por subtração)
+- [ ] Testes de borda: período cortado nos dois lados, mês do meio sem dado, previsto zero, saldo de adiantamento negativo, ordem do mais antigo para o mais novo, ano anterior sem dados
+- [ ] "Preparar estrutura" acrescenta a coluna `fonte_termo_id` sem perder as linhas existentes
+- [ ] Na prévia, com a demonstração: o Painel de execução mostra execução por serviço; Recursos livres mostra o consumo por serviço, a comparação com o ano anterior e um adiantamento em aberto; a Coordenação vê só o seu serviço
+- [ ] Gráficos com "Ver os números", `descricao`, título em conclusão, no máximo 4 séries
+- [ ] `npm run verificar` e `npm run build` verdes
+
+### Decisões tomadas sozinho (1C.2)
+
+1. **Adiantamentos calculados do `Realizado`, sem aba `Adiantamentos`** (a regra 11 original previa uma).
+   Custo se errada: criar a aba e ligar linhas a adiantamentos individuais, o que pede ajuste na grade.
+2. **Baixa do mais antigo para o mais novo** (e não "o adiantamento escolhido"), porque o realizado é em totais
+   mensais, sem lançamento para escolher. Custo se errada: campo para escolher o adiantamento em cada ressarcimento.
+3. **Coluna `fonte_termo_id` no `Realizado`** para saber que termo foi adiantado. Custo: dado antigo sem termo
+   fica em "termo não informado" até ser completado.
+4. **Limite de 60 dias** para a etiqueta "Atenção" (o do indicador `adiantamentos_em_aberto`). Se errado, é um parâmetro.
+5. **Período padrão = janeiro até o último mês informado**, com o previsto cortado no mesmo mês.
+6. **Leitura não vê a tela Recursos livres** (só totais no Painel de execução).
+7. **Duas telas, não uma**, para o painel principal não ficar longo; se preferir uma só, junte as seções.

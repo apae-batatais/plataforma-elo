@@ -37,6 +37,15 @@ Ordem: 1C.1 → 1C.2 → 1D.2.
 - [ ] Conferência dos termos e do recurso livre (regras 16 e 17 da especificação): entram com a 1D.2, porque
       comparam os saldos com o realizado.
 
+### Entrega 1C.2 · painel de execução e recursos livres, pontas para depois (17/11/2026, issue #185)
+
+Especificado em `src/modulos/orcamento/especificacao-execucao-tesouraria.md`, seção "Entrega 1C.2".
+
+- [ ] Perguntas P1 a P6 sobre o WK Radar (correspondências, nível do grupo, folha por área, "a classificar",
+      o que conta como realizado, diferença de cerca de R$ 166 mil): respondê-las junto com a importação.
+- [ ] Aba `Adiantamentos` própria, com baixa escolhida a cada ressarcimento, se a baixa automática não servir.
+- [ ] Exportar a tabela de execução em CSV; clicar no serviço para ver o detalhe filtrado.
+
 ### Folha em caixa, passivo e provisão · para depois (14/11/2026, issue #126)
 
 Especificado em `src/modulos/orcamento/especificacao-folha-caixa-passivo.md`.
@@ -250,3 +259,10 @@ Especificada em 17/11/2026. Ficou para depois:
 - [ ] Feriados por unidade ou cidade (hoje a lista é única para a instituição).
 - [ ] Recalcular a urgência de pedidos já enviados na Comunicação quando um feriado for incluído.
 - [ ] Sugestões: mostrar no pedido da Comunicação o feriado que entrou na conta; incluir vários anos de uma vez.
+
+## Auditoria na leitura de anexos (issue #66, especificação em `docs/especificacao-leitura-de-anexos.md`, ADR-033)
+
+Ficou para depois (17/11/2026):
+
+- [ ] Janela de auditoria (uma linha por pessoa e anexo a cada N minutos) se vídeos encherem a aba de auditoria.
+- [ ] Conferir se o arquivo já pertence a anexo de outro módulo na mesma pasta.
