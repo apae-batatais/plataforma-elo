@@ -251,6 +251,15 @@ Ficou para depois (15/11/2026):
 - [ ] Peça comum de avaliação entre Educação e Saúde, se a repetição de código pesar.
 - [ ] Sugestões: lembrete de reavaliação, copiar profissional e função da última aplicação, mostrar a nota do período anterior no item.
 
+## Núcleo: feriados (issue #67, especificação em `docs/especificacao-feriados.md`, ADR-034)
+
+Especificada em 17/11/2026. Ficou para depois:
+
+- [ ] Feriados na agenda única (segunda entrega da agenda, #117).
+- [ ] Feriados por unidade ou cidade (hoje a lista é única para a instituição).
+- [ ] Recalcular a urgência de pedidos já enviados na Comunicação quando um feriado for incluído.
+- [ ] Sugestões: mostrar no pedido da Comunicação o feriado que entrou na conta; incluir vários anos de uma vez.
+
 ## Auditoria na leitura de anexos (issue #66, especificação em `docs/especificacao-leitura-de-anexos.md`, ADR-033)
 
 Ficou para depois (17/11/2026):
