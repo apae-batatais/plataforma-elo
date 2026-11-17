@@ -14,7 +14,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 2. **TI (Setor de Informática)**: ficha de chamado (categoria, equipamento, patrimônio, local, problema, urgência, contato), perfil novo Setor de Informática, urgência na fila. Material de informática usa a ficha de materiais com o Setor de Informática.
 3. **Mobiliário (Setor de Patrimônio)**: ficha com o que fazer (mudar de lugar, emprestar, recolher, montar/desmontar, outro), lista de móveis (quantidade, descrição, patrimônio), de onde, para onde, para quando e devolução (empréstimo); perfil novo Setor de Patrimônio.
 4. **Manutenção (Setor de Manutenção)**: ficha com tipo de serviço (elétrica, hidráulica, ar-condicionado, equipamento, portas/janelas/móveis, pintura, paredes/piso/telhado, outro), local, problema, urgência, equipamento, patrimônio, melhor horário e contato; perfil novo Setor de Manutenção; urgência na fila. Fotos e vídeo: entrega 6.
-5. **Painel de prazos e feriados**: painel com % de aprovação e de atendimento no prazo, tempo médio, atendidas em parte e atrasadas agora, por mês, setor e tipo; feriados (nacionais de uma vez, municipais um a um) fora das horas úteis.
+5. **Painel de prazos e feriados**: painel com % de aprovação e de atendimento no prazo, tempo médio, atendidas em parte e atrasadas agora, por mês, setor e tipo; feriados fora das horas úteis (a lista é do Núcleo: Administração › Feriados, ADR-034).
 6. **Fotos e vídeo (ADR-014)**: até 3 fotos (reduzidas no celular) e 1 vídeo de até 30 s / 25 MB, gravados direto na abertura; arquivos numa pasta de unidade compartilhada do Drive da instituição; o tipo diz se aceita.
 
 ## Usuários e permissões
@@ -29,7 +29,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 | Setor de Patrimônio (perfil novo)    | Receber e atender as requisições de mobiliário                                                    | `requisicoes.atender`                                   |
 | Setor de Manutenção (perfil novo)    | Receber e atender os pedidos de manutenção                                                        | `requisicoes.atender`                                   |
 | Setor Cozinha (perfil novo)          | Receber e atender as requisições da cozinha (tipo Requisição Cozinha)                             | `requisicoes.atender`, `requisicoes.painel`             |
-| Administração da plataforma (só ela) | Criar e alterar tipos, áreas permitidas, itens aceitos, expediente e feriados                     | `requisicoes.tipos.gerenciar`                           |
+| Administração da plataforma (só ela) | Criar e alterar tipos, áreas permitidas, itens aceitos e expediente (feriados: `core.feriados.gerenciar`)                    | `requisicoes.tipos.gerenciar`                           |
 | Diretoria, coordenação e setores     | Ver o painel de prazos (só das requisições que já podem ver)                                      | `requisicoes.painel`                                    |
 
 ## Entidades (planilha `requisicoes`)
@@ -43,7 +43,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 | Itens         | Quantidade, unidade, descrição, item da lista (quando houver) e quanto foi entregue                                                                | interno               |
 | Historico     | Cada mudança de etapa: quando, quem, de/para, comentário (só inclusões)                                                                            | pessoal: usuário      |
 | Parametros    | Expediente (início e fim) usado no SLA                                                                                                             | interno               |
-| Feriados      | Data e nome dos dias que não contam nas horas úteis                                                                                                | interno               |
+| Feriados      | Aba antiga: só leitura, copiada para o Núcleo em "Preparar estrutura" (a lista vive no Núcleo, ADR-034)                                            | interno               |
 | Anexos        | Fotos e vídeo de cada requisição: id do arquivo na pasta de anexos, tipo, tamanho, duração                                                         | sensível: arquivo     |
 
 O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão da Diretoria); a ligação com o Orçamento foi removida (ADR-013, Atualização).
@@ -65,7 +65,7 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 13. Chamado de TI: categoria, local, problema (mín. 10 letras) e urgência são obrigatórios; não tem itens; tipo com ficha de chamado é sempre "serviço". Concluir exige dizer se resolveu e o que foi feito (resolvido em parte → "atendida em parte").
 14. Mobiliário: o que fazer, pelo menos um móvel (quantidade inteira), de onde e para quando são obrigatórios; mudar de lugar e emprestar exigem para onde; emprestar exige a devolução (não antes da data). Concluir como chamado (feito ou em parte, com o que foi feito).
 15. Manutenção: tipo de serviço, local, problema (mín. 10 letras) e urgência são obrigatórios; não tem itens; tipo é sempre "serviço". Concluir como chamado (resolvido ou em parte, com o que foi feito).
-16. Feriados: só a Administração da plataforma cadastra e tira; uma data só uma vez; os feriados não contam nas horas úteis de nenhum prazo (inclusive de requisições antigas, ao recalcular).
+16. Feriados (ADR-034): a lista é do Núcleo (Administração › Feriados, `core.feriados.gerenciar`); o SLA a lê de lá; os feriados não contam nas horas úteis de nenhum prazo (inclusive de requisições antigas, ao recalcular).
 17. Painel de prazos (`requisicoes.painel`: Diretoria, coordenação e setores): mostra só as requisições que a pessoa já pode ver. Aprovação conta no mês da decisão (aprovar, devolver ou recusar), com horas do envio à decisão; atendimento conta no mês da conclusão, com horas da aprovação à conclusão. Atrasadas agora: esperando decisão ou atendimento além do prazo.
 18. Fotos e vídeo: só nos tipos que aceitam (marcados no cadastro; sem marcação, as fichas de serviço); até 3 fotos de até 1,4 MB (já reduzidas) e 1 vídeo de até 30 s e 25 MB, em JPG/PNG/WebP e MP4/MOV/WebM/3GP. O servidor confere cada arquivo na pasta antes de ligar à requisição; um arquivo só pertence a uma requisição. Só quem vê a requisição vê os anexos, pelo Elo, e cada abertura vai para a auditoria. Ao ajustar uma devolvida, os anexos tirados são encerrados.
 
@@ -74,7 +74,7 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 1. Minhas requisições, Para aprovar, Para atender, Todas (lista com situação e prazo da etapa).
 2. Nova requisição / Ajustar: ficha de materiais (tipo, área, centros com %, itens, retirada ou entrega, evento, utensílios, observações).
 3. Ficha da requisição: dados, prazos, ações de quem pode agir, histórico e Imprimir.
-4. Tipos de requisição (setor, prazos, áreas permitidas, expediente e feriados do SLA) e Itens aceitos de cada tipo (um a um ou em lote).
+4. Tipos de requisição (setor, prazos, áreas permitidas, expediente do SLA) e Itens aceitos de cada tipo (um a um ou em lote).
 5. Painel de prazos: cartões, gráfico mês a mês, tabelas por mês, setor e tipo, atrasadas agora.
 6. Avisos: tela inicial ("N esperam a sua aprovação", "N na fila do seu setor", "N devolvidas") e número no menu.
 

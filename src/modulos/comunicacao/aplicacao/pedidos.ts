@@ -41,6 +41,7 @@ import {
   type TipoPeca,
 } from '../dominio/pedido';
 import { montarEmailPronto } from '../dominio/email-pronto';
+import { feriadosAtivos } from '@/nucleo/feriados/feriados';
 import { dataHoraEmBrasilia, diaEmBrasilia, ehUrgente } from '../dominio/prazos';
 import { conferirAnexosDoPedido, gravarAnexos, type AnexoPedido } from './anexos';
 import { dataValida, itensParaPedido, salvarItemCalendario, type DadosItemCalendario } from './calendario';
@@ -173,7 +174,7 @@ async function conferirDados(
       titulo,
       descricao,
       data_desejada: d.dataDesejada,
-      urgente: ehUrgente(d.dataDesejada, hoje, await lerAntecedencia(p)),
+      urgente: ehUrgente(d.dataDesejada, hoje, await lerAntecedencia(p), await feriadosAtivos(p)),
       link_video: link,
       imagem_confirmada_em: comImagem ? agora.toISOString() : null,
       imagem_confirmada_por: comImagem ? quem.email : null,
@@ -625,6 +626,7 @@ export async function opcoesDoPedido(p: Planilhas, quem: Autorizador, opcoes: Op
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     hoje: diaEmBrasilia(agora),
     antecedencia: await lerAntecedencia(p),
+    feriados: [...(await feriadosAtivos(p))].sort(),
   };
 }
 

@@ -13,6 +13,7 @@ import {
   PedidosComunicacao,
 } from './tabelas';
 import { ANTECEDENCIA_PADRAO } from '../aplicacao/configuracoes';
+import { feriadosAtivos } from '@/nucleo/feriados/feriados';
 import { diaEmBrasilia, ehUrgente } from '../dominio/prazos';
 import { conferirTransicao, NOME_TIPO_PECA, type Acao, type Situacao, type TipoPeca } from '../dominio/pedido';
 
@@ -55,6 +56,7 @@ const PEDIDOS: Roteiro[] = [
 ];
 
 export async function popularComunicacaoFicticia(p: Planilhas): Promise<void> {
+  const feriados = await feriadosAtivos(p);
   const [cal, grupos, contatos, ligacoes, pedidos, historico] = await lerTabelas(p, [
     CalendarioComunicacao,
     GruposComunicacao,
@@ -127,7 +129,7 @@ export async function popularComunicacaoFicticia(p: Planilhas): Promise<void> {
         descricao: `${NOME_TIPO_PECA[r.tipo]} de demonstração: texto fictício para conferir as telas.`,
         data_desejada: r.desejada,
         // Regra 7: urgente quando a data desejada fica antes do dia do envio + antecedência mínima padrão.
-        urgente: ehUrgente(r.desejada, diaEmBrasilia(new Date(hist[0].em)), ANTECEDENCIA_PADRAO),
+        urgente: ehUrgente(r.desejada, diaEmBrasilia(new Date(hist[0].em)), ANTECEDENCIA_PADRAO, feriados),
         imagem_confirmada_em: r.tipo === 'reel_instagram' ? null : hist[0].em,
         imagem_confirmada_por: r.tipo === 'reel_instagram' ? null : r.email,
         link_video: r.tipo === 'reel_instagram' ? 'https://exemplo.local/video-ficticio' : null,

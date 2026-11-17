@@ -8,6 +8,7 @@
  */
 import type { z } from 'zod';
 import { atualizarVarios, cabecalhoDe, inserirVarios, lerTabelas, type DefinicaoTabela, type Entrada, type Planilhas, type TabelaLida } from '@/nucleo/armazenamento/tabela';
+import { copiarFeriados } from '@/nucleo/feriados/feriados';
 import { AREAS_INICIAIS, PERFIS_INICIAIS, PERMISSOES_INICIAIS, UNIDADES_PADRAO } from './dados-iniciais';
 import { Areas, PerfilPermissoes, Perfis, TABELAS_DO_NUCLEO, Unidades } from './tabelas';
 
@@ -26,6 +27,8 @@ export interface EstruturaDosModulos {
   permissoes?: readonly { perfil: string; permissao: string }[];
   /** Permissões que uma versão anterior deu e que deixaram de valer: "Preparar estrutura" desativa. */
   permissoesRetiradas?: readonly { perfil: string; permissao: string }[];
+  /** Feriados que um módulo guardava por conta própria; "Preparar estrutura" copia para o Núcleo (sem repetir data). */
+  feriadosAntigos?: (p: Planilhas) => Promise<readonly { data: string; nome: string }[]>;
 }
 
 export async function prepararEstrutura(
@@ -71,6 +74,11 @@ export async function prepararEstrutura(
   if (aRetirar.length) {
     await atualizarVarios(p, PerfilPermissoes, aRetirar.map((x) => ({ id: x.id, versao: x.versao, mudancas: { ativo: false } })), { email: autor });
     ajustes.push(...aRetirar.map((x) => `permissão retirada: ${x.perfil} › ${x.permissao}`));
+  }
+
+  if (modulos.feriadosAntigos) {
+    const copiados = await copiarFeriados(p, await modulos.feriadosAntigos(p), autor);
+    if (copiados) ajustes.push(`${copiados} feriados copiados para o Núcleo`);
   }
 
   return { abasCriadas, registrosIniciais, ajustes };

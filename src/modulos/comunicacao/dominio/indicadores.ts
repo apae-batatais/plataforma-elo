@@ -4,7 +4,7 @@
  */
 import type { RegCalendario, RegHistorico, RegPedido } from '../dados/tabelas';
 import { TIPOS_PECA, type TipoPeca } from './pedido';
-import { diaEmBrasilia, diasUteisEntre } from './prazos';
+import { diaEmBrasilia, diasUteisEntre, type Feriados } from './prazos';
 
 export interface PeriodoIndicadores {
   inicio: string;
@@ -33,7 +33,7 @@ export const SEM_TEMA = 'Fora do calendário';
 const noPeriodo = (dia: string, p: PeriodoIndicadores) => dia >= p.inicio && dia <= p.fim;
 const media = (v: number[]): number | null => (v.length ? Math.round((v.reduce((a, b) => a + b, 0) / v.length) * 10) / 10 : null);
 
-export function montarIndicadores(e: { pedidos: RegPedido[]; historico: RegHistorico[]; calendario: RegCalendario[]; periodo: PeriodoIndicadores }): Indicadores {
+export function montarIndicadores(e: { pedidos: RegPedido[]; historico: RegHistorico[]; calendario: RegCalendario[]; periodo: PeriodoIndicadores; feriados?: Feriados }): Indicadores {
   const { periodo } = e;
   const pedidos = e.pedidos.filter((r) => r.ativo);
   const ids = new Set(pedidos.map((r) => r.id));
@@ -67,16 +67,16 @@ export function montarIndicadores(e: { pedidos: RegPedido[]; historico: RegHisto
     for (const h of linhas) {
       if (h.para === 'aguardando_revisao' && h.de !== 'aguardando_revisao') entradaRevisao = dia(h);
       else if (h.de === 'em_revisao' && h.para !== 'em_revisao' && entradaRevisao) {
-        if (noPeriodo(dia(h), periodo)) revisao.push(diasUteisEntre(entradaRevisao, dia(h)));
+        if (noPeriodo(dia(h), periodo)) revisao.push(diasUteisEntre(entradaRevisao, dia(h), e.feriados));
         entradaRevisao = null;
       }
       if (h.para === 'aguardando_aprovacao' && h.de !== 'aguardando_aprovacao') entradaAprovacao = dia(h);
       else if (h.de === 'aguardando_aprovacao' && h.para !== 'aguardando_aprovacao' && entradaAprovacao) {
-        if (noPeriodo(dia(h), periodo)) aprovacao.push(diasUteisEntre(entradaAprovacao, dia(h)));
+        if (noPeriodo(dia(h), periodo)) aprovacao.push(diasUteisEntre(entradaAprovacao, dia(h), e.feriados));
         entradaAprovacao = null;
       }
       if ((h.para === 'publicado' || h.para === 'realizada') && noPeriodo(dia(h), periodo))
-        publicacao.push(diasUteisEntre(diaEmBrasilia(new Date(r.enviado_em)), dia(h)));
+        publicacao.push(diasUteisEntre(diaEmBrasilia(new Date(r.enviado_em)), dia(h), e.feriados));
     }
   }
 

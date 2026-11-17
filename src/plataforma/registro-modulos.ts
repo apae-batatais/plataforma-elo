@@ -14,7 +14,7 @@ import { validarRegistro } from '@/nucleo/modulos/registro';
 import type { EstruturaDosModulos } from '@/nucleo/estrutura/preparar';
 import { manifesto as orcamento, popularCedidosFicticia, popularFolhaFicticia, popularHistoricoFicticia, popularPrevisaoFicticia, popularTesourariaFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
 import { manifesto as comunicacao, popularComunicacaoFicticia, TABELAS_COMUNICACAO } from '@/modulos/comunicacao';
-import { manifesto as requisicoes, popularRequisicoesFicticias, TABELAS_REQUISICOES } from '@/modulos/requisicoes';
+import { manifesto as requisicoes, lerFeriadosAntigos, popularRequisicoesFicticias, TABELAS_REQUISICOES } from '@/modulos/requisicoes';
 import { manifesto as parcerias, popularParceriasFicticias, TABELAS_PARCERIAS } from '@/modulos/parcerias';
 import { manifesto as avaliacao, popularAvaliacoesFicticias, TABELAS_AVALIACAO } from '@/modulos/avaliacao';
 import { manifesto as educacao, popularEducacaoFicticia, TABELAS_EDUCACAO } from '@/modulos/educacao';
@@ -35,6 +35,8 @@ export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
   permissoesRetiradas: MODULOS.flatMap((m) =>
     Object.entries(m.permissoesRetiradas).flatMap(([perfil, lista]) => lista.map((permissao) => ({ perfil, permissao }))),
   ),
+  // Só enquanto o app Requisições estiver ativo: copia os feriados que ele guardava na aba própria.
+  feriadosAntigos: lerFeriadosAntigos,
 };
 
 /** Dados fictícios dos módulos, gravados só na demonstração (em memória). */

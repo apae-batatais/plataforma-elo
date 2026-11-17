@@ -6,7 +6,8 @@
 import { Autorizador } from '@/nucleo/acesso/autorizador';
 import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
-import { concluirRequisicao, decidirRequisicao, enviarRequisicao, incluirFeriadosNacionais, receberRequisicao } from '../aplicacao/requisicoes';
+import { incluirFeriadosNacionais } from '@/nucleo/feriados/feriados';
+import { concluirRequisicao, decidirRequisicao, enviarRequisicao, receberRequisicao } from '../aplicacao/requisicoes';
 import { CatalogoItens, Requisicoes, TiposRequisicao } from './tabelas';
 
 const TIPOS = [

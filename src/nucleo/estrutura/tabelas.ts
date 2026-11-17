@@ -161,9 +161,16 @@ export const RegistrosAuditoria = definirTabela({
   }),
 });
 
+/** Feriados da instituição: dias que não contam como úteis nos prazos dos apps. */
+export const Feriados = definirTabela({
+  planilha: 'nucleo',
+  aba: 'Feriados',
+  esquema: z.object({ data: texto(), nome: texto() }),
+});
+
 export const TABELAS_DO_NUCLEO = [
   Unidades, Areas, Servicos, Pessoas, Papeis, VinculosFamiliares, VinculosServico,
-  Usuarios, Perfis, PerfilPermissoes, Atribuicoes, Encarregados, RegistrosAuditoria,
+  Usuarios, Perfis, PerfilPermissoes, Atribuicoes, Encarregados, Feriados, RegistrosAuditoria,
 ] as const;
 
 // Tipos dos registros ------------------------------------------------------
@@ -176,4 +183,5 @@ export type RegUsuario = Registro<typeof Usuarios.esquema>;
 export type RegPerfil = Registro<typeof Perfis.esquema>;
 export type RegPerfilPermissao = Registro<typeof PerfilPermissoes.esquema>;
 export type RegEncarregado = Registro<typeof Encarregados.esquema>;
+export type RegFeriado = Registro<typeof Feriados.esquema>;
 export type RegAtribuicao = Registro<typeof Atribuicoes.esquema>;

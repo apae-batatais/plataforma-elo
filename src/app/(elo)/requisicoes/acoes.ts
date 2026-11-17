@@ -16,17 +16,14 @@ import {
   corrigirValorGasto,
   enviarRequisicao,
   ErroRequisicao,
-  incluirFeriadosNacionais,
   iniciarEnvioAnexo,
   mudarSituacaoItemCatalogo,
   mudarSituacaoTipo,
   receberRequisicao,
   reenviarRequisicao,
   salvarExpediente,
-  salvarFeriado,
   salvarItemCatalogo,
   salvarTipo,
-  tirarFeriado,
   type DadosRequisicao,
   type LinhaItemLote,
 } from '@/modulos/requisicoes/aplicacao/requisicoes';
@@ -240,34 +237,6 @@ export async function acaoReativarTipo(f: FormData) {
 export async function acaoSalvarExpediente(f: FormData) {
   await executar('/requisicoes/tipos', 'Expediente salvo.', ({ usuario, app }) =>
     salvarExpediente(app.planilhas, usuario.autorizador, { inicio: numero(f, 'inicio'), fim: numero(f, 'fim') }),
-  );
-}
-
-export async function acaoSalvarFeriado(f: FormData) {
-  await executar('/requisicoes/tipos', 'Feriado incluído.', ({ usuario, app }) =>
-    salvarFeriado(app.planilhas, usuario.autorizador, { data: texto(f, 'data'), nome: texto(f, 'nome') }),
-  );
-}
-
-export async function acaoIncluirFeriadosNacionais(f: FormData) {
-  const ano = Number(texto(f, 'ano'));
-  const ctx = await contexto();
-  let destino: string;
-  try {
-    const n = await incluirFeriadosNacionais(ctx.app.planilhas, ctx.usuario.autorizador, ano);
-    const msg = n ? `${n} feriados de ${ano} incluídos.` : `Os feriados nacionais de ${ano} já estavam todos cadastrados.`;
-    destino = `/requisicoes/tipos?ok=${encodeURIComponent(msg)}#t-feriados`;
-  } catch (erro) {
-    if (!conhecido(erro)) throw erro;
-    destino = `/requisicoes/tipos?erro=${encodeURIComponent((erro as Error).message)}#t-feriados`;
-  }
-  revalidatePath('/', 'layout');
-  redirect(destino);
-}
-
-export async function acaoTirarFeriado(f: FormData) {
-  await executar('/requisicoes/tipos', 'Feriado tirado da lista.', ({ usuario, app }) =>
-    tirarFeriado(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
   );
 }
 
