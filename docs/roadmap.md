@@ -241,3 +241,10 @@ Ficou para depois (15/11/2026):
 - [ ] Indicadores de Saúde como números do serviço em Projetos e Parcerias (ligações entre apps).
 - [ ] Peça comum de avaliação entre Educação e Saúde, se a repetição de código pesar.
 - [ ] Sugestões: lembrete de reavaliação, copiar profissional e função da última aplicação, mostrar a nota do período anterior no item.
+
+## Auditoria na leitura de anexos (issue #66, especificação em `docs/especificacao-leitura-de-anexos.md`, ADR-033)
+
+Ficou para depois (17/11/2026):
+
+- [ ] Janela de auditoria (uma linha por pessoa e anexo a cada N minutos) se vídeos encherem a aba de auditoria.
+- [ ] Conferir se o arquivo já pertence a anexo de outro módulo na mesma pasta.
