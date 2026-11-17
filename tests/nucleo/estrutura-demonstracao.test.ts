@@ -75,10 +75,10 @@ describe('configuração', () => {
       PLANILHAS: '{"nucleo":"1AbCdEfGhIjK","auditoria":"1ZyXwVuTsRqP"}',
       GOOGLE_CLIENT_ID: '123-abc.apps.googleusercontent.com',
       SESSAO_SEGREDO: 'x'.repeat(40),
-      ADMINISTRADORES_INICIAIS: 'Diretoria@apaebatatais.org.br',
-      DOMINIO: 'apaebatatais.org.br',
+      ADMINISTRADORES_INICIAIS: 'Diretoria@inst-a-exemplo.org.br',
+      DOMINIO: 'inst-a-exemplo.org.br',
     });
     expect(c.modo).toBe('producao');
-    if (c.modo === 'producao') expect(c.administradoresIniciais).toEqual(['diretoria@apaebatatais.org.br']);
+    if (c.modo === 'producao') expect(c.administradoresIniciais).toEqual(['diretoria@inst-a-exemplo.org.br']);
   });
 });
