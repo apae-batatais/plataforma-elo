@@ -351,3 +351,80 @@ rota pública de mídia e roteiro no manual). Núcleo muda: peça nova `src/nucl
 - **Carrossel decidido pelo número de imagens do pedido**, sem novo tipo de peça (tipos continuam
   fixos). Custo se errada: criar o tipo "Carrossel" no pedido (pequena mudança).
 - **Limite de 50 por dia** (menor valor documentado pela Meta) e mídia pública por até 1 hora.
+
+## Fase 2 · entrega 3: avisos por e-mail da Comunicação (proposta #184)
+
+Detalha a entrega 3 da Fase 2 (ADR-027, proposta #63). **Não muda nada do que a Diretoria já decidiu** nas regras 1 a 10
+da Fase 2; só diz como os avisos funcionam na prática. Sem ADR nova (nenhuma decisão de arquitetura).
+
+**Pré-requisito.** Esta entrega usa a aba `Envios`, a coluna `envio_automatico` e a tarefa de envio da rotina, que são da
+entrega 2 (agendar com envio automático, falha e tentar de novo). A entrega 2 precisa estar construída antes.
+
+### O que entra
+1. **Aviso a quem precisa agir** (Fase 2, regra 6), um por tipo, cada um com gatilho, destinatário e texto fixos:
+
+   | Tipo | Quando é criado | Quem recebe | Assunto | Texto (sem título nem descrição do pedido) |
+   | --- | --- | --- | --- | --- |
+   | Devolvido | O pedido passa para Devolvido | Quem pediu | "Pedido COM-AAAA-NNNN devolvido para ajuste" | "Seu pedido foi devolvido para ajuste. Abra o Elo para ver o que ajustar." + link |
+   | Aguardando revisão | Há pedidos em Aguardando revisão (resumo por rodada) | Quem tem `comunicacao.revisar` | "N pedidos aguardando revisão" | "Há N pedidos aguardando revisão." + link da lista |
+   | Aguardando aprovação | O pedido passa para Aguardando aprovação | Quem tem `comunicacao.aprovar` | "Pedido COM-AAAA-NNNN aguardando aprovação" | "Um pedido espera a sua aprovação." + link |
+   | Publicado | O pedido passa para Publicado | Quem pediu | "Pedido COM-AAAA-NNNN publicado" | "Seu pedido foi publicado." + link |
+2. **Lembrete do dia** (regra 7): às 8h de Brasília, resumo à Comunicação (`comunicacao.revisar`) dos pedidos de post, reel
+   e entrevista agendados para o dia: "Hoje: N pedidos para publicar." + link da agenda. Dia sem pedido: não envia.
+3. **Aviso de falha de envio** (regra 5): quando o envio de release ou artigo esgota as tentativas, a Comunicação recebe
+   "O envio do pedido COM-AAAA-NNNN falhou. Abra o Elo para tentar de novo ou enviar à mão." + link do pedido. O pedido
+   continua Agendado e não vira Publicado por envio automático (regra da entrega 2, aqui coberta por teste).
+4. **Tarefa nova da rotina** `comunicacao.avisos` (em `TAREFAS_DA_ROTINA`): cria os avisos e o lembrete e os envia, usando
+   a aba `Envios` (tipos aviso e lembrete) e o `EnviadorDeEmail` por `app.email`. Devolve só contagens.
+
+### Regras de negócio (com teste)
+1. Aviso de pedido (Devolvido, Aguardando aprovação, Publicado) nasce na mesma gravação que muda a situação do pedido:
+   cria um `Envio` pendente do tipo aviso, que a rotina envia. Se a criação do `Envio` falhar, a mudança de situação
+   **não** é desfeita (o aviso dentro do Elo é o principal); o erro fica registrado e a rotina não repete sozinha.
+2. Nada é criado sem `remetente_email` válido ou com `avisos_por_email` desligado (regra 1 da Fase 2).
+3. Destinatário sem e-mail cadastrado, ou desativado, é ignorado; o aviso não falha por isso.
+4. Aguardando revisão e lembrete são **resumos**: no máximo um por pessoa por rodada e um lembrete por dia por
+   instituição (idempotente: a rotina rodando de novo no mesmo dia não reenvia).
+5. Texto fixo, só número do pedido, o que fazer e o link do Elo; nunca título, descrição, nome de atendido nem anexo.
+6. Aviso de falha sai uma vez por envio que falhou (não a cada tentativa) e não é reenviado ao "Tentar de novo",
+   salvo se falhar de novo.
+7. Falha ao enviar um aviso (Gmail fora do ar) segue a regra 5 da Fase 2 (3 tentativas), mas **nunca** altera a
+   situação do pedido.
+8. Quem vê e quem altera: `Envios` segue a regra 9 da Fase 2; ninguém altera aviso à mão; auditoria só com colunas.
+9. Em demonstração e nos testes, tudo vai para o enviador em memória: nada sai de verdade (regra 9 do projeto).
+
+### Telas
+Quase sem tela nova; usam só componentes de `src/ui/`.
+1. **Configurações** (coordenação, `comunicacao.configurar`): o interruptor "Avisos por e-mail" já especificado ganha a
+   explicação "Quando ligado, o Elo manda e-mail a quem precisa agir, sem título nem descrição do pedido." e, desligado
+   por falta de remetente, o texto "Falta informar o e-mail de envio na administração da instituição."
+   Gravou: "Salvo."; erro: mensagem e a escolha anterior mantida.
+2. **Detalhe do pedido**: no histórico, a linha "Aviso enviado por e-mail a <perfil ou nome de quem pediu>" ou "Aviso por
+   e-mail não enviado: <motivo em português simples>", visível a quem já vê o pedido.
+3. **Tela inicial**: o aviso "N envios falharam" (já especificado) passa a contar também avisos que falharam.
+4. Estados: sem aviso a enviar, nada aparece; sem permissão, a pessoa não vê o interruptor.
+5. Celular e teclado: nada novo (coluna única, ordem natural de tabulação).
+6. Sugestão (Diretoria decide): cada pessoa poder desligar os próprios avisos por e-mail.
+
+### Fica de fora
+Aviso de Requisições (#61) e do painel de prazos (#57); Instagram (Fase 3); cada pessoa escolher quais avisos
+receber; avisos por outros canais; rastreio de abertura; núcleo e outros módulos (só a pasta da Comunicação e a lista de
+tarefas da rotina em `src/plataforma/rotina.ts`).
+
+### Frentes
+`regras e dados` (criação dos avisos, tarefa da rotina, testes de gatilho, texto e acesso) e `telas` (configurações,
+histórico do pedido, tela inicial). Sem infraestrutura nova (o `rotina.yml` e o `ROTINA_TOKEN` são da entrega 1).
+
+### Decisões tomadas sozinho (custo se estiverem erradas)
+- **Quem recebe cada aviso**: aprovação vai a quem tem `comunicacao.aprovar` (coordenação e Diretoria). Se errada: troca
+  de destinatário, pequena.
+- **Lembrete às 8h só quando há pedido no dia.** Se a Diretoria quiser todo dia útil, é pequena mudança.
+- **Falha de aviso nunca desfaz a mudança do pedido.** Se errada: um pedido pode mudar de situação sem e-mail; o aviso
+  dentro do Elo continua.
+- **Um aviso de falha por envio**, para não lotar a caixa da Comunicação.
+
+### Critérios de pronto (conferência na prévia, em demonstração com e-mail fictício)
+- Devolver, mandar para aprovação e publicar um pedido cria o aviso certo, para a pessoa certa, só com número e link.
+- Com avisos desligados ou sem remetente, nada é criado.
+- A rotina rodando duas vezes no mesmo dia manda um só lembrete.
+- Um envio de release que falhou gera um aviso à Comunicação e o pedido continua Agendado.
