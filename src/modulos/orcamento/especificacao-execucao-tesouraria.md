@@ -507,3 +507,162 @@ Tomadas pelo agente durante a construção, sem resposta da Diretoria. Estão na
 - [ ] "Preparar estrutura" cria as abas novas no limite de 10 segundos
 - [ ] `npm run verificar` e `npm run build` verdes
 - [ ] Conferido pela Diretoria na prévia
+
+## Entrega 1C.2 — Painel de execução e recursos livres (issue #185, 17/11/2026)
+
+Detalha a 1C.2 da "Revisão de 10/11/2026". Lê o realizado que a 1C.1 já grava (aba `Realizado`) e o previsto
+da Previsão aprovada; **não importa o WK Radar** (as perguntas P1 a P6 da issue são da importação futura e
+não bloqueiam esta entrega). Onde houver conflito com as regras 8 a 12 originais, vale esta seção.
+
+### Objetivo e para quem
+
+Responder, sem planilha paralela: "estamos gastando o que previmos?", "quanto recurso livre cada serviço
+consome?", "quanto falta ressarcir dos termos?" e "como estamos contra o mesmo período do ano passado?".
+Usam: Diretoria e Financeiro (tudo), Coordenação de área (só despesa do seu escopo) e Leitura (só totais).
+
+### Usuários e permissões
+
+| Perfil | Vê | Permissão |
+| --- | --- | --- |
+| Diretoria, Financeiro | Tudo (despesa e receita, todos os serviços) | `orcamento.execucao.ver` |
+| Coordenação de área ou serviço | Só despesa dos serviços do escopo; sem receita, sem adiantamentos, sem comparação de receita | `orcamento.execucao.ver` (com escopo) |
+| Leitura | Só os totais do ano e do período (sem serviço, grupo, fonte nem adiantamentos) | `orcamento.painel.ver` |
+
+Ninguém altera nada nesta entrega: as telas são só de leitura (o realizado continua sendo informado na 1C.1,
+pelo Financeiro com `orcamento.realizado.editar`). Nenhuma permissão nova.
+
+### Dados
+
+Sem aba nova. Uma coluna nova **opcional** em `Realizado`: `fonte_termo_id` (texto), a fonte restrita do termo
+que o recurso livre adiantou. Obrigatória só em linha de despesa com natureza "adiantamento a termo"; vazia nas
+demais (sem dado pessoal, sem `sigilo`). Linhas de adiantamento já gravadas sem ela aparecem como "termo não
+informado" (regra 5), sem bloquear nada. A grade "Informar realizado" ganha o campo "Termo adiantado" quando a
+natureza escolhida é "adiantamento a termo". Mudança só dentro do Orçamento.
+
+### Regras de negócio (com teste)
+
+1. **Previsto do mês** de uma combinação serviço × grupo × fonte = previsto da Previsão **aprovada** do ano,
+   já com remanejamentos e suplementações aprovados (1B.2), distribuído pelos meses como a Previsão faz. Receita
+   por fonte. Sem Previsão aprovada, o painel mostra só o realizado e avisa.
+2. **Execução (%)** = realizado ÷ previsto, no período escolhido (janeiro até o último mês informado, ou um
+   mês). Sem previsto, a execução é "sem previsto" (nunca 0% nem infinito). Realizado sem linha na Previsão
+   entra numa linha "Fora da previsão".
+3. **Só meses informados contam.** O período padrão vai de janeiro ao último mês com realizado informado; o
+   previsto é cortado no mesmo mês, para não comparar 9 meses de realizado com 12 de previsto. Mês do meio
+   sem informação aparece como "sem dado" e fica fora das somas dos dois lados (previsto e realizado), com aviso
+   listando os meses.
+4. **Recurso livre por serviço** = soma das despesas cuja fonte tem uso `livre`, por serviço e natureza.
+   Despesa sem serviço vai para "Comum" (decisão de 05/11/2026). Mostra também a **receita livre** do período
+   e o **resultado do recurso livre** (receita livre − despesa livre).
+5. **Adiantamentos e ressarcimentos, por termo (fonte restrita).** Adiantado = soma das despesas "adiantamento a
+   termo" com aquele `fonte_termo_id`; ressarcido = soma das receitas "ressarcimento" cuja `fonte_id` é o termo.
+   **Saldo em aberto** = adiantado − ressarcido, acumulado de todos os anos (um adiantamento de dezembro pode ser
+   ressarcido em março). Saldo negativo (ressarcido a mais) aparece como "ressarcido a mais", nunca some.
+   **Há quantos dias:** conta a partir do fim do mês do adiantamento **mais antigo ainda em aberto**, baixando
+   do mais antigo para o mais novo (primeiro a entrar, primeiro a sair). Acima de 60 dias, a linha ganha a
+   etiqueta "Atenção" (indicador `adiantamentos_em_aberto`). Adiantamento sem termo informado aparece no fim,
+   como "Termo não informado — complete na grade do mês".
+6. **Comparação com o ano anterior** (regra 12 da 1C.1): só os meses informados nos **dois** anos; os não
+   recorrentes saem da comparação e aparecem numa linha à parte, com o motivo. Ano anterior sem nenhum mês
+   informado: o painel diz "sem realizado do ano anterior no Elo" (o Histórico da 1E não substitui aqui, regra 13
+   da 1C.1).
+7. **Nenhum total é digitado**; tudo é soma das linhas do `Realizado`, em centavos.
+8. **Quem vê o quê é filtrado antes de somar:** o total que a Coordenação vê é a soma só do escopo dela; o de
+   Leitura, só o agregado. Nenhum número fora do escopo vaza por subtração entre totais.
+9. **Auditoria:** são telas de totais, sem dado pessoal; não registram auditoria de leitura (como "Realizado do
+   ano"). O que existe de auditoria na gravação (1C.1) não muda.
+
+### Telas
+
+Menu **Execução** ganha **Painel de execução** (primeira tela do grupo para quem tem `execucao.ver`) e **Recursos
+livres**; **Realizado do ano** continua. Linha de contexto em todas: "Janeiro a setembro de 2026 · realizado
+informado até setembro".
+
+**1. Execução › Painel de execução** (Diretoria e Financeiro querem saber se a execução está no previsto, em um
+olhar; Coordenação, se o seu serviço está.)
+- Caminho: abrir o menu → 1 clique. "Ver os números" e o filtro de serviço não perdem nada ao trocar.
+- Primeira dobra: faixa de pendências (meses sem realizado, adiantamento acima de 60 dias; cada uma com atalho
+  para resolver), depois três `Indicadores`/números de destaque: **Despesa**, **Receita** e **Resultado** do
+  período, cada um com realizado, previsto e execução em %. Ação principal para o Financeiro: "Informar
+  realizado" (botão no cabeçalho).
+- Seguem: gráfico **ResultadoMensal** (título em conclusão, ex.: "Resultado ficou abaixo do previsto em 2 dos 9
+  meses", com a leitura ao lado: o que fazer, como "confira os meses de março e abril"; receita e despesa
+  realizadas, mês a mês); gráfico **BarrasHorizontais** "Execução por serviço" (série 1 = previsto, série 2 =
+  realizado, maior primeiro; no máximo 2 séries); tabela `TabelaDados` por área, serviço, grupo e fonte com
+  previsto, realizado, diferença e execução em %, com busca e ordenação.
+- Componentes de `src/ui/`: `CabecalhoPagina`, `Aviso`, `Indicadores`, `ResultadoMensal`, `BarrasHorizontais`,
+  `TabelaDados`, `SeletorAno`, `Etiqueta`, `EstadoVazio`. Nada novo no Núcleo.
+- Estados: **vazio** (sem nenhum mês informado): "Ainda não há realizado neste ano. O Financeiro informa mês a
+  mês em Informar realizado." com o botão só para quem pode; **sem Previsão aprovada**: aviso "Sem Previsão
+  aprovada em 2026: mostramos só o realizado" e as colunas de previsto somem; **sem permissão**: tela padrão de
+  acesso negado. Telas só de leitura: não há "gravando" nem erro de gravação; erro de leitura mostra "Não foi
+  possível carregar o painel. Tente de novo" com o botão.
+- Ação sem volta: nenhuma.
+- Celular e teclado: cartões empilham, tabela rola na horizontal, gráficos têm "Ver os números"; ordem de
+  tabulação: ano → período → pendências → cartões → gráficos → tabela.
+
+**2. Execução › Recursos livres** (Diretoria e Financeiro: quanto recurso livre cada serviço consome e se a conta
+fecha.)
+- Primeira dobra: números de destaque **Receita livre**, **Despesa livre** e **Resultado do recurso livre** do
+  período; abaixo, o resumo de adiantamentos ("Falta ressarcir R$ … em N termos; o mais antigo há N dias").
+- Gráfico **Linhas** "Receita livre × despesa livre por mês" (2 séries, `formato: moeda`, "sem dado" nos meses
+  não informados); gráfico **BarrasHorizontais** "Recurso livre por serviço" (maior primeiro; nota com a
+  natureza dominante); tabela serviço × natureza (RH, encargos, custeio, investimento, tarifas, adiantamento) com
+  total, e peso do serviço no total em %.
+- **Comparação com o ano anterior**: **BarrasAgrupadas** do mesmo período, os dois anos lado a lado, com
+  e sem não recorrentes (alternância "Sem não recorrentes" / "Com todos"), variação em % e em pontos contra a
+  receita livre; ano parcial marcado "parcial" (regra 26).
+- **Adiantamentos e ressarcimentos**: tabela por termo (adiantado, ressarcido, em aberto, há quantos dias,
+  etiqueta Atenção/Em dia). Sem adiantamento: "Nenhum adiantamento em aberto." (estado vazio, não erro).
+- Coordenação vê só a despesa livre dos seus serviços; as seções de receita e adiantamentos não aparecem para
+  ela (e nem o cabeçalho delas). Leitura não acessa esta tela.
+- Estados, celular e teclado: como na tela 1.
+
+**3. Realizado do ano** (já existe, 1C.1): ganha só o link "Ver o painel" no cabeçalho.
+**4. Visão geral e Painel geral** (1D.2 e 1B): **não** mudam nesta entrega; passam a mostrar a Execução
+na 1D.2.
+
+### Sugestões de melhoria (a Diretoria decide)
+
+- Ligar cada barra de serviço à tabela já filtrada naquele serviço (um clique para o detalhe).
+- Mostrar, no painel, a pendência de realizado já existente na tela inicial (regra R11) para o Financeiro
+  resolver sem sair do painel.
+- Exportar a tabela de execução em CSV, no mesmo padrão de "Baixar planilha" da Previsão.
+
+### Fica de fora
+
+Importação do realizado (WK Radar ou modelo) e as perguntas P1 a P6; tabelas de correspondência
+centro de custo ↔ serviço e conta ↔ grupo; lançamentos individuais; aba `Adiantamentos` própria; conferência
+dos termos e do recurso livre contra os saldos (regras 16 e 17, que ficam na 1D.2); Visão geral e sinais; uso da
+reserva; histórico vindo do realizado (regra 25 original).
+
+### Frentes
+
+`regras e dados` (leitura agregada do realizado e da Previsão, coluna `fonte_termo_id`, escopo, testes) e
+`telas` (duas telas novas com gráficos e a grade com o campo "Termo adiantado"). Sem `infraestrutura`.
+
+### Entregas
+
+Uma só entrega (1C.2), conferível na prévia. Depende da 1C.1, que já está no ar.
+
+### Critérios de pronto (1C.2)
+
+- [ ] Testes das regras 1 a 8, incluindo escopo (Coordenação só o seu; Leitura só o agregado; nada vaza por subtração)
+- [ ] Testes de borda: período cortado nos dois lados, mês do meio sem dado, previsto zero, saldo de adiantamento negativo, ordem do mais antigo para o mais novo, ano anterior sem dados
+- [ ] "Preparar estrutura" acrescenta a coluna `fonte_termo_id` sem perder as linhas existentes
+- [ ] Na prévia, com a demonstração: o Painel de execução mostra execução por serviço; Recursos livres mostra o consumo por serviço, a comparação com o ano anterior e um adiantamento em aberto; a Coordenação vê só o seu serviço
+- [ ] Gráficos com "Ver os números", `descricao`, título em conclusão, no máximo 4 séries
+- [ ] `npm run verificar` e `npm run build` verdes
+
+### Decisões tomadas sozinho (1C.2)
+
+1. **Adiantamentos calculados do `Realizado`, sem aba `Adiantamentos`** (a regra 11 original previa uma).
+   Custo se errada: criar a aba e ligar linhas a adiantamentos individuais, o que pede ajuste na grade.
+2. **Baixa do mais antigo para o mais novo** (e não "o adiantamento escolhido"), porque o realizado é em totais
+   mensais, sem lançamento para escolher. Custo se errada: campo para escolher o adiantamento em cada ressarcimento.
+3. **Coluna `fonte_termo_id` no `Realizado`** para saber que termo foi adiantado. Custo: dado antigo sem termo
+   fica em "termo não informado" até ser completado.
+4. **Limite de 60 dias** para a etiqueta "Atenção" (o do indicador `adiantamentos_em_aberto`). Se errado, é um parâmetro.
+5. **Período padrão = janeiro até o último mês informado**, com o previsto cortado no mesmo mês.
+6. **Leitura não vê a tela Recursos livres** (só totais no Painel de execução).
+7. **Duas telas, não uma**, para o painel principal não ficar longo; se preferir uma só, junte as seções.
