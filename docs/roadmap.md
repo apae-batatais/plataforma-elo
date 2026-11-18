@@ -266,3 +266,15 @@ Ficou para depois (17/11/2026):
 
 - [ ] Janela de auditoria (uma linha por pessoa e anexo a cada N minutos) se vídeos encherem a aba de auditoria.
 - [ ] Conferir se o arquivo já pertence a anexo de outro módulo na mesma pasta.
+
+## Núcleo: cadastro de pessoa e vínculo com serviço (issue #198, especificação em `docs/especificacao-pessoas-e-vinculos.md`, ADR-035)
+
+Especificada em 18/11/2026. Ficou para depois:
+
+- [ ] Vínculos familiares e responsáveis legais na mesma janela.
+- [ ] Importar pessoas coladas de uma planilha (como em Acessos e Serviços).
+- [ ] Unir cadastros duplicados e corrigir vínculo lançado por engano pela tela.
+- [ ] Pedir à Diretoria, dentro do Elo, a ligação de pessoa fora do escopo.
+- [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
+- [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
+
