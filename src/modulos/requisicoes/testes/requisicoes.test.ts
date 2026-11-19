@@ -2,6 +2,7 @@
  * Requisições (entrega 1: base e Materiais), com dados FICTÍCIOS: caminho
  * completo, quem aprova, quem atende, quem vê, histórico, auditoria e SLA.
  */
+import { ErroFaixaInvalida } from '@/nucleo/armazenamento/leitura-de-anexo';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Autorizador, ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
@@ -746,13 +747,18 @@ describe('fotos e vídeo (ADR-014)', () => {
     expect([t.inicio, t.fim, t.total, t.tipo]).toEqual([0, 3 * MB - 1, 3 * MB, 'video/mp4']);
     const parte = await lerAnexo(p, pede, arquivos, video.id, { inicio: MB, fim: MB + 99 });
     expect(parte.dados.length).toBe(100);
-    // Só a primeira leitura (início do arquivo) vai para a auditoria.
+    // Cada trecho lido vai para a auditoria, com a faixa (ADR-033).
     const leituras = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'RequisicaoAnexos' && a.acao === 'leitura');
-    expect(leituras).toHaveLength(1);
+    expect(leituras.map((l) => l.detalhes)).toEqual([JSON.stringify({ faixa: `0-${3 * MB - 1}` }), JSON.stringify({ faixa: `${MB}-${MB + 99}` })]);
     // O setor só vê depois de aprovada; outra pessoa, nunca.
     await expect(lerAnexo(p, await como('manutencao@exemplo.local'), arquivos, video.id, { inicio: 0, fim: null })).rejects.toBeInstanceOf(ErroPermissao);
     await expect(lerAnexo(p, await como('dp@exemplo.local'), arquivos, video.id, { inicio: 0, fim: null })).rejects.toBeInstanceOf(ErroPermissao);
     expect((await lerAnexo(p, await como('coord.educacao@exemplo.local'), arquivos, d.anexos[0].id, { inicio: 0, fim: null })).total).toBe(300_000);
+    // Sem permissão não grava leitura; faixa fora do arquivo responde erro de faixa e não grava.
+    const antes = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.acao === 'leitura').length;
+    await expect(lerAnexo(p, pede, arquivos, video.id, { inicio: 3 * MB, fim: null })).rejects.toBeInstanceOf(ErroFaixaInvalida);
+    await expect(lerAnexo(p, pede, arquivos, video.id, { inicio: 10, fim: 5 })).rejects.toBeInstanceOf(ErroFaixaInvalida);
+    expect((await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.acao === 'leitura').length).toBe(antes);
   });
 
   it('recusa: tipo que não aceita, instituição sem pasta, arquivo que não chegou, limites e arquivo de outra requisição', async () => {

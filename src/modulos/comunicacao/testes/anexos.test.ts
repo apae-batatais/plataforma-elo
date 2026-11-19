@@ -356,11 +356,13 @@ describe('abrir o anexo (leitura)', () => {
     expect(l.every((x) => x.entidade === 'AnexosComunicacao')).toBe(true);
   });
 
-  it('um trecho do meio não repete a auditoria da abertura', async () => {
+  it('um trecho do meio também vai para a auditoria, com a faixa', async () => {
     const { anexoId } = await comAnexo();
     const t = await lerAnexoComunicacao(p, await como(p, FUNCIONARIO), arq, anexoId, { inicio: 100, fim: 199 });
     expect(t.dados).toHaveLength(100);
-    expect(await leituras(anexoId)).toHaveLength(0);
+    const l = await leituras(anexoId);
+    expect(l).toHaveLength(1);
+    expect(l[0].detalhes).toBe(JSON.stringify({ faixa: '100-199' }));
   });
 
   it('quem não vê o pedido recebe ErroPermissao, sem auditoria de leitura', async () => {

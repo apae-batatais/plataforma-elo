@@ -6,6 +6,7 @@ import { abrirAnexoComunicacao, lerAnexoComunicacao } from '@/modulos/comunicaca
 import { ErroComunicacao } from '@/modulos/comunicacao/dominio/pedido';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroArquivo } from '@/nucleo/armazenamento/arquivos';
+import { ErroFaixaInvalida, MENSAGEM_ERRO_LEITURA } from '@/nucleo/armazenamento/leitura-de-anexo';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 
@@ -57,7 +58,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   } catch (erro) {
     if (erro instanceof ErroPermissao) return new Response(erro.message, { status: 403 });
     if (erro instanceof ErroComunicacao) return new Response(erro.message, { status: 404 });
-    if (erro instanceof ErroArquivo) return new Response(erro.message, { status: 502 });
+    if (erro instanceof ErroFaixaInvalida) return new Response(erro.message, { status: 416, headers: { 'Content-Range': `bytes */${erro.total}` } });
+    if (erro instanceof ErroArquivo) {
+      // O texto do Google (com o código do arquivo) fica só no registro do servidor.
+      console.error('Falha ao ler anexo:', erro.message);
+      return new Response(MENSAGEM_ERRO_LEITURA, { status: 502 });
+    }
     throw erro;
   }
 }
