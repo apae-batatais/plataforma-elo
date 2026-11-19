@@ -9,4 +9,4 @@ Plano: abas Instrumentos/Aplicacoes/Respostas, casos de uso (`aplicacao/aplicaco
 - [x] Abas, casos de uso e testes
 - [x] Telas e ações
 - [x] Demonstração e documentação
-- [ ] verificar, build, revisão de usabilidade e PR
+- [x] verificar, build, revisão de usabilidade e PR
