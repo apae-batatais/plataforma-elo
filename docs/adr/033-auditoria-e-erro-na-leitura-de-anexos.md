@@ -1,6 +1,6 @@
 # ADR-033 — Auditoria completa e erro sem detalhes na leitura de anexos
 
-Situação: proposta (aguarda aprovação da Diretoria) · Data: 17/11/2026 · Issue #66 · Complementa o ADR-014
+Situação: aceita · Data: 17/11/2026 · Issue #66 · Complementa o ADR-014
 
 ## Contexto
 

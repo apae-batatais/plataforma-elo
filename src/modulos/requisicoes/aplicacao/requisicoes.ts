@@ -15,6 +15,7 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
+import { lerTrechoDeAnexo, TRECHO_MAXIMO } from '@/nucleo/armazenamento/leitura-de-anexo';
 import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { atualizar, atualizarVarios, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
@@ -963,8 +964,7 @@ export async function salvarExpediente(p: Planilhas, quem: Autorizador, e: Exped
 // Fotos e vídeo (ADR-014)
 // ---------------------------------------------------------------------------
 
-/** Maior trecho entregue de uma vez (o servidor da hospedagem limita o tamanho da resposta). */
-export const TRECHO_MAXIMO = 4 * 1024 * 1024;
+export { TRECHO_MAXIMO };
 
 async function lerAnexos(p: Planilhas) {
   try {
@@ -1034,7 +1034,7 @@ export async function iniciarEnvioAnexo(
 
 /**
  * Lê um trecho de um anexo para mostrar no Elo, só para quem pode ver a
- * requisição. A primeira leitura de cada abertura fica na auditoria.
+ * requisição. Cada trecho lido fica na auditoria (ADR-033).
  */
 export async function lerAnexo(
   p: Planilhas,
@@ -1050,11 +1050,7 @@ export async function lerAnexo(
   const d = await ler(p, new Date());
   const r = d.requisicoes.porId(anexo.requisicao_id);
   if (!r || !r.ativo || !podeVer(quem, d, r)) throw new ErroPermissao('Você não tem acesso a este anexo.');
-  const inicio = Math.max(0, Math.min(pedido.inicio, anexo.tamanho - 1));
-  const fim = Math.min(pedido.fim ?? anexo.tamanho - 1, inicio + TRECHO_MAXIMO - 1, anexo.tamanho - 1);
-  const trecho = await arquivos.ler(anexo.arquivo_id, { inicio, fim });
-  if (inicio === 0) await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'RequisicaoAnexos', registroId: anexo.id });
-  return { ...trecho, tipo: anexo.mime };
+  return lerTrechoDeAnexo(p, arquivos, anexo, pedido, { usuario: quem.email, entidade: 'RequisicaoAnexos' });
 }
 
 // ---------------------------------------------------------------------------

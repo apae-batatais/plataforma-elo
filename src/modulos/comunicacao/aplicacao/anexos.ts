@@ -9,6 +9,7 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
+import { lerTrechoDeAnexo, TRECHO_MAXIMO } from '@/nucleo/armazenamento/leitura-de-anexo';
 import { atualizarVarios, inserirRegistros, lerTabelas, type Planilhas, type TabelaLida } from '@/nucleo/armazenamento/tabela';
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { AnexosComunicacao, PedidosComunicacao, type RegAnexo } from '../dados/tabelas';
@@ -17,7 +18,7 @@ import { ErroComunicacao } from '../dominio/pedido';
 import { diaEmBrasilia } from '../dominio/prazos';
 
 /** Maior trecho entregue de uma vez (o servidor da hospedagem limita o tamanho da resposta). */
-export const TRECHO_MAXIMO = 4 * 1024 * 1024;
+export { TRECHO_MAXIMO };
 
 /**
  * O que o formulário manda de cada arquivo. `arquivoId` é o código dado pelo envio (arquivo novo)
@@ -162,7 +163,7 @@ async function autorizarAnexo(p: Planilhas, quem: Autorizador, arquivos: Armazen
 
 /**
  * Lê um trecho de um anexo para mostrar no Elo, só para quem pode ver o pedido.
- * A abertura (primeiro trecho) fica na auditoria.
+ * Cada trecho lido fica na auditoria (ADR-033).
  */
 export async function lerAnexoComunicacao(
   p: Planilhas,
@@ -172,11 +173,7 @@ export async function lerAnexoComunicacao(
   trecho: { inicio: number; fim: number | null },
 ) {
   const { anexo, arquivos: pasta } = await autorizarAnexo(p, quem, arquivos, anexoId);
-  const inicio = Math.max(0, Math.min(trecho.inicio, anexo.tamanho - 1));
-  const fim = Math.min(trecho.fim ?? anexo.tamanho - 1, inicio + TRECHO_MAXIMO - 1, anexo.tamanho - 1);
-  const lido = await pasta.ler(anexo.arquivo_id, { inicio, fim });
-  if (inicio === 0) await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: 'AnexosComunicacao', registroId: anexo.id });
-  return { ...lido, tipo: anexo.mime };
+  return lerTrechoDeAnexo(p, pasta, anexo, trecho, { usuario: quem.email, entidade: 'AnexosComunicacao' });
 }
 
 /**
