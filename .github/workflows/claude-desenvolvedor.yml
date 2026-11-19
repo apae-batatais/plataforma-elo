@@ -120,6 +120,9 @@ jobs:
             7. Abra o PR com `gh pr create --base main --label "PR: entrega"`: corpo em português começando com a linha
                "Entrega #${{ env.ISSUE }}", o que mudou, roteiro de conferência na prévia e as decisões
                tomadas sozinho (com o custo se estiverem erradas). A prévia é publicada sozinha.
+               Se a especificação divide a proposta em entregas, construa uma por vez e ponha no título
+               "(k de m)", por exemplo "(1 de 3)": entrega que não é a última devolve a proposta à fila,
+               sem fechar. Ao retomar uma proposta já com entregas na main, construa a próxima.
             Para textos longos em comentários e PRs, grave o texto num arquivo e use `--body-file`
             (evita barras invertidas antes das aspas).
 

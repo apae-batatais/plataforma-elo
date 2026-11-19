@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { aplicar, etapaDaEtiqueta, etiquetaDe, executar, mudancas, podeConstruir, referencias, temPerguntaAberta, tipoDoPR, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
+import { aplicar, entregaParcial, etapaDaEtiqueta, etiquetaDe, executar, mudancas, podeConstruir, referencias, temPerguntaAberta, tipoDoPR, trocaDeEtiquetas } from '../../.github/scripts/fluxo-quadro.mjs';
 
 type Issue = { number: number; state: string; labels: { name: string }[]; node_id: string; pull_request?: unknown };
 
@@ -237,5 +237,15 @@ describe('podeConstruir', () => {
     expect(podeConstruir(issue('open', ['etapa: proposta']))).toEqual({ pode: false, motivo: 'a issue está na etapa "Proposta"' });
     expect(podeConstruir(issue('open', ['etapa: entrega em aprovação']))).toEqual({ pode: false, motivo: 'a issue está na etapa "Entrega em aprovação"' });
     expect(podeConstruir(issue('open', []))).toEqual({ pode: false, motivo: 'a issue não tem etapa' });
+  });
+
+  it('entrega parcial ("1 de 3") devolve a proposta à fila sem fechar; a última aprova e fecha', () => {
+    expect(entregaParcial('Entrega: app Saúde, aplicar e fechar (1 de 3)\nEntrega #68')).toBe(true);
+    expect(entregaParcial('Entrega: Instagram (3 de 3)\nEntrega #64')).toBe(false);
+    expect(entregaParcial('Entrega: feriados no Núcleo\nEntrega #67')).toBe(false);
+    expect(entregaParcial('Entrega: algo\nTexto citando (1 de 3) no corpo')).toBe(false);
+    const etiquetas = ['PR: entrega'];
+    expect(mudancas({ tipo: 'pr_merge', texto: 'Entrega: Saúde (1 de 3)\nEntrega #68', etiquetas })).toEqual([{ issue: 68, etapa: 'Pronta para construir' }]);
+    expect(mudancas({ tipo: 'pr_merge', texto: 'Entrega: Saúde (3 de 3)\nEntrega #68', etiquetas })).toEqual([{ issue: 68, etapa: 'Aprovada', fechar: true }]);
   });
 });

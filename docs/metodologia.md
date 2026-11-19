@@ -108,6 +108,10 @@ repositório: habilidades da conta da Diretoria no Claude não vão junto.
   das sub-issues dentro de uma proposta é a ordem de construção das entregas; a prioridade entre
   propostas diferentes continua decidida pela ordem no quadro (decisão de 15/11/2026, a partir da
   observação da Diretoria de que issues/PRs soltos perdiam o vínculo com a proposta original).
+- **Entrega parcial não fecha a proposta.** Quando a especificação divide a proposta em entregas
+  e não há sub-issues, o PR de entrega traz "(k de m)" no título (por exemplo, "(1 de 3)"). Ao
+  entrar uma entrega que não é a última, a proposta volta para "Pronta para construir" e a fila
+  chama a próxima; só a última entrega aprova e fecha a proposta.
 - **Tipo do PR pela etiqueta**, que a Diretoria vê na lista de PRs:
   - especificação: etiqueta `PR: especificação` e o texto começando com a linha `Especifica #12`;
   - construção: etiqueta `PR: entrega` e o texto começando com a linha `Entrega #12`;
