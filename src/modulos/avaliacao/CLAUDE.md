@@ -15,3 +15,13 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - O índice de necessidade de cuidado é calculado na leitura (`indiceDeCuidado`), não guardado.
 - Nada é apagado: avaliação retirada fica com `ativo = FALSE` e `motivo_retirada`.
 - Permissões: `avaliacao.<acao>`, declaradas no manifesto.
+
+## Aplicação de instrumentos (issue #62, entregas 1 e 2)
+
+- Motor puro em `src/capacidades/motor-avaliacao/` (não altere; só use). Casos de uso em
+  `aplicacao/aplicacoes.ts`; abas `Instrumentos`, `Aplicacoes` e `Respostas` na mesma planilha.
+- A pessoa é a do Cadastro Único (`pessoa_id`): só entra quem `podeVerPessoa` permite **e** tem vínculo
+  ativo num serviço em que quem avalia tem `avaliacao.avaliar`. Telas mostram iniciais, nunca o nome.
+- Aplicação concluída não se edita: `corrigirAplicacao` cria outra (`corrige`). Instrumento usado só muda
+  por nova versão. Instrumentos entram por `cadastrarInstrumento` (sem editor em tela).
+- O comparativo ignora aplicação já corrigida e ciclos de outra versão do instrumento.

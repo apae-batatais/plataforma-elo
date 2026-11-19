@@ -8,6 +8,7 @@
 import { Autorizador } from '@/nucleo/acesso/autorizador';
 import { lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
+import { cadastrarInstrumento, pessoasParaAplicar, salvarAplicacao } from '../aplicacao/aplicacoes';
 import { salvarAvaliacao } from '../aplicacao/avaliacoes';
 import { CUIDADORES, SEM_CUIDADOR, type DadosAvaliacao } from '../dominio/avaliacao';
 
@@ -120,4 +121,59 @@ export async function popularAvaliacoesFicticias(p: Planilhas): Promise<void> {
       }
     }
   }
+}
+
+/** Instrumento FICTÍCIO da demonstração (escala de 0 a 3); não é um instrumento real. */
+export const INSTRUMENTO_DEMONSTRACAO = {
+  codigo: 'demonstracao',
+  versao: 1,
+  eixo: 'assistencia' as const,
+  nome: 'Instrumento de demonstração (fictício)',
+  dominios: [
+    { codigo: 'rotina', nome: 'Rotina diária' },
+    { codigo: 'convivio', nome: 'Convivência' },
+  ],
+  itens: [
+    { numero: 1, texto: 'Realiza sozinha(o) as tarefas do dia a dia', dominio: 'rotina' },
+    { numero: 2, texto: 'Mantém horários de alimentação e descanso', dominio: 'rotina' },
+    { numero: 3, texto: 'Usa o transporte do serviço sem ajuda', dominio: 'rotina', permiteNaoSeAplica: true },
+    { numero: 4, texto: 'Participa das atividades em grupo', dominio: 'convivio' },
+    { numero: 5, texto: 'Conversa com colegas e equipe', dominio: 'convivio' },
+    { numero: 6, texto: 'Pede ajuda quando precisa', dominio: 'convivio' },
+  ],
+  faixas: [
+    { nome: 'Pouca autonomia', de: 0, ate: 6 },
+    { nome: 'Autonomia parcial', de: 7, ate: 12 },
+    { nome: 'Boa autonomia', de: 13, ate: 18 },
+  ],
+};
+
+/** Cadastra o instrumento fictício e uma pessoa da UR com duas aplicações concluídas (para ver o comparativo). */
+export async function popularAplicacoesFicticias(p: Planilhas): Promise<void> {
+  const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
+  const diretoria = new Autorizador('diretoria@exemplo.local', {
+    usuarios: usuarios.ativos(),
+    atribuicoes: atribuicoes.ativos(),
+    perfilPermissoes: perfilPermissoes.ativos(),
+    servicos: servicos.todos(),
+  });
+  const agora = new Date('2026-11-05T15:00:00Z');
+  await cadastrarInstrumento(p, diretoria, INSTRUMENTO_DEMONSTRACAO, { agora });
+  const pessoa = (await pessoasParaAplicar(p, diretoria, { agora })).find((x) => x.servicos.some((sv) => sv.codigo === 'ur'));
+  if (!pessoa) return;
+  const base = { pessoaId: pessoa.id, instrumento: 'demonstracao', servico: 'ur', profissional: 'Equipe técnica (fictícia)' };
+  await salvarAplicacao(
+    p,
+    diretoria,
+    { ...base, tipo: 'Inicial', data: '2025-10-10', respostas: { 1: 1, 2: 1, 3: 0, 4: 1, 5: 2, 6: 1 }, justificativa: 'Precisa de apoio na maior parte das tarefas.' },
+    true,
+    { agora },
+  );
+  await salvarAplicacao(
+    p,
+    diretoria,
+    { ...base, tipo: 'Anual', data: '2026-10-12', respostas: { 1: 2, 2: 2, 3: 1, 4: 2, 5: 3, 6: 2 }, justificativa: 'Mais autônoma(o) na rotina e nas atividades em grupo.' },
+    true,
+    { agora },
+  );
 }
