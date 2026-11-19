@@ -9,7 +9,7 @@
  * - RequisicaoItens: os itens pedidos (materiais) e quanto foi atendido.
  * - RequisicaoHistorico: cada mudança de etapa (só inclusões).
  * - ParametrosRequisicoes: expediente usado no cálculo do SLA.
- * - FeriadosRequisicoes: dias que não contam como úteis no SLA.
+ * - FeriadosRequisicoes: aba antiga de feriados; só leitura, para copiar ao Núcleo (a lista vive no Núcleo).
  * - RequisicaoAnexos: fotos e vídeo da requisição (referência ao arquivo na pasta de anexos).
  */
 import { z } from 'zod';

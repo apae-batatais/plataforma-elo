@@ -1,9 +1,9 @@
 /**
- * Feriados que não contam nas horas úteis do SLA.
- * A instituição cadastra os seus (municipais, ponto facultativo) e pode
- * incluir de uma vez os nacionais e o estadual de São Paulo de um ano.
+ * Regras puras dos feriados do Núcleo: Páscoa, feriados nacionais de um ano e
+ * conferência de um feriado digitado. Valem para todos os apps (prazos em dias
+ * ou horas úteis).
  */
-import { ErroRequisicao } from './requisicao';
+import { ErroValidacao } from '@/nucleo/acesso/gestao';
 
 export interface Feriado {
   data: string;
@@ -58,6 +58,6 @@ export function conferirFeriado(f: { data: string; nome: string }): Feriado {
   const valida = /^\d{4}-\d{2}-\d{2}$/.test(data) && !Number.isNaN(instante) && new Date(instante).toISOString().slice(0, 10) === data;
   if (!valida) erros.push('Informe a data do feriado.');
   if (!nome) erros.push('Informe o nome do feriado.');
-  if (erros.length) throw new ErroRequisicao(erros.join(' '));
+  if (erros.length) throw new ErroValidacao(erros.join(' '));
   return { data, nome };
 }

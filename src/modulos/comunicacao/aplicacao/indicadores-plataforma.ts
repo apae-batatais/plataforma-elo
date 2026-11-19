@@ -5,6 +5,7 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { feriadosAtivos } from '@/nucleo/feriados/feriados';
 import { mesAtualEmBrasilia, MESES_DO_ANO, type DefinicaoDeIndicador, type IndicadorCalculado, type PeriodoDoPainel, type PontoDeIndicador } from '@/capacidades/indicadores';
 import { CalendarioComunicacao, HistoricoComunicacao, PedidosComunicacao } from '../dados/tabelas';
 import { montarIndicadores, periodoDe, type Indicadores } from '../dominio/indicadores';
@@ -37,7 +38,7 @@ export async function indicadoresDaPlataforma(p: Planilhas, quem: Autorizador, p
   if (!quem.temPermissao('comunicacao.indicadores')) throw new ErroPermissao();
   const corrente = mesAtualEmBrasilia(periodo.agora ?? new Date());
   const [pedidos, historico, calendario] = await lerTabelas(p, [PedidosComunicacao, HistoricoComunicacao, CalendarioComunicacao] as const);
-  const dados = { pedidos: pedidos.todos(), historico: historico.todos(), calendario: calendario.todos() };
+  const dados = { pedidos: pedidos.todos(), historico: historico.todos(), calendario: calendario.todos(), feriados: await feriadosAtivos(p) };
   const meses = MESES_DO_ANO(periodo.ano).map((mes) => ({ mes, ind: mes > corrente ? null : montarIndicadores({ ...dados, periodo: periodoDe('mes', mes) }) }));
   return Object.keys(DEFINICOES_COMUNICACAO).map((id) => ({
     definicao: DEFINICOES_COMUNICACAO[id],

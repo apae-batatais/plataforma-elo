@@ -32,7 +32,7 @@ export const manifesto = defineModulo({
     'requisicoes.ver_todas': 'Ver todas as requisições e o histórico',
     'requisicoes.painel': 'Ver o painel de prazos (SLA) das requisições que a pessoa já pode ver',
     'requisicoes.tipos.gerenciar':
-      'Cadastrar e alterar os tipos de requisição, os itens aceitos, o setor responsável, os prazos, o expediente e os feriados (Administração da plataforma)',
+      'Cadastrar e alterar os tipos de requisição, os itens aceitos, o setor responsável, os prazos e o expediente (Administração da plataforma); os feriados são do Núcleo',
   },
   perfis: [
     { codigo: 'almoxarifado', nome: 'Almoxarifado', descricao: 'Recebe e atende as requisições de materiais.' },

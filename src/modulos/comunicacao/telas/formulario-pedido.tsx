@@ -84,6 +84,7 @@ export function FormularioPedido({
   areas,
   hoje,
   antecedencia,
+  feriados = [],
   inicial,
   oculto,
   rotuloEnviar,
@@ -96,6 +97,8 @@ export function FormularioPedido({
   /** Dia de hoje em Brasília (AAAA-MM-DD). */
   hoje: string;
   antecedencia: number;
+  /** Datas dos feriados cadastrados no Núcleo; não contam como dias úteis. */
+  feriados?: string[];
   inicial?: ValoresPedido;
   oculto?: Record<string, string | number>;
   rotuloEnviar: string;
@@ -130,10 +133,11 @@ export function FormularioPedido({
     return base;
   }, [itens, inicial]);
 
+  const setFeriados = useMemo(() => new Set(feriados), [feriados]);
   const dataOk = /^\d{4}-\d{2}-\d{2}$/.test(data);
   const passado = dataOk && data < hoje;
-  const urgente = dataOk && !passado && ehUrgente(data, hoje, antecedencia);
-  const limite = somarDiasUteis(hoje, antecedencia);
+  const urgente = dataOk && !passado && ehUrgente(data, hoje, antecedencia, setFeriados);
+  const limite = somarDiasUteis(hoje, antecedencia, setFeriados);
 
   const sugeridos = sugerirTemas(lista, { data, tipo, hoje });
   const escolhido = lista.find((i) => i.id === tema);
