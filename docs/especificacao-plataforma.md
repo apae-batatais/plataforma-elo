@@ -71,6 +71,7 @@ Fase 2, entrega 1 (06/11/2026): módulo Avaliação de Serviços Sociais, com av
 - [x] Google Cloud: conta de serviço e ID do cliente OAuth
 - [x] Planilhas Núcleo e Auditoria criadas e compartilhadas com a conta de serviço
 - [ ] Capacidade de Indicadores (cálculo e painel): especificação em `docs/especificacao-indicadores.md` (#57)
+- [ ] Cadastro de pessoa e vínculo com serviço: especificação em `docs/especificacao-pessoas-e-vinculos.md` (#198)
 
 ## Textos e demonstração sem nomes próprios (proposta #97)
 
