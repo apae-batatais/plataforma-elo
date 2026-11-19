@@ -144,9 +144,8 @@ pessoal (a Meta só aceita conta profissional).
 
 ### Melhorias deixadas para depois
 
-- [ ] Considerar feriados no cálculo de dias úteis da antecedência mínima (na fase 1, segunda a
-      sexta). Hoje o cadastro de feriados existe só no app Requisições; para usar nos dois, ele
-      precisa ir para o núcleo do Elo.
+- [x] Considerar feriados no cálculo de dias úteis da antecedência mínima: feito na entrega #67
+      (a lista de feriados agora é do Núcleo e vale para a Comunicação e a Requisições).
 
 ## Plataforma (arquitetura)
 

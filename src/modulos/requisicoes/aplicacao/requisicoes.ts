@@ -20,7 +20,7 @@ import { atualizar, atualizarVarios, inserir, inserirRegistros, lerTabelas, type
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { contem, MAX_RESULTADOS_POR_APP, type ItemDaAgenda, type ResultadoDaBusca } from '@/nucleo/modulos/agenda-busca';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
-import { Areas, Atribuicoes, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
+import { Areas, Atribuicoes, Feriados, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
   CatalogoItens,
   FeriadosRequisicoes,
@@ -68,7 +68,6 @@ import {
   type Situacao,
 } from '../dominio/requisicao';
 import { aceitaAnexos, conferirArquivo, conferirQuantidade, type TipoAnexo } from '../dominio/anexos';
-import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
 import { mesDe, montarPainel } from '../dominio/painel';
 import { diaLimite, EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
 
@@ -100,7 +99,7 @@ async function ler(p: Planilhas, agora: Date) {
       RequisicaoCentros,
       RequisicaoItens,
       ParametrosRequisicoes,
-      FeriadosRequisicoes,
+      Feriados,
       Usuarios,
       Atribuicoes,
       PerfilPermissoes,
@@ -875,10 +874,6 @@ export async function listarTipos(p: Planilhas, quem: Autorizador) {
       .map((a) => ({ codigo: a.codigo, nome: a.nome }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     expediente: d.expediente,
-    feriados: d.feriados
-      .ativos()
-      .map((f) => ({ id: f.id, versao: f.versao, data: f.data, nome: f.nome }))
-      .sort((a, b) => a.data.localeCompare(b.data)),
   };
 }
 
@@ -1063,39 +1058,13 @@ export async function lerAnexo(
 }
 
 // ---------------------------------------------------------------------------
-// Feriados (não contam nas horas úteis)
+// Feriados: a lista vive no Núcleo; esta leitura só serve à migração
 // ---------------------------------------------------------------------------
 
-export async function salvarFeriado(p: Planilhas, quem: Autorizador, dados: { data: string; nome: string }) {
-  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
-  const f = conferirFeriado(dados);
+/** Feriados que o app guardava na aba própria (antes de irem para o Núcleo). A composição os copia em "Preparar estrutura". */
+export async function lerFeriadosAntigos(p: Planilhas): Promise<{ data: string; nome: string }[]> {
   const [feriados] = await lerTabelas(p, [FeriadosRequisicoes] as const);
-  const igual = feriados.ativos().find((x) => x.data === f.data);
-  if (igual) throw new ErroRequisicao(`Já há feriado em ${f.data.split('-').reverse().join('/')}: ${igual.nome}.`);
-  const novo = await inserir(p, FeriadosRequisicoes, f, { email: quem.email });
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'FeriadosRequisicoes', registroId: novo.id });
-}
-
-/** Inclui os feriados nacionais (e o de SP) do ano que ainda não estão cadastrados. Devolve quantos entraram. */
-export async function incluirFeriadosNacionais(p: Planilhas, quem: Autorizador, ano: number): Promise<number> {
-  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
-  if (!Number.isInteger(ano) || ano < 2000 || ano > 2100) throw new ErroRequisicao('Escolha o ano.');
-  const [feriados] = await lerTabelas(p, [FeriadosRequisicoes] as const);
-  const ja = new Set(feriados.ativos().map((f) => f.data));
-  const novos = feriadosNacionais(ano).filter((f) => !ja.has(f.data));
-  if (!novos.length) return 0;
-  await inserirRegistros(p, feriados, novos, { email: quem.email });
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'FeriadosRequisicoes', detalhes: { colunas: ['data', 'nome'] } });
-  return novos.length;
-}
-
-export async function tirarFeriado(p: Planilhas, quem: Autorizador, id: string, versao: number) {
-  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
-  const [feriados] = await lerTabelas(p, [FeriadosRequisicoes] as const);
-  const f = feriados.porId(id);
-  if (!f || !f.ativo) throw new ErroRequisicao('Feriado não encontrado.');
-  await atualizar(p, FeriadosRequisicoes, id, versao, { ativo: false }, { email: quem.email });
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: 'FeriadosRequisicoes', registroId: id, detalhes: { colunas: ['ativo'] } });
+  return feriados.ativos().map((f) => ({ data: f.data, nome: f.nome }));
 }
 
 // ---------------------------------------------------------------------------

@@ -43,7 +43,7 @@ export default async function Configuracoes() {
       >
         <form action={acaoSalvarAntecedencia} className="space-y-4">
           <input type="hidden" name="versao" value={versao ?? ''} />
-          <Campo rotulo="Dias úteis" obrigatorio dica="De 0 a 30. Conta de segunda a sexta, sem feriados nesta fase.">
+          <Campo rotulo="Dias úteis" obrigatorio dica="De 0 a 30. Conta de segunda a sexta, sem os feriados cadastrados em Administração › Feriados.">
             <input
               type="number"
               name="dias"

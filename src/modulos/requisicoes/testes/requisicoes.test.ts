@@ -8,7 +8,7 @@ import { ArmazenamentoMemoria } from '@/nucleo/armazenamento/memoria';
 import { inserir, lerTabela, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { popularDadosFicticios } from '@/nucleo/estrutura/dados-ficticios';
 import { prepararEstrutura } from '@/nucleo/estrutura/preparar';
-import { Atribuicoes, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
+import { Atribuicoes, Feriados, PerfilPermissoes, RegistrosAuditoria, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
   cancelarRequisicao,
   concluirRequisicao,
@@ -16,12 +16,9 @@ import {
   decidirRequisicao,
   detalharRequisicao,
   enviarRequisicao,
-  incluirFeriadosNacionais,
   iniciarEnvioAnexo,
   lerAnexo,
   painelDePrazos,
-  salvarFeriado,
-  tirarFeriado,
   listarRequisicoes,
   analisarItensEmLote,
   cadastrarItensEmLote,
@@ -38,7 +35,8 @@ import {
 import { RequisicaoHistorico, RequisicaoItens, Requisicoes, TABELAS_REQUISICOES, TiposRequisicao } from '../dados/tabelas';
 import { conferirCentros, coordenadoresDoServico, proximoNumero, rotaDeAprovacao } from '../dominio/requisicao';
 import { aceitaAnexos, conferirArquivo, conferirQuantidade, tipoDoArquivo } from '../dominio/anexos';
-import { conferirFeriado, feriadosNacionais } from '../dominio/feriados';
+import { incluirFeriadosNacionais, tirarFeriado } from '@/nucleo/feriados/feriados';
+import { lerFeriadosAntigos } from '../aplicacao/requisicoes';
 import { mesesEntre } from '../dominio/painel';
 import { horasUteis, prazoDaEtapa, textoHoras } from '../dominio/sla';
 import { FeriadosRequisicoes, RequisicaoAnexos } from '../dados/tabelas';
@@ -605,35 +603,33 @@ describe('manutenção (Setor de Manutenção)', () => {
 describe('feriados e painel de prazos (SLA)', () => {
   const em = (dia: string, h: number) => new Date(`${dia}T${String(h).padStart(2, '0')}:00:00-03:00`);
 
-  it('feriado não conta nas horas úteis; nacionais com a Sexta-feira Santa móvel; data inválida é recusada', () => {
+  it('feriado não conta nas horas úteis', () => {
     const e = { inicio: 8, fim: 17, feriados: new Set(['2026-11-02']) };
     // Sexta 30/10 16h → segunda 2/11 (Finados) → terça 3/11 10h: 1 h + 2 h.
     expect(horasUteis(em('2026-10-30', 16).toISOString(), em('2026-11-03', 10).toISOString(), e)).toBe(3);
     expect(horasUteis(em('2026-10-30', 16).toISOString(), em('2026-11-03', 10).toISOString())).toBe(12);
-    const f2026 = feriadosNacionais(2026);
-    expect(f2026).toHaveLength(11);
-    expect(f2026.find((f) => f.nome === 'Sexta-feira Santa')?.data).toBe('2026-04-03');
-    expect(feriadosNacionais(2027).find((f) => f.nome === 'Sexta-feira Santa')?.data).toBe('2027-03-26');
-    expect(() => conferirFeriado({ data: '2026-02-30', nome: 'X' })).toThrow(/data/);
     expect(mesesEntre('2025-11', '2026-02')).toEqual(['2025-11', '2025-12', '2026-01', '2026-02']);
   });
 
-  it('só a Administração da plataforma cadastra feriados; data repetida é recusada; o feriado entra no prazo da ficha', async () => {
+  it('o feriado incluído no Núcleo entra no prazo da ficha; tirar devolve o dia', async () => {
     const adm = await como('admin@exemplo.local');
-    await expect(salvarFeriado(p, await como('diretoria@exemplo.local'), { data: '2026-11-02', nome: 'Finados' })).rejects.toBeInstanceOf(ErroPermissao);
     const pede = await como('financeiro@exemplo.local');
     const r = await enviarRequisicao(p, pede, ficha(), { agora: em('2026-10-30', 16) });
     const antes = (await detalharRequisicao(p, pede, r.id, { agora: em('2026-11-03', 10) })).sla!.aprovacao.horas;
     expect(await incluirFeriadosNacionais(p, adm, 2026)).toBe(11);
     expect(await incluirFeriadosNacionais(p, adm, 2026)).toBe(0);
-    await expect(salvarFeriado(p, adm, { data: '2026-11-02', nome: 'Outro' })).rejects.toThrow(/Já há feriado em 02\/11\/2026: Finados/);
     expect((await detalharRequisicao(p, pede, r.id, { agora: em('2026-11-03', 10) })).sla!.aprovacao.horas).toBe(antes - 9);
     // Tirar o feriado: o dia volta a contar.
-    const finados = (await lerTabela(p, FeriadosRequisicoes)).ativos().find((f) => f.data === '2026-11-02')!;
+    const finados = (await lerTabela(p, Feriados)).ativos().find((f) => f.data === '2026-11-02')!;
     await tirarFeriado(p, adm, finados.id, finados.versao);
     expect((await detalharRequisicao(p, pede, r.id, { agora: em('2026-11-03', 10) })).sla!.aprovacao.horas).toBe(antes);
-    const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'FeriadosRequisicoes');
+    const aud = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.entidade === 'Feriados');
     expect(aud.map((a) => a.acao)).toEqual(['inclusao', 'encerramento']);
+  });
+
+  it('a aba antiga de feriados continua legível, só para a migração', async () => {
+    await inserir(p, FeriadosRequisicoes, { data: '2026-12-24', nome: 'Antigo' }, { email: 'teste' });
+    expect(await lerFeriadosAntigos(p)).toEqual([{ data: '2026-12-24', nome: 'Antigo' }]);
   });
 
   it('painel: no prazo por mês da decisão e da conclusão; atrasadas agora; cada um vê só o que acompanha', async () => {

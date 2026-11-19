@@ -95,6 +95,17 @@ describe('dias úteis e urgência', () => {
     expect(diasUteisEntre('2026-11-06', '2026-11-09')).toBe(1);
   });
 
+  it('feriados não contam como dias úteis', () => {
+    const quarta = new Set(['2026-11-11']);
+    // Segunda 9/11 + 2 dias úteis: sem feriado termina na quarta; com feriado na quarta, na quinta.
+    expect(somarDiasUteis('2026-11-09', 2)).toBe('2026-11-11');
+    expect(somarDiasUteis('2026-11-09', 2, quarta)).toBe('2026-11-12');
+    expect(diasUteisEntre('2026-11-09', '2026-11-13', quarta)).toBe(3);
+    // 5 dias úteis a partir de sexta 6/11: sem feriado, 13/11; com feriado na quarta, 16/11.
+    expect(ehUrgente('2026-11-13', '2026-11-06', 5)).toBe(false);
+    expect(ehUrgente('2026-11-13', '2026-11-06', 5, quarta)).toBe(true);
+  });
+
   it('zero dias úteis devolve o próprio dia e fim antes do início conta zero', () => {
     expect(somarDiasUteis('2026-11-07', 0)).toBe('2026-11-07');
     expect(somarDiasUteis('2026-11-07', 1)).toBe('2026-11-09');
