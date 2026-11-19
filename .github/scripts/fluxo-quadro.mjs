@@ -109,6 +109,16 @@ export function podeConstruir(issue) {
   return { pode: false, motivo: `a issue está na etapa "${etapa}"` };
 }
 
+/**
+ * A entrega é parte de uma proposta dividida e não é a última? Lê "(k de m)" no título (primeira
+ * linha do texto do PR), como os Desenvolvedores nomeiam: "Entrega: app Saúde ... (1 de 3)".
+ */
+export function entregaParcial(texto = '') {
+  const titulo = String(texto).split('\n')[0];
+  const m = titulo.match(/\((\d+)\s+de\s+(\d+)\)/i);
+  return Boolean(m) && Number(m[1]) < Number(m[2]);
+}
+
 export function mudancas(evento) {
   if (evento.tipo === 'issue_aberta') {
     const etiquetas = (evento.etiquetas ?? []).map((e) => e.toLowerCase());
@@ -124,7 +134,11 @@ export function mudancas(evento) {
   }
   for (const issue of pr.tipo === 'entrega' ? pr.issues : []) {
     if (evento.tipo === 'pr_aberto') saida.push({ issue, etapa: evento.rascunho ? 'Em construção' : 'Entrega em aprovação' });
-    if (evento.tipo === 'pr_merge') saida.push({ issue, etapa: 'Aprovada', fechar: true });
+    if (evento.tipo === 'pr_merge') {
+      // Entrega parcial ("2 de 3" no título): a proposta volta para a fila da próxima entrega,
+      // sem fechar. Só a última entrega (ou entrega única) aprova e fecha a proposta.
+      saida.push(entregaParcial(evento.texto) ? { issue, etapa: 'Pronta para construir' } : { issue, etapa: 'Aprovada', fechar: true });
+    }
     if (evento.tipo === 'pr_fechado') saida.push({ issue, etapa: 'Pronta para construir' });
   }
   return saida;
