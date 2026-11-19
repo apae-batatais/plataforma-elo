@@ -59,6 +59,8 @@ async function montar(geral: ConfigGeral, inst: Instituicao, unica: boolean): Pr
   const base = { config, instituicao: inst, unica, email: enviadorDaInstituicao(geral, inst) };
 
   if (config.modo === 'demonstracao') {
+    // Credenciais fictícias da demonstração precisam de uma chave de cifra; esta nunca protege dado real (regra 9).
+    process.env.ELO_CHAVE_CREDENCIAIS ||= 'demonstracao-somente-dados-ficticios-chave-de-credenciais';
     const chaves = ['nucleo', 'auditoria', ...new Set(TABELAS_DOS_MODULOS.map((t) => t.planilha))];
     // ids previsíveis: todas as cópias do servidor montam a demonstração com os mesmos ids.
     const planilhas: Planilhas = { armazenamento: new ArmazenamentoMemoria(chaves), idDe: (c) => c, novoId: idsPrevisiveis(inst.codigo) };

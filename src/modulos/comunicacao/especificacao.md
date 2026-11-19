@@ -332,7 +332,7 @@ rota pública de mídia e roteiro no manual). Núcleo muda: peça nova `src/nucl
 `Credenciais` (a aprovação da especificação autoriza).
 
 ### Entregas (ordem de construção, depois da #63)
-1. Peça de credenciais cifradas do Núcleo, tela "Conectar Instagram" e renovação do token. Conferência
+1. **(construída, #64)** Peça de credenciais cifradas do Núcleo, tela "Conectar Instagram" e renovação do token. Conferência
    na prévia: conectar e desconectar uma conta fictícia (demonstração, sem Meta de verdade).
 2. Post com imagem: aba `Publicacoes`, agendar, rota de mídia temporária, rotina, falha e "Tentar de
    novo".

@@ -30,7 +30,7 @@ export const manifesto = defineModulo({
     'comunicacao.ver_todos': 'Ver todos os pedidos e o histórico',
     'comunicacao.calendario.gerenciar': 'Cadastrar e alterar os itens do calendário de temas',
     'comunicacao.contatos.gerenciar': 'Cadastrar e alterar os contatos da imprensa e os grupos de envio',
-    'comunicacao.configurar': 'Definir a antecedência mínima dos pedidos',
+    'comunicacao.configurar': 'Definir a antecedência mínima dos pedidos e conectar o Instagram da instituição',
     'comunicacao.indicadores': 'Ver os indicadores da Comunicação',
   },
   perfis: [
