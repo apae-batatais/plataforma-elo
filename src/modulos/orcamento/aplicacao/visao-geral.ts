@@ -63,7 +63,6 @@ export interface VisaoGeral {
   podeInformarRealizado: boolean;
 }
 
-const mesDoAno = (ano: number, m: number) => `${ano}-${String(m).padStart(2, '0')}`;
 const nomeDoMes = (mes: string) => ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'][Number(mes.slice(5)) - 1];
 const ate = (rotulo: string, mes: string | null) => (mes ? `${rotulo} até ${nomeDoMes(mes)}` : null);
 
