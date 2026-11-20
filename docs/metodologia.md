@@ -24,11 +24,11 @@ ou no próprio PR, a Aprovação não faz o merge, mesmo com "Approve".
 | Papel | Quem | O que faz | O que entrega |
 | --- | --- | --- | --- |
 | Diretoria | — | Dona do produto: decide, prioriza e aprova | Ideias, respostas e aprovações |
-| Product Owner | Conversa "Product Owner" no Claude, com a habilidade `product-owner` | Discute ideias com a Diretoria, estuda material de apoio, prioriza e registra a proposta, sem detalhe técnico | Issue com o modelo "Proposta" |
+| Product Owner | Conversa "Product Owner" no Claude, com a habilidade `product-owner` | Discute ideias com a Diretoria, estuda material de apoio, prioriza e registra a proposta, sem detalhe técnico; só pede aprovação da Diretoria para a especificação de uma proposta que ela mesma registrou, nunca para entrega construída | Issue com o modelo "Proposta" |
 | Arquiteto de Soluções | Claude Code no GitHub, sozinho quando a issue é aberta | Lê a proposta, o código e os documentos; pergunta na issue o que não souber; escreve a especificação (e a ADR, se houver decisão de arquitetura); aponta melhorias | PR de especificação |
 | Desenvolvedor | Claude Code no GitHub, sozinho quando a especificação é aprovada | Constrói seguindo o `CLAUDE.md`, com testes, verificação e prévia | PR de entrega |
 | Automação | GitHub Actions | Move os cartões, faz o merge depois da aprovação e publica toda semana | — |
-| Scrum Master | Conversa "Scrum Master" no Claude | Acompanha o fluxo com a Diretoria, identifica impedimento (técnico ou de processo) e traz o que precisa de decisão; toda semana planeja com a Diretoria o que entra, conforme o saldo de minutos (ADR-031); não mexe no repositório | Raio-x, plano da semana e avisos à Diretoria |
+| Scrum Master | Conversa "Scrum Master" no Claude | Acompanha o fluxo com a Diretoria, identifica impedimento (técnico ou de processo) e traz o que precisa de decisão; decide e comunica a ordem das especificações prontas para construir e da fila (ADR-031); toda semana planeja com a Diretoria o que entra, conforme o saldo de minutos; não mexe no repositório nem aciona a fila (isso é do DevOps); nunca pede aprovação de entrega construída | Raio-x, ordem da fila e plano da semana |
 | DevOps | Tarefa agendada do Claude Code, a cada 4h em horário comercial (dias úteis), apontada para o repositório | Cuida da esteira: acompanha falhas, resolve o que for técnico e já combinado, corrige e melhora as automações e os agentes, controla custos, chaves e segurança; não constrói funcionalidade | PRs de infraestrutura e raio-x da esteira |
 
 ### Scrum Master e DevOps: quem resolve o quê
@@ -47,6 +47,21 @@ Os dois cuidam da esteira, nunca do código dos apps, mas em momentos diferentes
   quando vários itens competem pela atenção. Quando a Diretoria trouxer aqui algo técnico, o
   encaminhamento é para o DevOps (comentário na issue/PR), nunca uma correção direta nesta
   conversa.
+
+### Quem pede aprovação da Diretoria, em cada conversa
+
+Cada conversa só traz à Diretoria a aprovação que é sua (20/11/2026):
+
+- **Product Owner** só pede aprovação da especificação de uma proposta que ela mesma registrou
+  como issue — nunca de entrega construída.
+- **Scrum Master** nunca pede aprovação de entrega construída, nem aciona a fila. Só decide e
+  comunica a ordem das especificações prontas para construir e o que entra na fila (ADR-031).
+- **DevOps** é quem pede aprovação das entregas prontas para publicar (PR de entrega), depois que a
+  fila constrói.
+
+Se uma entrega construída aparecer em qualquer outra conversa, a Diretoria responde lá mesmo
+("aprovado") — a etiqueta e o fluxo da Aprovação funcionam do mesmo jeito —, mas o combinado é que
+isso não deveria acontecer fora da conversa DevOps.
 
 ### Capacidade: plano da semana e fila de construção (ADR-031)
 
