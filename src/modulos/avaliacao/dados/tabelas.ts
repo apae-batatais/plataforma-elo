@@ -2,6 +2,8 @@
  * Abas do módulo Avaliação de Serviços Sociais, na planilha própria "avaliacao_assistencia"
  * (dados sensíveis de atendidos ficam separados das demais planilhas — ADR-011).
  *
+ * - Instrumentos, Aplicacoes e Respostas: motor de avaliação (issue #62, ADR-026). Instrumento é cadastrado
+ *   pela equipe técnica; a aplicação liga o instrumento a uma pessoa do Cadastro Único (`pessoa_id`).
  * - Avaliacoes: uma linha por questionário aplicado. O índice de necessidade de
  *   cuidado NÃO é guardado: é calculado pela camada de aplicação a cada leitura.
  *   Avaliação retirada fica com ativo = FALSE e o motivo (nada é apagado).
@@ -77,4 +79,61 @@ export const Avaliacoes = definirTabela({
   },
 });
 
-export const TABELAS_AVALIACAO = [Avaliacoes] as const;
+export const SITUACOES_APLICACAO = ['aberta', 'fechada'] as const;
+export const TIPOS_APLICACAO = ['Inicial', 'Anual'] as const;
+
+const numeroInteiro = () => z.preprocess((v) => (v === undefined || v === null || v === '' ? undefined : Number(v)), z.number().int().positive());
+const dataObrigatoria = data;
+
+/** Instrumento versionado. Domínios, itens e faixas ficam em JSON (validados por `definirInstrumento`). */
+export const Instrumentos = definirTabela({
+  planilha: PLANILHA_AVALIACAO,
+  aba: 'Instrumentos',
+  esquema: z.object({
+    codigo: texto(),
+    versao_instrumento: numeroInteiro(),
+    eixo: z.enum(['assistencia', 'educacao', 'saude']),
+    nome: texto(),
+    dominios: texto(),
+    itens: texto(),
+    faixas: texto(),
+  }),
+});
+
+/** Uma aplicação de instrumento a uma pessoa (um ciclo). Fechada, não se edita: a correção cria outra. */
+export const Aplicacoes = definirTabela({
+  planilha: PLANILHA_AVALIACAO,
+  aba: 'Aplicacoes',
+  esquema: z.object({
+    pessoa_id: texto(),
+    instrumento: texto(),
+    instrumento_versao: numeroInteiro(),
+    servico: texto(),
+    servico_nome: texto(),
+    tipo: z.enum(TIPOS_APLICACAO),
+    data: dataObrigatoria(),
+    situacao: z.enum(SITUACOES_APLICACAO),
+    /** Id da aplicação que esta corrige. */
+    corrige: textoOpcional(),
+    profissional: textoOpcional(),
+    registro_profissional: textoOpcional(),
+    justificativa: textoOpcional(),
+    /** Por que uma aplicação aberta foi desistida (quando ativo = FALSE). */
+    motivo_desistencia: textoOpcional(),
+  }),
+  sigilo: { pessoa_id: 'pessoal', justificativa: 'sensivel', profissional: 'pessoal', registro_profissional: 'pessoal' },
+});
+
+/** Resposta de um item: 0 a 3 ou "nao_se_aplica". */
+export const Respostas = definirTabela({
+  planilha: PLANILHA_AVALIACAO,
+  aba: 'Respostas',
+  esquema: z.object({
+    aplicacao_id: texto(),
+    item: numeroInteiro(),
+    valor: texto(),
+  }),
+  sigilo: { valor: 'sensivel' },
+});
+
+export const TABELAS_AVALIACAO = [Avaliacoes, Instrumentos, Aplicacoes, Respostas] as const;

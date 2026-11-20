@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { manifesto } from '@/modulos/avaliacao';
-import { Avaliacoes } from '@/modulos/avaliacao/dados/tabelas';
+import { TABELAS_AVALIACAO } from '@/modulos/avaliacao/dados/tabelas';
 import { ErroArmazenamento, ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { lerTabelas } from '@/nucleo/armazenamento/tabela';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
@@ -16,7 +16,7 @@ export default async function LayoutAvaliacao({ children }: { children: React.Re
   if (!app) redirect('/');
   try {
     const { planilhas } = await obterAplicacao();
-    await lerTabelas(planilhas, [Avaliacoes] as const);
+    await lerTabelas(planilhas, TABELAS_AVALIACAO);
   } catch (erro) {
     // Aba ou coluna nova de uma versão publicada: falta rodar Preparar estrutura.
     if (erro instanceof ErroEstruturaAusente || (erro instanceof ErroArmazenamento && /sem as colunas/.test(erro.message))) {

@@ -16,7 +16,7 @@ import { manifesto as orcamento, popularCedidosFicticia, popularFolhaFicticia, p
 import { manifesto as comunicacao, popularComunicacaoFicticia, TABELAS_COMUNICACAO } from '@/modulos/comunicacao';
 import { manifesto as requisicoes, lerFeriadosAntigos, popularRequisicoesFicticias, TABELAS_REQUISICOES } from '@/modulos/requisicoes';
 import { manifesto as parcerias, popularParceriasFicticias, TABELAS_PARCERIAS } from '@/modulos/parcerias';
-import { manifesto as avaliacao, popularAvaliacoesFicticias, TABELAS_AVALIACAO } from '@/modulos/avaliacao';
+import { manifesto as avaliacao, popularAplicacoesFicticias, popularAvaliacoesFicticias, TABELAS_AVALIACAO } from '@/modulos/avaliacao';
 import { manifesto as educacao, popularEducacaoFicticia, TABELAS_EDUCACAO } from '@/modulos/educacao';
 import { manifesto as projetos, popularProjetosFicticios, TABELAS_PROJETOS } from '@/modulos/projetos';
 import { manifesto as saude, popularSaudeFicticia, TABELAS_SAUDE } from '@/modulos/saude';
@@ -50,6 +50,7 @@ export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void>
   await popularRequisicoesFicticias(p);
   await popularComunicacaoFicticia(p);
   await popularAvaliacoesFicticias(p);
+  await popularAplicacoesFicticias(p);
   await popularSaudeFicticia(p);
   await popularEducacaoFicticia(p);
   await popularProjetosFicticios(p);

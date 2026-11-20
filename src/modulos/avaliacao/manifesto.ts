@@ -17,6 +17,7 @@ export const manifesto = defineModulo({
   menu: [
     { rotulo: 'Avaliações', caminho: '/', permissao: 'avaliacao.avaliar', secao: 'Avaliar' },
     { rotulo: 'Nova avaliação', caminho: '/nova', permissao: 'avaliacao.avaliar', secao: 'Avaliar' },
+    { rotulo: 'Instrumentos', caminho: '/instrumentos', permissao: 'avaliacao.avaliar', secao: 'Avaliar' },
     { rotulo: 'Painel', caminho: '/painel', permissao: 'avaliacao.painel', secao: 'Acompanhar' },
     { rotulo: 'Sobre o instrumento', caminho: '/sobre', permissao: 'avaliacao.acessar', secao: 'Acompanhar' },
   ],
