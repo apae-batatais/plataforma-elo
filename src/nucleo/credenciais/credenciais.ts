@@ -55,6 +55,20 @@ export async function situacaoDaCredencial(
   return { situacao: situacaoEfetiva(c, agora), conta: c.conta, venceEm: c.vence_em, conectadoEm: c.conectado_em };
 }
 
+/**
+ * Só a situação da conta (sem nome de usuário e sem segredo), para quem usa o serviço sem administrá-lo
+ * (ex.: a Comunicação decide se oferece "Publicar pelo Elo").
+ */
+export async function situacaoPublicaDaCredencial(
+  p: Planilhas,
+  instituicao: string,
+  servico: ServicoDeCredencial,
+  agora = new Date(),
+): Promise<SituacaoDaCredencial['situacao']> {
+  const c = ativa((await lerTabela(p, Credenciais)).todos(), instituicao, servico);
+  return c ? situacaoEfetiva(c, agora) : 'nenhuma';
+}
+
 export interface DadosDaConexao {
   instituicao: string;
   servico: ServicoDeCredencial;
