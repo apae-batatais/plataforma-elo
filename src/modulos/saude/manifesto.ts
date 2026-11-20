@@ -17,6 +17,7 @@ export const manifesto = defineModulo({
   menu: [
     { rotulo: 'Avaliações', caminho: '/', permissao: 'saude.avaliar', secao: 'Avaliar' },
     { rotulo: 'Nova avaliação', caminho: '/nova', permissao: 'saude.avaliar', secao: 'Avaliar' },
+    { rotulo: 'Painel', caminho: '/painel', permissao: 'saude.painel', secao: 'Acompanhar' },
     { rotulo: 'Sobre o instrumento', caminho: '/sobre', permissao: 'saude.acessar', secao: 'Acompanhar' },
   ],
   permissoes: {
@@ -33,5 +34,5 @@ export const manifesto = defineModulo({
     leitura: ['saude.acessar', 'saude.painel'],
   },
   eventos: { publica: [], consome: [] },
-  indicadores: [],
+  indicadores: ['saude_total_medio', 'saude_pct_evoluindo'],
 });
