@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { opcoesDeDestinatarios } from '@/modulos/comunicacao/aplicacao/contatos';
+import { publicacaoAutomaticaDisponivel, publicacaoDoPedido } from '@/modulos/comunicacao/aplicacao/publicacoes';
 import { destinatariosDoPedido, detalharPedido, emailProntoDoPedido, listarPedidos, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, NOME_TIPO_PECA, SITUACOES_FINAIS } from '@/modulos/comunicacao/dominio/pedido';
 import { ACOES_DA_EQUIPE } from '@/modulos/comunicacao/telas/acoes-da-equipe';
@@ -14,8 +15,9 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { LinkBotao } from '@/ui/botao';
 import { FormularioConfirmado } from '@/ui/confirmar';
-import { CabecalhoPagina, Secao } from '@/ui/pagina';
-import { acaoAgendarPedido, acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoPublicarPedido, acaoRevisarPedido } from '../acoes';
+import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
+import { Aviso } from '@/ui/aviso';
+import { acaoAgendarPedido, acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoPublicarPedido, acaoRevisarPedido, acaoTentarDeNovoPublicacao } from '../acoes';
 
 export const metadata: Metadata = { title: 'Pedido' };
 
@@ -34,6 +36,8 @@ const NOME_ACAO: Record<string, string> = {
   agendar: 'Agendado',
   reagendar: 'Reagendado',
   publicar: 'Publicado',
+  publicacao_falhou: 'A publicação no Instagram falhou',
+  tentar_de_novo: 'Publicação no Instagram colocada na fila de novo',
 };
 
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
@@ -49,7 +53,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
-  const { planilhas } = await obterAplicacao();
+  const { planilhas, instituicao } = await obterAplicacao();
   let d;
   try {
     d = await detalharPedido(planilhas, usuario.autorizador, id);
@@ -71,6 +75,12 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
   const destino = doAgendamento && sai ? await opcoesDeDestinatarios(planilhas, usuario.autorizador) : { grupos: [], contatos: [] };
   const escolhidos = doAgendamento && sai ? await destinatariosDoPedido(planilhas, usuario.autorizador, r.id) : { grupos: [], contatos: [] };
   const email = r.situacao === 'agendado' && sai && d.acoes.includes('publicar') ? await emailProntoDoPedido(planilhas, usuario.autorizador, r.id) : null;
+  const podeRevisar = usuario.autorizador.temPermissao('comunicacao.revisar');
+  const emInstagram = r.tipo_peca === 'post_instagram' && podeRevisar;
+  const instagram = emInstagram && doAgendamento
+    ? { ...(await publicacaoAutomaticaDisponivel(planilhas, usuario.autorizador, r, instituicao.codigo).then((x) => ({ disponivel: x.disponivel, motivo: x.disponivel ? null : x.motivo }))), podeConfigurar: usuario.autorizador.temPermissao('comunicacao.configurar'), automatica: r.publicacao_automatica === true }
+    : null;
+  const publicacao = emInstagram && (r.publicacao_automatica || r.situacao === 'publicado') ? await publicacaoDoPedido(planilhas, usuario.autorizador, r.id) : null;
   const nomeDaArea = (await opcoesDoPedido(planilhas, usuario.autorizador)).areas.find((a) => a.codigo === r.area)?.nome ?? r.area;
   return (
     <div className="max-w-4xl space-y-6">
@@ -116,11 +126,61 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
                 agendadoPara={r.agendado_para}
                 destino={destino}
                 escolhidos={escolhidos}
+                instagram={instagram}
                 agendar={acaoAgendarPedido}
                 publicar={acaoPublicarPedido}
               />
             </div>
           )}
+        </Secao>
+      )}
+
+      {publicacao && publicacao.situacao !== 'cancelada' && (
+        <Secao titulo="Instagram" id="t-instagram">
+          <div className="space-y-3">
+            <p className="flex flex-wrap items-center gap-2">
+              <Etiqueta tipo={publicacao.situacao === 'publicada' ? 'sucesso' : publicacao.situacao === 'falhou' || publicacao.atrasada ? 'erro' : 'info'}>
+                {publicacao.situacao === 'publicada'
+                  ? `Publicado em ${dataHoraBR(publicacao.publicadaEm ?? publicacao.previstaPara)}`
+                  : publicacao.situacao === 'falhou'
+                    ? 'Falhou: tente de novo'
+                    : publicacao.situacao === 'publicando'
+                      ? 'Publicando agora'
+                      : `Publica pelo Elo em ${dataHoraBR(publicacao.previstaPara)}`}
+              </Etiqueta>
+            </p>
+            {publicacao.situacao === 'pendente' && publicacao.erro && (
+              <p className="text-sm text-texto-suave">A última tentativa não deu certo ({publicacao.erro}). O Elo tenta de novo sozinho; já foram {publicacao.tentativas} de 3.</p>
+            )}
+            {publicacao.atrasada && publicacao.situacao !== 'falhou' && (
+              <Aviso tipo="atencao" titulo="A publicação está atrasada">
+                Passou mais de 1 hora da hora marcada. Confira se a conta do Instagram continua conectada; se precisar, publique à mão.
+              </Aviso>
+            )}
+            {publicacao.situacao === 'falhou' && (
+              <Aviso tipo="erro" titulo="O Elo não conseguiu publicar">
+                {publicacao.erro ?? 'O Instagram não respondeu como esperado.'} Você pode tentar de novo ou publicar à mão (use “Marcar como publicado” acima, com o link do post).
+              </Aviso>
+            )}
+            {publicacao.link && (
+              <p className="text-sm">
+                <a href={publicacao.link} className="text-destaque underline" target="_blank" rel="noreferrer">
+                  Abrir o post no Instagram
+                </a>
+              </p>
+            )}
+            {publicacao.situacao === 'falhou' && r.situacao === 'agendado' && (
+              <FormularioConfirmado
+                acao={acaoTentarDeNovoPublicacao}
+                campos={{ id: r.id }}
+                rotulo="Tentar de novo"
+                perigoso={false}
+                titulo="Tentar publicar de novo?"
+                mensagem="O pedido volta para a fila e sai na próxima rodada, em até 15 minutos."
+                confirmar="Tentar de novo"
+              />
+            )}
+          </div>
         </Secao>
       )}
 

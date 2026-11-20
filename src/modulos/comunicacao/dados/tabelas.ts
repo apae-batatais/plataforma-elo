@@ -4,6 +4,7 @@
  * - Calendario: temas e datas de comunicação (data exata ou período) e os tipos de peça sugeridos.
  * - Pedidos: a ficha do pedido de publicação, do envio até a publicação.
  * - Historico: cada mudança de situação (só inclusões).
+ * - Publicacoes: a fila da publicação automática no Instagram (ADR-028).
  * - Anexos: fotos e documentos do pedido (referência ao arquivo na pasta de anexos).
  * - Contatos, Grupos e ContatoGrupos: a lista de imprensa e os grupos de envio.
  * - Parametros: ajustes da Comunicação (ex.: antecedência mínima, em dias úteis).
@@ -12,6 +13,7 @@ import { z } from 'zod';
 import { booleano, definirTabela, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import type { TipoData } from '../dominio/calendario';
 import { SITUACOES, TIPOS_PECA } from '../dominio/pedido';
+import { SITUACOES_PUBLICACAO, TIPOS_PUBLICACAO } from '../dominio/publicacao';
 
 const vazio = (v: unknown) => v === undefined || v === null || v === '';
 const numero = () => z.preprocess((v) => (vazio(v) ? undefined : typeof v === 'number' ? v : Number(String(v).replace(',', '.'))), z.number());
@@ -66,6 +68,8 @@ export const PedidosComunicacao = definirTabela({
     publicado_em: textoOpcional(),
     /** Serviço de que o pedido trata (código do Núcleo), para a Ficha do serviço. Opcional. */
     servico: textoOpcional(),
+    /** Verdadeiro quando o Elo publica no Instagram na hora marcada (ADR-028). */
+    publicacao_automatica: booleano().optional(),
   }),
   sigilo: { solicitante: 'pessoal', solicitante_nome: 'pessoal', imagem_confirmada_por: 'pessoal' },
 });
@@ -84,6 +88,32 @@ export const HistoricoComunicacao = definirTabela({
     comentario: textoOpcional(),
   }),
   sigilo: { usuario: 'pessoal' },
+});
+
+/** Fila da publicação automática no Instagram (ADR-028). Uma linha viva por pedido; nada é apagado. */
+export const PublicacoesComunicacao = definirTabela({
+  planilha: PLANILHA_COMUNICACAO,
+  aba: 'Publicacoes',
+  esquema: z.object({
+    pedido_id: texto(),
+    tipo: z.enum(TIPOS_PUBLICACAO),
+    /** Data e hora previstas (ISO UTC). */
+    prevista_para: texto(),
+    situacao: z.enum(SITUACOES_PUBLICACAO),
+    tentativas: numero(),
+    /** Não tentar antes desta hora (ISO), depois de uma falha. */
+    proxima_tentativa: textoOpcional(),
+    /** Identificadores na Meta (não são segredo). */
+    container_id: textoOpcional(),
+    post_id: textoOpcional(),
+    link: textoOpcional(),
+    /** Motivo da última falha, em português e sem termo técnico. */
+    erro: textoOpcional(),
+    publicada_em: textoOpcional(),
+    /** Resumo (SHA-256) do código da mídia temporária; vazio quando não há código vivo. */
+    codigo_midia: textoOpcional(),
+    midia_vence_em: textoOpcional(),
+  }),
 });
 
 /** Fotos e documentos do pedido: o arquivo fica na pasta de anexos (Drive); aqui, só a referência. */
@@ -131,6 +161,7 @@ export const TABELAS_COMUNICACAO = [
   CalendarioComunicacao,
   PedidosComunicacao,
   HistoricoComunicacao,
+  PublicacoesComunicacao,
   AnexosComunicacao,
   ContatosComunicacao,
   GruposComunicacao,
@@ -141,6 +172,7 @@ export const TABELAS_COMUNICACAO = [
 export type RegCalendario = Registro<typeof CalendarioComunicacao.esquema>;
 export type RegPedido = Registro<typeof PedidosComunicacao.esquema>;
 export type RegHistorico = Registro<typeof HistoricoComunicacao.esquema>;
+export type RegPublicacao = Registro<typeof PublicacoesComunicacao.esquema>;
 export type RegAnexo = Registro<typeof AnexosComunicacao.esquema>;
 export type RegContato = Registro<typeof ContatosComunicacao.esquema>;
 export type RegGrupo = Registro<typeof GruposComunicacao.esquema>;

@@ -10,6 +10,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type { Aplicacao } from './aplicacao';
 import { aplicacaoDa } from './aplicacao';
 import { tarefaDeCredenciais } from './credenciais';
+import { tarefaDePublicacoes } from './publicacoes';
 import type { TarefaDaRotina } from './tarefa-da-rotina';
 
 export type { TarefaDaRotina };
@@ -18,7 +19,7 @@ import { instituicoesDoElo } from './rede';
 
 
 /** Tarefas da plataforma e dos apps (envios da Comunicação entram na entrega 2 da proposta #63). */
-export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [tarefaDeCredenciais];
+export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [tarefaDeCredenciais, tarefaDePublicacoes];
 
 export interface ResultadoDaRotina {
   instituicoes: number;
