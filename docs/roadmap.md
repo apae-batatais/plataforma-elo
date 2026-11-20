@@ -140,7 +140,10 @@ pessoal (a Meta só aceita conta profissional).
 
 ### Fase 4 · resultado das postagens
 
-- [ ] Alcance e curtidas das postagens do Instagram nos indicadores.
+- [x] Alcance e curtidas das postagens do Instagram nos indicadores: especificado em
+      `src/modulos/comunicacao/especificacao.md` (#65), com comentários e salvamentos também, buscados
+      sozinhos uma vez por dia pela conexão já feita na Fase 3. Fica de fora a Capacidade de Indicadores
+      da plataforma (#57).
 
 ### Melhorias deixadas para depois
 
