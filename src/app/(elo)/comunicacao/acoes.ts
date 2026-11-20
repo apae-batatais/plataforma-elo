@@ -180,7 +180,7 @@ function lerAnexos(f: FormData): AnexoPedido[] | undefined {
   }
   if (!Array.isArray(v)) throw incompleto;
   return v.map((x: { arquivoId?: unknown; tipo?: unknown; nome?: unknown }) => {
-    if (typeof x?.arquivoId !== 'string' || (x.tipo !== 'foto' && x.tipo !== 'documento')) throw incompleto;
+    if (typeof x?.arquivoId !== 'string' || (x.tipo !== 'foto' && x.tipo !== 'documento' && x.tipo !== 'video')) throw incompleto;
     return { arquivoId: x.arquivoId, tipo: x.tipo, ...(typeof x.nome === 'string' ? { nome: x.nome } : {}) };
   });
 }

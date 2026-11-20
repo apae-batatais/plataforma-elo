@@ -126,7 +126,7 @@ export const AnexosComunicacao = definirTabela({
   aba: 'Anexos',
   esquema: z.object({
     pedido_id: texto(),
-    tipo: z.enum(['foto', 'documento']),
+    tipo: z.enum(['foto', 'documento', 'video']),
     arquivo_id: texto(),
     nome: texto(),
     mime: texto(),

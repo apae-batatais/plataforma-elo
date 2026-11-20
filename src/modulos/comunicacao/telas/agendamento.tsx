@@ -95,7 +95,7 @@ export function AcoesDeAgendamento({
           </Campo>
           {porEmail && <ComoEnviar disponivel={envioAutomatico} padraoElo={reagendar ? jaAutomatico : true} />}
           {porEmail && <Destinatarios destino={destino} escolhidos={escolhidos} />}
-          {tipoPeca === 'post_instagram' && instagram && <ComoPublicar opcao={instagram} reagendando={reagendar} />}
+          {(tipoPeca === 'post_instagram' || tipoPeca === 'reel_instagram') && instagram && <ComoPublicar opcao={instagram} reagendando={reagendar} />}
         </FormularioConfirmado>
       )}
       {acoes.includes('publicar') && (

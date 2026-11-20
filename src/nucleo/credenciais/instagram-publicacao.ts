@@ -9,6 +9,7 @@ import { ErroInstagram } from './instagram';
 
 export const MENSAGEM_RECONECTAR = 'A conta precisa ser reconectada.';
 export const MENSAGEM_IMAGEM_RECUSADA = 'A imagem não foi aceita pelo Instagram.';
+export const MENSAGEM_VIDEO_RECUSADO = 'O vídeo não foi aceito pelo Instagram.';
 export const MENSAGEM_SEM_RESPOSTA = 'O Instagram não respondeu como esperado.';
 
 export type StatusDoContainer = 'pronto' | 'processando' | 'erro';
@@ -16,6 +17,12 @@ export type StatusDoContainer = 'pronto' | 'processando' | 'erro';
 export interface PublicadorInstagram {
   /** Cria o contêiner de uma imagem. A Meta baixa a imagem do endereço público informado. */
   criarContainerDeImagem(token: string, urlDaImagem: string, legenda: string): Promise<string>;
+  /** Cria o contêiner de um Reel. A Meta baixa o vídeo do endereço público informado. */
+  criarContainerDeVideo(token: string, urlDoVideo: string, legenda: string): Promise<string>;
+  /** Cria o contêiner de uma imagem que será um item do carrossel (sem legenda). */
+  criarContainerDeItem(token: string, urlDaImagem: string): Promise<string>;
+  /** Cria o contêiner do carrossel a partir dos itens já prontos. */
+  criarContainerDeCarrossel(token: string, itens: string[], legenda: string): Promise<string>;
   statusDoContainer(token: string, containerId: string): Promise<StatusDoContainer>;
   /** Publica o contêiner pronto e devolve o identificador do post. */
   publicar(token: string, containerId: string): Promise<string>;
@@ -28,7 +35,7 @@ const VERSAO = 'v21.0';
 export class PublicadorMeta implements PublicadorInstagram {
   constructor(private readonly fetchFn: typeof fetch = fetch) {}
 
-  private async chamar(metodo: 'GET' | 'POST', caminho: string, token: string, params: Record<string, string> = {}, imagem = false): Promise<Record<string, unknown>> {
+  private async chamar(metodo: 'GET' | 'POST', caminho: string, token: string, params: Record<string, string> = {}, recusa = MENSAGEM_SEM_RESPOSTA): Promise<Record<string, unknown>> {
     const q = new URLSearchParams({ ...params, access_token: token });
     let r: Response;
     try {
@@ -48,13 +55,31 @@ export class PublicadorMeta implements PublicadorInstagram {
     if (!r.ok) {
       const e = (j.error ?? {}) as { code?: number };
       if (r.status === 401 || e.code === 190) throw new ErroInstagram(MENSAGEM_RECONECTAR);
-      throw new ErroInstagram(imagem ? MENSAGEM_IMAGEM_RECUSADA : MENSAGEM_SEM_RESPOSTA);
+      throw new ErroInstagram(recusa);
     }
     return j;
   }
 
   async criarContainerDeImagem(token: string, urlDaImagem: string, legenda: string): Promise<string> {
-    const j = await this.chamar('POST', 'me/media', token, { image_url: urlDaImagem, caption: legenda }, true);
+    const j = await this.chamar('POST', 'me/media', token, { image_url: urlDaImagem, caption: legenda }, MENSAGEM_IMAGEM_RECUSADA);
+    if (typeof j.id !== 'string') throw new ErroInstagram(MENSAGEM_IMAGEM_RECUSADA);
+    return j.id;
+  }
+
+  async criarContainerDeVideo(token: string, urlDoVideo: string, legenda: string): Promise<string> {
+    const j = await this.chamar('POST', 'me/media', token, { media_type: 'REELS', video_url: urlDoVideo, caption: legenda }, MENSAGEM_VIDEO_RECUSADO);
+    if (typeof j.id !== 'string') throw new ErroInstagram(MENSAGEM_VIDEO_RECUSADO);
+    return j.id;
+  }
+
+  async criarContainerDeItem(token: string, urlDaImagem: string): Promise<string> {
+    const j = await this.chamar('POST', 'me/media', token, { image_url: urlDaImagem, is_carousel_item: 'true' }, MENSAGEM_IMAGEM_RECUSADA);
+    if (typeof j.id !== 'string') throw new ErroInstagram(MENSAGEM_IMAGEM_RECUSADA);
+    return j.id;
+  }
+
+  async criarContainerDeCarrossel(token: string, itens: string[], legenda: string): Promise<string> {
+    const j = await this.chamar('POST', 'me/media', token, { media_type: 'CAROUSEL', children: itens.join(','), caption: legenda }, MENSAGEM_IMAGEM_RECUSADA);
     if (typeof j.id !== 'string') throw new ErroInstagram(MENSAGEM_IMAGEM_RECUSADA);
     return j.id;
   }
@@ -81,7 +106,7 @@ export class PublicadorMeta implements PublicadorInstagram {
 
 /** Demonstração e testes: a "Meta" é fictícia e guarda o que recebeu. */
 export class PublicadorInstagramMemoria implements PublicadorInstagram {
-  containers: { id: string; url: string; legenda: string; token: string }[] = [];
+  containers: { id: string; url: string; legenda: string; token: string; tipo: 'imagem' | 'video' | 'item' | 'carrossel'; itens?: string[] }[] = [];
   publicados: string[] = [];
   /** Quantas consultas de status devolvem "processando" antes de ficar pronto. */
   processandoPor = 0;
@@ -93,8 +118,27 @@ export class PublicadorInstagramMemoria implements PublicadorInstagram {
 
   async criarContainerDeImagem(token: string, url: string, legenda: string): Promise<string> {
     if (this.falharContainer) throw new ErroInstagram(this.falharContainer);
+    return this.guardar({ url, legenda, token, tipo: 'imagem' });
+  }
+
+  async criarContainerDeVideo(token: string, url: string, legenda: string): Promise<string> {
+    if (this.falharContainer) throw new ErroInstagram(this.falharContainer);
+    return this.guardar({ url, legenda, token, tipo: 'video' });
+  }
+
+  async criarContainerDeItem(token: string, url: string): Promise<string> {
+    if (this.falharContainer) throw new ErroInstagram(this.falharContainer);
+    return this.guardar({ url, legenda: '', token, tipo: 'item' });
+  }
+
+  async criarContainerDeCarrossel(token: string, itens: string[], legenda: string): Promise<string> {
+    if (this.falharContainer) throw new ErroInstagram(this.falharContainer);
+    return this.guardar({ url: '', legenda, token, tipo: 'carrossel', itens });
+  }
+
+  private guardar(c: Omit<(typeof this.containers)[number], 'id'>): string {
     const id = `container-${this.containers.length + 1}`;
-    this.containers.push({ id, url, legenda, token });
+    this.containers.push({ id, ...c });
     return id;
   }
 

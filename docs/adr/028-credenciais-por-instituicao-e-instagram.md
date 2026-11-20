@@ -87,3 +87,12 @@ com trechos antigos dizendo 50; usar o menor, 50).
 - O endereço público de onde a Meta baixa a foto vem de `ELO_URL_PUBLICA` (ou `URL` da Netlify).
 - A foto do pedido já é reduzida no navegador e salva como JPG; por isso não há conversão no servidor: foto que não
   seja JPG é recusada ao agendar, com texto claro.
+
+## Como ficou na entrega 3 (20/11/2026): carrossel e Reel
+- O tipo da publicação (`post`, `reel`, `carrossel`) sai da mídia do pedido: 1 foto, 2 a 10 fotos ou 1 vídeo MP4/MOV.
+  Vídeo é um novo tipo de anexo (até 100 MB); o limite de arquivos por pedido passou de 5 para 10.
+- O adaptador ganhou `criarContainerDeVideo` (Reel), `criarContainerDeItem` e `criarContainerDeCarrossel`.
+- Carrossel: a rotina cria um contêiner por foto e guarda a lista em `container_id` (separada por vírgula); quando todos
+  ficam prontos, cria o contêiner do carrossel e troca a lista pelo identificador dele. Daí em diante é igual ao post.
+- A rota de mídia temporária recebe `?n=<posição>` para entregar cada item pelo mesmo código; só entrega o tipo certo
+  (Reel: o vídeo; post e carrossel: as fotos). Nenhuma decisão de arquitetura nova.

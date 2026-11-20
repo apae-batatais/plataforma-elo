@@ -196,7 +196,7 @@ export async function enviarPedido(
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   const agora = opcoes.agora ?? new Date();
   const plano = await conferirAnexosDoPedido(p, opcoes.arquivos ?? null, d.anexos, null);
-  const { hoje, campos } = await conferirDados(p, quem, d, agora, null, false, null, plano.finais.some((a) => a.tipo === 'foto'));
+  const { hoje, campos } = await conferirDados(p, quem, d, agora, null, false, null, plano.finais.some((a) => a.tipo === 'foto' || a.tipo === 'video'));
   const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
   // O número é lido e depois gravado: dois envios no mesmo instante podem repetir o número (risco aceito na fase 1).
   const numero = proximoNumero(
@@ -239,7 +239,7 @@ export async function reenviarPedido(p: Planilhas, quem: Autorizador, id: string
   if (r.solicitante !== quem.email) throw new ErroPermissao('Só quem fez o pedido pode ajustá-lo.');
   const para = conferirTransicao(r.situacao, 'reenviar', r.tipo_peca);
   const plano = await conferirAnexosDoPedido(p, opcoes.arquivos ?? null, d.anexos, id);
-  const { campos } = await conferirDados(p, quem, d, agora, { id: r.calendario_id, tema: r.calendario_tema }, false, null, plano.finais.some((a) => a.tipo === 'foto'));
+  const { campos } = await conferirDados(p, quem, d, agora, { id: r.calendario_id, tema: r.calendario_tema }, false, null, plano.finais.some((a) => a.tipo === 'foto' || a.tipo === 'video'));
   const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { ...campos, situacao: para }, autoriaDe(quem, agora));
   await gravarAnexos(p, quem, plano, id, agora);
   await registrarMudanca(p, quem, r, 'reenviar', para, null, agora, [...colunasAlteradas, ...(plano.mudou ? ['anexos'] : [])]);
@@ -371,8 +371,8 @@ export async function editarNaRevisao(
   if (r.situacao !== 'em_revisao') throw new ErroComunicacao(`Esta ação não vale para um pedido em "${NOME_SITUACAO[r.situacao]}".`);
   const plano = await conferirAnexosDoPedido(p, opcoes.arquivos ?? null, m.anexos, id);
   // A Comunicação não confirma o uso de imagem por quem pediu: foto nova só entra se a confirmação já existe.
-  if (plano.novos.some((a) => a.tipo === 'foto') && !r.imagem_confirmada_em)
-    throw new ErroComunicacao('Quem pediu ainda não confirmou o uso de imagem. Para incluir uma foto, devolva o pedido para ela ajustar com a confirmação.');
+  if (plano.novos.some((a) => a.tipo === 'foto' || a.tipo === 'video') && !r.imagem_confirmada_em)
+    throw new ErroComunicacao('Quem pediu ainda não confirmou o uso de imagem. Para incluir foto ou vídeo, devolva o pedido para ela ajustar com a confirmação.');
   const dataMudou = m.dataDesejada !== undefined && m.dataDesejada !== r.data_desejada;
   const dadosCom = (calendarioId: string | null): DadosPedido => ({
     area: r.area,
