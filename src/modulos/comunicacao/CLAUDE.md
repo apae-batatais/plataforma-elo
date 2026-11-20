@@ -16,3 +16,7 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Permissões: `comunicacao.<recurso>.<acao>`, declaradas no manifesto.
 - Instagram (ADR-028): `aplicacao/instagram.ts` usa a peça `src/nucleo/credenciais/`. O token nunca sai da camada de
   aplicação (tela, rota, log, erro e auditoria não o mostram); só `comunicacao.configurar` conecta e desconecta.
+- Publicação automática (ADR-028, entrega 2): `aplicacao/publicacoes.ts` (agendar, rotina, mídia temporária) e a aba
+  `Publicacoes`. A rotina grava como `sistema`; o código da mídia temporária só existe na planilha como resumo; a rota
+  `/api/midia-temporaria/<código>` é pública e sempre responde "não encontrado" sem pista. Só a Comunicação e a
+  coordenação (`comunicacao.revisar`) veem e mexem na publicação.
