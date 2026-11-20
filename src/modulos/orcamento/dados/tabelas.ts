@@ -358,6 +358,48 @@ export const MudancasClasse = definirTabela({
 
 
 /**
+ * Política da reserva (1D.2): vigência, meses de folha e as faixas dos seis sinais. Só inclusões;
+ * a decisão (aprovar ou recusar) atualiza `situacao` e `motivo` da própria linha, auditada.
+ */
+export const PoliticaReserva = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'PoliticaReserva',
+  esquema: z.object({
+    vigencia: mesAAAAMM(),
+    meses_minimo: numero(),
+    situacao: z.enum(['proposta', 'aprovada', 'recusada']),
+    motivo: textoOpcional(),
+    livre_ok: numero(),
+    livre_atencao: numero(),
+    fim_ok: numero(),
+    exec_atencao: numero(),
+    folha_ok: numero(),
+    folha_atencao: numero(),
+    gasto_ok: numero(),
+    gasto_atencao: numero(),
+    reserva_ok: numero(),
+    reserva_atencao: numero(),
+  }),
+});
+export type RegPoliticaReserva = Registro<typeof PoliticaReserva.esquema>;
+
+/** Pedido de uso da reserva (1D.2). Não move saldo: o saldo vem do extrato digitado. Cancelar encerra (ativo = FALSE). */
+export const UsosReserva = definirTabela({
+  planilha: PLANILHA_EXECUCAO,
+  aba: 'UsosReserva',
+  esquema: z.object({
+    mes_pedido: mesAAAAMM(),
+    valor: numero(),
+    motivo: texto(),
+    prazo_recomposicao: mesAAAAMM(),
+    situacao: z.enum(['pedido', 'aprovado', 'recusado', 'recomposto']),
+    motivo_decisao: textoOpcional(),
+    mes_recomposicao: z.preprocess((v) => (vazio(v) ? null : String(v).trim()), z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/).nullable()),
+  }),
+});
+export type RegUsoReserva = Registro<typeof UsosReserva.esquema>;
+
+/**
  * Realizado (1C.1): totais mensais informados à mão, uma linha por mês, tipo, serviço, grupo, fonte e natureza.
  * Receita não tem serviço nem grupo. Sem coluna pessoal (não há fornecedor). "Remover linha" encerra (ativo = FALSE).
  */
@@ -562,4 +604,4 @@ export type RegCedido = Registro<typeof Cedidos.esquema>;
 export type RegValorCedido = Registro<typeof ValoresCedidos.esquema>;
 export type RegLotacaoCedido = Registro<typeof LotacaoCedidos.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, FontesTermo, CategoriasPlanoOrigens, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, FontesTermo, CategoriasPlanoOrigens, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, UsosReserva] as const;

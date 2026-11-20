@@ -406,7 +406,7 @@ export default async function Ajuda() {
       id: 'folha',
       titulo: 'Folha de pagamento',
       resumo: pode.folhaEditar ? 'Resumo, folha completa, lotação, parâmetros e importação da planilha.' : 'Como ler o resumo da folha.',
-      atalhos: [{ rotulo: 'Resumo da folha', href: '/orcamento' }, ...(pode.folhaEditar ? [{ rotulo: 'Lotação', href: '/orcamento/lotacao' }] : [])],
+      atalhos: [{ rotulo: 'Resumo da folha', href: '/orcamento/resumo' }, ...(pode.folhaEditar ? [{ rotulo: 'Lotação', href: '/orcamento/lotacao' }] : [])],
       conteudo: (
         <>
           <Itens
