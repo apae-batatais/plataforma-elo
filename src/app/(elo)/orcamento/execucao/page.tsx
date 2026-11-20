@@ -6,6 +6,7 @@ import { MESES, reais } from '@/modulos/orcamento/telas/formato';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
+import { LinkBotao } from '@/ui/botao';
 import { CabecalhoPagina, tabela } from '@/ui/pagina';
 
 export const metadata: Metadata = { title: 'Realizado do ano' };
@@ -24,7 +25,11 @@ export default async function RealizadoDoAnoPagina({ searchParams }: { searchPar
         titulo={`Realizado de ${r.ano}`}
         descricao="Mês a mês: despesa, receita e resultado do que foi informado. Mês sem informação aparece como “sem dado”, nunca como zero."
         acoes={
-          r.anos.length > 1 ? (
+          <>
+            <LinkBotao href={`/orcamento/execucao/painel?ano=${r.ano}`} variante="secundario">
+              Ver o painel
+            </LinkBotao>
+            {r.anos.length > 1 ? (
             <nav aria-label="Ano" className="flex gap-2">
               {r.anos.map((a) => (
                 <Link key={a} href={`/orcamento/execucao?ano=${a}`} aria-current={a === r.ano ? 'page' : undefined} className={a === r.ano ? 'font-bold underline' : 'underline'}>
@@ -32,7 +37,8 @@ export default async function RealizadoDoAnoPagina({ searchParams }: { searchPar
                 </Link>
               ))}
             </nav>
-          ) : undefined
+            ) : null}
+          </>
         }
       />
       {r.escopoParcial && <Aviso tipo="info">Você vê só o realizado dos serviços do seu escopo. As receitas não aparecem.</Aviso>}

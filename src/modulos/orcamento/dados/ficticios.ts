@@ -8,7 +8,7 @@ import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { anoAtualBrasilia } from '../dominio/historico';
 import { distribuir, valorDoItem } from '../dominio/previsao';
 import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
-import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade } from './tabelas';
+import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, Realizado } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -427,4 +427,57 @@ export async function popularCedidosFicticia(p: Planilhas): Promise<void> {
     await inserir(p, ValoresCedidos, { cedido_id: c.id, vigencia: `${ano}-01-01`, valor_mensal: x.valor, tipo_valor: x.tipo }, autor);
     await inserir(p, LotacaoCedidos, { cedido_id: c.id, lote: `demo-${c.id}`, servico: x.servico, percentual: 100, vigencia: `${ano}-01-01` }, autor);
   }
+}
+
+/**
+ * Realizado FICTÍCIO (1C.2): 2025 inteiro e 2026 até o mês anterior ao atual, a partir da Previsão fictícia desses anos
+ * (cada item executa entre 88% e 112% do previsto). Acrescenta um adiantamento a termo ainda em aberto, um ressarcimento
+ * parcial e uma despesa não recorrente, para o Painel de execução e os Recursos livres terem o que mostrar.
+ * Só roda se a Previsão fictícia já foi gravada.
+ */
+export async function popularRealizadoFicticio(p: Planilhas): Promise<void> {
+  const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const [despesas, receitas, fontes, grupos, realizado] = await lerTabelas(p, [Despesas, Receitas, Fontes, GruposGasto, Realizado] as const);
+  const restritas = fontes.ativos().filter((f) => f.uso === 'restrita');
+  const livres = fontes.ativos().filter((f) => f.uso === 'livre');
+  const material = grupos.ativos()[0];
+  if (!restritas[0] || !livres[0] || !material) return;
+  const atual = mesAtualBrasilia();
+  const ultimo = mesAnterior(atual);
+  const mesesDoAno = (ano: number) => {
+    if (ano < Number(atual.slice(0, 4))) return 12;
+    return ultimo.startsWith(`${ano}-`) ? Number(ultimo.slice(5)) : 0;
+  };
+  const fator = (i: number, m: number) => 0.88 + ((i * 5 + m) % 7) / 25;
+  const linhas: Record<string, unknown>[] = [];
+  for (const ano of [2025, 2026]) {
+    const ate = mesesDoAno(ano);
+    const base = (tipo: 'despesa' | 'receita', m: number) => ({ ano, mes: `${ano}-${String(m).padStart(2, '0')}`, tipo, nao_recorrente: false, motivo_nao_recorrente: null, observacao: null });
+    despesas.ativos().filter((d) => d.ano === ano && d.situacao === 'aceito' && d.fonte_id).forEach((d, i) => {
+      const rh = grupos.todos().find((g) => g.id === d.grupo_id)?.rh ?? false;
+      for (let m = 1; m <= ate; m++) {
+        const previsto = Number((d as unknown as Record<string, unknown>)[`m${m}`] ?? 0);
+        if (!previsto) continue;
+        linhas.push({ ...base('despesa', m), servico: d.servico, grupo_id: d.grupo_id, fonte_id: d.fonte_id, natureza: rh ? 'rh' : 'custeio', valor: Math.round(previsto * fator(i, m) * 100) / 100 });
+      }
+    });
+    receitas.ativos().filter((r) => r.ano === ano).forEach((r, i) => {
+      for (let m = 1; m <= ate; m++) {
+        const previsto = Number((r as unknown as Record<string, unknown>)[`m${m}`] ?? 0);
+        if (!previsto) continue;
+        linhas.push({ ...base('receita', m), servico: null, grupo_id: null, fonte_id: r.fonte_id, natureza: 'receita_comum', valor: Math.round(previsto * fator(i + 3, m) * 100) / 100 });
+      }
+    });
+  }
+  const cru = (ano: number, m: number, extra: Record<string, unknown>) => ({
+    ano, mes: `${ano}-${String(m).padStart(2, '0')}`, nao_recorrente: false, motivo_nao_recorrente: null, observacao: null, ...extra,
+  });
+  if (mesesDoAno(2025) >= 6) {
+    linhas.push(cru(2025, 6, { tipo: 'despesa', servico: 'escola', grupo_id: material.id, fonte_id: livres[0].id, natureza: 'custeio', valor: 4000, nao_recorrente: true, motivo_nao_recorrente: 'Evento único de aniversário (exemplo)' }));
+  }
+  if (mesesDoAno(2026) >= 5) {
+    linhas.push(cru(2026, 3, { tipo: 'despesa', servico: 'escola', grupo_id: material.id, fonte_id: livres[0].id, natureza: 'adiantamento_termo', valor: 12000, fonte_termo_id: restritas[1]?.id ?? restritas[0].id, observacao: 'Adiantado até o repasse (exemplo)' }));
+    linhas.push(cru(2026, 5, { tipo: 'receita', servico: null, grupo_id: null, fonte_id: restritas[1]?.id ?? restritas[0].id, natureza: 'ressarcimento', valor: 5000 }));
+  }
+  await inserirRegistros(p, realizado, linhas as never, autor);
 }

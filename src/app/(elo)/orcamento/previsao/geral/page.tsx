@@ -133,6 +133,9 @@ export default async function PainelGeral({ searchParams }: { searchParams: Prom
         descricao={anterior ? `Números de ${atual.ano} comparados com ${anterior.ano}. Os gráficos de vários anos mostram ${rotulos.join(', ')}.` : `Números de ${atual.ano}.`}
         acoes={
           <div className="flex flex-wrap items-center gap-3">
+            <LinkBotao href={`/orcamento/execucao/painel?ano=${atual.ano}`} variante="secundario">
+              Ver a execução
+            </LinkBotao>
             <SeletorCedidos temCedidos={painel.anos.some((a) => a.temCedidos)} incluir={incluir} total={atual.cedidos} href={(i) => `/orcamento/previsao/geral?ano=${atual.ano}${i ? '' : '&cedidos=0'}`} />
             <SeletorAno anos={anos.map((a) => a.ano)} atual={atual.ano} href={(a) => `/orcamento/previsao/geral?ano=${a}${incluir ? '' : '&cedidos=0'}`} />
           </div>

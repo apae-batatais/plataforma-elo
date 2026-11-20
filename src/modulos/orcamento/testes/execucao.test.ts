@@ -282,3 +282,22 @@ describe('termo adiantado na grade (coluna fonte_termo_id)', () => {
     expect(t.ativos()[0].fonte_termo_id ?? null).toBeNull();
   });
 });
+
+describe('demonstração', () => {
+  it('o realizado fictício alimenta o painel, a comparação e um adiantamento em aberto; a Coordenação vê só o seu serviço', async () => {
+    const { popularPrevisaoFicticia, popularRealizadoFicticio } = await import('../dados/ficticios');
+    await popularPrevisaoFicticia(p);
+    await popularRealizadoFicticio(p);
+    const f = await como('financeiro@exemplo.local');
+    const painel = await lerPainelExecucao(p, f, { ano: 2025 }, HOJE);
+    expect(painel.despesa.previsto).toBeGreaterThan(0);
+    expect(painel.despesa.execucao).not.toBeNull();
+    expect(painel.porServico.length).toBeGreaterThan(3);
+    const livres = await lerRecursosLivres(p, f, { ano: 2026 }, '2026-12-31');
+    expect(livres.comparacao?.semAnoAnterior).toBe(false);
+    expect(livres.adiantamentos?.termosEmAberto).toBe(1);
+    const ur = await lerPainelExecucao(p, await como('coord.ur@exemplo.local'), { ano: 2025 }, HOJE);
+    expect(ur.linhas.length).toBeGreaterThan(0);
+    expect(new Set(ur.linhas.map((l) => l.servico)).size).toBe(1);
+  });
+});
