@@ -950,6 +950,6 @@ Decisões tomadas durante a construção, além das oito da revisão de 17/11:
 3. **"Quem propõe não aprova" confere o autor do registro** (`criado_por`), não só as permissões. *Custo:* uma linha.
 4. **"Último mês com saldo" = qualquer saldo das classes pedidas no mês**, sem exigir todas as contas (conta nova não zera os meses antigos). *Custo:* trocar uma função.
 5. **Gráfico do Fim do ano só desenha os meses em que o ano em andamento tem saldo**, e só os anos com saldo em todos esses meses (o `Linhas` do Núcleo não aceita buraco). Os demais anos ficam listados em texto. *Custo:* aceitar `null` no `Linhas` (Núcleo; precisa de pedido).
-6. **Folha sobre a receita sem RH realizado dá 0%** (o RH realizado vem das naturezas `rh` e `encargos`). *Custo:* exigir ao menos uma linha de RH para calcular.
+6. **Folha sobre a receita:** o RH realizado vem das naturezas `rh` e `encargos`; sem nenhuma linha de RH informada, o sinal cai no previsto (marcado "previsto") em vez de mostrar 0%. *Custo:* mostrar "sem dado" nesse caso.
 7. **Pendência "termos com diferença"** olha só os meses do ano em andamento, até o mês anterior ao atual. *Custo:* mudar o intervalo.
 

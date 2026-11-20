@@ -171,13 +171,18 @@ export function montarSinais(e: {
     let previstoMarca = false;
     if (ultimoRealizado) {
       let rh = 0;
+      let linhasDeRh = 0;
       let receita = 0;
       for (const r of b.realizado) {
         if (!r.mes.startsWith(`${ano}-`) || r.mes > ultimoRealizado) continue;
         if (r.tipo === 'receita') receita += c(r.valor);
-        else if (r.natureza === 'rh' || r.natureza === 'encargos') rh += c(r.valor);
+        else if (r.natureza === 'rh' || r.natureza === 'encargos') {
+          rh += c(r.valor);
+          linhasDeRh += 1;
+        }
       }
-      pct = receita > 0 ? Math.round((rh / receita) * 1000) / 10 : null;
+      // Sem nenhuma linha de RH informada, o realizado não diz a folha: cai no previsto (nunca vira 0%).
+      pct = receita > 0 && linhasDeRh > 0 ? Math.round((rh / receita) * 1000) / 10 : null;
     }
     if (pct === null && previsao) {
       const receita = previsao.receitaMensal.reduce((t, v) => t + c(v), 0);

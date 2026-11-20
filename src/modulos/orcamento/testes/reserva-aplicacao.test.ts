@@ -359,9 +359,13 @@ describe('Visão geral (S1 a S10)', () => {
     expect([...idx].sort((a, b) => a - b)).toEqual(idx);
     expect(v.faixasAprovadas).toBe(false);
   });
-  it('S5: folha sobre a receita usa o realizado; sem RH realizado dá 0%', async () => {
-    const v = await lerVisaoGeral(p, await fin(), AGORA);
-    expect(v.sinais.find((s) => s.chave === 'folha')).toMatchObject({ valor: 0, situacao: 'ok', previsto: false });
+  it('S5: com RH realizado usa o realizado; sem nenhuma linha de RH cai no previsto, nunca em 0% falso', async () => {
+    const [r] = await lerTabelas(p, [Realizado] as const);
+    expect((await lerVisaoGeral(p, await fin(), AGORA)).sinais.find((s) => s.chave === 'folha')).toMatchObject({ previsto: true, dado: 'previsto do ano' });
+    await inserirRegistros(p, r, [linha('2026-10', 'despesa', ids.livre, 600, { natureza: 'rh' })], autor);
+    const f = (await lerVisaoGeral(p, await fin(), AGORA)).sinais.find((s) => s.chave === 'folha')!;
+    expect(f).toMatchObject({ previsto: false, situacao: 'ok' });
+    expect(f.valor).toBe(5.6); // 600 ÷ (10 × 1.000 + 800 do termo)
   });
   it('S5: sem realizado, usa o previsto do ano com a marca "previsto"', async () => {
     const [r] = await lerTabelas(p, [Realizado] as const);

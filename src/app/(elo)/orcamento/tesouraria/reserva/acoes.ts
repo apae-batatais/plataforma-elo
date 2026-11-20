@@ -82,15 +82,21 @@ export async function acaoPedirUso(_: EstadoForm, f: FormData): Promise<EstadoFo
   return { ok: 'Pedido enviado para a Diretoria.' };
 }
 
-export const acaoAprovarPolitica = (f: FormData) =>
-  direto('Política aprovada. Ela vale a partir deste mês.', ({ usuario, app }) => decidirPolitica(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'aprovada'));
-export const acaoRecusarPolitica = (f: FormData) =>
-  direto('Proposta recusada.', ({ usuario, app }) => decidirPolitica(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'recusada', texto(f, 'motivo')));
-export const acaoAprovarUso = (f: FormData) =>
-  direto('Uso da reserva aprovado.', ({ usuario, app }) => decidirUsoDaReserva(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'aprovado'));
-export const acaoRecusarUso = (f: FormData) =>
-  direto('Pedido recusado.', ({ usuario, app }) => decidirUsoDaReserva(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'recusado', texto(f, 'motivo')));
-export const acaoCancelarUso = (f: FormData) =>
-  direto('Pedido cancelado.', ({ usuario, app }) => cancelarPedidoDeUso(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))));
-export const acaoMarcarRecomposto = (f: FormData) =>
-  direto('Recomposição registrada.', ({ usuario, app }) => marcarRecomposicao(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), texto(f, 'mes')));
+export async function acaoAprovarPolitica(f: FormData) {
+  return direto('Política aprovada. Ela vale a partir deste mês.', ({ usuario, app }) => decidirPolitica(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'aprovada'));
+}
+export async function acaoRecusarPolitica(f: FormData) {
+  return direto('Proposta recusada.', ({ usuario, app }) => decidirPolitica(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'recusada', texto(f, 'motivo')));
+}
+export async function acaoAprovarUso(f: FormData) {
+  return direto('Uso da reserva aprovado.', ({ usuario, app }) => decidirUsoDaReserva(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'aprovado'));
+}
+export async function acaoRecusarUso(f: FormData) {
+  return direto('Pedido recusado.', ({ usuario, app }) => decidirUsoDaReserva(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), 'recusado', texto(f, 'motivo')));
+}
+export async function acaoCancelarUso(f: FormData) {
+  return direto('Pedido cancelado.', ({ usuario, app }) => cancelarPedidoDeUso(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))));
+}
+export async function acaoMarcarRecomposto(f: FormData) {
+  return direto('Recomposição registrada.', ({ usuario, app }) => marcarRecomposicao(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), texto(f, 'mes')));
+}
