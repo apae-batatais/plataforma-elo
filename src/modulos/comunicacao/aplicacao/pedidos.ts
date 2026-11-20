@@ -49,6 +49,7 @@ import { conferirAnexosDoPedido, gravarAnexos, type AnexoPedido } from './anexos
 import { dataValida, itensParaPedido, salvarItemCalendario, type DadosItemCalendario } from './calendario';
 import { lerAntecedencia } from './configuracoes';
 import { destinatariosDe } from './contatos';
+import { conferirPublicacaoAutomatica, sincronizarPublicacao } from './publicacoes';
 
 const PERM = {
   solicitar: 'comunicacao.solicitar',
@@ -61,6 +62,8 @@ interface Opcoes {
   agora?: Date;
   /** Pasta de anexos da instituição; sem ela, pedido com anexo é recusado. */
   arquivos?: ArmazenamentoArquivos | null;
+  /** Código da instituição (só para "Publicar pelo Elo", que procura a conta do Instagram dela). */
+  instituicao?: string;
 }
 
 export interface DadosPedido {
@@ -429,7 +432,15 @@ export async function agendarPedido(
   quem: Autorizador,
   id: string,
   versao: number,
-  a: { agendadoPara: string; grupos: string[]; contatos: string[]; /** Release e artigo: o Elo envia na hora marcada. */ envioAutomatico?: boolean },
+  a: {
+    agendadoPara: string;
+    grupos: string[];
+    contatos: string[];
+    /** Release e artigo: o Elo envia na hora marcada. */
+    envioAutomatico?: boolean;
+    /** Post de Instagram: o Elo publica na hora marcada. */
+    publicarPeloElo?: boolean;
+  },
   opcoes: Opcoes & {
     /** A instituição tem e-mail de envio? Sem ele, o envio automático é recusado. */
     emailDisponivel?: boolean;
@@ -451,12 +462,19 @@ export async function agendarPedido(
     if ((await destinatariosDe(p, escolha)).length === 0) throw new ErroComunicacao('Escolha pelo menos um contato ativo para receber o e-mail.');
     destinatarios = JSON.stringify(escolha);
   }
+  const automatica = a.publicarPeloElo === true;
+  if (automatica) {
+    if (!opcoes.instituicao) throw new ErroComunicacao('Não foi possível conferir o Instagram da instituição.');
+    await conferirPublicacaoAutomatica(p, r, opcoes.instituicao, agora);
+  }
+  // Antes de gravar o pedido: se a publicação já está em andamento, nada muda.
+  if (automatica || r.publicacao_automatica) await sincronizarPublicacao(p, quem, id, { automatica, previstaPara: quando.toISOString() }, agora);
   const { colunasAlteradas } = await atualizar(
     p,
     PedidosComunicacao,
     id,
     versao,
-    { situacao: para, agendado_para: quando.toISOString(), destinatarios, envio_automatico: automatico },
+    { situacao: para, agendado_para: quando.toISOString(), destinatarios, envio_automatico: automatico, publicacao_automatica: automatica },
     autoriaDe(quem, agora),
   );
   if (SAI_POR_EMAIL.has(r.tipo_peca)) await sincronizarEnvioDoAgendamento(p, quem, r, automatico, quando, agora);
@@ -501,12 +519,14 @@ export async function publicarPedido(
   const link = x.link?.trim() || null;
   if (NOME_REDE[r.tipo_peca] && !link) throw new ErroComunicacao(`Cole o link da publicação ${NOME_REDE[r.tipo_peca]}.`);
   if (link && !link.startsWith('https://')) throw new ErroComunicacao('Cole o link completo da publicação (começando com https://).');
+  // Publicar à mão encerra a publicação automática (se estiver em andamento, o Elo avisa e nada muda).
+  if (r.publicacao_automatica) await sincronizarPublicacao(p, quem, id, { automatica: false, previstaPara: r.agendado_para ?? agora.toISOString() }, agora);
   const { colunasAlteradas } = await atualizar(
     p,
     PedidosComunicacao,
     id,
     versao,
-    { situacao: para, link_publicacao: link, publicado_em: agora.toISOString() },
+    { situacao: para, link_publicacao: link, publicado_em: agora.toISOString(), publicacao_automatica: false },
     autoriaDe(quem, agora),
   );
   await cancelarEnviosPendentes(p, quem.email, id, agora);

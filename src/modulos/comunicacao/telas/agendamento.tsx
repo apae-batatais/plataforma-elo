@@ -4,6 +4,7 @@
  * Detalhe do pedido aprovado ou agendado: agendar ou mudar a data, abrir o e-mail pronto no Gmail
  * e marcar como publicado. Recebe do servidor só o que a pessoa pode fazer (`acoes`).
  */
+import Link from 'next/link';
 import { useState } from 'react';
 import { Botao, LinkBotao } from '@/ui/botao';
 import { Campo, estiloEntrada } from '@/ui/campo';
@@ -26,6 +27,17 @@ export function paraCampoDeDataHora(iso: string | null): string {
 
 const NOME_PUBLICAR = (tipo: TipoPeca) => (tipo === 'entrevista' ? 'Marcar entrevista como realizada' : 'Marcar como publicado');
 
+/** Como a publicação do post sai: pelo Elo na hora marcada ou à mão (caminho de sempre). */
+export interface OpcaoInstagram {
+  disponivel: boolean;
+  /** Por que não está disponível (texto pronto para a pessoa). */
+  motivo: string | null;
+  /** A pessoa pode abrir as configurações para conectar a conta. */
+  podeConfigurar: boolean;
+  /** O pedido já está agendado para publicar pelo Elo. */
+  automatica: boolean;
+}
+
 export function AcoesDeAgendamento({
   acoes,
   id,
@@ -34,6 +46,7 @@ export function AcoesDeAgendamento({
   agendadoPara,
   destino,
   escolhidos,
+  instagram,
   envioAutomatico,
   jaAutomatico = false,
   agendar,
@@ -46,6 +59,7 @@ export function AcoesDeAgendamento({
   agendadoPara: string | null;
   destino: OpcoesDestino;
   escolhidos: { grupos: string[]; contatos: string[] };
+  instagram?: OpcaoInstagram | null;
   /** O Elo pode enviar sozinho (a instituição informou o e-mail de envio)? */
   envioAutomatico: boolean;
   /** O pedido já está com envio automático ligado. */
@@ -70,7 +84,9 @@ export function AcoesDeAgendamento({
               ? 'O pedido continua agendado, e o histórico guarda a data anterior.'
               : porEmail
                 ? 'Escolha o dia e a hora do envio e quem recebe o e-mail.'
-                : 'Escolha o dia e a hora em que você vai publicar. Depois de publicar, volte aqui e marque como publicado.'
+                : instagram
+                  ? 'Escolha o dia e a hora e se o Elo publica por você. Se for à mão, volte aqui depois e marque como publicado.'
+                  : 'Escolha o dia e a hora em que você vai publicar. Depois de publicar, volte aqui e marque como publicado.'
           }
           confirmar={reagendar ? 'Mudar data' : 'Agendar'}
         >
@@ -79,6 +95,7 @@ export function AcoesDeAgendamento({
           </Campo>
           {porEmail && <ComoEnviar disponivel={envioAutomatico} padraoElo={reagendar ? jaAutomatico : true} />}
           {porEmail && <Destinatarios destino={destino} escolhidos={escolhidos} />}
+          {tipoPeca === 'post_instagram' && instagram && <ComoPublicar opcao={instagram} reagendando={reagendar} />}
         </FormularioConfirmado>
       )}
       {acoes.includes('publicar') && (
@@ -106,6 +123,36 @@ export function AcoesDeAgendamento({
         </FormularioConfirmado>
       )}
     </div>
+  );
+}
+
+function ComoPublicar({ opcao, reagendando }: { opcao: OpcaoInstagram; reagendando: boolean }) {
+  // Ao mudar a data, mantém a escolha que o pedido já tinha; num agendamento novo, o Elo vem marcado se puder.
+  const noElo = opcao.disponivel && (!reagendando || opcao.automatica);
+  return (
+    <fieldset>
+      <legend className="text-sm font-semibold">Como publicar</legend>
+      <div className="mt-1.5 grid gap-2">
+        <label className={`flex min-h-11 items-center gap-2 rounded-lg border border-borda px-3 py-2 text-sm ${opcao.disponivel ? '' : 'opacity-60'}`}>
+          <input type="radio" name="como" value="elo" defaultChecked={noElo} disabled={!opcao.disponivel} />
+          Publicar pelo Elo na hora marcada
+        </label>
+        <label className="flex min-h-11 items-center gap-2 rounded-lg border border-borda px-3 py-2 text-sm">
+          <input type="radio" name="como" value="mao" defaultChecked={!noElo} />
+          Eu publico à mão
+        </label>
+      </div>
+      {!opcao.disponivel && (
+        <p className="mt-1.5 text-sm text-texto-suave">
+          {opcao.motivo}{' '}
+          {opcao.podeConfigurar && (
+            <Link href="/comunicacao/configuracoes#t-instagram" className="text-destaque underline">
+              Abrir as configurações
+            </Link>
+          )}
+        </p>
+      )}
+    </fieldset>
   );
 }
 

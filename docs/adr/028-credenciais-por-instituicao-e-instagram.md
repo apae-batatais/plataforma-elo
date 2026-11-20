@@ -74,3 +74,16 @@ com trechos antigos dizendo 50; usar o menor, 50).
   está usando e precisa estar cadastrado no app da Meta.
 - A rotina ganhou a tarefa `credenciais.instagram`. Falhou a renovação: `expirando`; vencido: `expirada`.
 - Reconectar a mesma conta atualiza a linha; outra conta exige desconectar antes (nova linha, a antiga fica encerrada).
+
+## Como ficou na entrega 2 (20/11/2026): post com imagem
+- Aba `Publicacoes` (planilha da Comunicação) e coluna `publicacao_automatica` em `Pedidos`. Uma publicação viva por
+  pedido; reagendar atualiza a pendente. Adaptador da Meta em `src/nucleo/credenciais/instagram-publicacao.ts`
+  (contêiner, status, publicar, link) com versão fictícia para demonstração e testes.
+- Rotina `comunicacao.publicacoes`: marca a linha "publicando" com a versão lida e confere que ficou com ela antes de
+  falar com a Meta (a planilha não tem trava; a esteira também roda uma rodada por vez). Se a Meta já devolveu o post,
+  só consulta o link. Falha: 3 tentativas (+15 e +60 minutos); esgotadas, `falhou`, o pedido continua Agendado.
+- Rota pública `/api/midia-temporaria/<código>`: o código leva a instituição na frente (para achar a planilha certa)
+  e 32 bytes aleatórios; a planilha guarda só o resumo (SHA-256). Vale até 1 hora e só enquanto a publicação não termina.
+- O endereço público de onde a Meta baixa a foto vem de `ELO_URL_PUBLICA` (ou `URL` da Netlify).
+- A foto do pedido já é reduzida no navegador e salva como JPG; por isso não há conversão no servidor: foto que não
+  seja JPG é recusada ao agendar, com texto claro.

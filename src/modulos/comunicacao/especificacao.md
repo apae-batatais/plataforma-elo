@@ -334,9 +334,20 @@ rota pública de mídia e roteiro no manual). Núcleo muda: peça nova `src/nucl
 ### Entregas (ordem de construção, depois da #63)
 1. **(construída, #64)** Peça de credenciais cifradas do Núcleo, tela "Conectar Instagram" e renovação do token. Conferência
    na prévia: conectar e desconectar uma conta fictícia (demonstração, sem Meta de verdade).
-2. Post com imagem: aba `Publicacoes`, agendar, rota de mídia temporária, rotina, falha e "Tentar de
+2. **(construída, #64)** Post com imagem: aba `Publicacoes`, agendar, rota de mídia temporária, rotina, falha e "Tentar de
    novo".
 3. Reel e carrossel (inclui anexar vídeo e os limites de tamanho medidos na hospedagem).
+
+### Decisões tomadas sozinho na entrega 2 (custo se estiverem erradas)
+- **Sem conversão de imagem no servidor:** a foto do pedido já é JPG (reduzida no navegador); outra coisa é recusada ao
+  agendar. Custo se errada: pedidos com PNG/WebP antigos precisam ser refeitos; adicionar conversão exige uma biblioteca
+  de imagem.
+- **A legenda do post é a descrição do pedido** (até 2.200 caracteres, o limite do Instagram). Custo se errada: trocar a
+  origem do texto (um campo "legenda") muda o formulário do pedido.
+- **Aviso de falha:** pendência no menu do app e faixa na lista de pedidos, para quem tem `comunicacao.revisar`; o aviso
+  por e-mail fica para quando a fase 2 estiver ligada.
+- **Endereço público** vem de `ELO_URL_PUBLICA` ou `URL` (Netlify). Custo se errada: sem endereço a rotina não publica
+  (e informa `sem_endereco_publico`).
 
 ### Decisões tomadas sozinho (custo se estiverem erradas)
 - **Depois da #63** (pergunta de fila sem resposta): a #64 reaproveita a rotina e a fila. Custo se errada:
