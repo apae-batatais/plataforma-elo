@@ -11,6 +11,7 @@ import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/com
 import { mudarSituacaoContato, mudarSituacaoGrupo, salvarContato, salvarGrupo } from '@/modulos/comunicacao/aplicacao/contatos';
 import { tentarEnvioDeNovo } from '@/modulos/comunicacao/aplicacao/envios';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
+import { tentarDeNovo } from '@/modulos/comunicacao/aplicacao/publicacoes';
 import { desconectarInstagram, iniciarConexaoInstagram } from '@/modulos/comunicacao/aplicacao/instagram';
 import {
   ACOES_DA_DECISAO,
@@ -446,9 +447,21 @@ export async function acaoAgendarPedido(f: FormData) {
           grupos: f.getAll('grupos').map(String),
           contatos: f.getAll('contatos').map(String),
           envioAutomatico: texto(f, 'como_enviar') === 'elo',
+          publicarPeloElo: texto(f, 'como') === 'elo',
         },
-        { emailDisponivel: app.email !== null },
+        { emailDisponivel: app.email !== null, instituicao: app.instituicao.codigo },
       ),
+  );
+}
+
+/** Põe de novo na fila a publicação do Instagram que falhou. */
+export async function acaoTentarDeNovoPublicacao(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    'Publicação colocada na fila de novo. Ela sai na próxima rodada, em até 15 minutos.',
+    ({ usuario, app }) => tentarDeNovo(app.planilhas, usuario.autorizador, id, app.instituicao.codigo),
   );
 }
 
