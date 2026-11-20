@@ -8,7 +8,7 @@ import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { anoAtualBrasilia } from '../dominio/historico';
 import { distribuir, valorDoItem } from '../dominio/previsao';
 import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
-import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade } from './tabelas';
+import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, Realizado, UsosReserva } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -427,4 +427,49 @@ export async function popularCedidosFicticia(p: Planilhas): Promise<void> {
     await inserir(p, ValoresCedidos, { cedido_id: c.id, vigencia: `${ano}-01-01`, valor_mensal: x.valor, tipo_valor: x.tipo }, autor);
     await inserir(p, LotacaoCedidos, { cedido_id: c.id, lote: `demo-${c.id}`, servico: x.servico, percentual: 100, vigencia: `${ano}-01-01` }, autor);
   }
+}
+
+/**
+ * Realizado, política da reserva e pedido de uso FICTÍCIOS (1D.2): o ano anterior inteiro e o ano atual até
+ * o último mês fechado. As duas contas vinculadas da demonstração ficam uma "confere" e outra "com diferença" no
+ * último mês. A política e o pedido são do Financeiro fictício, para a Diretoria fictícia decidir.
+ * Precisa de popularTesourariaFicticia (saldos e contas) antes.
+ */
+export async function popularReservaFicticia(p: Planilhas): Promise<void> {
+  const autor = { email: 'financeiro@exemplo.local', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const [fontes, grupos, realizado, politica, usos] = await lerTabelas(p, [Fontes, GruposGasto, Realizado, PoliticaReserva, UsosReserva] as const);
+  const livre = fontes.ativos().find((f) => f.uso === 'livre');
+  const restritas = fontes.ativos().filter((f) => f.uso === 'restrita');
+  const custeio = grupos.ativos().find((g) => !g.rh);
+  const rh = grupos.ativos().find((g) => g.rh);
+  if (!livre || !custeio || !rh || restritas.length < 2) return;
+  const atual = mesAtualBrasilia();
+  const ano = Number(atual.slice(0, 4));
+  const ultimo = mesAnterior(atual);
+  const meses = [
+    ...Array.from({ length: 12 }, (_, i) => `${ano - 1}-${String(i + 1).padStart(2, '0')}`),
+    ...Array.from({ length: 12 }, (_, i) => `${ano}-${String(i + 1).padStart(2, '0')}`).filter((m) => m <= ultimo),
+  ];
+  const linha = (mes: string, tipo: 'despesa' | 'receita', fonte: string, valor: number, extra: { grupo?: string; natureza: 'rh' | 'custeio' | 'receita_comum' }) => ({
+    ano: Number(mes.slice(0, 4)), mes, tipo, servico: tipo === 'despesa' ? 'administracao' : null, grupo_id: tipo === 'despesa' ? (extra.grupo ?? null) : null,
+    fonte_id: fonte, natureza: extra.natureza, valor, nao_recorrente: false, motivo_nao_recorrente: null, observacao: null,
+  });
+  const linhas = meses.flatMap((mes, i) => [
+    linha(mes, 'receita', livre.id, 100000 + i * 1500, { natureza: 'receita_comum' }),
+    linha(mes, 'despesa', livre.id, 70000 + i * 900, { grupo: custeio.id, natureza: 'custeio' }),
+    linha(mes, 'despesa', livre.id, 20000, { grupo: rh.id, natureza: 'rh' }),
+  ]);
+  // Conta vinculada 1 confere (entrada = diferença dos saldos) e a 2 fica com R$ 560,00 de diferença.
+  linhas.push(linha(ultimo, 'receita', restritas[0].id, 2892.02, { natureza: 'receita_comum' }));
+  linhas.push(linha(ultimo, 'receita', restritas[1].id, 1000, { natureza: 'receita_comum' }));
+  await inserirRegistros(p, realizado, linhas, autor);
+  await inserirRegistros(
+    p,
+    politica,
+    [{ vigencia: atual, meses_minimo: 2, situacao: 'proposta', motivo: null, livre_ok: 3, livre_atencao: 1, fim_ok: 100000, exec_atencao: 5, folha_ok: 60, folha_atencao: 65, gasto_ok: 0, gasto_atencao: 10, reserva_ok: 120, reserva_atencao: 100 }],
+    autor,
+  );
+  let prazo = atual;
+  for (let i = 0; i < 6; i++) prazo = prazo.slice(5) === '12' ? `${Number(prazo.slice(0, 4)) + 1}-01` : `${prazo.slice(0, 5)}${String(Number(prazo.slice(5)) + 1).padStart(2, '0')}`;
+  await inserirRegistros(p, usos, [{ mes_pedido: atual, valor: 40000, motivo: 'Cobrir o atraso de um repasse (exemplo)', prazo_recomposicao: prazo, situacao: 'pedido', motivo_decisao: null, mes_recomposicao: null }], autor);
 }
