@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { Botao, LinkBotao } from '@/ui/botao';
 import { Campo, estiloEntrada } from '@/ui/campo';
+import { BotaoEnviar } from '@/ui/botao-enviar';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import type { Acao, TipoPeca } from '../dominio/pedido';
 
@@ -33,6 +34,8 @@ export function AcoesDeAgendamento({
   agendadoPara,
   destino,
   escolhidos,
+  envioAutomatico,
+  jaAutomatico = false,
   agendar,
   publicar,
 }: {
@@ -43,6 +46,10 @@ export function AcoesDeAgendamento({
   agendadoPara: string | null;
   destino: OpcoesDestino;
   escolhidos: { grupos: string[]; contatos: string[] };
+  /** O Elo pode enviar sozinho (a instituição informou o e-mail de envio)? */
+  envioAutomatico: boolean;
+  /** O pedido já está com envio automático ligado. */
+  jaAutomatico?: boolean;
   agendar: Envio;
   publicar: Envio;
 }) {
@@ -70,6 +77,7 @@ export function AcoesDeAgendamento({
           <Campo rotulo="Dia e hora" obrigatorio dica="Horário de Brasília. Precisa ser no futuro.">
             <input type="datetime-local" name="quando" required defaultValue={paraCampoDeDataHora(agendadoPara)} className={estiloEntrada} />
           </Campo>
+          {porEmail && <ComoEnviar disponivel={envioAutomatico} padraoElo={reagendar ? jaAutomatico : true} />}
           {porEmail && <Destinatarios destino={destino} escolhidos={escolhidos} />}
         </FormularioConfirmado>
       )}
@@ -98,6 +106,33 @@ export function AcoesDeAgendamento({
         </FormularioConfirmado>
       )}
     </div>
+  );
+}
+
+function ComoEnviar({ disponivel, padraoElo }: { disponivel: boolean; padraoElo: boolean }) {
+  const opcao = 'flex min-h-11 items-start gap-2 rounded-lg border border-borda px-3 py-2 text-sm';
+  const elo = disponivel && padraoElo;
+  return (
+    <fieldset>
+      <legend className="text-sm font-semibold">Como enviar</legend>
+      <div className="mt-1.5 grid gap-2">
+        <label className={`${opcao} ${disponivel ? '' : 'opacity-60'}`}>
+          <input type="radio" name="como_enviar" value="elo" defaultChecked={elo} disabled={!disponivel} className="mt-1" />
+          <span>
+            Enviar pelo Elo na hora marcada
+            <span className="block text-texto-suave">O e-mail sai sozinho, em cópia oculta, com os anexos do pedido. Se falhar, você é avisado.</span>
+          </span>
+        </label>
+        <label className={opcao}>
+          <input type="radio" name="como_enviar" value="gmail" defaultChecked={!elo} className="mt-1" />
+          <span>
+            Abrir e-mail pronto no meu Gmail
+            <span className="block text-texto-suave">Você envia à mão, no dia, e depois marca como publicado.</span>
+          </span>
+        </label>
+      </div>
+      {!disponivel && <p className="mt-1.5 text-sm text-texto-suave">A instituição ainda não informou o e-mail de envio.</p>}
+    </fieldset>
   );
 }
 
@@ -130,6 +165,55 @@ function Destinatarios({ destino, escolhidos }: { destino: OpcoesDestino; escolh
         </div>
       </fieldset>
     </>
+  );
+}
+
+const ROTULO_ENVIO: Record<string, string> = { pendente: 'Aguardando a hora marcada', enviado: 'Enviado', falhou: 'Falhou: tente de novo' };
+
+/** Faixa "Envio" do detalhe do pedido: situação em texto (e selo) e, se falhou, o motivo e "Tentar de novo". */
+export function FaixaDeEnvio({
+  pedidoId,
+  envio,
+  quando,
+  podeTentar,
+  tentar,
+}: {
+  pedidoId: string;
+  envio: { id: string; versao: number; situacao: string; erro: string | null; tentativas: number };
+  /** Texto já formatado: "Enviado em ..." ou "Previsto para ...". */
+  quando: string;
+  podeTentar: boolean;
+  tentar: Envio;
+}) {
+  const falhou = envio.situacao === 'falhou';
+  return (
+    <div className="space-y-3" aria-live="polite">
+      <p className="flex flex-wrap items-center gap-2 text-sm">
+        <span
+          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${falhou ? 'bg-erro/10 text-erro' : envio.situacao === 'enviado' ? 'bg-sucesso/10 text-sucesso' : 'bg-superficie-2 text-texto-suave'}`}
+        >
+          {ROTULO_ENVIO[envio.situacao] ?? envio.situacao}
+        </span>
+        <span>{quando}</span>
+      </p>
+      {envio.situacao === 'pendente' && envio.tentativas > 0 && (
+        <p className="text-sm text-texto-suave">A tentativa {envio.tentativas} não deu certo; o Elo tenta de novo sozinho. {envio.erro}</p>
+      )}
+      {falhou && (
+        <>
+          <p className="text-sm">O Elo não conseguiu enviar depois de {envio.tentativas} tentativas. {envio.erro}</p>
+          <p className="text-sm text-texto-suave">O pedido continua agendado. Tente de novo ou envie à mão pelo e-mail pronto abaixo.</p>
+          {podeTentar && (
+            <form action={tentar}>
+              <input type="hidden" name="id" value={pedidoId} />
+              <input type="hidden" name="envio" value={envio.id} />
+              <input type="hidden" name="versao_envio" value={envio.versao} />
+              <BotaoEnviar enviando="Colocando na fila…">Tentar de novo</BotaoEnviar>
+            </form>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

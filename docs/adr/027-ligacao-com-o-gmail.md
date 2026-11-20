@@ -67,3 +67,11 @@ família de credencial que a ADR-011 já usa nas planilhas.
 - O agendador é o workflow `rotina.yml` (modelo em `docs/infraestrutura/rotina.yml.pendente` até a DevOps ativar), com os Secrets `ROTINA_URL` e `ROTINA_TOKEN` (e a variável `ROTINA_TOKEN`
   na Netlify). As tarefas dos apps entram na lista `TAREFAS_DA_ROTINA` de `src/plataforma/rotina.ts`.
 - "E-mail de teste": botão na linha da instituição na área da rede; manda uma mensagem só para quem clicou.
+
+## Notas da entrega 2 (20/11/2026)
+- Aba `Envios` e coluna `envio_automatico` em `Pedidos`; tarefa `comunicacao.envios` na rotina. A tentativa é reservada
+  (soma 1 e marca a próxima hora, pela versão da linha) antes de enviar, para o mesmo envio não sair duas vezes mesmo
+  se duas rodadas se cruzarem. Se o processo cair no meio do envio, a nova tentativa sai após a espera (risco aceito: um
+  e-mail repetido é melhor que um perdido).
+- Marcar o pedido como publicado à mão cancela o envio pendente. O aviso por e-mail de falha à Comunicação é da entrega 3
+  (proposta #184); nesta entrega o aviso é dentro do Elo (tela inicial e detalhe do pedido).

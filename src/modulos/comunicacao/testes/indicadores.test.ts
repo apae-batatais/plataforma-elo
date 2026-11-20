@@ -36,6 +36,7 @@ function pedido(x: Partial<RegPedido> & { id: string }): RegPedido {
     destinatarios: null,
     link_publicacao: null,
     publicado_em: null,
+    envio_automatico: false,
     servico: null,
     ...x,
   };

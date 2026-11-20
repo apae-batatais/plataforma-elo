@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { opcoesDeDestinatarios } from '@/modulos/comunicacao/aplicacao/contatos';
+import { envioDoPedido } from '@/modulos/comunicacao/aplicacao/envios';
 import { destinatariosDoPedido, detalharPedido, emailProntoDoPedido, listarPedidos, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, NOME_TIPO_PECA, SITUACOES_FINAIS } from '@/modulos/comunicacao/dominio/pedido';
 import { ACOES_DA_EQUIPE } from '@/modulos/comunicacao/telas/acoes-da-equipe';
-import { AcoesDeAgendamento, EmailPronto } from '@/modulos/comunicacao/telas/agendamento';
+import { AcoesDeAgendamento, EmailPronto, FaixaDeEnvio } from '@/modulos/comunicacao/telas/agendamento';
 import { AcoesPedido } from '@/modulos/comunicacao/telas/acoes-pedido';
 import { dataCurta } from '@/modulos/comunicacao/telas/mes';
 import { dataHoraBR, EtiquetaSituacao, EtiquetaUrgente } from '@/modulos/comunicacao/telas/rotulos';
@@ -15,7 +16,7 @@ import { usuarioLogado } from '@/plataforma/sessao';
 import { LinkBotao } from '@/ui/botao';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, Secao } from '@/ui/pagina';
-import { acaoAgendarPedido, acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoPublicarPedido, acaoRevisarPedido } from '../acoes';
+import { acaoAgendarPedido, acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoPublicarPedido, acaoRevisarPedido, acaoTentarEnvioDeNovo } from '../acoes';
 
 export const metadata: Metadata = { title: 'Pedido' };
 
@@ -34,6 +35,9 @@ const NOME_ACAO: Record<string, string> = {
   agendar: 'Agendado',
   reagendar: 'Reagendado',
   publicar: 'Publicado',
+  envio: 'Enviado pelo Elo',
+  envio_falhou: 'Envio pelo Elo falhou',
+  envio_de_novo: 'Nova tentativa de envio pedida',
 };
 
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
@@ -49,7 +53,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
-  const { planilhas } = await obterAplicacao();
+  const { planilhas, email: enviador } = await obterAplicacao();
   let d;
   try {
     d = await detalharPedido(planilhas, usuario.autorizador, id);
@@ -70,7 +74,10 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
   const sai = r.tipo_peca === 'release' || r.tipo_peca === 'artigo';
   const destino = doAgendamento && sai ? await opcoesDeDestinatarios(planilhas, usuario.autorizador) : { grupos: [], contatos: [] };
   const escolhidos = doAgendamento && sai ? await destinatariosDoPedido(planilhas, usuario.autorizador, r.id) : { grupos: [], contatos: [] };
-  const email = r.situacao === 'agendado' && sai && d.acoes.includes('publicar') ? await emailProntoDoPedido(planilhas, usuario.autorizador, r.id) : null;
+  const envio = sai ? await envioDoPedido(planilhas, usuario.autorizador, r.id) : null;
+  // Com o envio automático aguardando ou já feito, o e-mail à mão não é necessário.
+  const semEnvioAutomatico = !r.envio_automatico || envio === null || envio.situacao === 'falhou';
+  const email = r.situacao === 'agendado' && sai && d.acoes.includes('publicar') && semEnvioAutomatico ? await emailProntoDoPedido(planilhas, usuario.autorizador, r.id) : null;
   const nomeDaArea = (await opcoesDoPedido(planilhas, usuario.autorizador)).areas.find((a) => a.codigo === r.area)?.nome ?? r.area;
   return (
     <div className="max-w-4xl space-y-6">
@@ -116,11 +123,25 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
                 agendadoPara={r.agendado_para}
                 destino={destino}
                 escolhidos={escolhidos}
+                envioAutomatico={enviador !== null}
+                jaAutomatico={r.envio_automatico}
                 agendar={acaoAgendarPedido}
                 publicar={acaoPublicarPedido}
               />
             </div>
           )}
+        </Secao>
+      )}
+
+      {envio && (
+        <Secao titulo="Envio" id="t-envio">
+          <FaixaDeEnvio
+            pedidoId={r.id}
+            envio={envio}
+            quando={envio.situacao === 'enviado' && envio.enviadoEm ? `Enviado em ${dataHoraBR(envio.enviadoEm)}` : `Previsto para ${dataHoraBR(envio.previstoPara)}`}
+            podeTentar={d.acoes.includes('publicar')}
+            tentar={acaoTentarEnvioDeNovo}
+          />
         </Secao>
       )}
 
