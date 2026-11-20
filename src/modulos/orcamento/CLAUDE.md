@@ -43,3 +43,11 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   Os termos vêm do `CatalogoParcerias` (`aplicacao/catalogo-parcerias.ts`), entregue por `src/plataforma/catalogos.ts`; o Orçamento nunca importa Parcerias,
   e sem Parcerias o catálogo é vazio. Ver: `orcamento.painel.ver`; ligar: só `orcamento.parametros.editar`. "Conta e fonte não combinam" e a mesma conta em
   duas fontes são avisos, nunca bloqueio. Próximas entregas: R3b (rateio na despesa), R4a (folha e horas), R4b (painel de comprometimento).
+- Fim do ano e reserva (1D.2 da #186): regras puras em `dominio/conferencia.ts`, `dominio/fim-do-ano.ts` e `dominio/reserva.ts`; casos de uso em
+  `aplicacao/{base-execucao,conferencia,fim-do-ano,reserva,visao-geral}.ts`. Abas `PoliticaReserva` (faixas dos seis sinais, só inclusões; a decisão
+  atualiza `situacao`) e `UsosReserva` (pedido de uso, não move saldo), planilha `orcamento_execucao`. Ver tudo: `orcamento.tesouraria.ver`; propor,
+  pedir, cancelar e marcar recomposição: `tesouraria.editar` (Financeiro); aprovar ou recusar: `orcamento.reserva.aprovar` (Diretoria), e quem fez o
+  pedido nunca decide o próprio. Dado que falta é "sem dado" com o que falta, nunca zero. Leitura (`painel.ver`) vê na Visão geral só os sinais
+  que não dependem de saldo. Mês atual nos casos de uso aceita `agora` (testes usam data fixa). `/orcamento` redireciona para a Visão geral; o Resumo
+  da folha está em `/orcamento/resumo`. Gráfico do Fim do ano só desenha meses com saldo (o `Linhas` do Núcleo não tem buraco).
+

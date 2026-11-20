@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { listarPropostas } from '@/modulos/orcamento/aplicacao/aprovacao';
@@ -28,7 +29,11 @@ export default async function Propostas({ searchParams }: { searchParams: Promis
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
-  const r = await listarPropostas(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined);
+  // Quem não vê as propostas (ex.: Leitura) volta ao Orçamento em vez de ver "Algo deu errado".
+  const r = await listarPropostas(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined).catch((erro) => {
+    if (erro instanceof ErroPermissao) redirect('/orcamento');
+    throw erro;
+  });
   const base = `/orcamento/previsao/propostas?ano=${r.ano}`;
   const emEdicao = sp.editar ? r.lista.find((x) => x.id === sp.editar && x.podeAlterar) : undefined;
   const emCotacao = sp.editar && !emEdicao ? r.lista.find((x) => x.id === sp.editar && x.podeCotar) : undefined;
