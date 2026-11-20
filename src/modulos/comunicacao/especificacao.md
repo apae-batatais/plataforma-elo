@@ -336,7 +336,24 @@ rota pública de mídia e roteiro no manual). Núcleo muda: peça nova `src/nucl
    na prévia: conectar e desconectar uma conta fictícia (demonstração, sem Meta de verdade).
 2. **(construída, #64)** Post com imagem: aba `Publicacoes`, agendar, rota de mídia temporária, rotina, falha e "Tentar de
    novo".
-3. Reel e carrossel (inclui anexar vídeo e os limites de tamanho medidos na hospedagem).
+3. **(construída, #64)** Reel e carrossel (inclui anexar vídeo e os limites de tamanho).
+
+### Decisões tomadas sozinho na entrega 3 (custo se estiverem erradas)
+- **Vídeo anexado ao pedido: MP4 ou MOV, até 100 MB.** O envio vai direto do navegador para a pasta de anexos (não passa
+  pela hospedagem); a rota de mídia entrega o vídeo aos poucos, sem juntá-lo na memória. Custo se errada: o limite é uma
+  constante (`LIMITES_ANEXOS.videoBytes`); subir exige conferir o prazo da Meta e a pasta de anexos.
+- **Até 10 arquivos por pedido (eram 5)**, porque o carrossel tem até 10 imagens. Vale para todos os pedidos. Custo se
+  errada: voltar a 5 impede carrossel cheio.
+- **Vídeo anexado também exige a confirmação de uso de imagem**, como a foto e o link de vídeo.
+- **Um pedido de Reel exatamente com 1 vídeo; post com 1 foto; carrossel com 2 a 10 fotos**; misturar foto e vídeo é
+  recusado ao agendar. O tipo da publicação (`post`, `reel`, `carrossel`) é recalculado a cada agendamento e a cada
+  tentativa. Custo se errada: criar o tipo "Carrossel" no pedido (já previsto na decisão da entrega 1).
+- **Carrossel em etapas pela rotina:** um contêiner por foto; o do carrossel só é criado quando todos estão prontos; a
+  lista dos contêineres das fotos fica em `container_id` separada por vírgula até o do carrossel existir (sem coluna
+  nova). Custo se errada: trocar por uma coluna própria (pequena migração).
+- **Cada foto ou vídeo chega à Meta pelo mesmo código temporário, com `?n=` (0, 1, 2…)**: um código por publicação, um
+  endereço por item, cada entrega na auditoria. Custo se errada: um código por item (mais linhas na aba).
+- **Meta Reel sem capa própria nem cortes:** vale o primeiro quadro. Fica de fora (roadmap).
 
 ### Decisões tomadas sozinho na entrega 2 (custo se estiverem erradas)
 - **Sem conversão de imagem no servidor:** a foto do pedido já é JPG (reduzida no navegador); outra coisa é recusada ao
