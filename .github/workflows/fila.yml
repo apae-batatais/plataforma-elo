@@ -5,7 +5,11 @@
 # especificação é aprovada) — ela chama direto porque o merge com o GITHUB_TOKEN não dispara push.
 # Também roda em todo push na main feito de outro jeito (por exemplo, a Diretoria mesclando o PR
 # direto no GitHub, sem passar pela revisão "Approve"): sem isso, a fila só andava de novo no
-# próximo merge feito pela Aprovação (correção de 19/11/2026, achada no raio-x do DevOps). À mão:
+# próximo merge feito pela Aprovação (correção de 19/11/2026, achada no raio-x do DevOps).
+# Também roda quando o Desenvolvedor abre o PR de entrega: a issue sai de "Em construção" assim
+# que o PR abre (quem espera a Diretoria não ocupa vaga), e sem este gatilho a vaga ficava parada
+# até o próximo push ou aprovação — a esteira tinha capacidade livre sem chamar a próxima proposta
+# pronta (correção de 20/11/2026, achada no raio-x do DevOps). À mão:
 # Actions → Fila → Run workflow (por exemplo, depois que a Diretoria disser "pode seguir" e o
 # DevOps tirar a pausa por cota).
 # Funções em .github/scripts/fila.mjs, com teste em tests/fluxo/fila.test.ts.
@@ -15,6 +19,8 @@ name: Fila
 on:
   push:
     branches: [main]
+  pull_request:
+    types: [opened]
   workflow_dispatch:
 
 permissions:
@@ -31,6 +37,12 @@ jobs:
   chamar:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Do PR só importa a abertura de uma entrega (é o que libera a vaga); outro PR (especificação,
+    # manutenção) ou PR de fork não muda vaga nenhuma e pularia sem chamar ninguém, então nem roda.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (contains(github.event.pull_request.labels.*.name, 'PR: entrega') &&
+        github.event.pull_request.head.repo.full_name == github.repository)
     steps:
       - uses: actions/checkout@v5
         with:
