@@ -9,6 +9,7 @@ import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { iniciarEnvioAnexoComunicacao, type AnexoPedido } from '@/modulos/comunicacao/aplicacao/anexos';
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { mudarSituacaoContato, mudarSituacaoGrupo, salvarContato, salvarGrupo } from '@/modulos/comunicacao/aplicacao/contatos';
+import { tentarEnvioDeNovo } from '@/modulos/comunicacao/aplicacao/envios';
 import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
 import { tentarDeNovo } from '@/modulos/comunicacao/aplicacao/publicacoes';
 import { desconectarInstagram, iniciarConexaoInstagram } from '@/modulos/comunicacao/aplicacao/instagram';
@@ -436,12 +437,20 @@ export async function acaoAgendarPedido(f: FormData) {
     `/comunicacao/${id}`,
     reagendando ? 'Data do agendamento alterada.' : 'Pedido agendado.',
     ({ usuario, app }) =>
-      agendarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), {
-        agendadoPara: comFuso,
-        grupos: f.getAll('grupos').map(String),
-        contatos: f.getAll('contatos').map(String),
-        publicarPeloElo: texto(f, 'como') === 'elo',
-      }, { instituicao: app.instituicao.codigo }),
+      agendarPedido(
+        app.planilhas,
+        usuario.autorizador,
+        id,
+        Number(texto(f, 'versao')),
+        {
+          agendadoPara: comFuso,
+          grupos: f.getAll('grupos').map(String),
+          contatos: f.getAll('contatos').map(String),
+          envioAutomatico: texto(f, 'como_enviar') === 'elo',
+          publicarPeloElo: texto(f, 'como') === 'elo',
+        },
+        { emailDisponivel: app.email !== null, instituicao: app.instituicao.codigo },
+      ),
   );
 }
 
@@ -453,6 +462,16 @@ export async function acaoTentarDeNovoPublicacao(f: FormData) {
     `/comunicacao/${id}`,
     'Publicação colocada na fila de novo. Ela sai na próxima rodada, em até 15 minutos.',
     ({ usuario, app }) => tentarDeNovo(app.planilhas, usuario.autorizador, id, app.instituicao.codigo),
+  );
+}
+
+export async function acaoTentarEnvioDeNovo(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(
+    () => `/comunicacao/${id}`,
+    `/comunicacao/${id}`,
+    'Envio na fila. O Elo tenta de novo na próxima rodada (até 15 minutos).',
+    ({ usuario, app }) => tentarEnvioDeNovo(app.planilhas, usuario.autorizador, texto(f, 'envio'), Number(texto(f, 'versao_envio'))),
   );
 }
 

@@ -138,7 +138,7 @@ Nenhum nesta entrega.
 
 ## Motor de avaliação e ligação com o Cadastro Único (issue #62)
 
-- Situação: especificação aprovada; entregas 1 (motor) e 2 (aplicação por pessoa) construídas. Arquitetura: ADR-026 (que detalha a ADR-006 e a ADR-007).
+- Situação: especificação aprovada; entregas 1 (motor), 2 (aplicação por pessoa) e 3 (vínculo das avaliações antigas) construídas. Arquitetura: ADR-026 (que detalha a ADR-006 e a ADR-007).
 - Decisões da Diretoria na issue: o motor nasce **já pensado para os três eixos** (Assistência Social, Educação e
   Saúde/CER); a avaliação se liga ao Cadastro Único **direto por `pessoa_id`**.
 

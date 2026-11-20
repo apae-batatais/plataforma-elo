@@ -16,7 +16,7 @@ import { atualizar, inserir, inserirRegistros, lerTabelas, type Planilhas, type 
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Pessoas, Servicos, Usuarios, VinculosFamiliares, VinculosServico } from '@/nucleo/estrutura/tabelas';
 import { Aplicacoes, Instrumentos, Respostas } from '../dados/tabelas';
-import { AREA_SAUDE, CODIGO_CER, ErroSaude, INSTRUMENTO_CER, MESES_ENTRE_AVALIACOES, recusaDePeriodo } from '../dominio/cer';
+import { AREA_SAUDE, CODIGO_CER, ErroSaude, INSTRUMENTO_CER, MESES_ENTRE_AVALIACOES, recusaDePeriodo, situacaoDaReavaliacao, type SituacaoReavaliacao } from '../dominio/cer';
 
 export const PERM = {
   acessar: 'saude.acessar',
@@ -114,10 +114,15 @@ export interface LinhaAplicacao {
   cienteEm: string | null;
   /** Só na aplicação fechada mais recente da pessoa: quando vence a próxima avaliação. */
   proximaAvaliacao: string | null;
+  /** Situação da reavaliação (só onde há `proximaAvaliacao`). */
+  reavaliacao: SituacaoReavaliacao | null;
+  /** Pessoa avaliada (para os links de comparar e reavaliar). */
+  pessoaId: string;
 }
 
 /** Aplicações dos serviços de Saúde em que você avalia e de pessoas que você pode ver, da mais recente à mais antiga. */
-export async function listarAplicacoes(p: Planilhas, quem: Autorizador): Promise<LinhaAplicacao[]> {
+export async function listarAplicacoes(p: Planilhas, quem: Autorizador, opcoes: { agora?: Date } = {}): Promise<LinhaAplicacao[]> {
+  const hoje = hojeEm(opcoes.agora ?? new Date());
   if (!quem.temPermissaoAlgumEscopo(PERM.avaliar)) throw new ErroPermissao();
   const [aplicacoes, respostas, instrumentos, pessoas, vinculos, familiares] = await lerTabelas(p, [Aplicacoes, Respostas, Instrumentos, Pessoas, VinculosServico, VinculosFamiliares] as const);
   const dados = { pessoas: pessoas.ativos(), vinculosServico: vinculos.ativos(), vinculosFamiliares: familiares.ativos() };
@@ -134,6 +139,7 @@ export async function listarAplicacoes(p: Planilhas, quem: Autorizador): Promise
     if (!maisRecente.has(a.pessoa_id)) maisRecente.set(a.pessoa_id, a.id);
   }
   return visiveis.map((a) => {
+    const vence = maisRecente.get(a.pessoa_id) === a.id && a.data_assinatura ? vencimentoDaReavaliacao(a.data_assinatura) : null;
     const inst = porVersao.get(a.versao_instrumento);
     const escore = inst ? calcularEscore(inst, respostasDe(ativasRespostas, a.id)) : null;
     return {
@@ -148,7 +154,9 @@ export async function listarAplicacoes(p: Planilhas, quem: Autorizador): Promise
       total: escore?.completo ? escore.total : null,
       faixa: escore?.enquadramento?.nome ?? null,
       cienteEm: a.ciente_em,
-      proximaAvaliacao: maisRecente.get(a.pessoa_id) === a.id && a.data_assinatura ? vencimentoDaReavaliacao(a.data_assinatura) : null,
+      proximaAvaliacao: vence,
+      reavaliacao: vence ? situacaoDaReavaliacao(vence, hoje).situacao : null,
+      pessoaId: a.pessoa_id,
     };
   });
 }
@@ -185,7 +193,7 @@ export interface AplicacaoDetalhada {
 }
 
 /** Abre uma aplicação. Registra a leitura na auditoria (dado sensível). */
-export async function detalharAplicacao(p: Planilhas, quem: Autorizador, id: string): Promise<AplicacaoDetalhada> {
+export async function detalharAplicacao(p: Planilhas, quem: Autorizador, id: string, opcoes: { agora?: Date } = {}): Promise<AplicacaoDetalhada> {
   if (!quem.temPermissaoAlgumEscopo(PERM.avaliar)) throw new ErroPermissao();
   const [aplicacoes, respostas, instrumentos, pessoas, vinculos, familiares, usuarios] = await lerTabelas(p, [Aplicacoes, Respostas, Instrumentos, Pessoas, VinculosServico, VinculosFamiliares, Usuarios] as const);
   const a = aplicacoes.porId(id);
@@ -196,7 +204,7 @@ export async function detalharAplicacao(p: Planilhas, quem: Autorizador, id: str
   if (!instrumento) throw new ErroSaude(`Falta o instrumento na versão ${a.versao_instrumento}.`);
   const respondidas = respostasDe(respostas.ativos(), a.id);
   const escore = calcularEscore(instrumento, respondidas);
-  await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: ENTIDADE, registroId: id });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: ENTIDADE, registroId: id }, opcoes.agora);
   const pessoa = dados.pessoas.find((x) => x.id === a.pessoa_id);
   const nomeDoUsuario = (email: string) => {
     const pid = usuarios.ativos().find((u) => u.email === email)?.pessoa_id;

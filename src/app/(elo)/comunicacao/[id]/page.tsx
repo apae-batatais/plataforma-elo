@@ -3,10 +3,11 @@ import { notFound, redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { opcoesDeDestinatarios } from '@/modulos/comunicacao/aplicacao/contatos';
 import { publicacaoAutomaticaDisponivel, publicacaoDoPedido } from '@/modulos/comunicacao/aplicacao/publicacoes';
+import { envioDoPedido } from '@/modulos/comunicacao/aplicacao/envios';
 import { destinatariosDoPedido, detalharPedido, emailProntoDoPedido, listarPedidos, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { ErroComunicacao, NOME_TIPO_PECA, SITUACOES_FINAIS } from '@/modulos/comunicacao/dominio/pedido';
 import { ACOES_DA_EQUIPE } from '@/modulos/comunicacao/telas/acoes-da-equipe';
-import { AcoesDeAgendamento, EmailPronto } from '@/modulos/comunicacao/telas/agendamento';
+import { AcoesDeAgendamento, EmailPronto, FaixaDeEnvio } from '@/modulos/comunicacao/telas/agendamento';
 import { AcoesPedido } from '@/modulos/comunicacao/telas/acoes-pedido';
 import { dataCurta } from '@/modulos/comunicacao/telas/mes';
 import { dataHoraBR, EtiquetaSituacao, EtiquetaUrgente } from '@/modulos/comunicacao/telas/rotulos';
@@ -17,7 +18,7 @@ import { LinkBotao } from '@/ui/botao';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
 import { Aviso } from '@/ui/aviso';
-import { acaoAgendarPedido, acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoPublicarPedido, acaoRevisarPedido, acaoTentarDeNovoPublicacao } from '../acoes';
+import { acaoAgendarPedido, acaoCancelarPedido, acaoDecidirPedido, acaoJuntarPedido, acaoPublicarPedido, acaoRevisarPedido, acaoTentarDeNovoPublicacao, acaoTentarEnvioDeNovo } from '../acoes';
 
 export const metadata: Metadata = { title: 'Pedido' };
 
@@ -38,6 +39,9 @@ const NOME_ACAO: Record<string, string> = {
   publicar: 'Publicado',
   publicacao_falhou: 'A publicação no Instagram falhou',
   tentar_de_novo: 'Publicação no Instagram colocada na fila de novo',
+  envio: 'Enviado pelo Elo',
+  envio_falhou: 'Envio pelo Elo falhou',
+  envio_de_novo: 'Nova tentativa de envio pedida',
 };
 
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
@@ -53,7 +57,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
-  const { planilhas, instituicao } = await obterAplicacao();
+  const { planilhas, instituicao, email: enviador } = await obterAplicacao();
   let d;
   try {
     d = await detalharPedido(planilhas, usuario.autorizador, id);
@@ -74,7 +78,10 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
   const sai = r.tipo_peca === 'release' || r.tipo_peca === 'artigo';
   const destino = doAgendamento && sai ? await opcoesDeDestinatarios(planilhas, usuario.autorizador) : { grupos: [], contatos: [] };
   const escolhidos = doAgendamento && sai ? await destinatariosDoPedido(planilhas, usuario.autorizador, r.id) : { grupos: [], contatos: [] };
-  const email = r.situacao === 'agendado' && sai && d.acoes.includes('publicar') ? await emailProntoDoPedido(planilhas, usuario.autorizador, r.id) : null;
+  const envio = sai ? await envioDoPedido(planilhas, usuario.autorizador, r.id) : null;
+  // Com o envio automático aguardando ou já feito, o e-mail à mão não é necessário.
+  const semEnvioAutomatico = !r.envio_automatico || envio === null || envio.situacao === 'falhou';
+  const email = r.situacao === 'agendado' && sai && d.acoes.includes('publicar') && semEnvioAutomatico ? await emailProntoDoPedido(planilhas, usuario.autorizador, r.id) : null;
   const podeRevisar = usuario.autorizador.temPermissao('comunicacao.revisar');
   const emInstagram = r.tipo_peca === 'post_instagram' && podeRevisar;
   const instagram = emInstagram && doAgendamento
@@ -127,6 +134,8 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
                 destino={destino}
                 escolhidos={escolhidos}
                 instagram={instagram}
+                envioAutomatico={enviador !== null}
+                jaAutomatico={r.envio_automatico}
                 agendar={acaoAgendarPedido}
                 publicar={acaoPublicarPedido}
               />
@@ -181,6 +190,18 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
               />
             )}
           </div>
+        </Secao>
+      )}
+
+      {envio && (
+        <Secao titulo="Envio" id="t-envio">
+          <FaixaDeEnvio
+            pedidoId={r.id}
+            envio={envio}
+            quando={envio.situacao === 'enviado' && envio.enviadoEm ? `Enviado em ${dataHoraBR(envio.enviadoEm)}` : `Previsto para ${dataHoraBR(envio.previstoPara)}`}
+            podeTentar={d.acoes.includes('publicar')}
+            tentar={acaoTentarEnvioDeNovo}
+          />
         </Secao>
       )}
 

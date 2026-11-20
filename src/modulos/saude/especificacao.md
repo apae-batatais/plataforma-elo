@@ -1,6 +1,6 @@
 # Especificação — Módulo Saúde (avaliação de evolução no CER)
 
-- Situação: aprovada; entrega 1 (aplicar e fechar) construída, entregas 2 e 3 pendentes (issue #68)
+- Situação: aprovada; entregas 1 (aplicar e fechar) e 2 (comparativo, reavaliação e ficha) construídas, entrega 3 (painel) pendente (issue #68)
 - Dono do produto: Diretoria
 - Arquitetura: ADR-030 (usa o motor da ADR-026 e as regras das ADR-006 e ADR-007)
 - Depende de: entrega 1 do motor de avaliação (issue #62, `src/capacidades/motor-avaliacao/`)

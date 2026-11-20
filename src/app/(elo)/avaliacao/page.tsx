@@ -53,9 +53,16 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
         titulo="Avaliações"
         descricao="Avaliações iniciais e anuais dos serviços em que você avalia. As pessoas aparecem só pelas iniciais, data de nascimento e sexo."
         acoes={
-          <LinkBotao href="/avaliacao/nova" className={pequeno}>
-            <IconeMais tamanho={16} /> Nova avaliação
-          </LinkBotao>
+          <>
+            {todas.some((a) => !a.ligada) && (
+              <LinkBotao href="/avaliacao/ligar" className={pequeno}>
+                Ligar avaliações antigas
+              </LinkBotao>
+            )}
+            <LinkBotao href="/avaliacao/nova" className={pequeno}>
+              <IconeMais tamanho={16} /> Nova avaliação
+            </LinkBotao>
+          </>
         }
       />
       {todas.length === 0 ? (
@@ -71,7 +78,9 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                   href="/avaliacao?ver=atrasadas"
                   className="rounded-cartao border border-erro bg-superficie px-4 py-2.5 hover:shadow-[0_0_0_3px_var(--erro-fundo)]"
                 >
-                  <span className="block text-2xl font-bold text-erro tabular-nums"><NumeroQueConta texto={String(atrasadas)} chave="atrasadas" /></span>
+                  <span className="block text-2xl font-bold text-erro tabular-nums">
+                    <NumeroQueConta texto={String(atrasadas)} chave="atrasadas" />
+                  </span>
                   <span className="text-sm">{atrasadas === 1 ? 'pessoa com reavaliação anual atrasada' : 'pessoas com reavaliação anual atrasada'}</span>
                 </Link>
               )}
@@ -80,7 +89,9 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                   href="/avaliacao?ver=vencem"
                   className="rounded-cartao border border-aviso bg-superficie px-4 py-2.5 hover:shadow-[0_0_0_3px_var(--aviso-fundo)]"
                 >
-                  <span className="block text-2xl font-bold text-aviso tabular-nums"><NumeroQueConta texto={String(vencem)} chave="vencem" /></span>
+                  <span className="block text-2xl font-bold text-aviso tabular-nums">
+                    <NumeroQueConta texto={String(vencem)} chave="vencem" />
+                  </span>
                   <span className="text-sm">{vencem === 1 ? 'reavaliação vence em até 30 dias' : 'reavaliações vencem em até 30 dias'}</span>
                 </Link>
               )}

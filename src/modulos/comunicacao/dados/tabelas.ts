@@ -7,11 +7,13 @@
  * - Publicacoes: a fila da publicação automática no Instagram (ADR-028).
  * - Anexos: fotos e documentos do pedido (referência ao arquivo na pasta de anexos).
  * - Contatos, Grupos e ContatoGrupos: a lista de imprensa e os grupos de envio.
+ * - Envios: e-mails enviados pelo Elo (release e artigo), com situação, tentativas e erro resumido.
  * - Parametros: ajustes da Comunicação (ex.: antecedência mínima, em dias úteis).
  */
 import { z } from 'zod';
 import { booleano, definirTabela, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import type { TipoData } from '../dominio/calendario';
+import { SITUACOES_ENVIO, TIPOS_ENVIO } from '../dominio/envio';
 import { SITUACOES, TIPOS_PECA } from '../dominio/pedido';
 import { SITUACOES_PUBLICACAO, TIPOS_PUBLICACAO } from '../dominio/publicacao';
 
@@ -66,6 +68,8 @@ export const PedidosComunicacao = definirTabela({
     destinatarios: textoOpcional(),
     link_publicacao: textoOpcional(),
     publicado_em: textoOpcional(),
+    /** Release e artigo: o Elo envia o e-mail na hora marcada (ADR-027). */
+    envio_automatico: booleano(),
     /** Serviço de que o pedido trata (código do Núcleo), para a Ficha do serviço. Opcional. */
     servico: textoOpcional(),
     /** Verdadeiro quando o Elo publica no Instagram na hora marcada (ADR-028). */
@@ -157,6 +161,29 @@ export const ParametrosComunicacao = definirTabela({
   esquema: z.object({ chave: texto(), valor: numero() }),
 });
 
+/** Fila e registro dos e-mails que o Elo envia sozinho (ADR-027). O corpo da mensagem não fica gravado. */
+export const EnviosComunicacao = definirTabela({
+  planilha: PLANILHA_COMUNICACAO,
+  aba: 'Envios',
+  esquema: z.object({
+    pedido_id: texto(),
+    tipo: z.enum(TIPOS_ENVIO),
+    assunto: texto(),
+    /** Endereços de destino da última tentativa (separados por vírgula); vazio enquanto não tentou. */
+    destinatarios: textoOpcional(),
+    /** Hora marcada para o envio (ISO). */
+    previsto_para: texto(),
+    /** Quando a rotina pode tentar de novo (ISO). */
+    proxima_tentativa: texto(),
+    situacao: z.enum(SITUACOES_ENVIO),
+    tentativas: numero(),
+    enviado_em: textoOpcional(),
+    /** Motivo resumido da última falha: nunca traz endereço nem texto da mensagem. */
+    erro: textoOpcional(),
+  }),
+  sigilo: { destinatarios: 'pessoal' },
+});
+
 export const TABELAS_COMUNICACAO = [
   CalendarioComunicacao,
   PedidosComunicacao,
@@ -167,6 +194,7 @@ export const TABELAS_COMUNICACAO = [
   GruposComunicacao,
   ContatoGruposComunicacao,
   ParametrosComunicacao,
+  EnviosComunicacao,
 ] as const;
 
 export type RegCalendario = Registro<typeof CalendarioComunicacao.esquema>;
@@ -177,4 +205,5 @@ export type RegAnexo = Registro<typeof AnexosComunicacao.esquema>;
 export type RegContato = Registro<typeof ContatosComunicacao.esquema>;
 export type RegGrupo = Registro<typeof GruposComunicacao.esquema>;
 export type RegContatoGrupo = Registro<typeof ContatoGruposComunicacao.esquema>;
+export type RegEnvio = Registro<typeof EnviosComunicacao.esquema>;
 export type RegParametro = Registro<typeof ParametrosComunicacao.esquema>;

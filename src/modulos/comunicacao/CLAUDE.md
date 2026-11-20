@@ -8,7 +8,7 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Pastas: `dominio/` regras puras; `aplicacao/` casos de uso (sempre com `Autorizador`,
   histórico e `registrarAuditoria`); `dados/`; `telas/`; `testes/`.
 - Dados pessoais: `Pedidos.solicitante`, `solicitante_nome` e `imagem_confirmada_por`;
-  `Historico.usuario`; `Contatos.nome` e `email`; `Anexos.nome`. Sensível: `Anexos.arquivo_id`
+  `Historico.usuario`; `Contatos.nome` e `email`; `Anexos.nome`; `Envios.destinatarios`. Sensível: `Anexos.arquivo_id`
   (a foto pode mostrar pessoas: leitura só pelo Elo, com auditoria).
 - Nada é apagado: pedido cancelado, recusado ou juntado fica com a situação; o histórico só
   recebe inclusões; calendário e contatos são encerrados com `ativo = FALSE`.
@@ -20,3 +20,6 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   `Publicacoes`. A rotina grava como `sistema`; o código da mídia temporária só existe na planilha como resumo; a rota
   `/api/midia-temporaria/<código>` é pública e sempre responde "não encontrado" sem pista. Só a Comunicação e a
   coordenação (`comunicacao.revisar`) veem e mexem na publicação.
+- Envios por e-mail (ADR-027): `aplicacao/envios.ts`. Release e artigo agendados com "Enviar pelo Elo" criam um `Envio`
+  pendente; a tarefa `comunicacao.envios` da rotina (em `src/plataforma/rotina.ts`) envia, com 3 tentativas. O corpo da
+  mensagem nunca é gravado e o erro gravado é resumido (sem endereço nem texto). Só `comunicacao.revisar` vê e tenta de novo.

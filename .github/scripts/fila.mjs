@@ -1,4 +1,4 @@
-// Fila de construção (ADR-031): no máximo 2 entregas em construção ao mesmo tempo, na ordem do
+// Fila de construção (ADR-031): no máximo 3 entregas em construção ao mesmo tempo, na ordem do
 // quadro "Elo", e pausa quando a cota de minutos do GitHub Actions passa de 85%.
 //
 // - Ocupa vaga a issue em "Em construção" sem "pergunta aberta" (quem espera a Diretoria não gasta
@@ -12,10 +12,12 @@
 
 import { aplicar, etapaDaEtiqueta, temPerguntaAberta } from './fluxo-quadro.mjs';
 
-export const LIMITE_EM_CONSTRUCAO = 2;
+export const LIMITE_EM_CONSTRUCAO = 3;
 export const ETIQUETA_PAUSA = 'cota: pausa';
 
 const nomes = (issue) => (issue.labels ?? []).map((l) => (typeof l === 'string' ? l : l.name));
+/** App da issue pela etiqueta "app: …" ("app: novo" não conta: cada app novo é diferente). */
+const appDe = (issue) => nomes(issue).find((n) => n.startsWith('app: ') && n !== 'app: novo') ?? null;
 const etapa = (issue) => nomes(issue).map(etapaDaEtiqueta).find(Boolean) ?? null;
 
 /** A issue ocupa uma vaga de construção (está em construção e não espera resposta da Diretoria). */
@@ -40,7 +42,23 @@ export function escolherProximas({ abertas, ordem = [], pausa = false, limite = 
     return i < 0 ? Number.MAX_SAFE_INTEGER : i;
   };
   const fila = [...prontas].sort((a, b) => posicao(a.number) - posicao(b.number) || a.number - b.number);
-  return { chamar: fila.slice(0, vagas).map((i) => i.number), motivo: `${vagas} vaga(s)` };
+  // Controle de conflitos: evita duas entregas do mesmo app ao mesmo tempo (mexem nos mesmos
+  // arquivos). Primeiro, na ordem, as de app que não está em construção; se ainda sobrar vaga e
+  // não houver alternativa, completa na ordem (a vaga não fica parada).
+  const ocupados = new Set(abertas.filter(ocupaVaga).map(appDe).filter(Boolean));
+  const escolhidas = [];
+  for (const i of fila) {
+    if (escolhidas.length >= vagas) break;
+    const app = appDe(i);
+    if (app && ocupados.has(app)) continue;
+    escolhidas.push(i);
+    if (app) ocupados.add(app);
+  }
+  for (const i of fila) {
+    if (escolhidas.length >= vagas) break;
+    if (!escolhidas.includes(i)) escolhidas.push(i);
+  }
+  return { chamar: escolhidas.map((i) => i.number), motivo: `${vagas} vaga(s)` };
 }
 
 /** Números das issues na ordem dos cartões do quadro (posição). Lança erro se não conseguir ler. */

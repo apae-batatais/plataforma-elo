@@ -33,7 +33,7 @@ export async function alertasDoMenu(autorizador: Autorizador): Promise<Record<st
       try {
         const c = await contadoresComunicacao(app.planilhas, autorizador);
         const pr = await problemasDePublicacao(app.planilhas, autorizador, app.instituicao.codigo);
-        const n = c.devolvidos + c.revisar + c.aprovar + pr.falharam + pr.atrasadas + (pr.reconectar ? 1 : 0);
+        const n = c.devolvidos + c.revisar + c.aprovar + c.enviosFalharam + pr.falharam + pr.atrasadas + (pr.reconectar ? 1 : 0);
         if (n > 0) r['/comunicacao'] = String(n);
       } catch {
         // Planilha da Comunicação ainda não configurada: a página do app explica.

@@ -10,3 +10,9 @@ Plano: abas Instrumentos/Aplicacoes/Respostas, casos de uso (`aplicacao/aplicaco
 - [x] Telas e ações
 - [x] Demonstração e documentação
 - [x] verificar, build, revisão de usabilidade e PR
+
+# Entrega 3 de 3 (vínculo das avaliações antigas)
+
+- [x] Aba LigacoesPessoa, casos de uso (`aplicacao/ligacoes.ts`) e testes
+- [x] Tela `/avaliacao/ligar`, comparativo por pessoa, documentação
+- [x] verificar, build e PR
