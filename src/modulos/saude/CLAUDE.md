@@ -14,3 +14,5 @@ Leia antes `especificacao.md` desta pasta, a ADR-030 e o `CLAUDE.md` da raiz.
 - Auditoria: colunas alteradas, nunca valores; `leitura` ao abrir uma aplicação.
 - Permissões: `saude.<acao>`, declaradas no manifesto (`saude.ciente` só Diretoria e coordenação).
 - Sem nome próprio de instituição, unidade ou cidade em tela, dado fictício ou comentário.
+- Comparativo (`aplicacao/comparativo.ts`): só fechadas não corrigidas; registra `leitura`. A ficha registra `exportacao`.
+- Reavaliação: 12 meses após a última assinatura; "vence em breve" 30 dias antes (`situacaoDaReavaliacao`).
