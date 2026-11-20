@@ -4,7 +4,8 @@ import { redirect } from 'next/navigation';
 import { listarAplicacoes, PERM } from '@/modulos/saude/aplicacao/avaliacoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
-import { LinkBotao, pequeno } from '@/ui/botao';
+import { estiloBotao, LinkBotao, pequeno } from '@/ui/botao';
+import { estiloEntrada } from '@/ui/campo';
 import { IconeMais } from '@/ui/icones';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, tabela } from '@/ui/pagina';
 
@@ -13,12 +14,26 @@ export const metadata: Metadata = { title: 'Avaliações de Saúde' };
 const br = (iso: string) => iso.split('-').reverse().join('/');
 const link = 'font-semibold text-destaque underline-offset-2 hover:underline';
 
-export default async function AvaliacoesDeSaude() {
+type Busca = { servico?: string; faixa?: string; situacao?: string };
+
+export default async function AvaliacoesDeSaude({ searchParams }: { searchParams: Promise<Busca> }) {
+  const filtro = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
   if (!usuario.autorizador.temPermissaoAlgumEscopo(PERM.avaliar)) redirect('/saude/sobre');
   const app = await obterAplicacao();
-  const lista = await listarAplicacoes(app.planilhas, usuario.autorizador);
+  const todas = await listarAplicacoes(app.planilhas, usuario.autorizador);
+  const atrasadas = todas.filter((a) => a.reavaliacao === 'atrasada').length;
+  const vencendo = todas.filter((a) => a.reavaliacao === 'vence_em_breve').length;
+  const servicos = [...new Map(todas.map((a) => [a.servico, a.servicoNome])).entries()];
+  const faixas = [...new Set(todas.map((a) => a.faixa).filter((x): x is string => !!x))];
+  const lista = todas.filter(
+    (a) =>
+      (!filtro.servico || a.servico === filtro.servico) &&
+      (!filtro.faixa || a.faixa === filtro.faixa) &&
+      (!filtro.situacao || (filtro.situacao === 'rascunho' ? a.situacao === 'aberta' : a.reavaliacao === filtro.situacao)),
+  );
+  const filtrando = Boolean(filtro.servico || filtro.faixa || filtro.situacao);
   return (
     <div className="space-y-5">
       <CabecalhoPagina
@@ -31,7 +46,52 @@ export default async function AvaliacoesDeSaude() {
           </LinkBotao>
         }
       />
-      {lista.length === 0 ? (
+      {todas.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Link href="/saude?situacao=atrasada" className="cartao-brilho rounded-cartao border border-borda bg-superficie p-4">
+            <span className="block text-3xl font-bold tabular-nums">{atrasadas}</span>
+            <span className="text-sm">{atrasadas === 1 ? 'reavaliação atrasada' : 'reavaliações atrasadas'}</span>
+          </Link>
+          <Link href="/saude?situacao=vence_em_breve" className="cartao-brilho rounded-cartao border border-borda bg-superficie p-4">
+            <span className="block text-3xl font-bold tabular-nums">{vencendo}</span>
+            <span className="text-sm">{vencendo === 1 ? 'vence' : 'vencem'} nos próximos 30 dias</span>
+          </Link>
+        </div>
+      )}
+      {todas.length > 0 && (
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <label className="text-sm">
+            <span className="block font-semibold">Serviço</span>
+            <select name="servico" defaultValue={filtro.servico ?? ''} className={estiloEntrada}>
+              <option value="">Todos</option>
+              {servicos.map(([cod, nome]) => <option key={cod} value={cod}>{nome}</option>)}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="block font-semibold">Faixa</span>
+            <select name="faixa" defaultValue={filtro.faixa ?? ''} className={estiloEntrada}>
+              <option value="">Todas</option>
+              {faixas.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </label>
+          <label className="text-sm">
+            <span className="block font-semibold">Situação</span>
+            <select name="situacao" defaultValue={filtro.situacao ?? ''} className={estiloEntrada}>
+              <option value="">Todas</option>
+              <option value="atrasada">Reavaliação atrasada</option>
+              <option value="vence_em_breve">Vence em 30 dias</option>
+              <option value="rascunho">Rascunho</option>
+            </select>
+          </label>
+          <button type="submit" className={estiloBotao('secundario', pequeno)}>Filtrar</button>
+          {filtrando && <Link href="/saude" className={link}>Limpar filtros</Link>}
+        </form>
+      )}
+      {lista.length === 0 && todas.length > 0 ? (
+        <EstadoVazio titulo="Nenhuma avaliação com estes filtros" acao={<LinkBotao href="/saude" variante="secundario">Limpar filtros</LinkBotao>}>
+          Tire um filtro para ver mais avaliações.
+        </EstadoVazio>
+      ) : lista.length === 0 ? (
         <EstadoVazio titulo="Nenhuma avaliação ainda" acao={<LinkBotao href="/saude/nova">Nova avaliação</LinkBotao>}>
           As avaliações aparecem aqui assim que você salvar a primeira. Use “Nova avaliação” para começar.
         </EstadoVazio>
@@ -71,11 +131,27 @@ export default async function AvaliacoesDeSaude() {
                       <Etiqueta tipo="info">Concluída, sem ciente</Etiqueta>
                     )}
                   </td>
-                  <td className={tabela.td}>{a.proximaAvaliacao ? br(a.proximaAvaliacao) : <span className="text-xs text-texto-suave">—</span>}</td>
+                  <td className={tabela.td}>
+                    {a.proximaAvaliacao ? br(a.proximaAvaliacao) : <span className="text-xs text-texto-suave">—</span>}
+                    {a.reavaliacao === 'atrasada' && <span className="block"><Etiqueta tipo="erro">Atrasada</Etiqueta></span>}
+                    {a.reavaliacao === 'vence_em_breve' && <span className="block"><Etiqueta tipo="atencao">Vence em breve</Etiqueta></span>}
+                  </td>
                   <td className={`${tabela.td} whitespace-nowrap text-right`}>
                     <Link href={`/saude/${a.id}`} className={link} aria-label={`${a.situacao === 'aberta' ? 'Continuar' : 'Abrir'} avaliação de ${a.pessoaNome}, período de ${br(a.periodoInicio)} a ${br(a.periodoFim)}`}>
                       {a.situacao === 'aberta' ? 'Continuar' : 'Abrir'}
                     </Link>
+                    {a.situacao === 'fechada' && !a.corrigida && (
+                      <>
+                        {' · '}
+                        <Link href={`/saude/${a.id}/comparativo`} className={link} aria-label={`Comparar períodos de ${a.pessoaNome}`}>Comparar</Link>
+                        {a.reavaliacao && (
+                          <>
+                            {' · '}
+                            <Link href={`/saude/nova?pessoa=${encodeURIComponent(a.pessoaId)}`} className={link} aria-label={`Reavaliar ${a.pessoaNome}`}>Reavaliar</Link>
+                          </>
+                        )}
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

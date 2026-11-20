@@ -109,6 +109,12 @@ export default async function AbrirAvaliacaoDeSaude({ params }: { params: Promis
                 confirmar="Dar o ciente"
               />
             )}
+            <LinkBotao href={`/saude/${a.id}/comparativo`} variante="secundario" className={pequeno}>
+              Comparar
+            </LinkBotao>
+            <LinkBotao href={`/saude/${a.id}/ficha`} variante="secundario" className={pequeno}>
+              Imprimir ficha
+            </LinkBotao>
             {!a.corrigida && (
               <LinkBotao href={`/saude/nova?corrige=${a.id}`} variante="secundario" className={pequeno}>
                 Corrigir
