@@ -25,3 +25,11 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Aplicação concluída não se edita: `corrigirAplicacao` cria outra (`corrige`). Instrumento usado só muda
   por nova versão. Instrumentos entram por `cadastrarInstrumento` (sem editor em tela).
 - O comparativo ignora aplicação já corrigida e ciclos de outra versão do instrumento.
+
+## Ligação das avaliações antigas (issue #62, entrega 3)
+
+- Aba `LigacoesPessoa` (`avaliacao_id`, `pessoa_id`; quem confirmou e quando = `criado_por`/`criado_em`). Casos de uso em
+  `aplicacao/ligacoes.ts`; tela `/avaliacao/ligar`. A avaliação original nunca muda.
+- Com ligação, o comparativo e a contagem "Comparar (n)" usam `pessoa_id`; sem ela, iniciais + nascimento + sexo.
+  O painel e os indicadores continuam por iniciais.
+- Desfazer a ligação deixa `ativo = FALSE` (nada é apagado).

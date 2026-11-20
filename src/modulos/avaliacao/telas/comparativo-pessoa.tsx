@@ -50,6 +50,11 @@ export function ComparativoPessoa({ h, links = true }: { h: HistoricoPessoa; lin
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-texto-suave">
+        {h.ligada
+          ? 'Comparativo pela pessoa do Cadastro Único (ligação confirmada pela equipe).'
+          : 'Comparativo pelas iniciais, data de nascimento e sexo. Para usar a pessoa do Cadastro Único, ligue a avaliação em "Ligar avaliações antigas".'}
+      </p>
       <section className="grid grid-cols-2 gap-2 break-inside-avoid sm:grid-cols-4">
         {(
           [

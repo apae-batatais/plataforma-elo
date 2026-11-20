@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { corrigirAplicacao, desistirDaAplicacao, salvarAplicacao } from '@/modulos/avaliacao/aplicacao/aplicacoes';
+import { confirmarLigacao } from '@/modulos/avaliacao/aplicacao/ligacoes';
 import type { EstadoAplicacao, ValoresAplicacao } from '@/modulos/avaliacao/telas/formulario-aplicacao';
 import { ErroRespostas, retirarAvaliacao, salvarAvaliacao } from '@/modulos/avaliacao/aplicacao/avaliacoes';
 import { ErroAvaliacao, type DadosAvaliacao } from '@/modulos/avaliacao/dominio/avaliacao';
@@ -118,6 +119,20 @@ export async function acaoDesistirAplicacao(f: FormData): Promise<void> {
   } catch (erro) {
     if (!falhas(erro)) throw erro;
     destino = `/avaliacao/aplicacao/${id}?erro=${encodeURIComponent(mensagemDe(erro))}`;
+  }
+  revalidatePath('/avaliacao', 'layout');
+  redirect(destino);
+}
+
+/** Confirma que uma avaliação antiga é da pessoa escolhida no Cadastro Único. */
+export async function acaoConfirmarLigacao(f: FormData): Promise<void> {
+  const { usuario, app } = await contexto();
+  let destino = `/avaliacao/ligar?ok=${encodeURIComponent('Ligação confirmada. O comparativo passa a usar a pessoa do Cadastro Único.')}`;
+  try {
+    await confirmarLigacao(app.planilhas, usuario.autorizador, texto(f, 'avaliacao'), texto(f, 'pessoa'));
+  } catch (erro) {
+    if (!falhas(erro)) throw erro;
+    destino = `/avaliacao/ligar?erro=${encodeURIComponent(mensagemDe(erro))}`;
   }
   revalidatePath('/avaliacao', 'layout');
   redirect(destino);
