@@ -28,7 +28,7 @@ description: Hospedagem, publicação, automações do GitHub e integrações co
 | `tipo-do-pr.yml` | Confere a etiqueta "PR: especificação" ou "PR: entrega" com a referência à issue |
 | `claude-desenvolvedor.yml` | Claude Code constrói a proposta com especificação aprovada |
 | `claude.yml` | Pedido livre com "@claude" num comentário |
-| `fila.yml` | Fila de construção (ADR-031): no máximo 2 entregas em construção, na ordem do quadro; pausa com a etiqueta `cota: pausa` |
+| `fila.yml` | Fila de construção (ADR-031): no máximo 3 entregas em construção, sem repetir app quando há alternativa, na ordem do quadro; pausa com a etiqueta `cota: pausa` |
 | `atualizar-pr.yml` | Depois de cada merge, confere os PRs de proposta abertos e une com a main os que ficaram em conflito (também à mão, com o número do PR) |
 | `vencimentos.yml` | Aviso semanal de chave perto de vencer (`.github/chaves.json`) |
 
