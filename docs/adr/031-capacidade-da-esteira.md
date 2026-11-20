@@ -40,3 +40,11 @@ Depois da fase inicial, a tendência é estabilizar e trabalhar com prazos. A Di
 - A leitura da ordem do quadro não pôde ser testada contra o quadro real na criação (sem a chave do
   quadro no ambiente do DevOps); se falhar, a Fila avisa no log e usa a proposta mais antiga.
 - O saldo estimado pode diferir um pouco do oficial; as faixas têm folga para isso.
+
+## Revisão de 20/11/2026
+
+Com o repositório público (ADR-032), a cota de minutos deixou de limitar. A Diretoria subiu o limite
+para **3 entregas em construção** e pediu controle de conflitos: a Fila evita chamar duas entregas
+do mesmo app ao mesmo tempo (etiqueta "app: …"; "app: novo" não conta) e só repete o app quando não
+há alternativa, para a vaga não ficar parada. Se aparecerem falhas por limite de uso da assinatura
+do Claude, o DevOps volta para 2 e avisa.

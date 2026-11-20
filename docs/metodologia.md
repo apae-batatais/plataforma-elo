@@ -54,7 +54,7 @@ Os dois cuidam da esteira, nunca do código dos apps, mas em momentos diferentes
   entra na semana seguinte e em que ordem (a ordem dos cartões no quadro "Elo").
 - **Capacidade** = minutos do GitHub Actions do mês (2.000; renovam no dia 1º). O DevOps mostra no
   raio-x o gasto estimado, o custo médio por entrega e quantas entregas ainda cabem.
-- **No máximo 2 entregas em construção.** Especificação aprovada entra na fila; entrega aprovada
+- **No máximo 3 entregas em construção** (eram 2 até 20/11/2026), evitando duas do mesmo app ao mesmo tempo. Especificação aprovada entra na fila; entrega aprovada
   abre vaga e a esteira chama a próxima. Quem espera resposta da Diretoria não ocupa vaga.
 - **Acima de 70%** do mês: aviso ao Scrum Master. **Acima de 85%**: pendência da Diretoria com a
   etiqueta `cota: pausa`; nenhuma entrega nova começa até o "pode seguir" (as em construção
