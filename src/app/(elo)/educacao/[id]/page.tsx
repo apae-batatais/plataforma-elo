@@ -11,6 +11,7 @@ import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
+import { LinkBotao, pequeno } from '@/ui/botao';
 import { CabecalhoPagina, Etiqueta, Secao, tabela } from '@/ui/pagina';
 import { acaoCorrigirAplicacao, acaoDarCiente, acaoDesistirAplicacao, acaoSalvarAplicacao } from '../acoes';
 
@@ -112,6 +113,12 @@ export default async function AbrirAvaliacao({ params }: { params: Promise<{ id:
                 <BotaoEnviar enviando="Registrando…">Dar o ciente</BotaoEnviar>
               </form>
             )}
+            <LinkBotao href={`/educacao/${a.id}/comparativo`} variante="secundario" className={pequeno}>
+              Comparar
+            </LinkBotao>
+            <LinkBotao href={`/educacao/${a.id}/ficha`} variante="secundario" className={pequeno}>
+              Imprimir ficha
+            </LinkBotao>
             {!a.corrigidaPor && (
               <FormularioConfirmado
                 acao={acaoCorrigirAplicacao}

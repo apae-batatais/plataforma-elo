@@ -108,3 +108,13 @@ export function instrumentoSugerido(nomeDoServico: string): string | null {
   if (n.includes('trabalho')) return 'educacao_trabalho';
   return null;
 }
+
+export const DIAS_AVISO_REAVALIACAO = 30;
+
+export type SituacaoReavaliacao = 'em_dia' | 'vence_em_breve' | 'atrasada';
+
+/** Regra 13: situação da reavaliação a partir do dia do vencimento (AAAA-MM-DD) e de hoje. */
+export function situacaoDaReavaliacao(vence: string, hoje: string): { situacao: SituacaoReavaliacao; dias: number } {
+  const dias = Math.round((Date.parse(`${vence}T12:00:00Z`) - Date.parse(`${hoje}T12:00:00Z`)) / 86_400_000);
+  return { dias, situacao: dias < 0 ? 'atrasada' : dias <= DIAS_AVISO_REAVALIACAO ? 'vence_em_breve' : 'em_dia' };
+}

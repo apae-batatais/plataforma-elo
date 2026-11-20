@@ -10,8 +10,11 @@
  * as colunas alteradas (nunca os valores).
  */
 import {
+  compararCiclos,
   definirInstrumento,
   itensSemResposta,
+  vencimentoDaReavaliacao,
+  type Comparativo,
   recusaDeFechamento,
   type Instrumento,
   type Respostas,
@@ -31,7 +34,16 @@ import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Pessoas, Servicos, VinculosFamiliares, VinculosServico } from '@/nucleo/estrutura/tabelas';
 import { REFERENCIAIS, INSTRUMENTOS_EDUCACAO } from '../dados/instrumentos';
 import { Aplicacoes, Instrumentos, Respostas as TabelaRespostas } from '../dados/tabelas';
-import { ErroEducacao, instrumentoSugerido, recusaDeDatas, respostasValidas, resultadoDe, type Resultado } from '../dominio/educacao';
+import {
+  ErroEducacao,
+  instrumentoSugerido,
+  recusaDeDatas,
+  respostasValidas,
+  resultadoDe,
+  situacaoDaReavaliacao,
+  type Resultado,
+  type SituacaoReavaliacao,
+} from '../dominio/educacao';
 
 export const PERM = {
   acessar: 'educacao.acessar',
@@ -211,6 +223,11 @@ export interface LinhaAplicacao {
   /** Foi corrigida por uma aplicação mais nova (a antiga fica no histórico). */
   corrigida: boolean;
   ehCorrecao: boolean;
+  /** Pessoa avaliada (para os links de comparar e reavaliar). */
+  pessoaId: string;
+  /** Só na aplicação concluída mais recente da pessoa no instrumento: quando vence a próxima avaliação. */
+  proximaAvaliacao: string | null;
+  reavaliacao: SituacaoReavaliacao | null;
 }
 
 /** Aplicações ativas dos serviços em que a pessoa avalia, das mais recentes para as mais antigas. */
@@ -221,6 +238,15 @@ export async function listarAplicacoes(p: Planilhas, quem: Autorizador, opcoes: 
   const nomesServico = new Map(b.servicos.todos().map((s) => [s.codigo, s.nome]));
   const todas = b.aplicacoes.ativos();
   const corrigidas = new Set(todas.filter((a) => a.corrige && a.situacao === 'fechada').map((a) => a.corrige!));
+  // Regra 13: vale a última assinatura vigente (não corrigida) da pessoa em cada instrumento.
+  const hoje = hojeEm(opcoes.agora ?? new Date());
+  const ultima = new Map<string, RegAplicacao>();
+  for (const a of todas) {
+    if (a.situacao !== 'fechada' || corrigidas.has(a.id) || !a.data_assinatura) continue;
+    const k = `${a.pessoa_id}|${a.instrumento}`;
+    const atual = ultima.get(k);
+    if (!atual || a.data_assinatura > atual.data_assinatura! || (a.data_assinatura === atual.data_assinatura && a.periodo_fim! > atual.periodo_fim!)) ultima.set(k, a);
+  }
   return todas
     .filter((a) => podeAvaliar(quem, a.servico) && quem.podeVerPessoa(a.pessoa_id, dados))
     .sort((a, c) => (c.periodo_fim ?? '').localeCompare(a.periodo_fim ?? '') || c.atualizado_em.localeCompare(a.atualizado_em))
@@ -228,8 +254,12 @@ export async function listarAplicacoes(p: Planilhas, quem: Autorizador, opcoes: 
       const instrumento = instrumentoDaAplicacao(b, a);
       const respostas = respostasDaAplicacao(b, a.id);
       const r = resultadoDe(instrumento, respostas);
+      const vence = ultima.get(`${a.pessoa_id}|${a.instrumento}`)?.id === a.id ? vencimentoDaReavaliacao(a.data_assinatura!) : null;
       return {
         id: a.id,
+        pessoaId: a.pessoa_id,
+        proximaAvaliacao: vence,
+        reavaliacao: vence ? situacaoDaReavaliacao(vence, hoje).situacao : null,
         pessoaNome: nomeDaPessoa(b, a.pessoa_id),
         servico: a.servico,
         servicoNome: nomesServico.get(a.servico) ?? a.servico,
@@ -537,4 +567,89 @@ export async function darCiente(p: Planilhas, quem: Autorizador, id: string, ver
   if (a.ciente_por) throw new ErroEducacao('O ciente já foi dado nesta avaliação.');
   const { colunasAlteradas } = await atualizar(p, Aplicacoes, id, versao, { ciente_por: quem.email, ciente_em: hojeEm(agora) }, { email: quem.email, agora: () => agora });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: ENTIDADE, registroId: id, detalhes: { colunas: colunasAlteradas, ciente: true } }, agora);
+}
+
+// Comparativo e ficha ------------------------------------------------------------
+
+export interface PeriodoComparado {
+  id: string;
+  periodoInicio: string;
+  periodoFim: string;
+  servicoNome: string;
+  faixa: string | null;
+  /** Nota de cada item; `null` se faltar. */
+  notas: Record<number, number | null>;
+}
+
+export interface ComparativoDaPessoa {
+  pessoaId: string;
+  pessoaNome: string;
+  aplicacaoId: string;
+  instrumento: Instrumento;
+  comparativo: Comparativo;
+  /** Um por ponto do comparativo, na mesma ordem. */
+  periodos: PeriodoComparado[];
+  /** Dimensão(ões) de menor percentual do máximo na avaliação mais recente. */
+  principalBarreira: string[];
+  reavaliacao: { vence: string; situacao: SituacaoReavaliacao } | null;
+  /** Há rascunho aberto desta pessoa neste instrumento? Então "Reavaliar" continua nele. */
+  abertaId: string | null;
+}
+
+/**
+ * Comparativo da pessoa no instrumento da aplicação aberta: só aplicações concluídas e vigentes (não corrigidas),
+ * de serviços em que quem lê avalia. Registra `leitura` na auditoria.
+ */
+export async function comparativoDaPessoa(p: Planilhas, quem: Autorizador, aplicacaoId: string, opcoes: { agora?: Date } = {}): Promise<ComparativoDaPessoa> {
+  const agora = opcoes.agora ?? new Date();
+  if (!quem.temPermissaoAlgumEscopo(PERM.avaliar)) throw new ErroPermissao();
+  const b = await carregar(p, agora);
+  const origem = aplicacaoVisivel(b, quem, aplicacaoId);
+  const todas = b.aplicacoes.ativos().filter((a) => a.pessoa_id === origem.pessoa_id && a.instrumento === origem.instrumento && podeAvaliar(quem, a.servico));
+  const corrigidas = new Set(todas.filter((a) => a.corrige && a.situacao === 'fechada').map((a) => a.corrige!));
+  const fechadas = todas.filter((a) => a.situacao === 'fechada' && !corrigidas.has(a.id));
+  const versoes = new Map<number, Instrumento>();
+  for (const a of fechadas.length > 0 ? fechadas : [origem]) versoes.set(a.instrumento_versao, instrumentoDaAplicacao(b, a));
+  const comparativo = compararCiclos(
+    [...versoes.values()],
+    fechadas.map((a) => ({ id: a.id, data: a.periodo_fim!, versao: a.instrumento_versao, respostas: respostasDaAplicacao(b, a.id) })),
+  );
+  const instrumento = (comparativo.versao !== null ? versoes.get(comparativo.versao) : undefined) ?? instrumentoDaAplicacao(b, origem);
+  const nomes = new Map(b.servicos.todos().map((s) => [s.codigo, s.nome]));
+  const periodos = comparativo.pontos.map((pt): PeriodoComparado => {
+    const a = fechadas.find((x) => x.id === pt.id)!;
+    const notas = respostasDaAplicacao(b, a.id);
+    return {
+      id: a.id,
+      periodoInicio: a.periodo_inicio!,
+      periodoFim: a.periodo_fim!,
+      servicoNome: nomes.get(a.servico) ?? a.servico,
+      faixa: pt.escore.enquadramento?.nome ?? null,
+      notas: Object.fromEntries(instrumento.itens.map((i) => [i.numero, typeof notas[i.numero] === 'number' ? (notas[i.numero] as number) : null])),
+    };
+  });
+  const ultimoPonto = comparativo.pontos[comparativo.pontos.length - 1];
+  const ultimaAssinada = fechadas.map((a) => a.data_assinatura).filter((x): x is string => !!x).sort().pop();
+  const vence = ultimaAssinada ? vencimentoDaReavaliacao(ultimaAssinada) : null;
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'leitura', entidade: ENTIDADE, registroId: aplicacaoId, detalhes: { comparativo: true } }, agora);
+  return {
+    pessoaId: origem.pessoa_id,
+    pessoaNome: nomeDaPessoa(b, origem.pessoa_id),
+    aplicacaoId,
+    instrumento,
+    comparativo,
+    periodos,
+    principalBarreira: ultimoPonto ? resultadoDe(instrumento, respostasDaAplicacao(b, ultimoPonto.id)).principalBarreira : [],
+    reavaliacao: vence ? { vence, situacao: situacaoDaReavaliacao(vence, hojeEm(agora)).situacao } : null,
+    abertaId: todas.find((a) => a.situacao === 'aberta')?.id ?? null,
+  };
+}
+
+/** Dados da ficha para imprimir: só aplicação concluída. Registra `exportacao` (e a leitura de abrir). */
+export async function fichaDaAplicacao(p: Planilhas, quem: Autorizador, id: string, opcoes: { agora?: Date } = {}): Promise<AplicacaoDetalhada> {
+  const agora = opcoes.agora ?? new Date();
+  const a = await detalharAplicacao(p, quem, id, { agora });
+  if (a.situacao !== 'fechada') throw new ErroEducacao('A ficha só existe para avaliação concluída.');
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'exportacao', entidade: ENTIDADE, registroId: id, detalhes: { ficha: true } }, agora);
+  return a;
 }
