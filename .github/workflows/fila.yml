@@ -2,13 +2,19 @@
 #
 # No máximo 2 entregas em construção ao mesmo tempo, na ordem do quadro "Elo". Chamado pela
 # Aprovação depois de cada merge (abre vaga quando uma entrega é aprovada; entra na fila quando uma
-# especificação é aprovada). À mão: Actions → Fila → Run workflow (por exemplo, depois que a
-# Diretoria disser "pode seguir" e o DevOps tirar a pausa por cota).
+# especificação é aprovada) — ela chama direto porque o merge com o GITHUB_TOKEN não dispara push.
+# Também roda em todo push na main feito de outro jeito (por exemplo, a Diretoria mesclando o PR
+# direto no GitHub, sem passar pela revisão "Approve"): sem isso, a fila só andava de novo no
+# próximo merge feito pela Aprovação (correção de 19/11/2026, achada no raio-x do DevOps). À mão:
+# Actions → Fila → Run workflow (por exemplo, depois que a Diretoria disser "pode seguir" e o
+# DevOps tirar a pausa por cota).
 # Funções em .github/scripts/fila.mjs, com teste em tests/fluxo/fila.test.ts.
 
 name: Fila
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
