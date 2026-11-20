@@ -67,6 +67,8 @@ export interface LinhaGrade {
   naoRecorrente: boolean;
   motivo: string | null;
   observacao: string | null;
+  /** Termo (fonte restrita) adiantado; só em "adiantamento a termo". */
+  termoId: string | null;
   /** Veio da Previsão (false = linha adicionada à mão). */
   prevista: boolean;
 }
@@ -84,7 +86,7 @@ export interface GradeDoMes {
   opcoes: {
     servicos: { codigo: string; nome: string }[];
     grupos: { id: string; nome: string; rh: boolean }[];
-    fontes: { id: string; nome: string }[];
+    fontes: { id: string; nome: string; restrita: boolean }[];
   };
 }
 
@@ -121,6 +123,7 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
     naoRecorrente: false,
     motivo: null,
     observacao: null,
+    termoId: null,
     prevista: false,
   });
 
@@ -153,7 +156,7 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
     if (r.tipo === 'despesa' ? !veServico(quem, r.servico ?? '') : !tudo) continue;
     const l = base(r.tipo, r.servico, r.grupo_id, r.fonte_id, r.natureza);
     const linha = mapa.get(l.chave) ?? l;
-    Object.assign(linha, { realizado: r.valor, versao: r.versao, naoRecorrente: r.nao_recorrente, motivo: r.motivo_nao_recorrente, observacao: r.observacao });
+    Object.assign(linha, { realizado: r.valor, versao: r.versao, naoRecorrente: r.nao_recorrente, motivo: r.motivo_nao_recorrente, observacao: r.observacao, termoId: r.fonte_termo_id ?? null });
     mapa.set(l.chave, linha);
   }
 
@@ -176,7 +179,7 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
     opcoes: {
       servicos: servicosT.ativos().filter((s) => veServico(quem, s.codigo)).map((s) => ({ codigo: s.codigo, nome: s.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       grupos: gruposT.ativos().map((g) => ({ id: g.id, nome: g.nome, rh: g.rh })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
-      fontes: fontesT.ativos().map((f) => ({ id: f.id, nome: f.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      fontes: fontesT.ativos().map((f) => ({ id: f.id, nome: f.nome, restrita: f.uso === 'restrita' })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     },
   };
 }
@@ -196,6 +199,8 @@ export interface EntradaLinha {
   naoRecorrente?: boolean;
   motivo?: string | null;
   observacao?: string | null;
+  /** Termo (fonte restrita) adiantado; vale só para natureza "adiantamento a termo". */
+  termoId?: string | null;
   /** Versão lida ao abrir a tela; ausente em linha nova. */
   versao?: number;
 }
@@ -227,7 +232,13 @@ export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes:
     const motivo = vazioParaNulo(l.motivo);
     const naoRecorrente = !!l.naoRecorrente;
     const erros = conferirLinha({ tipo: l.tipo, servico, grupoId, fonteId: l.fonteId, natureza: l.natureza, valor, naoRecorrente, motivo });
+    const termoId = l.tipo === 'despesa' && l.natureza === 'adiantamento_termo' ? vazioParaNulo(l.termoId) : null;
+    // Dado antigo sem termo continua salvando (aparece como "termo não informado"); linha nova ou já com termo exige.
+    if (l.natureza === 'adiantamento_termo' && l.tipo === 'despesa' && !termoId && (!existente || existente.fonte_termo_id)) {
+      erros.push('Informe o termo adiantado (a fonte restrita do termo).');
+    }
     if (erros.length === 0) {
+      if (termoId && !fontesT.porId(termoId)) erros.push('O termo escolhido não existe.');
       if (servico && !servicosT.porId(servico) && !servicosT.todos().some((s) => s.codigo === servico)) erros.push('O serviço escolhido não existe.');
       if (grupoId && !gruposT.porId(grupoId)) erros.push('O grupo escolhido não existe.');
       if (!fontesT.porId(l.fonteId)) erros.push('A fonte escolhida não existe.');
@@ -238,11 +249,12 @@ export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes:
       nao_recorrente: naoRecorrente,
       motivo_nao_recorrente: naoRecorrente ? motivo : null,
       observacao: vazioParaNulo(l.observacao),
+      fonte_termo_id: termoId,
     };
     if (existente) {
       const mudou =
         existente.valor !== campos.valor || existente.nao_recorrente !== campos.nao_recorrente ||
-        (existente.motivo_nao_recorrente ?? null) !== campos.motivo_nao_recorrente || (existente.observacao ?? null) !== campos.observacao;
+        (existente.motivo_nao_recorrente ?? null) !== campos.motivo_nao_recorrente || (existente.observacao ?? null) !== campos.observacao || (existente.fonte_termo_id ?? null) !== campos.fonte_termo_id;
       if (mudou) passos.push({ acao: 'alterar', chave, existente, campos });
     } else {
       passos.push({

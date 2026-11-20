@@ -42,6 +42,7 @@ export async function acaoSalvarRealizado(f: FormData) {
         naoRecorrente: c('nr') === 'on',
         motivo: c('motivo') || null,
         observacao: c('obs') || null,
+        termoId: c('termo') || null,
         versao: versao ? Number(versao) : undefined,
       });
     }
