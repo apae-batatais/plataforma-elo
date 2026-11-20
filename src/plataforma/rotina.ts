@@ -9,6 +9,7 @@ import 'server-only';
 import { timingSafeEqual } from 'node:crypto';
 import type { Aplicacao } from './aplicacao';
 import { aplicacaoDa } from './aplicacao';
+import { rodarEnvios } from '@/modulos/comunicacao/aplicacao/envios';
 import { tarefaDeCredenciais } from './credenciais';
 import type { TarefaDaRotina } from './tarefa-da-rotina';
 
@@ -17,8 +18,14 @@ import { configGeral } from './instituicao';
 import { instituicoesDoElo } from './rede';
 
 
-/** Tarefas da plataforma e dos apps (envios da Comunicação entram na entrega 2 da proposta #63). */
-export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [tarefaDeCredenciais];
+/** Envio automático de release e artigo da Comunicação (ADR-027). */
+export const tarefaDeEnviosDaComunicacao: TarefaDaRotina = {
+  id: 'comunicacao.envios',
+  executar: (app, agora) => rodarEnvios(app.planilhas, { email: app.email, arquivos: app.arquivos }, agora),
+};
+
+/** Tarefas da plataforma e dos apps. */
+export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [tarefaDeCredenciais, tarefaDeEnviosDaComunicacao];
 
 export interface ResultadoDaRotina {
   instituicoes: number;
