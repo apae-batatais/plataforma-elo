@@ -77,7 +77,7 @@ beforeEach(async () => {
 
   // Realizado de 2025 inteiro e de 2026 até outubro: receita livre 1.000 e despesa livre 900 por mês (resultado +100,
   // igual à subida do saldo livre, então o recurso livre confere). Em novembro de 2025 há uma doação não recorrente de 3.000.
-  const linhas = [];
+  const linhas: ReturnType<typeof linha>[] = [];
   for (let m = 1; m <= 12; m++) {
     linhas.push(linha(mes(2025, m), 'receita', livre.id, 1000), linha(mes(2025, m), 'despesa', livre.id, 900));
     if (m <= 10) linhas.push(linha(mes(2026, m), 'receita', livre.id, 1000), linha(mes(2026, m), 'despesa', livre.id, 900));

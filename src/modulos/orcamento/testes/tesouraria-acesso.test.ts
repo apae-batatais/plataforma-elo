@@ -52,6 +52,9 @@ describe('permissões da tesouraria', () => {
     expect(itens.map((m) => [m.rotulo, m.caminho, m.permissao])).toEqual([
       ['Saldos do mês', '/tesouraria', 'orcamento.tesouraria.ver'],
       ['Contas', '/tesouraria/contas', 'orcamento.tesouraria.ver'],
+      ['Conferência', '/tesouraria/conferencia', 'orcamento.tesouraria.ver'],
+      ['Fim do ano', '/tesouraria/fim-do-ano', 'orcamento.tesouraria.ver'],
+      ['Reserva', '/tesouraria/reserva', 'orcamento.tesouraria.ver'],
     ]);
   });
 });
