@@ -1,6 +1,6 @@
 # Especificação — Orçamento: Execução, Tesouraria e Histórico (Entregas 1C, 1D e 1E)
 
-- Situação: **aprovada em 07/11/2026 pela Diretoria** (1D.2 detalhada em 17/11/2026, issue #186)
+- Situação: **aprovada em 07/11/2026 pela Diretoria** (1D.2 detalhada em 17/11/2026, issue #186; construída em 20/11/2026)
 - Dono do produto: Diretoria
 - Complementa `especificacao.md` deste módulo. Detalha a Entrega 1C (Execução), que lá está só em
   resumo, e propõe duas entregas novas: 1D (Tesouraria) e 1E (Histórico). Depois de aprovada, entra
@@ -940,3 +940,16 @@ Uma só entrega (1C.2), conferível na prévia. Depende da 1C.1, que já está n
 5. **Período padrão = janeiro até o último mês informado**, com o previsto cortado no mesmo mês.
 6. **Leitura não vê a tela Recursos livres** (só totais no Painel de execução).
 7. **Duas telas, não uma**, para o painel principal não ficar longo; se preferir uma só, junte as seções.
+
+## Como a 1D.2 foi construída (20/11/2026, issue #186)
+
+Decisões tomadas durante a construção, além das oito da revisão de 17/11:
+
+1. **Resumo da folha mudou de endereço** (`/orcamento/resumo`) para a Visão geral ser a entrada do módulo em `/orcamento`. *Custo se errada:* voltar a rota e mover o redirecionamento.
+2. **Uma proposta de política pendente por vez.** Para corrigir, a Diretoria recusa e o Financeiro propõe outra. *Custo:* tirar uma checagem.
+3. **"Quem propõe não aprova" confere o autor do registro** (`criado_por`), não só as permissões. *Custo:* uma linha.
+4. **"Último mês com saldo" = qualquer saldo das classes pedidas no mês**, sem exigir todas as contas (conta nova não zera os meses antigos). *Custo:* trocar uma função.
+5. **Gráfico do Fim do ano só desenha os meses em que o ano em andamento tem saldo**, e só os anos com saldo em todos esses meses (o `Linhas` do Núcleo não aceita buraco). Os demais anos ficam listados em texto. *Custo:* aceitar `null` no `Linhas` (Núcleo; precisa de pedido).
+6. **Folha sobre a receita sem RH realizado dá 0%** (o RH realizado vem das naturezas `rh` e `encargos`). *Custo:* exigir ao menos uma linha de RH para calcular.
+7. **Pendência "termos com diferença"** olha só os meses do ano em andamento, até o mês anterior ao atual. *Custo:* mudar o intervalo.
+
