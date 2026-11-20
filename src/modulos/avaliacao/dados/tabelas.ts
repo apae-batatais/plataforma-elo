@@ -136,4 +136,19 @@ export const Respostas = definirTabela({
   sigilo: { valor: 'sensivel' },
 });
 
-export const TABELAS_AVALIACAO = [Avaliacoes, Instrumentos, Aplicacoes, Respostas] as const;
+/**
+ * Ligação, confirmada pela equipe, de uma avaliação antiga (por iniciais) à pessoa do Cadastro Único.
+ * A avaliação original não muda; quem confirmou e quando ficam em `criado_por` e `criado_em`.
+ * Ligação desfeita fica com `ativo = FALSE` (nada é apagado).
+ */
+export const LigacoesPessoa = definirTabela({
+  planilha: PLANILHA_AVALIACAO,
+  aba: 'LigacoesPessoa',
+  esquema: z.object({
+    avaliacao_id: texto(),
+    pessoa_id: texto(),
+  }),
+  sigilo: { pessoa_id: 'pessoal' },
+});
+
+export const TABELAS_AVALIACAO = [Avaliacoes, Instrumentos, Aplicacoes, Respostas, LigacoesPessoa] as const;

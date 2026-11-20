@@ -31,7 +31,7 @@ import {
 } from '../dominio/avaliacao';
 import { compararAvaliacoes, type Comparativo } from '../dominio/comparativo';
 import { montarPainel, percentual, porPessoa as agruparPorPessoa, type PainelAvaliacao } from '../dominio/painel';
-import { Avaliacoes } from '../dados/tabelas';
+import { Avaliacoes, LigacoesPessoa } from '../dados/tabelas';
 
 export const PERM = {
   acessar: 'avaliacao.acessar',
@@ -65,6 +65,15 @@ export async function servicosParaAvaliar(p: Planilhas, quem: Autorizador, opcoe
     .map((s) => ({ codigo: s.codigo, nome: s.nome, areaNome: (s.area && nomeArea.get(s.area)) || 'Sem área' }))
     .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR'));
 }
+
+/**
+ * Quem é a "mesma pessoa" no comparativo: com ligação confirmada, a pessoa do Cadastro Único (`pessoa_id`);
+ * sem ligação, iniciais + nascimento + sexo (ADR-016).
+ */
+const chaveComLigacao = (r: RegAvaliacao, ligadas: Map<string, string>) => {
+  const pessoa = ligadas.get(r.id);
+  return pessoa ? `pessoa:${pessoa}` : chavePessoa(r);
+};
 
 const paraDados = (r: RegAvaliacao): DadosAvaliacao => ({
   tipo: r.tipo,
@@ -111,6 +120,8 @@ export interface LinhaAvaliacao {
   violacao: boolean;
   /** Quantas avaliações da mesma pessoa você vê (para o comparativo). */
   avaliacoesDaPessoa: number;
+  /** A avaliação já foi ligada à pessoa do Cadastro Único. */
+  ligada: boolean;
   /** Reavaliação anual: só na avaliação mais recente da pessoa. */
   reavaliacao: { vence: string; situacao: SituacaoReavaliacao } | null;
 }
@@ -119,16 +130,20 @@ export interface LinhaAvaliacao {
 export async function listarAvaliacoes(p: Planilhas, quem: Autorizador, opcoes: { agora?: Date } = {}): Promise<LinhaAvaliacao[]> {
   if (!quem.temPermissaoAlgumEscopo(PERM.avaliar)) throw new ErroPermissao();
   const hoje = hojeEm(opcoes.agora ?? new Date());
-  const [avaliacoes] = await lerTabelas(p, [Avaliacoes] as const);
+  const [avaliacoes, ligacoes] = await lerTabelas(p, [Avaliacoes, LigacoesPessoa] as const);
+  const ligadas = new Map(ligacoes.ativos().map((l) => [l.avaliacao_id, l.pessoa_id]));
   const visiveis = avaliacoes
     .ativos()
     .filter((r) => podeAvaliar(quem, r.servico))
     .sort((a, b) => b.data_avaliacao.localeCompare(a.data_avaliacao) || b.atualizado_em.localeCompare(a.atualizado_em));
   const porPessoa = new Map<string, string[]>();
-  for (const r of visiveis) porPessoa.set(chavePessoa(r), [...(porPessoa.get(chavePessoa(r)) ?? []), r.id]);
+  for (const r of visiveis) {
+    const chave = chaveComLigacao(r, ligadas);
+    porPessoa.set(chave, [...(porPessoa.get(chave) ?? []), r.id]);
+  }
   return visiveis.map((r) => {
     const d = paraDados(r);
-    const daPessoa = porPessoa.get(chavePessoa(r))!;
+    const daPessoa = porPessoa.get(chaveComLigacao(r, ligadas))!;
     return {
       id: r.id,
       tipo: r.tipo,
@@ -143,6 +158,7 @@ export async function listarAvaliacoes(p: Planilhas, quem: Autorizador, opcoes: 
       indice: indiceDeCuidado(d),
       violacao: temViolacao(d.barreiras),
       avaliacoesDaPessoa: daPessoa.length,
+      ligada: ligadas.has(r.id),
       reavaliacao: daPessoa[0] === r.id ? situacaoReavaliacao(r.data_avaliacao, hoje) : null,
     };
   });
@@ -154,6 +170,8 @@ export interface HistoricoPessoa {
   sexo: string;
   avaliacoes: { id: string; tipo: string; data: string; servicoNome: string; indice: number; dados: DadosAvaliacao }[];
   comparativo: Comparativo;
+  /** O comparativo usa a pessoa do Cadastro Único (há ligação confirmada), não as iniciais. */
+  ligada: boolean;
   reavaliacao: { vence: string; situacao: SituacaoReavaliacao; dias: number };
 }
 
@@ -164,14 +182,15 @@ export interface HistoricoPessoa {
  */
 export async function historicoDaPessoa(p: Planilhas, quem: Autorizador, id: string, opcoes: { agora?: Date } = {}): Promise<HistoricoPessoa> {
   const hoje = hojeEm(opcoes.agora ?? new Date());
-  const [avaliacoes] = await lerTabelas(p, [Avaliacoes] as const);
+  const [avaliacoes, ligacoes] = await lerTabelas(p, [Avaliacoes, LigacoesPessoa] as const);
+  const ligadas = new Map(ligacoes.ativos().map((l) => [l.avaliacao_id, l.pessoa_id]));
   const base = avaliacoes.porId(id);
   if (!base || !base.ativo) throw new ErroAvaliacao('Avaliação não encontrada.');
   if (!podeAvaliar(quem, base.servico)) throw new ErroPermissao();
-  const chave = chavePessoa(base);
+  const chave = chaveComLigacao(base, ligadas);
   const lista = avaliacoes
     .ativos()
-    .filter((r) => chavePessoa(r) === chave && podeAvaliar(quem, r.servico))
+    .filter((r) => chaveComLigacao(r, ligadas) === chave && podeAvaliar(quem, r.servico))
     .sort((a, b) => a.data_avaliacao.localeCompare(b.data_avaliacao) || a.criado_em.localeCompare(b.criado_em))
     .map((r) => {
       const dados = paraDados(r);
@@ -184,6 +203,7 @@ export async function historicoDaPessoa(p: Planilhas, quem: Autorizador, id: str
     sexo: base.sexo,
     avaliacoes: lista,
     comparativo: compararAvaliacoes(lista),
+    ligada: ligadas.has(base.id),
     reavaliacao: situacaoReavaliacao(lista[lista.length - 1].data, hoje),
   };
 }
