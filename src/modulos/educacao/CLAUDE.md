@@ -13,3 +13,5 @@ Leia antes `especificacao.md` desta pasta, a ADR-029 e o `CLAUDE.md` da raiz.
 - Aplicação fechada não se edita; correção cria nova aplicação (`corrige`). Nada é apagado.
 - Identificação da pessoa por `pessoa_id` do Cadastro Único; nunca mostre nome em painel agregado.
 - Permissões: `educacao.<acao>`, declaradas no manifesto.
+- Comparativo e ficha (em `aplicacao/avaliacoes.ts`): só concluídas não corrigidas, do mesmo instrumento; o comparativo
+  registra `leitura` e a ficha, `exportacao`. Reavaliação: 12 meses após a última assinatura, aviso 30 dias antes.

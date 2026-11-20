@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: 'Avaliações de Educação' };
 
 const br = (iso: string | null) => (iso ? iso.split('-').reverse().join('/') : '—');
 const link = 'font-semibold text-destaque underline-offset-2 hover:underline';
-const SITUACOES = { aberta: 'Rascunho (aberta)', fechada: 'Concluída' } as const;
+const SITUACOES = { aberta: 'Rascunho (aberta)', fechada: 'Concluída', atrasada: 'Reavaliação atrasada', vence_em_breve: 'Vence em 30 dias' } as const;
 
 export default async function Avaliacoes({ searchParams }: { searchParams: Promise<{ servico?: string; faixa?: string; situacao?: string }> }) {
   const sp = await searchParams;
@@ -25,8 +25,10 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
   const todas = await listarAplicacoes(app.planilhas, usuario.autorizador);
   const servicos = [...new Map(todas.map((a) => [a.servico, a.servicoNome])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
   const faixas = [...new Set(todas.map((a) => a.faixa).filter((f): f is string => Boolean(f)))];
-  const lista = todas.filter((a) => (!sp.servico || a.servico === sp.servico) && (!sp.faixa || a.faixa === sp.faixa) && (!sp.situacao || a.situacao === sp.situacao));
+  const lista = todas.filter((a) => (!sp.servico || a.servico === sp.servico) && (!sp.faixa || a.faixa === sp.faixa) && (!sp.situacao || a.situacao === sp.situacao || a.reavaliacao === sp.situacao));
   const abertas = todas.filter((a) => a.situacao === 'aberta').length;
+  const atrasadas = todas.filter((a) => a.reavaliacao === 'atrasada').length;
+  const vencendo = todas.filter((a) => a.reavaliacao === 'vence_em_breve').length;
 
   return (
     <div className="space-y-5">
@@ -46,12 +48,22 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
         </EstadoVazio>
       ) : (
         <>
-          {abertas > 0 && (
-            <Link href="/educacao?situacao=aberta" className="inline-block rounded-cartao border border-borda-forte bg-superficie px-4 py-2.5 hover:border-texto-suave">
-              <span className="block text-2xl font-bold tabular-nums text-destaque">{abertas}</span>
-              <span className="text-sm">{abertas === 1 ? 'avaliação aberta para concluir' : 'avaliações abertas para concluir'}</span>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/educacao?situacao=atrasada" className="rounded-cartao border border-borda-forte bg-superficie px-4 py-2.5 hover:border-texto-suave">
+              <span className="block text-2xl font-bold tabular-nums text-destaque">{atrasadas}</span>
+              <span className="text-sm">{atrasadas === 1 ? 'reavaliação atrasada' : 'reavaliações atrasadas'}</span>
             </Link>
-          )}
+            <Link href="/educacao?situacao=vence_em_breve" className="rounded-cartao border border-borda-forte bg-superficie px-4 py-2.5 hover:border-texto-suave">
+              <span className="block text-2xl font-bold tabular-nums text-destaque">{vencendo}</span>
+              <span className="text-sm">{vencendo === 1 ? 'vence' : 'vencem'} nos próximos 30 dias</span>
+            </Link>
+            {abertas > 0 && (
+              <Link href="/educacao?situacao=aberta" className="rounded-cartao border border-borda-forte bg-superficie px-4 py-2.5 hover:border-texto-suave">
+                <span className="block text-2xl font-bold tabular-nums text-destaque">{abertas}</span>
+                <span className="text-sm">{abertas === 1 ? 'avaliação aberta para concluir' : 'avaliações abertas para concluir'}</span>
+              </Link>
+            )}
+          </div>
           <form method="get" className="flex flex-wrap items-end gap-3">
             <label className="block text-sm">
               <span className="font-semibold">Serviço</span>
@@ -102,6 +114,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                   <th scope="col" className={`${tabela.th} text-right`}>Total</th>
                   <th scope="col" className={tabela.th}>Faixa</th>
                   <th scope="col" className={tabela.th}>Situação</th>
+                  <th scope="col" className={tabela.th}>Próxima avaliação</th>
                   <th scope="col" className={tabela.th}><span className="sr-only">Ações</span></th>
                 </tr>
               </thead>
@@ -124,10 +137,27 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
                         {a.ehCorrecao && <Etiqueta>Correção</Etiqueta>}
                       </span>
                     </td>
+                    <td className={tabela.td}>
+                      {a.proximaAvaliacao ? br(a.proximaAvaliacao) : <span className="text-xs text-texto-suave">—</span>}
+                      {a.reavaliacao === 'atrasada' && <span className="block"><Etiqueta tipo="erro">Atrasada</Etiqueta></span>}
+                      {a.reavaliacao === 'vence_em_breve' && <span className="block"><Etiqueta tipo="atencao">Vence em breve</Etiqueta></span>}
+                    </td>
                     <td className={`${tabela.td} whitespace-nowrap text-right`}>
-                      <Link href={`/educacao/${a.id}`} className={link} aria-label={`Abrir avaliação de ${a.pessoaNome}`}>
-                        Abrir
+                      <Link href={`/educacao/${a.id}`} className={link} aria-label={`${a.situacao === 'aberta' ? 'Continuar' : 'Abrir'} avaliação de ${a.pessoaNome}`}>
+                        {a.situacao === 'aberta' ? 'Continuar' : 'Abrir'}
                       </Link>
+                      {a.situacao === 'fechada' && !a.corrigida && (
+                        <>
+                          {' · '}
+                          <Link href={`/educacao/${a.id}/comparativo`} className={link} aria-label={`Comparar períodos de ${a.pessoaNome}`}>Comparar</Link>
+                          {a.reavaliacao && (
+                            <>
+                              {' · '}
+                              <Link href={`/educacao/nova?pessoa=${encodeURIComponent(a.pessoaId)}`} className={link} aria-label={`Reavaliar ${a.pessoaNome}`}>Reavaliar</Link>
+                            </>
+                          )}
+                        </>
+                      )}
                     </td>
                   </PiscaOndeMudou>
                 ))}

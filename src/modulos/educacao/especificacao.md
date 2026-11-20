@@ -1,6 +1,6 @@
 # Especificação — Módulo Educação (avaliação de evolução)
 
-- Situação: aprovada (PR #171); entrega 1 (aplicar e fechar) construída, entregas 2 e 3 pendentes (issue #163)
+- Situação: aprovada (PR #171); entregas 1 (aplicar e fechar) e 2 (comparativo e ficha) construídas, entrega 3 pendente (issue #163)
 - Dono do produto: Diretoria
 - Arquitetura: ADR-029 (usa o motor da ADR-026 e as regras das ADR-006 e ADR-007)
 - Depende de: entrega 1 do motor de avaliação (issue #62, `src/capacidades/motor-avaliacao/`)
