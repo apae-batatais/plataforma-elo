@@ -198,6 +198,15 @@ export default async function Portal() {
           acao: 'Ver agendados',
         });
       }
+      if (c.enviosFalharam > 0) {
+        pendencias.push({
+          app: 'comunicacao',
+          texto: n(c.enviosFalharam, 'e-mail não saiu', 'e-mails não saíram'),
+          detalhe: 'O envio automático falhou. Tente de novo ou envie à mão.',
+          href: '/comunicacao/pedidos?fila=agendados',
+          acao: 'Ver agendados',
+        });
+      }
       if (c.aprovar > 0) {
         pendencias.push({
           app: 'comunicacao',

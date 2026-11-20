@@ -496,6 +496,7 @@ describe('avisos no início e no menu', () => {
       urgentes: 0,
       publicarHoje: 0,
       aprovar: 0,
+      enviosFalharam: 0,
     });
     expect(await contadoresComunicacao(p, await como(p, COMUNICACAO), { agora: noite })).toMatchObject({ revisar: 2, urgentes: 1, publicarHoje: 1, aprovar: 0 });
     expect(await contadoresComunicacao(p, await como(p, COORDENACAO), { agora: noite })).toMatchObject({ aprovar: 1 });

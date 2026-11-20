@@ -40,9 +40,11 @@ import {
   type Situacao,
   type TipoPeca,
 } from '../dominio/pedido';
+import { lerDestinatarios as lerDestinatariosDoJson } from '../dominio/envio';
 import { montarEmailPronto } from '../dominio/email-pronto';
 import { feriadosAtivos } from '@/nucleo/feriados/feriados';
 import { dataHoraEmBrasilia, diaEmBrasilia, ehUrgente } from '../dominio/prazos';
+import { cancelarEnviosPendentes, contarEnviosFalhos, sincronizarEnvioDoAgendamento } from './envios';
 import { conferirAnexosDoPedido, gravarAnexos, type AnexoPedido } from './anexos';
 import { dataValida, itensParaPedido, salvarItemCalendario, type DadosItemCalendario } from './calendario';
 import { lerAntecedencia } from './configuracoes';
@@ -210,6 +212,7 @@ export async function enviarPedido(
     destinatarios: null,
     link_publicacao: null,
     publicado_em: null,
+    envio_automatico: false,
   };
   const novo = await inserir(p, PedidosComunicacao, dados, autoriaDe(quem, agora));
   await gravarAnexos(p, quem, plano, novo.id, agora);
@@ -414,16 +417,7 @@ export async function editarNaRevisao(
 /** Peças que saem por e-mail: pedem destinatários ao agendar. */
 const SAI_POR_EMAIL: ReadonlySet<TipoPeca> = new Set<TipoPeca>(['release', 'artigo']);
 
-/** Grupos e contatos gravados no pedido (JSON); texto ilegível vale como vazio. */
-function lerDestinatarios(r: RegPedido): { grupos: string[]; contatos: string[] } {
-  try {
-    const v = JSON.parse(r.destinatarios ?? '{}') as { grupos?: unknown; contatos?: unknown };
-    const lista = (x: unknown) => (Array.isArray(x) ? x.filter((i): i is string => typeof i === 'string') : []);
-    return { grupos: lista(v.grupos), contatos: lista(v.contatos) };
-  } catch {
-    return { grupos: [], contatos: [] };
-  }
-}
+const lerDestinatarios = (r: RegPedido) => lerDestinatariosDoJson(r.destinatarios);
 
 /**
  * Agenda um pedido aprovado ou muda a data de um já agendado. `agendadoPara` é uma data e hora
@@ -435,8 +429,11 @@ export async function agendarPedido(
   quem: Autorizador,
   id: string,
   versao: number,
-  a: { agendadoPara: string; grupos: string[]; contatos: string[] },
-  opcoes: Opcoes = {},
+  a: { agendadoPara: string; grupos: string[]; contatos: string[]; /** Release e artigo: o Elo envia na hora marcada. */ envioAutomatico?: boolean },
+  opcoes: Opcoes & {
+    /** A instituição tem e-mail de envio? Sem ele, o envio automático é recusado. */
+    emailDisponivel?: boolean;
+  } = {},
 ): Promise<void> {
   exigirPermissao(quem, PERM.revisar);
   const agora = opcoes.agora ?? new Date();
@@ -447,6 +444,8 @@ export async function agendarPedido(
   if (!a.agendadoPara.trim() || Number.isNaN(quando.getTime())) throw new ErroComunicacao('Informe a data e a hora do agendamento.');
   if (quando.getTime() <= agora.getTime()) throw new ErroComunicacao('Escolha uma data e hora no futuro.');
   let destinatarios: string | null = null;
+  const automatico = SAI_POR_EMAIL.has(r.tipo_peca) && a.envioAutomatico === true;
+  if (automatico && !opcoes.emailDisponivel) throw new ErroComunicacao('A instituição ainda não informou o e-mail de envio. Escolha abrir o e-mail pronto no seu Gmail.');
   if (SAI_POR_EMAIL.has(r.tipo_peca)) {
     const escolha = { grupos: [...new Set(a.grupos)], contatos: [...new Set(a.contatos)] };
     if ((await destinatariosDe(p, escolha)).length === 0) throw new ErroComunicacao('Escolha pelo menos um contato ativo para receber o e-mail.');
@@ -457,9 +456,10 @@ export async function agendarPedido(
     PedidosComunicacao,
     id,
     versao,
-    { situacao: para, agendado_para: quando.toISOString(), destinatarios },
+    { situacao: para, agendado_para: quando.toISOString(), destinatarios, envio_automatico: automatico },
     autoriaDe(quem, agora),
   );
+  if (SAI_POR_EMAIL.has(r.tipo_peca)) await sincronizarEnvioDoAgendamento(p, quem, r, automatico, quando, agora);
   const anterior = acao === 'reagendar' && r.agendado_para ? `Data anterior: ${dataHoraEmBrasilia(r.agendado_para)}.` : null;
   await registrarMudanca(p, quem, r, acao, para, anterior, agora, colunasAlteradas);
 }
@@ -509,6 +509,7 @@ export async function publicarPedido(
     { situacao: para, link_publicacao: link, publicado_em: agora.toISOString() },
     autoriaDe(quem, agora),
   );
+  await cancelarEnviosPendentes(p, quem.email, id, agora);
   await registrarMudanca(p, quem, r, 'publicar', para, motivo, agora, colunasAlteradas);
 }
 
@@ -647,6 +648,7 @@ export async function contadoresComunicacao(p: Planilhas, quem: Autorizador, opc
       ? ativos.filter((r) => r.situacao === 'agendado' && r.agendado_para !== null && diaEmBrasilia(new Date(r.agendado_para)) === hoje).length
       : 0,
     aprovar: quem.temPermissao(PERM.aprovar) ? ativos.filter((r) => r.situacao === 'aguardando_aprovacao').length : 0,
+    enviosFalharam: await contarEnviosFalhos(p, quem),
   };
 }
 
