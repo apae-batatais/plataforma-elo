@@ -242,6 +242,8 @@ describe('abas e menu', () => {
   it('o menu da Execução usa as permissões certas', () => {
     expect(manifesto.menu.filter((m) => m.secao === 'Execução').map((m) => [m.rotulo, m.permissao])).toEqual([
       ['Informar realizado', 'orcamento.realizado.editar'],
+      ['Painel de execução', 'orcamento.execucao.ver'],
+      ['Recursos livres', 'orcamento.execucao.ver'],
       ['Realizado do ano', 'orcamento.execucao.ver'],
     ]);
   });

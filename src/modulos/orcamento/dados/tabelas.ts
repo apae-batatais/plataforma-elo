@@ -418,6 +418,8 @@ export const Realizado = definirTabela({
     nao_recorrente: booleano(),
     motivo_nao_recorrente: textoOpcional(),
     observacao: textoOpcional(),
+    /** Fonte restrita (termo) que o recurso livre adiantou; só em despesa "adiantamento a termo" (1C.2). */
+    fonte_termo_id: textoOpcional(),
   }),
 });
 export type RegRealizado = Registro<typeof Realizado.esquema>;

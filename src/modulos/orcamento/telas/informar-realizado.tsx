@@ -31,22 +31,23 @@ export interface LinhaGradeTela {
   naoRecorrente: boolean;
   motivo: string | null;
   observacao: string | null;
+  termoId: string | null;
 }
 
 export interface OpcoesTela {
   servicos: { codigo: string; nome: string }[];
   grupos: { id: string; nome: string; rh: boolean }[];
-  fontes: { id: string; nome: string }[];
+  fontes: { id: string; nome: string; restrita: boolean }[];
 }
 
 type Acao = (f: FormData) => void | Promise<void>;
-type Estado = { valor: string; nr: boolean; motivo: string; obs: string };
+type Estado = { valor: string; nr: boolean; motivo: string; obs: string; termo: string };
 type Extra = { id: number; tipo: TipoRealizado; servico: string; grupoId: string; fonteId: string; natureza: Natureza } & Estado;
 
 const MSG_VALOR = 'Use números, como 1.234,56.';
 const ID_FORM = 'form-realizado';
 const textoInicial = (v: number | null) => (v === null ? '' : v.toLocaleString('pt-BR', { minimumFractionDigits: 2, useGrouping: false }));
-const inicial = (l: LinhaGradeTela): Estado => ({ valor: textoInicial(l.realizado), nr: l.naoRecorrente, motivo: l.motivo ?? '', obs: l.observacao ?? '' });
+const inicial = (l: LinhaGradeTela): Estado => ({ valor: textoInicial(l.realizado), nr: l.naoRecorrente, motivo: l.motivo ?? '', obs: l.observacao ?? '', termo: l.termoId ?? '' });
 const numero = (t: string) => {
   const v = lerValorEmReais(t);
   return typeof v === 'number' ? v : 0;
@@ -110,7 +111,7 @@ export function InformarRealizado({
       for (const l of linhas) {
         const e = estados[l.chave];
         const i = inicial(l);
-        if (e && (e.valor !== i.valor || e.nr !== i.nr || e.motivo !== i.motivo || e.obs !== i.obs)) editados[l.chave] = { e, base: l.versao };
+        if (e && (e.valor !== i.valor || e.nr !== i.nr || e.motivo !== i.motivo || e.obs !== i.obs || e.termo !== i.termo)) editados[l.chave] = { e, base: l.versao };
       }
       if (Object.keys(editados).length || extras.length) sessionStorage.setItem(chaveRascunho, JSON.stringify({ estados: editados, extras }));
       else sessionStorage.removeItem(chaveRascunho);
@@ -122,7 +123,7 @@ export function InformarRealizado({
   const mudar = (chave: string, p: Partial<Estado>) => setEstados((a) => ({ ...a, [chave]: { ...a[chave], ...p } }));
   const mudarExtra = (id: number, p: Partial<Extra>) => setExtras((a) => a.map((x) => (x.id === id ? { ...x, ...p } : x)));
   const adicionar = (tipo: TipoRealizado) =>
-    setExtras((a) => [...a, { id: Date.now() + a.length, tipo, servico: '', grupoId: '', fonteId: '', natureza: naturezaSugerida(tipo, false), valor: '', nr: false, motivo: '', obs: '' }]);
+    setExtras((a) => [...a, { id: Date.now() + a.length, tipo, servico: '', grupoId: '', fonteId: '', natureza: naturezaSugerida(tipo, false), valor: '', nr: false, motivo: '', obs: '', termo: '' }]);
   const copiarPrevisto = (tipo: TipoRealizado) =>
     setEstados((a) => {
       const novo = { ...a };
@@ -151,7 +152,7 @@ export function InformarRealizado({
   let indice = -1;
   const campo = (i: number, nome: string) => `l${i}_${nome}`;
 
-  const celulaValor = (i: number, id: string, rotulo: string, e: Estado, aoMudar: (p: Partial<Estado>) => void, previsto: number) => {
+  const celulaValor = (i: number, id: string, rotulo: string, e: Estado, aoMudar: (p: Partial<Estado>) => void, previsto: number, natureza: Natureza, tipo: TipoRealizado) => {
     const invalido = lerValorEmReais(e.valor) === 'invalido';
     const dif = e.valor.trim() && !invalido ? diferencaPercentual(numero(e.valor), previsto) : null;
     return (
@@ -180,6 +181,21 @@ export function InformarRealizado({
           {dif !== null && <p className="mt-1 text-xs text-texto-suave">{dif > 0 ? '+' : ''}{percentual(dif)} sobre o previsto</p>}
         </td>
         <td className={tabela.td}>
+          {tipo === 'despesa' && natureza === 'adiantamento_termo' && (
+            <>
+              <label htmlFor={`termo-${id}`} className="block text-xs text-texto-suave">
+                Termo adiantado
+              </label>
+              <select id={`termo-${id}`} form={ID_FORM} name={campo(i, 'termo')} value={e.termo} onChange={(ev) => aoMudar({ termo: ev.target.value })} className={`${estiloEntrada} !mt-0 mb-1`}>
+                <option value="">{e.termo ? 'Escolha o termo' : 'Termo não informado'}</option>
+                {opcoes.fontes.filter((f) => f.restrita).map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.nome}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           <label htmlFor={`obs-${id}`} className="sr-only">
             Observação de {rotulo}
           </label>
@@ -242,7 +258,7 @@ export function InformarRealizado({
                       {podeEditar ? (
                         <>
                           {oculto(i, { tipo: l.tipo, servico: l.servico, grupo: l.grupoId, fonte: l.fonteId, natureza: l.natureza, versao: l.versao })}
-                          {celulaValor(i, l.chave, rotulo, estados[l.chave] ?? inicial(l), (p) => mudar(l.chave, p), l.previsto)}
+                          {celulaValor(i, l.chave, rotulo, estados[l.chave] ?? inicial(l), (p) => mudar(l.chave, p), l.previsto, l.natureza, l.tipo)}
                         </>
                       ) : (
                         <>
@@ -328,7 +344,7 @@ export function InformarRealizado({
                           Tirar linha
                         </button>
                       </td>
-                      {celulaValor(i, `extra-${x.id}`, 'linha adicionada', x, (p) => mudarExtra(x.id, p), 0)}
+                      {celulaValor(i, `extra-${x.id}`, 'linha adicionada', x, (p) => mudarExtra(x.id, p), 0, x.natureza, x.tipo)}
                     </tr>
                   );
                 })}

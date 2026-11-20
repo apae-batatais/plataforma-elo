@@ -83,7 +83,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
   const semEnvioAutomatico = !r.envio_automatico || envio === null || envio.situacao === 'falhou';
   const email = r.situacao === 'agendado' && sai && d.acoes.includes('publicar') && semEnvioAutomatico ? await emailProntoDoPedido(planilhas, usuario.autorizador, r.id) : null;
   const podeRevisar = usuario.autorizador.temPermissao('comunicacao.revisar');
-  const emInstagram = r.tipo_peca === 'post_instagram' && podeRevisar;
+  const emInstagram = (r.tipo_peca === 'post_instagram' || r.tipo_peca === 'reel_instagram') && podeRevisar;
   const instagram = emInstagram && doAgendamento
     ? { ...(await publicacaoAutomaticaDisponivel(planilhas, usuario.autorizador, r, instituicao.codigo).then((x) => ({ disponivel: x.disponivel, motivo: x.disponivel ? null : x.motivo }))), podeConfigurar: usuario.autorizador.temPermissao('comunicacao.configurar'), automatica: r.publicacao_automatica === true }
     : null;
@@ -174,7 +174,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
             {publicacao.link && (
               <p className="text-sm">
                 <a href={publicacao.link} className="text-destaque underline" target="_blank" rel="noreferrer">
-                  Abrir o post no Instagram
+                  Abrir {publicacao.tipo === 'reel' ? 'o Reel' : publicacao.tipo === 'carrossel' ? 'o carrossel' : 'o post'} no Instagram
                 </a>
               </p>
             )}
@@ -242,7 +242,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
       </Secao>
 
       {d.anexos.length > 0 && (
-        <Secao titulo="Fotos e documentos" descricao="Clique na foto para ver em tamanho grande. Cada abertura fica registrada." id="t-anexos">
+        <Secao titulo="Fotos, vídeo e documentos" descricao="Clique na foto para ver em tamanho grande. Cada abertura fica registrada." id="t-anexos">
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {d.anexos.map((a) => (
               <li key={a.id} className="overflow-hidden rounded-lg border border-borda bg-superficie-2">
@@ -268,7 +268,7 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
                     rel="noopener"
                     className="flex aspect-[4/3] items-center justify-center px-2 text-center text-sm font-semibold text-destaque underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--destaque)]"
                   >
-                    Abrir {a.mime === 'application/pdf' ? 'PDF' : 'documento Word'}
+                    Abrir {a.tipo === 'video' ? 'vídeo' : a.mime === 'application/pdf' ? 'PDF' : 'documento Word'}
                   </a>
                 )}
                 <p className="truncate px-3 py-1.5 text-xs text-texto-suave" title={a.nome}>

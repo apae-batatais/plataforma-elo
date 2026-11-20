@@ -68,7 +68,9 @@ describe('regras do arquivo', () => {
     expect(tipoDoArquivo('image/webp; charset=x')).toBe('foto');
     expect(tipoDoArquivo('application/pdf')).toBe('documento');
     expect(tipoDoArquivo(DOCX)).toBe('documento');
-    expect(tipoDoArquivo('video/mp4')).toBeNull();
+    expect(tipoDoArquivo('video/mp4')).toBe('video');
+    expect(tipoDoArquivo('video/quicktime')).toBe('video');
+    expect(tipoDoArquivo('video/webm')).toBeNull();
     expect(tipoDoArquivo('image/gif')).toBeNull();
     expect(tipoDoArquivo('application/msword')).toBeNull();
   });
@@ -87,9 +89,17 @@ describe('regras do arquivo', () => {
     ]);
   });
 
-  it('aceita até 5 arquivos', () => {
-    expect(conferirQuantidade(new Array(5).fill({}))).toEqual([]);
-    expect(conferirQuantidade(new Array(6).fill({}))).toEqual(['Cada pedido aceita até 5 arquivos.']);
+  it('aceita até 10 arquivos (um carrossel tem até 10 imagens)', () => {
+    expect(conferirQuantidade(new Array(10).fill({}))).toEqual([]);
+    expect(conferirQuantidade(new Array(11).fill({}))).toEqual(['Cada pedido aceita até 10 arquivos.']);
+  });
+
+  it('vídeo: MP4 ou MOV de até 100 MB', () => {
+    expect(conferirArquivo({ tipo: 'video', mime: 'video/mp4', tamanho: LIMITES_ANEXOS.videoBytes })).toEqual([]);
+    expect(conferirArquivo({ tipo: 'video', mime: 'video/quicktime', tamanho: 10 })).toEqual([]);
+    expect(conferirArquivo({ tipo: 'video', mime: 'video/mp4', tamanho: LIMITES_ANEXOS.videoBytes + 1 })).toEqual(['O vídeo tem 100 MB; o limite é 100 MB.']);
+    expect(conferirArquivo({ tipo: 'video', mime: 'video/webm', tamanho: 10 })).toEqual(['Envie o vídeo em MP4 ou MOV.']);
+    expect(conferirArquivo({ tipo: 'foto', mime: 'video/mp4', tamanho: 10 })).toEqual(['Envie a foto em JPG, PNG ou WebP.']);
   });
 });
 
@@ -175,13 +185,12 @@ describe('enviar com anexos', () => {
     expect(d.anexos[0].arquivo_id).toBe('');
   });
 
-  it('recusa mais de 5 arquivos e não grava o pedido', async () => {
-    const seis = [];
-    for (let i = 0; i < 6; i++) seis.push(await subir('documento'));
-    await expect(envia({ anexos: seis })).rejects.toThrow('Cada pedido aceita até 5 arquivos.');
+  it('recusa mais de 10 arquivos e não grava o pedido', async () => {
+    const onze = [];
+    for (let i = 0; i < 11; i++) onze.push(await subir('documento'));
+    await expect(envia({ anexos: onze })).rejects.toThrow('Cada pedido aceita até 10 arquivos.');
     expect((await lerTabela(p, PedidosComunicacao)).todos()).toHaveLength(0);
-    const cinco = seis.slice(0, 5);
-    await expect(envia({ anexos: cinco })).resolves.toBeTruthy();
+    await expect(envia({ anexos: onze.slice(0, 10) })).resolves.toBeTruthy();
   });
 
   it('recusa arquivo que não existe na pasta de anexos', async () => {
@@ -232,15 +241,15 @@ describe('ajustar (reenviar)', () => {
     expect(d.anexos).toHaveLength(2);
   });
 
-  it('um sexto arquivo é recusado depois de um ajuste', async () => {
+  it('um 11º arquivo é recusado depois de um ajuste', async () => {
     const cinco = [];
-    for (let i = 0; i < 5; i++) cinco.push(await subir('documento'));
+    for (let i = 0; i < 10; i++) cinco.push(await subir('documento'));
     const r = await devolvido(cinco);
     const sexto = await subir('documento');
     await expect(
       reenviarPedido(p, await como(p, FUNCIONARIO), r.id, (await pedidoDe(r.id)).versao, pedido({ anexos: [...cinco, sexto], imagemConfirmada: true }), { ...SEXTA, arquivos: arq }),
-    ).rejects.toThrow('Cada pedido aceita até 5 arquivos.');
-    expect((await linhas(r.id)).filter((x) => x.ativo)).toHaveLength(5);
+    ).rejects.toThrow('Cada pedido aceita até 10 arquivos.');
+    expect((await linhas(r.id)).filter((x) => x.ativo)).toHaveLength(10);
   });
 
   it('foto nova no ajuste exige a confirmação de novo', async () => {
@@ -309,12 +318,12 @@ describe('editar na revisão', () => {
     await expect(editarNaRevisao(p, com, id, (await pedidoDe(id)).versao, { anexos: [a] }, { ...SEXTA, arquivos: arq })).rejects.toThrow('Nenhuma alteração para salvar.');
   });
 
-  it('respeita o limite de 5 e o arquivo inexistente', async () => {
+  it('respeita o limite de 10 e o arquivo inexistente', async () => {
     const cinco = [];
-    for (let i = 0; i < 5; i++) cinco.push(await subir('documento'));
+    for (let i = 0; i < 10; i++) cinco.push(await subir('documento'));
     const { id, com } = await aRevisar(cinco);
     const v = (await pedidoDe(id)).versao;
-    await expect(editarNaRevisao(p, com, id, v, { anexos: [...cinco, await subir('documento')] }, { ...SEXTA, arquivos: arq })).rejects.toThrow('até 5 arquivos');
+    await expect(editarNaRevisao(p, com, id, v, { anexos: [...cinco, await subir('documento')] }, { ...SEXTA, arquivos: arq })).rejects.toThrow('até 10 arquivos');
     await expect(editarNaRevisao(p, com, id, v, { anexos: [{ arquivoId: 'nao-existe', tipo: 'documento' }] }, { ...SEXTA, arquivos: arq })).rejects.toThrow('não chegou');
   });
 

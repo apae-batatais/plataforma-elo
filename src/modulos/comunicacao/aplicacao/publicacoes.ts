@@ -1,5 +1,5 @@
 /**
- * Publicação automática no Instagram (ADR-028, entrega 2: post com imagem).
+ * Publicação automática no Instagram (ADR-028): post com imagem, carrossel (2 a 10 imagens) e Reel (1 vídeo).
  *
  * - Ao agendar com "Publicar pelo Elo", nasce uma `Publicacao` pendente (só uma viva por pedido).
  * - A rotina (`rodarPublicacoes`) publica na hora marcada, em duas etapas da Meta, e nunca publica o mesmo
@@ -16,7 +16,7 @@ import { atualizar, ErroConflito, inserir, lerTabelas, type Autoria, type Planil
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { segredoDaCredencial, situacaoPublicaDaCredencial } from '@/nucleo/credenciais/credenciais';
 import { ErroInstagram } from '@/nucleo/credenciais/instagram';
-import { MENSAGEM_SEM_RESPOSTA, type PublicadorInstagram } from '@/nucleo/credenciais/instagram-publicacao';
+import { MENSAGEM_IMAGEM_RECUSADA, MENSAGEM_SEM_RESPOSTA, MENSAGEM_VIDEO_RECUSADO, type PublicadorInstagram } from '@/nucleo/credenciais/instagram-publicacao';
 import {
   AnexosComunicacao,
   HistoricoComunicacao,
@@ -29,11 +29,13 @@ import { ErroComunicacao } from '../dominio/pedido';
 import {
   ATRASO_PARA_AVISAR_MIN,
   conferirLegenda,
-  imagemAceita,
   MAX_POR_CONTA_EM_24H,
   MAX_POR_RODADA,
   proximaTentativa,
+  tipoDePublicacao,
+  type TipoPublicacao,
   venceMidiaEm,
+  videoAceito,
 } from '../dominio/publicacao';
 
 const PERM_REVISAR = 'comunicacao.revisar';
@@ -43,27 +45,32 @@ const DIA = 24 * 60 * MIN;
 
 export const MENSAGEM_SEM_MIDIA = 'O pedido não tem a foto exigida pelo Instagram.';
 export const MENSAGEM_SO_JPG = 'A foto precisa ser JPG para o Instagram. Ajuste o pedido e anexe a foto de novo.';
+export const MENSAGEM_VIDEO_FORMATO = 'O vídeo precisa ser MP4 ou MOV para o Instagram. Ajuste o pedido e anexe o vídeo de novo.';
 
 const resumo = (codigo: string) => createHash('sha256').update(codigo).digest('hex');
 
-/** A foto do pedido que vai para o Instagram (a primeira foto ativa). */
-async function fotoDoPedido(p: Planilhas, pedidoId: string) {
+/** Fotos e vídeos ativos do pedido, na ordem em que foram anexados (a ordem do carrossel). */
+async function midiasDoPedido(p: Planilhas, pedidoId: string) {
   const [anexos] = await lerTabelas(p, [AnexosComunicacao] as const);
-  return anexos.ativos().find((a) => a.pedido_id === pedidoId && a.tipo === 'foto') ?? null;
+  return anexos.ativos().filter((a) => a.pedido_id === pedidoId && (a.tipo === 'foto' || a.tipo === 'video'));
 }
 
-/** Confere se o pedido pode sair pelo Elo. Chamado ao agendar. Nada é gravado. */
-export async function conferirPublicacaoAutomatica(p: Planilhas, r: RegPedido, instituicao: string, agora: Date): Promise<void> {
-  if (r.tipo_peca !== 'post_instagram') throw new ErroComunicacao('A publicação pelo Elo ainda vale só para post com imagem. Publique este pedido à mão.');
+/**
+ * Confere se o pedido pode sair pelo Elo e diz que publicação ele vira (post, carrossel ou Reel).
+ * Chamado ao agendar. Nada é gravado.
+ */
+export async function conferirPublicacaoAutomatica(p: Planilhas, r: RegPedido, instituicao: string, agora: Date): Promise<TipoPublicacao> {
   const situacao = await situacaoPublicaDaCredencial(p, instituicao, 'instagram', agora);
   if (situacao === 'nenhuma' || situacao === 'expirada') {
     throw new ErroComunicacao('O Instagram da instituição não está conectado. A coordenação conecta em Configurações.');
   }
-  const foto = await fotoDoPedido(p, r.id);
-  if (!foto) throw new ErroComunicacao(MENSAGEM_SEM_MIDIA);
-  if (!imagemAceita(foto.mime)) throw new ErroComunicacao(MENSAGEM_SO_JPG);
+  const midias = await midiasDoPedido(p, r.id);
+  const t = tipoDePublicacao(r.tipo_peca, midias);
+  if (!t.tipo) throw new ErroComunicacao(t.mensagem);
+  if (t.tipo === 'reel' && !videoAceito(midias.find((m) => m.tipo === 'video')!.mime)) throw new ErroComunicacao(MENSAGEM_VIDEO_FORMATO);
   const erro = conferirLegenda(r.descricao);
   if (erro) throw new ErroComunicacao(erro);
+  return t.tipo;
 }
 
 /** Pode oferecer "Publicar pelo Elo" neste pedido? (para a tela; não revela conta nem segredo) */
@@ -98,6 +105,7 @@ export async function sincronizarPublicacao(
   d: { automatica: boolean; previstaPara: string },
   agora: Date,
 ): Promise<void> {
+  const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
   const [tabela] = await lerTabelas(p, [PublicacoesComunicacao] as const);
   const vivas = tabela.ativos().filter((x) => x.pedido_id === pedidoId && VIVAS.has(x.situacao));
   if (vivas.some((x) => x.situacao === 'publicando')) {
@@ -111,15 +119,18 @@ export async function sincronizarPublicacao(
     await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'PublicacoesComunicacao', registroId: x.id, detalhes: { colunas: r.colunasAlteradas } }, agora);
   }
   if (!d.automatica) return;
+  // O tipo acompanha a mídia de agora (fotos ou vídeo podem ter mudado desde o último agendamento).
+  const t = tipoDePublicacao(pedidos.porId(pedidoId)?.tipo_peca ?? '', await midiasDoPedido(p, pedidoId));
+  const tipo: TipoPublicacao = t.tipo ?? 'post';
   if (pendente) {
-    const r = await atualizar(p, PublicacoesComunicacao, pendente.id, pendente.versao, { prevista_para: d.previstaPara, tentativas: 0, proxima_tentativa: null, erro: null }, autoria);
+    const r = await atualizar(p, PublicacoesComunicacao, pendente.id, pendente.versao, { tipo, prevista_para: d.previstaPara, tentativas: 0, proxima_tentativa: null, erro: null }, autoria);
     await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'PublicacoesComunicacao', registroId: pendente.id, detalhes: { colunas: r.colunasAlteradas } }, agora);
     return;
   }
   const nova = await inserir(
     p,
     PublicacoesComunicacao,
-    { pedido_id: pedidoId, tipo: 'post', prevista_para: d.previstaPara, situacao: 'pendente', tentativas: 0, proxima_tentativa: null, container_id: null, post_id: null, link: null, erro: null, publicada_em: null, codigo_midia: null, midia_vence_em: null },
+    { pedido_id: pedidoId, tipo, prevista_para: d.previstaPara, situacao: 'pendente', tentativas: 0, proxima_tentativa: null, container_id: null, post_id: null, link: null, erro: null, publicada_em: null, codigo_midia: null, midia_vence_em: null },
     autoria,
   );
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'PublicacoesComunicacao', registroId: nova.id, detalhes: { colunas: ['pedido_id', 'tipo', 'prevista_para', 'situacao', 'tentativas'] } }, agora);
@@ -127,6 +138,7 @@ export async function sincronizarPublicacao(
 
 /** Visão da publicação de um pedido para a tela (sem códigos). Só `comunicacao.revisar`. */
 export interface VisaoDaPublicacao {
+  tipo: TipoPublicacao;
   situacao: RegPublicacao['situacao'];
   previstaPara: string;
   tentativas: number;
@@ -145,6 +157,7 @@ export async function publicacaoDoPedido(p: Planilhas, quem: Autorizador, pedido
   const x = todas.sort((a, b) => a.criado_em.localeCompare(b.criado_em)).at(-1);
   if (!x) return null;
   return {
+    tipo: x.tipo,
     situacao: x.situacao,
     previstaPara: x.prevista_para,
     tentativas: x.tentativas,
@@ -201,19 +214,21 @@ export const instituicaoDoCodigo = (codigo: string): string | null => {
  * Abre a mídia de um código temporário. Código inexistente, vencido ou encerrado devolve null (sem pista do
  * motivo). Cada entrega vai para a auditoria como leitura de dado sensível.
  */
-export async function abrirMidiaTemporaria(p: Planilhas, arquivos: ArmazenamentoArquivos | null, codigo: string, agora = new Date()) {
+export async function abrirMidiaTemporaria(p: Planilhas, arquivos: ArmazenamentoArquivos | null, codigo: string, agora = new Date(), indice = 0) {
   if (!arquivos || codigo.length < 40 || codigo.length > 200) return null;
   const [pubs] = await lerTabelas(p, [PublicacoesComunicacao] as const);
   const h = resumo(codigo);
   const x = pubs.ativos().find((y) => y.codigo_midia === h);
   if (!x || x.situacao !== 'publicando' || !x.midia_vence_em || new Date(x.midia_vence_em).getTime() <= agora.getTime()) return null;
-  const foto = await fotoDoPedido(p, x.pedido_id);
-  if (!foto) return null;
-  await registrarAuditoria(p, { usuario: 'midia-temporaria', acao: 'leitura', entidade: 'AnexosComunicacao', registroId: foto.id }, agora);
+  // Só a mídia do tipo da publicação (Reel: o vídeo; post e carrossel: as fotos), pelo número na ordem.
+  const itens = (await midiasDoPedido(p, x.pedido_id)).filter((m) => m.tipo === (x.tipo === 'reel' ? 'video' : 'foto'));
+  const item = Number.isInteger(indice) && indice >= 0 ? itens[indice] : undefined;
+  if (!item) return null;
+  await registrarAuditoria(p, { usuario: 'midia-temporaria', acao: 'leitura', entidade: 'AnexosComunicacao', registroId: item.id }, agora);
   return {
-    tipo: foto.mime,
-    total: foto.tamanho,
-    lerTrecho: (inicio: number) => arquivos.ler(foto.arquivo_id, { inicio, fim: Math.min(inicio + TRECHO_MAXIMO, foto.tamanho) - 1 }),
+    tipo: item.mime,
+    total: item.tamanho,
+    lerTrecho: (inicio: number) => arquivos.ler(item.arquivo_id, { inicio, fim: Math.min(inicio + TRECHO_MAXIMO, item.tamanho) - 1 }),
   };
 }
 
@@ -314,10 +329,22 @@ export async function rodarPublicacoes(p: Planilhas, ctx: ContextoDaPublicacao, 
           continue;
         }
         try {
-          const foto = await fotoDoPedido(p, x.pedido_id);
-          if (!foto) throw new ErroInstagram(MENSAGEM_SEM_MIDIA);
-          if (!imagemAceita(foto.mime)) throw new ErroInstagram(MENSAGEM_SO_JPG);
-          const id = await ctx.publicador.criarContainerDeImagem(credencial.valor, `${ctx.urlBase}/api/midia-temporaria/${codigo}`, pedido.descricao);
+          // Confere de novo a mídia de agora (pode ter mudado desde o agendamento) e o tipo gravado.
+          const midias = await midiasDoPedido(p, x.pedido_id);
+          const t = tipoDePublicacao(pedido.tipo_peca, midias);
+          if (!t.tipo) throw new ErroInstagram(t.mensagem);
+          if (t.tipo === 'reel' && !videoAceito(midias.find((m) => m.tipo === 'video')!.mime)) throw new ErroInstagram(MENSAGEM_VIDEO_FORMATO);
+          if (t.tipo !== x.tipo) x = await gravar(x, { tipo: t.tipo });
+          const url = (n: number) => `${ctx.urlBase}/api/midia-temporaria/${codigo}?n=${n}`;
+          let id: string;
+          if (t.tipo === 'reel') id = await ctx.publicador.criarContainerDeVideo(credencial.valor, url(0), pedido.descricao);
+          else if (t.tipo === 'post') id = await ctx.publicador.criarContainerDeImagem(credencial.valor, url(0), pedido.descricao);
+          else {
+            // Carrossel: um contêiner por foto; o do carrossel nasce quando todos estiverem prontos.
+            const filhos: string[] = [];
+            for (let n = 0; n < midias.length; n++) filhos.push(await ctx.publicador.criarContainerDeItem(credencial.valor, url(n)));
+            id = filhos.join(',');
+          }
           x = await gravar(x, { container_id: id });
         } catch (e) {
           await falhar(x, motivoDe(e));
@@ -337,17 +364,37 @@ export async function rodarPublicacoes(p: Planilhas, ctx: ContextoDaPublicacao, 
         }
         let postId = x.post_id;
         if (!postId) {
-          const status = await ctx.publicador.statusDoContainer(credencial!.valor, x.container_id);
+          const recusa = x.tipo === 'reel' ? MENSAGEM_VIDEO_RECUSADO : MENSAGEM_IMAGEM_RECUSADA;
+          const vencida = Boolean(x.midia_vence_em && new Date(x.midia_vence_em).getTime() <= agora.getTime());
+          let containerId = x.container_id;
+          if (containerId.includes(',')) {
+            // Carrossel: espera todas as fotos ficarem prontas e só então cria o contêiner do carrossel.
+            const filhos = containerId.split(',');
+            const estados = [];
+            for (const f of filhos) estados.push(await ctx.publicador.statusDoContainer(credencial!.valor, f));
+            if (estados.includes('erro')) {
+              await falhar(x, recusa);
+              continue;
+            }
+            if (estados.includes('processando')) {
+              if (vencida) await falhar(x, MENSAGEM_SEM_RESPOSTA);
+              else conta('processando');
+              continue;
+            }
+            containerId = await ctx.publicador.criarContainerDeCarrossel(credencial!.valor, filhos, pedido.descricao);
+            x = await gravar(x, { container_id: containerId });
+          }
+          const status = await ctx.publicador.statusDoContainer(credencial!.valor, containerId);
           if (status === 'processando') {
-            if (x.midia_vence_em && new Date(x.midia_vence_em).getTime() <= agora.getTime()) await falhar(x, MENSAGEM_SEM_RESPOSTA);
+            if (vencida) await falhar(x, MENSAGEM_SEM_RESPOSTA);
             else conta('processando');
             continue;
           }
           if (status === 'erro') {
-            await falhar(x, 'A imagem não foi aceita pelo Instagram.');
+            await falhar(x, recusa);
             continue;
           }
-          postId = await ctx.publicador.publicar(credencial!.valor, x.container_id);
+          postId = await ctx.publicador.publicar(credencial!.valor, containerId);
           x = await gravar(x, { post_id: postId });
         }
         // Já publicado na Meta: só consulta o link, nunca recria.

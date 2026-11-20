@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Fotos e documentos no pedido de publicação (ADR-014).
+ * Fotos, vídeos e documentos no pedido de publicação (ADR-014; vídeo e carrossel na ADR-028).
  *
  * - "Tirar foto" abre a câmera direto no celular; no computador, abre a escolha de arquivo.
- *   "Escolher arquivo" aceita foto da galeria, PDF e DOCX.
+ *   "Escolher arquivo" aceita foto da galeria, vídeo (MP4 ou MOV), PDF e DOCX.
  * - A foto é reduzida aqui mesmo (lado maior até 1600 px, JPG) antes do envio.
- * - O documento (PDF ou DOCX, até 10 MB) vai como está.
+ * - O documento (PDF ou DOCX, até 10 MB) e o vídeo (até 100 MB) vão como estão.
  * - O arquivo vai direto para a pasta de anexos; o pedido só guarda a referência.
  */
 import { useEffect, useRef, useState } from 'react';
@@ -97,7 +97,7 @@ export function AnexosDoPedido({
   async function receber(arquivo: File) {
     setAviso(null);
     const tipo = tipoDoArquivo(arquivo.type) ?? (arquivo.type.startsWith('image/') ? 'foto' : null);
-    if (!tipo) return setAviso('Escolha uma foto (JPG, PNG ou WebP) ou um documento (PDF ou DOCX).');
+    if (!tipo) return setAviso('Escolha uma foto (JPG, PNG ou WebP), um vídeo (MP4 ou MOV) ou um documento (PDF ou DOCX).');
     let corpo: Blob = arquivo;
     let mime = arquivo.type;
     try {
@@ -115,7 +115,7 @@ export function AnexosDoPedido({
     const chave = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const previa = tipo === 'foto' ? URL.createObjectURL(corpo) : null;
     if (previa) previas.current.add(previa);
-    mudar((l) => [...l, { chave, tipo, nome: tipo === 'foto' ? nomeDaFotoReduzida(arquivo.name) : arquivo.name || 'documento', arquivoId: null, previa, progresso: 0, erro: null }]);
+    mudar((l) => [...l, { chave, tipo, nome: tipo === 'foto' ? nomeDaFotoReduzida(arquivo.name) : arquivo.name || (tipo === 'video' ? 'video' : 'documento'), arquivoId: null, previa, progresso: 0, erro: null }]);
     const r = await iniciar({ tipo, mime, tamanho: corpo.size });
     if (!r.url) return atualizar(chave, { erro: r.erro ?? 'Não foi possível enviar.' });
     try {
@@ -139,11 +139,12 @@ export function AnexosDoPedido({
     <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5 sm:p-6" aria-labelledby="t-anexos">
       <div>
         <h2 id="t-anexos" className="text-lg font-bold">
-          Fotos e documentos
+          Fotos, vídeo e documentos
         </h2>
         <p className="mt-0.5 text-sm text-texto-suave">
-          Opcional. Até {LIMITES_ANEXOS.arquivos} arquivos: fotos (JPG, PNG ou WebP) e documentos em PDF ou DOCX de até {mb(LIMITES_ANEXOS.documentoBytes)}. Vídeo não
-          entra aqui: cole o link da pasta do Drive no campo de vídeo.
+          Opcional. Até {LIMITES_ANEXOS.arquivos} arquivos: fotos (JPG, PNG ou WebP), vídeo em MP4 ou MOV de até {mb(LIMITES_ANEXOS.videoBytes)} e documentos em PDF
+          ou DOCX de até {mb(LIMITES_ANEXOS.documentoBytes)}. Para o Elo publicar, um post leva 1 foto, um carrossel de 2 a 10 fotos e um Reel 1 vídeo. Vídeo maior
+          pode ir como link da pasta do Drive, no campo de vídeo (neste caso você publica à mão).
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -157,7 +158,7 @@ export function AnexosDoPedido({
         <input
           ref={galeria}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx"
+          accept="image/jpeg,image/png,image/webp,image/heic,video/mp4,video/quicktime,.mp4,.mov,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,.docx"
           multiple
           className="sr-only"
           tabIndex={-1}
@@ -182,7 +183,9 @@ export function AnexosDoPedido({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={a.previa} alt="" className="h-full w-full object-cover" />
                 ) : (
-                  <span className="px-2 text-center text-sm font-semibold text-texto-suave">{a.nome.toLowerCase().endsWith('.docx') ? 'DOCX' : 'PDF'}</span>
+                  <span className="px-2 text-center text-sm font-semibold text-texto-suave">
+                    {a.tipo === 'video' ? 'Vídeo' : a.nome.toLowerCase().endsWith('.docx') ? 'DOCX' : 'PDF'}
+                  </span>
                 )}
               </div>
               <div className="space-y-1 px-2 py-1.5 text-xs">
@@ -202,7 +205,7 @@ export function AnexosDoPedido({
               <button
                 type="button"
                 onClick={() => mudar((l) => l.filter((x) => x.chave !== a.chave))}
-                aria-label={`Tirar ${a.tipo === 'foto' ? 'a foto' : `o documento ${a.nome}`}`}
+                aria-label={`Tirar ${a.tipo === 'foto' ? 'a foto' : a.tipo === 'video' ? `o vídeo ${a.nome}` : `o documento ${a.nome}`}`}
                 className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white opacity-90 transition-opacity duration-150 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--destaque)]"
               >
                 <IconeFechar tamanho={14} />

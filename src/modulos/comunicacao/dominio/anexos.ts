@@ -1,21 +1,24 @@
 /**
  * Fotos e documentos anexados ao pedido (ADR-014). Regras puras.
  *
- * Limites (decisão da Diretoria, 06/11/2026): até 5 arquivos por pedido; fotos
- * reduzidas no navegador antes do envio; documentos PDF ou DOCX de até 10 MB.
- * Vídeo não é anexado: entra como link de uma pasta do Drive.
+ * Limites: até 10 arquivos por pedido (um carrossel do Instagram tem até 10 imagens; era 5 até a
+ * entrega 3 da proposta #64); fotos reduzidas no navegador antes do envio; documentos PDF ou DOCX de
+ * até 10 MB; vídeo MP4 ou MOV de até 100 MB, para o Reel sair pelo Elo (ADR-028). O link da pasta do
+ * Drive continua valendo para vídeo que não vai pelo Elo.
  */
 
 export const LIMITES_ANEXOS = {
-  arquivos: 5,
+  arquivos: 10,
   /** Foto já reduzida no navegador (lado maior até 1600 px). */
   fotoBytes: 1_500_000,
   documentoBytes: 10 * 1024 * 1024,
+  videoBytes: 100 * 1024 * 1024,
 } as const;
 
-export type TipoAnexo = 'foto' | 'documento';
+export type TipoAnexo = 'foto' | 'documento' | 'video';
 
 const FOTOS = ['image/jpeg', 'image/png', 'image/webp'];
+const VIDEOS = ['video/mp4', 'video/quicktime'];
 const DOCUMENTOS = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
 
 /** Foto ou documento pelo tipo do arquivo; outro tipo não é aceito. */
@@ -23,6 +26,7 @@ export function tipoDoArquivo(mime: string): TipoAnexo | null {
   const m = mime.toLowerCase().split(';')[0].trim();
   if (FOTOS.includes(m)) return 'foto';
   if (DOCUMENTOS.includes(m)) return 'documento';
+  if (VIDEOS.includes(m)) return 'video';
   return null;
 }
 
@@ -32,11 +36,14 @@ export const mb = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('pt
 export function conferirArquivo(a: { tipo: TipoAnexo; mime: string; tamanho: number }): string[] {
   const erros: string[] = [];
   const pelo = tipoDoArquivo(a.mime);
-  if (!pelo || pelo !== a.tipo) erros.push(a.tipo === 'foto' ? 'Envie a foto em JPG, PNG ou WebP.' : 'Envie o documento em PDF ou DOCX.');
+  if (!pelo || pelo !== a.tipo)
+    erros.push(a.tipo === 'foto' ? 'Envie a foto em JPG, PNG ou WebP.' : a.tipo === 'video' ? 'Envie o vídeo em MP4 ou MOV.' : 'Envie o documento em PDF ou DOCX.');
   if (!(a.tamanho > 0)) erros.push('O arquivo está vazio.');
-  const limite = a.tipo === 'foto' ? LIMITES_ANEXOS.fotoBytes : LIMITES_ANEXOS.documentoBytes;
+  const limite = a.tipo === 'foto' ? LIMITES_ANEXOS.fotoBytes : a.tipo === 'video' ? LIMITES_ANEXOS.videoBytes : LIMITES_ANEXOS.documentoBytes;
   if (a.tamanho > limite)
-    erros.push(a.tipo === 'foto' ? `A foto passa de ${mb(limite)}.` : `O documento tem ${mb(a.tamanho)}; o limite é ${mb(limite)}.`);
+    erros.push(
+      a.tipo === 'foto' ? `A foto passa de ${mb(limite)}.` : `${a.tipo === 'video' ? 'O vídeo' : 'O documento'} tem ${mb(a.tamanho)}; o limite é ${mb(limite)}.`,
+    );
   return erros;
 }
 
@@ -50,6 +57,7 @@ export function extensaoDoMime(mime: string): string {
   const m = mime.toLowerCase().split(';')[0].trim();
   if (m === 'application/pdf') return 'pdf';
   if (m.endsWith('wordprocessingml.document')) return 'docx';
+  if (m === 'video/quicktime') return 'mov';
   return m.split('/')[1]?.replace('jpeg', 'jpg') ?? 'bin';
 }
 

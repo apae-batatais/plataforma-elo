@@ -1,6 +1,6 @@
 /**
  * Manifesto do módulo Orçamento — Entregas 1A (Folha de Pagamento), 1B (Previsão) 1D.1 (Tesouraria) e 1E (Histórico).
- * 1C.1 (Realizado informado à mão): abas e permissões da Execução.
+ * 1C.1 (Realizado informado à mão): abas e permissões da Execução. 1C.2: Painel de execução e Recursos livres (só leitura).
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
 
@@ -39,6 +39,8 @@ export const manifesto = defineModulo({
     { rotulo: 'Fim do ano', caminho: '/tesouraria/fim-do-ano', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
     { rotulo: 'Reserva', caminho: '/tesouraria/reserva', permissao: 'orcamento.tesouraria.ver', secao: 'Tesouraria' },
     { rotulo: 'Informar realizado', caminho: '/execucao/realizado', permissao: 'orcamento.realizado.editar', secao: 'Execução' },
+    { rotulo: 'Painel de execução', caminho: '/execucao/painel', permissao: 'orcamento.execucao.ver', secao: 'Execução' },
+    { rotulo: 'Recursos livres', caminho: '/execucao/recursos-livres', permissao: 'orcamento.execucao.ver', secao: 'Execução' },
     { rotulo: 'Realizado do ano', caminho: '/execucao', permissao: 'orcamento.execucao.ver', secao: 'Execução' },
     { rotulo: 'Indicadores', caminho: '/historico', permissao: 'orcamento.historico.ver', secao: 'Histórico' },
     { rotulo: 'Fontes de receita', caminho: '/historico/fontes', permissao: 'orcamento.historico.ver', secao: 'Histórico' },

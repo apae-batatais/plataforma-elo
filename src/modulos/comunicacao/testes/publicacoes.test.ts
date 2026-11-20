@@ -57,15 +57,21 @@ async function foto(mime = 'image/jpeg') {
   return { arquivoId: g.id, tipo: 'foto' as const };
 }
 
+async function video(mime = 'video/mp4') {
+  const { url } = await iniciarEnvioAnexoComunicacao(p, await como(p, FUNCIONARIO), arq, { tipo: 'video', mime, tamanho: 80, origem: 'http://localhost' });
+  const g = arq.receber(url.replace('/envio/', ''), new Uint8Array(80).fill(5));
+  return { arquivoId: g.id, tipo: 'video' as const };
+}
+
 /** Pedido aprovado (post por padrão, com uma foto JPG). */
-async function aprovado(opcoes: { tipo?: TipoPeca; comFoto?: boolean; mime?: string; descricao?: string } = {}) {
+async function aprovado(opcoes: { tipo?: TipoPeca; comFoto?: boolean; mime?: string; descricao?: string; anexos?: { arquivoId: string; tipo: 'foto' | 'video' }[] } = {}) {
   const comFoto = opcoes.comFoto ?? true;
   const { id } = await enviarPedido(
     p,
     await como(p, FUNCIONARIO),
     {
       area: 'educacao', calendarioId: null, tipoPeca: opcoes.tipo ?? 'post_instagram', titulo: 'Convite', descricao: opcoes.descricao ?? 'Legenda fictícia.',
-      dataDesejada: '2026-11-25', linkVideo: null, imagemConfirmada: comFoto, nomeSolicitante: 'Pessoa', anexos: comFoto ? [await foto(opcoes.mime)] : [],
+      dataDesejada: '2026-11-25', linkVideo: null, imagemConfirmada: comFoto || Boolean(opcoes.anexos), nomeSolicitante: 'Pessoa', anexos: opcoes.anexos ?? (comFoto ? [await foto(opcoes.mime)] : []),
     },
     { agora: AGORA, arquivos: arq },
   );
@@ -104,9 +110,9 @@ describe('agendar com "Publicar pelo Elo"', () => {
     await expect(agendar(semConta)).rejects.toThrow(/não está conectado/);
     await conectar();
     await expect(agendar(await aprovado({ comFoto: false }))).rejects.toThrow(/foto exigida/);
-    await expect(agendar(await aprovado({ mime: 'image/png' }))).rejects.toThrow(/precisa ser JPG/);
+    await expect(agendar(await aprovado({ mime: 'image/png' }))).rejects.toThrow(/precisam ser JPG/);
     await expect(agendar(await aprovado({ descricao: 'a'.repeat(2201) }))).rejects.toThrow(/2\.200/);
-    await expect(agendar(await aprovado({ tipo: 'reel_instagram' }))).rejects.toThrow(/só para post/);
+    await expect(agendar(await aprovado({ tipo: 'reel_instagram' }))).rejects.toThrow(/exatamente 1 vídeo/);
     await expect(agendar(await aprovado(), true, HORA, '')).rejects.toBeInstanceOf(ErroComunicacao);
     expect((await lerTabela(p, PublicacoesComunicacao)).todos()).toHaveLength(0);
   });
@@ -309,7 +315,7 @@ describe('mídia temporária', () => {
     const id = await agendadoPeloElo();
     pub.processandoPor = 99;
     await rodarPublicacoes(p, ctx(), APOS_HORA);
-    const codigo = pub.containers[0].url.split('/').pop()!;
+    const codigo = pub.containers[0].url.split('/').pop()!.split('?')[0];
     return { id, codigo };
   }
 
@@ -381,9 +387,125 @@ describe('isolamento entre instituições', () => {
     const id = await agendadoPeloElo();
     pub.processandoPor = 99;
     await rodarPublicacoes(p, ctx(), APOS_HORA);
-    const codigo = pub.containers[0].url.split('/').pop()!;
+    const codigo = pub.containers[0].url.split('/').pop()!.split('?')[0];
     expect(id).toBeTruthy();
     const outras = await planilhasDeComunicacao();
     expect(await abrirMidiaTemporaria(outras, new ArquivosMemoria(), codigo, new Date(APOS_HORA.getTime() + MIN))).toBeNull();
+  });
+});
+
+describe('carrossel e Reel (entrega 3)', () => {
+  const tresFotos = async () => [await foto(), await foto(), await foto()];
+
+  it('o número de fotos decide: 1 foto é post, 2 a 10 é carrossel, 11 não cabe no pedido', async () => {
+    await conectar();
+    const um = await aprovado();
+    await agendar(um);
+    expect((await pubsDe(um))[0].tipo).toBe('post');
+    const car = await aprovado({ anexos: await tresFotos() });
+    await agendar(car);
+    expect((await pubsDe(car))[0].tipo).toBe('carrossel');
+    const dez = [];
+    for (let i = 0; i < 10; i++) dez.push(await foto());
+    const max = await aprovado({ anexos: dez });
+    await agendar(max);
+    expect((await pubsDe(max))[0].tipo).toBe('carrossel');
+  });
+
+  it('carrossel com foto que não é JPG, ou com vídeo, é recusado ao agendar', async () => {
+    await conectar();
+    await expect(agendar(await aprovado({ anexos: [await foto(), await foto('image/png')] }))).rejects.toThrow(/precisam ser JPG/);
+    await expect(agendar(await aprovado({ anexos: [await foto(), await video()] }))).rejects.toThrow(/só fotos/);
+    expect((await lerTabela(p, PublicacoesComunicacao)).todos()).toHaveLength(0);
+  });
+
+  it('Reel exige 1 vídeo MP4 ou MOV; foto sozinha ou dois vídeos não servem', async () => {
+    await conectar();
+    await expect(agendar(await aprovado({ tipo: 'reel_instagram' }))).rejects.toThrow(/exatamente 1 vídeo/);
+    await expect(agendar(await aprovado({ tipo: 'reel_instagram', anexos: [await video(), await video()] }))).rejects.toThrow(/exatamente 1 vídeo/);
+    const ok = await aprovado({ tipo: 'reel_instagram', anexos: [await video('video/quicktime')] });
+    await agendar(ok);
+    expect((await pubsDe(ok))[0].tipo).toBe('reel');
+  });
+
+  it('publica o carrossel: um contêiner por foto, o do carrossel só quando todas estão prontas, e publica uma vez', async () => {
+    await conectar();
+    const id = await aprovado({ anexos: await tresFotos() });
+    await agendar(id);
+    pub.processandoPor = 1;
+    expect(await rodarPublicacoes(p, ctx(), APOS_HORA)).toEqual({ processando: 1 });
+    expect(pub.containers.map((c) => c.tipo)).toEqual(['item', 'item', 'item']);
+    expect(pub.containers.every((c) => c.legenda === '')).toBe(true);
+    expect(pub.containers.map((c) => c.url.split('?n=')[1])).toEqual(['0', '1', '2']);
+    expect(pub.publicados).toEqual([]);
+    pub.processandoPor = 0;
+    expect(await rodarPublicacoes(p, ctx(), new Date(APOS_HORA.getTime() + 5 * MIN))).toEqual({ publicadas: 1 });
+    const pai = pub.containers.at(-1)!;
+    expect(pai).toMatchObject({ tipo: 'carrossel', legenda: 'Legenda fictícia.', itens: ['container-1', 'container-2', 'container-3'] });
+    expect(pub.publicados).toEqual([pai.id]);
+    expect((await pedidoDe(id)).situacao).toBe('publicado');
+    expect(await rodarPublicacoes(p, ctx(), new Date(APOS_HORA.getTime() + 10 * MIN))).toEqual({});
+    expect(pub.publicados).toHaveLength(1);
+  });
+
+  it('carrossel com foto recusada pela Meta falha e tenta de novo', async () => {
+    await conectar();
+    const id = await aprovado({ anexos: await tresFotos() });
+    await agendar(id);
+    pub.falharStatus = true;
+    expect(await rodarPublicacoes(p, ctx(), APOS_HORA)).toEqual({ novas_tentativas: 1 });
+    expect((await pubsDe(id))[0]).toMatchObject({ situacao: 'pendente', erro: 'A imagem não foi aceita pelo Instagram.', container_id: null });
+  });
+
+  it('publica o Reel com o vídeo do pedido e legenda; vídeo recusado diz "vídeo"', async () => {
+    await conectar();
+    const id = await aprovado({ tipo: 'reel_instagram', anexos: [await video()] });
+    await agendar(id);
+    expect(await rodarPublicacoes(p, ctx(), APOS_HORA)).toEqual({ publicadas: 1 });
+    expect(pub.containers).toHaveLength(1);
+    expect(pub.containers[0]).toMatchObject({ tipo: 'video', legenda: 'Legenda fictícia.' });
+    expect((await pubsDe(id))[0]).toMatchObject({ situacao: 'publicada', tipo: 'reel' });
+    const outro = await aprovado({ tipo: 'reel_instagram', anexos: [await video()] });
+    await agendar(outro);
+    pub.falharStatus = true;
+    await rodarPublicacoes(p, ctx(), new Date(APOS_HORA.getTime() + MIN));
+    expect((await pubsDe(outro))[0].erro).toBe('O vídeo não foi aceito pelo Instagram.');
+  });
+
+  it('a mídia temporária entrega o item pedido (n) e só do tipo da publicação', async () => {
+    await conectar();
+    const id = await aprovado({ anexos: await tresFotos() });
+    await agendar(id);
+    pub.processandoPor = 99;
+    await rodarPublicacoes(p, ctx(), APOS_HORA);
+    const codigo = pub.containers[0].url.split('/').pop()!.split('?')[0];
+    const agora = new Date(APOS_HORA.getTime() + MIN);
+    for (const n of [0, 1, 2]) expect((await abrirMidiaTemporaria(p, arq, codigo, agora, n))!.tipo).toBe('image/jpeg');
+    expect(await abrirMidiaTemporaria(p, arq, codigo, agora, 3)).toBeNull();
+    expect(await abrirMidiaTemporaria(p, arq, codigo, agora, -1)).toBeNull();
+    expect(await abrirMidiaTemporaria(p, arq, codigo, agora, 1.5)).toBeNull();
+    const leituras = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => a.acao === 'leitura' && a.usuario === 'midia-temporaria');
+    expect(leituras).toHaveLength(3);
+  });
+
+  it('a mídia temporária do Reel entrega o vídeo', async () => {
+    await conectar();
+    const id = await aprovado({ tipo: 'reel_instagram', anexos: [await video()] });
+    await agendar(id);
+    pub.processandoPor = 99;
+    await rodarPublicacoes(p, ctx(), APOS_HORA);
+    const codigo = pub.containers[0].url.split('/').pop()!.split('?')[0];
+    const m = await abrirMidiaTemporaria(p, arq, codigo, new Date(APOS_HORA.getTime() + MIN));
+    expect(m!.tipo).toBe('video/mp4');
+    expect(m!.total).toBe(80);
+  });
+
+  it('isolamento: carrossel de uma instituição nunca usa a conta da outra', async () => {
+    await conectar('exemplo', 'conta_a');
+    await conectar('outra', 'conta_b');
+    const id = await aprovado({ anexos: await tresFotos() });
+    await agendar(id);
+    await rodarPublicacoes(p, ctx(), APOS_HORA);
+    expect(new Set(pub.containers.map((c) => c.token))).toEqual(new Set(['token-exemplo']));
   });
 });

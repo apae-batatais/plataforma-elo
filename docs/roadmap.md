@@ -134,7 +134,7 @@ Requisições (#61) e botão "Enviar e-mail de teste" (sugestão).
 
 Especificada em 15/11/2026 (#64, ADR-028): conexão da conta de cada OSC pelo Elo (credenciais cifradas),
 post com imagem, Reel e carrossel, rotina compartilhada com a #63. A Meta exige revisão do app e
-verificação da empresa para outras OSCs usarem (pendência da Diretoria). Ficam para depois: história
+verificação da empresa para outras OSCs usarem (pendência da Diretoria). Entregue em 20/11/2026 (entrega 3 de 3: Reel e carrossel). Ficam para depois: capa própria do Reel, história
 (story), comentários e mensagens, publicar no Facebook, escolher "primeiro comentário" e conta
 pessoal (a Meta só aceita conta profissional).
 

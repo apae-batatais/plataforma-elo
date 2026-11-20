@@ -1,6 +1,6 @@
 # ADR-035 · Cadastro de pessoa e vínculo com serviço no Núcleo
 
-Situação: proposta · Data: 18 de novembro de 2026 · Proposta: #198
+Situação: aceita · Data: 18 de novembro de 2026 · Proposta: #198
 
 ## Contexto
 
