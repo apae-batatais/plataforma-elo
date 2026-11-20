@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { redirect } from 'next/navigation';
 import { lerGradeDoMes } from '@/modulos/orcamento/aplicacao/realizado';
 import { mesInformavel } from '@/modulos/orcamento/dominio/realizado';
@@ -25,7 +26,11 @@ export default async function InformarRealizadoPagina({ searchParams }: { search
   const disponivel = !!pedido && mesInformavel(pedido, atual);
   const mes = disponivel ? pedido : mesAnterior(atual);
   const app = await obterAplicacao();
-  const g = await lerGradeDoMes(app.planilhas, usuario.autorizador, mes);
+  // Quem não vê o realizado (ex.: Leitura) volta ao Orçamento em vez de ver "Algo deu errado".
+  const g = await lerGradeDoMes(app.planilhas, usuario.autorizador, mes).catch((erro) => {
+    if (erro instanceof ErroPermissao) redirect('/orcamento');
+    throw erro;
+  });
   const jaTinha = [...g.despesas, ...g.receitas].some((l) => l.versao !== null);
 
   return (
