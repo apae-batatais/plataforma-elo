@@ -455,9 +455,9 @@ export async function popularReservaFicticia(p: Planilhas): Promise<void> {
     fonte_id: fonte, natureza: extra.natureza, valor, nao_recorrente: false, motivo_nao_recorrente: null, observacao: null,
   });
   const linhas = meses.flatMap((mes, i) => [
-    linha(mes, 'receita', livre.id, 100000 + i * 1500, { natureza: 'receita_comum' }),
-    linha(mes, 'despesa', livre.id, 70000 + i * 900, { grupo: custeio.id, natureza: 'custeio' }),
-    linha(mes, 'despesa', livre.id, 20000, { grupo: rh.id, natureza: 'rh' }),
+    linha(mes, 'receita', livre.id, 45000 + i * 600, { natureza: 'receita_comum' }),
+    linha(mes, 'despesa', livre.id, 26000 + i * 300, { grupo: custeio.id, natureza: 'custeio' }),
+    linha(mes, 'despesa', livre.id, 10000, { grupo: rh.id, natureza: 'rh' }),
   ]);
   // Conta vinculada 1 confere (entrada = diferença dos saldos) e a 2 fica com R$ 560,00 de diferença.
   linhas.push(linha(ultimo, 'receita', restritas[0].id, 2892.02, { natureza: 'receita_comum' }));

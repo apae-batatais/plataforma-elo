@@ -48,12 +48,17 @@ export default async function VisaoGeralPagina() {
           acao={primeira && <LinkBotao href={primeira.href}>{primeira.acao}</LinkBotao>}
         >
           <ul className="list-disc space-y-1 pl-5">
-            {v.pendencias.map((x) => (
+            {v.pendencias.map((x, i) => (
               <li key={x.texto}>
-                {x.texto} ·{' '}
-                <Link href={x.href} className="font-semibold underline">
-                  {x.acao}
-                </Link>
+                {x.texto}
+                {i > 0 && (
+                  <>
+                    {' · '}
+                    <Link href={x.href} className="font-semibold underline">
+                      {x.acao}
+                    </Link>
+                  </>
+                )}
               </li>
             ))}
           </ul>

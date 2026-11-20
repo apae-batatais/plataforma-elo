@@ -5,4 +5,4 @@
 - [x] 3. Casos de uso e testes de acesso
 - [x] 4. Telas (Conferência, Fim do ano, Reserva, Visão geral)
 - [x] 5. Demonstração, documentação, `npm run verificar` verde
-- [ ] 6. `npm run build` verde, atualizar com a `main`, abrir o PR
+- [x] 6. `npm run build` verde, atualizado com a `main`, PR aberto
