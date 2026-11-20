@@ -336,7 +336,7 @@ export function BarrasHorizontais({ categorias, series, formato, rotuloCategoria
 }
 
 /** Barras 100%: a composição de cada categoria (ex.: receita pública × própria por ano). */
-export function Barras100({ categorias, series, rotuloCategoria, descricao }: { categorias: string[]; series: Serie[]; rotuloCategoria: string; descricao: string }) {
+export function Barras100({ categorias, series, rotuloCategoria, descricao, formatoTabela = 'moeda' }: { categorias: string[]; series: Serie[]; rotuloCategoria: string; descricao: string; formatoTabela?: Formato }) {
   series = naCorDoApp(series);
   const totais = categorias.map((_, i) => series.reduce((s, x) => s + (x.valores[i] ?? 0), 0) || 1);
   // Anima a proporção (0 a 100) de cada pedaço; o texto do pedaço usa a proporção final.
@@ -370,7 +370,7 @@ export function Barras100({ categorias, series, rotuloCategoria, descricao }: { 
           );
         })}
       </ul>
-      <TabelaDoGrafico categorias={categorias} series={series} formato="moeda" rotuloCategoria={rotuloCategoria} />
+      <TabelaDoGrafico categorias={categorias} series={series} formato={formatoTabela} rotuloCategoria={rotuloCategoria} />
     </figure>
   );
 }
