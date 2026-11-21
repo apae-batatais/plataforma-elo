@@ -285,5 +285,4 @@ Especificada em 21/11/2026. Ficou para depois:
 - [ ] Campo de passageiros conferido com a capacidade do veículo.
 - [ ] Aviso por e-mail ao Transporte (junto com o aviso por e-mail das requisições).
 - [ ] Relatório de quilometragem e de usos com problema por veículo e mês.
-- [ ] Centros de custo no pedido de veículo, se a Diretoria quiser ratear o custo.
 - [ ] Condutor ligado ao cadastro de pessoas; abastecimento, multas e vistoria com foto.

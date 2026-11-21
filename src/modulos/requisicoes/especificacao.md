@@ -96,6 +96,9 @@ Novo tipo de requisição, com tela própria (mesmo padrão de "Ficha" da propos
 `FichaVeiculo`, sem entrar no `if` da tela única). Sem ADR: o fluxo novo fica dentro do módulo, o
 perfil novo é declarado no manifesto como os outros setores e o Núcleo não muda.
 
+Ajuste de 21/11/2026: a Diretoria confirmou que o pedido de veículo tem centros de custo, como os
+outros tipos (regra 14), para estatística de uso por serviço — não é rateio de despesa.
+
 ### Objetivo e para quem
 
 Quem precisa de um veículo institucional reserva pelo Elo, com finalidade. O setor Transporte
@@ -127,8 +130,9 @@ veículo" é cadastrado em Tipos de requisição com perfil responsável `transp
 | VeiculoUsos (nova) | Requisição, resultado (`sem_problema` ou `com_problema`), texto do problema, km de saída, km de volta, quem registrou e quando | interno (`registrado_por`: pessoal) |
 | Requisicoes (existente) | O pedido em si; os campos da ficha vão em `detalhes` (JSON): veículo, saída, volta prevista, destino, finalidade, condutor | `condutor` é dado pessoal |
 
-Pedido de veículo não tem centros de custo nem itens. A área do pedido continua obrigatória
-(valem as "áreas permitidas" do tipo).
+Pedido de veículo reaproveita a aba `Centros` (comum a todos os tipos, regra 1 geral do módulo)
+para os centros de custo; não tem itens. A área do pedido continua obrigatória (valem as "áreas
+permitidas" do tipo).
 
 ### Regras de negócio (com teste)
 
@@ -174,18 +178,27 @@ Pedido de veículo não tem centros de custo nem itens. A área do pedido contin
 13. **Auditoria:** toda gravação registra colunas alteradas (nunca valores). Ler o condutor e o
     histórico segue a regra de quem vê a requisição. Nada é apagado: pedido, manutenção e uso só
     recebem inclusões e mudança de situação.
+14. **Centros de custo (decisão da Diretoria, 21/11/2026):** o pedido de veículo tem centros de
+    custo como os outros tipos (regra 1 geral do módulo: um ou mais serviços, sem repetir, somando
+    100%). Não gera despesa nem rateio — serve só para depois saber quais serviços mais usam os
+    veículos (relatório por serviço: fica de fora desta entrega, ver "Fica de fora"). As regras 2 e
+    3 gerais (mesma coordenação entre os centros; quem pede da própria coordenação ou serviço sem
+    coordenação vai para a Diretoria) **não valem aqui**: quem aprova veículo é sempre o Transporte
+    (regra 7), não a coordenação dos centros escolhidos — os centros podem ser de coordenações
+    diferentes no mesmo pedido.
 
 ### Telas
 
 1. **Pedir veículo** (`/requisicoes/nova`, tipo "Uso de veículo", `FichaVeiculo`). Quem pede quer
-   reservar em poucos cliques: escolher tipo → veículo → saída/volta → destino/finalidade →
-   "Enviar pedido". Primeira dobra: tipo, veículo e período. Ao escolher veículo e período aparece
-   o aviso de conflito (regra 4) ou de manutenção (veículo indisponível: some da lista e uma dica
-   diz "alguns veículos não aparecem porque estão em manutenção nessas datas"). Campos: veículo
-   (lista com nome, placa e capacidade), saída e volta prevista (data e hora, rótulos sempre
-   visíveis, dica "dia/mês/ano hora:minuto"), destino, finalidade (dica: "para que será usado"),
-   condutor (já preenchido). Erro: nada digitado se perde, a mensagem diz o campo. Celular:
-   campos em coluna, data e hora nativas do aparelho.
+   reservar em poucos cliques: escolher tipo → área e centros de custo (bloco comum, como nos
+   outros tipos) → veículo → saída/volta → destino/finalidade → "Enviar pedido". Primeira dobra:
+   tipo, veículo e período. Ao escolher veículo e período aparece o aviso de conflito (regra 4) ou
+   de manutenção (veículo indisponível: some da lista e uma dica diz "alguns veículos não aparecem
+   porque estão em manutenção nessas datas"). Campos: centros de custo (um ou mais serviços,
+   somando 100%, igual aos outros tipos), veículo (lista com nome, placa e capacidade), saída e
+   volta prevista (data e hora, rótulos sempre visíveis, dica "dia/mês/ano hora:minuto"), destino,
+   finalidade (dica: "para que será usado"), condutor (já preenchido). Erro: nada digitado se
+   perde, a mensagem diz o campo. Celular: campos em coluna, data e hora nativas do aparelho.
 2. **Para aprovar (Transporte):** a lista que já existe, com todos os pedidos de veículo,
    ordenados pela saída, com selo "Conflito" e "Manutenção" nos que têm. Ficha: dados do pedido,
    quadro "Pedidos neste horário" (conflitos) e botões **Aprovar pedido**, **Devolver**, **Recusar**.
@@ -217,16 +230,15 @@ Sem gráfico nesta entrega.
 
 ### Fica de fora
 
-Reserva de espaços (#230), centros de custo e rateio por veículo, abastecimento, multas,
-vistoria com foto, manutenção corretiva, histórico de manutenções na tela (fica gravado em
-`VeiculoManutencoes`), condutor ligado ao cadastro de pessoas.
+Reserva de espaços (#230), relatório de uso por serviço/centro de custo, rateio de despesa por
+veículo (não há despesa a ratear), abastecimento, multas, vistoria com foto, manutenção
+corretiva, histórico de manutenções na tela (fica gravado em `VeiculoManutencoes`), condutor
+ligado ao cadastro de pessoas.
 
 ### Decisões tomadas sozinho (e o que custam se estiverem erradas)
 
 - **Condutor em texto livre**, não ligado a usuário do Elo (o motorista pode não ter acesso).
   Errado: trocar para escolha de pessoa exige migrar o campo (baixo).
-- **Sem centros de custo** no pedido de veículo (a proposta não os cita). Errado: reaproveitar o
-  bloco comum de centros (médio, muda a aprovação).
 - **Diretoria aprova só quando o pedido é de alguém do Transporte** (para ninguém aprovar o
   próprio). Errado: dar à Diretoria a aprovação geral é uma permissão a mais (baixo).
 - **Aprovar com conflito pede confirmação** quando o outro pedido já está aprovado. Errado: tirar
@@ -267,4 +279,6 @@ entrega 2 cria `FichaVeiculo` já como componente próprio.
 - [ ] Depois da saída, o Transporte confirma o uso sem e com problema; km de volta menor que a de
       saída é recusada; "com problema" sem texto é recusado.
 - [ ] Quem não é Transporte nem Diretoria não vê pedidos de veículo dos outros.
+- [ ] Pedido de veículo pede centros de custo (um ou mais serviços somando 100%) como os outros
+      tipos.
 - [ ] `npm run verificar` e `npm run build` verdes.
