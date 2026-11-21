@@ -307,3 +307,11 @@ Especificada em 21/11/2026. Ficou para depois:
 - [ ] Aviso por e-mail ao Transporte (junto com o aviso por e-mail das requisições).
 - [ ] Relatório de quilometragem e de usos com problema por veículo e mês.
 - [ ] Condutor ligado ao cadastro de pessoas; abastecimento, multas e vistoria com foto.
+
+## Requisições: agendamento de espaços (issue #230, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Repetição semanal (toda terça às 14h); reserva de mais de um dia.
+- [ ] Itens de apoio, taxa de uso, aprovador por espaço e formulário público.
+- [ ] Cancelar reserva já aprovada; marcar "não usado"; agenda por dia com filtro de espaço.
