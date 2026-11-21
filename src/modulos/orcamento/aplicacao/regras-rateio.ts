@@ -214,6 +214,10 @@ export async function salvarRegra(p: Planilhas, quem: Autorizador, dados: DadosR
   if (dados.id && colunas.length) {
     await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'RegrasRateio', registroId: id, detalhes: { colunas } });
   }
+  if (dados.id && colunas.length) {
+  // Recalcula as despesas geradas por rateio (ADR-038); import tardio por causa do ciclo entre os arquivos.
+  await (await import('./lancamentos-rateio')).recalcularLancamentosAfetados(p, quem, { regraId: id });
+  }
   return id;
 }
 
@@ -300,6 +304,10 @@ export async function salvarValoresDaBase(p: Planilhas, quem: Autorizador, baseI
   await atualizarVarios(p, BasesRateioValores, [...alterar, ...trocar], { email: quem.email });
   await inserirRegistros(p, valoresT, novos, { email: quem.email });
   if (mudar.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'BasesRateioValores', registroId: baseId, detalhes: { colunas: ['valor'] } });
+  if (mudar.length) {
+  // Recalcula as despesas geradas por rateio (ADR-038); import tardio por causa do ciclo entre os arquivos.
+  await (await import('./lancamentos-rateio')).recalcularLancamentosAfetados(p, quem, { baseId });
+  }
 }
 
 // ---------------------------------------------------------------------------

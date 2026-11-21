@@ -101,6 +101,10 @@ export async function salvarCentro(
   const { colunasAlteradas } = await atualizar(p, CentrosCusto, existente.id, existente.versao, campos, { email: quem.email });
   if (colunasAlteradas.length) {
     await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'CentrosCusto', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
+    // Atendidos, m² e vagas mudam a divisão das despesas geradas por rateio (ADR-038); import tardio por causa do ciclo.
+    if (colunasAlteradas.some((c) => ['atendidos', 'area_m2', 'vagas'].includes(c))) {
+      await (await import('./lancamentos-rateio')).recalcularLancamentosAfetados(p, quem, { servico: dados.servico });
+    }
   }
 }
 
