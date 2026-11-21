@@ -277,3 +277,12 @@ Especificada em 18/11/2026. Ficou para depois:
 - [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
 - [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
 
+
+## Requisições: agendamento de veículos (issue #229, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Campo de passageiros conferido com a capacidade do veículo.
+- [ ] Aviso por e-mail ao Transporte (junto com o aviso por e-mail das requisições).
+- [ ] Relatório de quilometragem e de usos com problema por veículo e mês.
+- [ ] Condutor ligado ao cadastro de pessoas; abastecimento, multas e vistoria com foto.
