@@ -11,4 +11,5 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Dados pessoais: `Requisicoes.requisitante`, `requisitante_nome` e `RequisicaoHistorico.usuario`.
 - Nada é apagado: requisição cancelada ou recusada fica com a situação; o histórico só recebe inclusões.
 - Uma entrega por tipo de ficha (materiais, TI, mobiliário, manutenção): `FORMULARIOS` no domínio.
+- Cada tipo tem sua ficha em `telas/ficha-<tipo>.tsx` (contrato em `telas/ficha.ts`); o casco `formulario-requisicao.tsx` só cuida do que é comum. Tipo novo = ficha nova, nunca `if` no casco.
 - Permissões: `requisicoes.<recurso>.<acao>`, declaradas no manifesto.
