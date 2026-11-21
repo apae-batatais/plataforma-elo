@@ -18,7 +18,7 @@ import {
   type DetalhesTi,
   type Situacao,
 } from '@/modulos/requisicoes/dominio/requisicao';
-import { dataBR, RESULTADOS_USO } from '@/modulos/requisicoes/dominio/espaco';
+import { RESULTADOS_USO } from '@/modulos/requisicoes/dominio/espaco';
 import { textoHoras } from '@/modulos/requisicoes/dominio/sla';
 import { dataHora, EtiquetaSituacao } from '@/modulos/requisicoes/telas/lista-requisicoes';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';

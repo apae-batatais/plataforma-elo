@@ -1,2 +1,2 @@
 # Andamento
-- [ ] 1  [ ] 2  [ ] 3  [ ] 4  [ ] 5
+- Tarefas 1 a 4 concluídas (domínio, dados, aplicação, telas e Ajuda). Falta: verificar, revisão de usabilidade e PR.
