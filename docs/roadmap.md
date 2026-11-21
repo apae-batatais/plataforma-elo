@@ -277,3 +277,16 @@ Especificada em 18/11/2026. Ficou para depois:
 - [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
 - [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
 
+
+## Base de Conhecimento (especificado em 21/11/2026, issue #231)
+
+Especificação: `src/modulos/conhecimento/especificacao.md` (ADR-039). Ordem: publicação e ciência → teste
+de compreensão → curtir e comentar → aviso por e-mail.
+
+- [ ] Geolocalização na ciência (sem travar quem negar a permissão do navegador).
+- [ ] Carimbo de tempo ICP-Brasil (depende de a Diretoria contratar um prestador credenciado).
+- [ ] Prazo de ciência por publicação e lembrete por e-mail para quem segue pendente.
+- [ ] Vídeo, mais de um anexo e link externo como formato de publicação.
+- [ ] Exportar a lista de ciências; relatório por pessoa entre publicações.
+- [ ] Editar o próprio comentário, respostas a comentários e aviso ao editor de novos comentários.
+- [ ] Embaralhar a ordem das opções do teste a cada tentativa.
