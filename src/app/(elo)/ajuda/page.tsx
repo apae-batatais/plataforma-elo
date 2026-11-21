@@ -75,6 +75,7 @@ export default async function Ajuda() {
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
+    veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
   };
 
@@ -225,6 +226,17 @@ export default async function Ajuda() {
                 nos tipos em que uma foto ajuda (manutenção, TI, mobiliário). No fim da tela fica o horário do expediente. Os feriados, que valem para todos os apps,
                 ficam em Administração › Feriados: o botão &ldquo;Incluir feriados nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo);
                 os municipais e os pontos facultativos você inclui um a um.
+              </p>
+            </>
+          )}
+          {pode.veiculos && (
+            <>
+              <Sub>Veículos</Sub>
+              <p>
+                Em Requisições › Veículos (só a Administração da plataforma), cadastre cada veículo da instituição com nome, placa e capacidade de passageiros.
+                Ao alterar um veículo, informe a data da próxima manutenção: a partir desse dia ele deixa de aparecer para pedido novo, até você clicar em
+                &ldquo;Marcar feita&rdquo; (e, se já souber, informar a data da seguinte). Veículo excluído some da lista de pedido, mas pode ser reativado
+                em &ldquo;Veículos excluídos&rdquo;. Nada é apagado.
               </p>
             </>
           )}
