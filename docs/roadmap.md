@@ -116,12 +116,13 @@ Fluxo completo sem nenhuma integração externa (especificação:
 - [ ] Envio registrado; em caso de falha, a Comunicação é avisada e o pedido não passa para
       "Publicado".
 - [ ] Verificação do app no Google para OSCs de outros domínios usarem o envio.
-- [ ] Aproveitar a mesma ligação para o aviso por e-mail do app Requisições.
+- [x] Aproveitar a mesma ligação para o aviso por e-mail do app Requisições: especificado em
+      `src/modulos/requisicoes/especificacao.md` (#61, entrega 7).
 
 Especificada em 15/11/2026 (#63, ADR-027): envio pelo Elo por conta de serviço com delegação no domínio,
 remetente "não-responda@" cadastrado na instituição, rotina a cada 15 minutos. Ficam para depois:
-verificação do aplicativo pelo Google (só se alguma instituição não usar delegação no domínio), aviso de
-Requisições (#61) e botão "Enviar e-mail de teste" (sugestão).
+verificação do aplicativo pelo Google (só se alguma instituição não usar delegação no domínio) e botão
+"Enviar e-mail de teste" (sugestão).
 
 ### Fase 3 · publicação automática no Instagram
 
@@ -140,7 +141,10 @@ pessoal (a Meta só aceita conta profissional).
 
 ### Fase 4 · resultado das postagens
 
-- [ ] Alcance e curtidas das postagens do Instagram nos indicadores.
+- [x] Alcance e curtidas das postagens do Instagram nos indicadores: especificado em
+      `src/modulos/comunicacao/especificacao.md` (#65), com comentários e salvamentos também, buscados
+      sozinhos uma vez por dia pela conexão já feita na Fase 3. Fica de fora a Capacidade de Indicadores
+      da plataforma (#57).
 
 ### Melhorias deixadas para depois
 
@@ -277,6 +281,40 @@ Especificada em 18/11/2026. Ficou para depois:
 - [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
 - [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
 
+## Orçamento: plano de contas estruturado (issue #221, especificação em `src/modulos/orcamento/especificacao.md`, ADR-036)
+
+Três entregas (1 de 3 a 3 de 3).
+
+- [ ] Responder P3 (folha por serviço ou área), P5 (o que conta como realizado) e P6 (diferença entre OFICIAL e
+      POR ÁREA) da #185 com a contabilidade.
+- [ ] Agrupar e somar painéis pelo plano de contas (Área, Grupo e Item), se a Diretoria quiser (outra proposta).
+- [ ] Importar o plano de contas de uma planilha (por ora é cadastro manual).
+- [ ] Item contábil e Área do plano no realizado importado, quando a importação do realizado existir.
+
+## Avaliações: menu em família e formulários uniformes (issue #223, especificação em `docs/especificacao-plataforma.md`, ADR-037)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Componente único de formulário de avaliação entre os três apps (hoje só o mesmo leiaute).
+- [ ] Página própria da família "Avaliações" e painel comum aos três eixos.
+- [ ] Busca por nome também no formulário da Saúde (sugestão).
+
+## Requisições: agendamento de veículos (issue #229, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Campo de passageiros conferido com a capacidade do veículo.
+- [ ] Aviso por e-mail ao Transporte (junto com o aviso por e-mail das requisições).
+- [ ] Relatório de quilometragem e de usos com problema por veículo e mês.
+- [ ] Condutor ligado ao cadastro de pessoas; abastecimento, multas e vistoria com foto.
+
+## Requisições: agendamento de espaços (issue #230, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Repetição semanal (toda terça às 14h); reserva de mais de um dia.
+- [ ] Itens de apoio, taxa de uso, aprovador por espaço e formulário público.
+- [ ] Cancelar reserva já aprovada; marcar "não usado"; agenda por dia com filtro de espaço.
 
 ## Base de Conhecimento (especificado em 21/11/2026, issue #231)
 

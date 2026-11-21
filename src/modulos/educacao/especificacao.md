@@ -1,6 +1,6 @@
 # Especificação — Módulo Educação (avaliação de evolução)
 
-- Situação: aprovada (PR #171); entregas 1 (aplicar e fechar) e 2 (comparativo e ficha) construídas, entrega 3 pendente (issue #163)
+- Situação: aprovada; as 3 entregas construídas (aplicar e fechar, comparativo e ficha, painel) (issue #163)
 - Dono do produto: Diretoria
 - Arquitetura: ADR-029 (usa o motor da ADR-026 e as regras das ADR-006 e ADR-007)
 - Depende de: entrega 1 do motor de avaliação (issue #62, `src/capacidades/motor-avaliacao/`)
@@ -218,3 +218,9 @@ Três entregas, pequenas o bastante para ficar nesta issue (sem sub-issues; a Di
 - [ ] Testes de acesso (educador do serviço, coordenação, Conselho, Financeiro, Administração, Diretoria)
 - [ ] `npm run verificar` e `npm run build` verdes
 - [ ] Conferido pela Diretoria na prévia, com dados fictícios: aplicar um instrumento, ver total e subtotais mudarem ao vivo, concluir, ver o ciente, comparar dois períodos e corrigir criando nova aplicação
+
+## Instrumentos e cabeçalho "Quem e quando" (proposta #223)
+
+Texto completo em `docs/especificacao-plataforma.md` (seção "Família Avaliações no menu e formulários uniformes") e ADR-037.
+Neste app: nova tela `/educacao/instrumentos` (os três instrumentos, com "Aplicar a uma pessoa" para `/educacao/nova?instrumento=<código>`),
+item "Instrumentos" no menu em Avaliar, e o formulário com a seção "Quem e quando" no leiaute da Saúde. "Sobre o instrumento" não muda.
