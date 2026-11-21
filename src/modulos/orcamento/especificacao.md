@@ -954,3 +954,134 @@ execução da entrega.
 - [ ] Na prévia: montar o plano de 2027 a partir do de 2026, salvar, ver "Versões anteriores"; lançar uma
       despesa fora do plano e ver o aviso sem bloqueio; comparar 2027 com 2026; ver a divergência de área
 - [ ] `npm run verificar` e `npm run build` verdes
+
+## Lançamento de despesas por rateio (proposta #225, 20/11/2026)
+
+### Objetivo
+
+Hoje a Entrega R1 (acima) só **mostra** o rateio calculado na Análise por área; a despesa continua
+sendo uma única linha, sem serviço, e nada é gravado por serviço. Esta entrega grava uma **despesa
+por serviço participante**, com o valor já rateado pela Regra de rateio escolhida, para quem precisa
+ver e exportar a despesa já dividida (não só o resultado no painel). Arquitetura: ADR-038.
+
+### Para quem
+
+Financeiro, ao cadastrar uma despesa prevista que precisa ser dividida entre vários serviços de
+forma proporcional (ex.: uma conta de alimentação rateada pelo nº de atendidos de cada serviço).
+
+### Usuários e permissões
+
+- `orcamento.previsao.editar` (Financeiro): cadastra, altera e encerra um Lançamento de rateio. Sem
+  permissão nova.
+- `orcamento.painel.ver`: vê os Lançamentos de rateio e as despesas que eles geram, junto com as
+  demais despesas.
+
+### Entidades
+
+- **Aba nova `LancamentosRateio`** (planilha `orcamento`, sem dados pessoais): `ano`, `grupo_id`,
+  `fonte_id`, `descricao`, `regra_rateio_id` (obrigatório, de `RegrasRateio`), `quantidade`,
+  `ocorrencias`, `valor_unitario`, `distribuicao`, `m1`..`m12`, `categoria`, `observacao`, `ativo`.
+  Mesmos campos de uma despesa (ver `Despesas`), mas sem `servico`: o lançamento não pertence a
+  nenhum serviço, a Regra de rateio é que decide quem recebe.
+- **Coluna nova opcional `lancamento_rateio_id` em `Despesas`**: presente só nas linhas geradas por
+  um Lançamento de rateio. Essas linhas ficam travadas no cadastro comum de Despesas (regra 4).
+
+### Regras de negócio (com teste)
+
+1. O Lançamento de rateio pede os mesmos campos de uma despesa (grupo, fonte, descrição,
+   quantidade, ocorrências, valor unitário, distribuição/meses, categoria, observação) mais a
+   **Regra de rateio**, que precisa já existir e estar ativa (Cadastros › Regras de rateio).
+2. **Cálculo:** o valor de cada mês do lançamento (igual à distribuição de uma despesa comum) é
+   dividido entre os serviços participantes da regra pelos mesmos pesos em todos os meses
+   (`ratearPelaRegra`, R1) — as bases (atendidos, m², profissionais…) não variam por mês.
+3. **Geração:** cada serviço participante com peso maior que zero recebe uma linha em `Despesas`
+   com `ano`, `servico` (o do participante), o mesmo `grupo_id`, `fonte_id`, `descricao` e
+   `categoria` do lançamento, `quantidade = 1`, `ocorrencias = 1`, `distribuicao = 'manual'`,
+   `m1`..`m12` com o valor já rateado daquele serviço, `situacao = 'aceito'` e
+   `lancamento_rateio_id` apontando para o lançamento. Sem `regra_rateio_id` próprio (já foi
+   aplicada; não entra de novo na Análise por área).
+4. **Travamento:** uma despesa com `lancamento_rateio_id` não tem botão de editar valor ou excluir
+   no cadastro comum de Despesas; aparece com a etiqueta "Gerada por rateio" e um atalho para o
+   Lançamento de origem. Qualquer mudança passa pelo Lançamento (regra 5).
+5. **Recálculo automático**, só enquanto o exercício do lançamento está em elaboração
+   (`Exercicios.situacao === 'elaboracao'`), nestes cinco pontos (lista fechada; ver ADR-038):
+   salvar o próprio lançamento; salvar a Regra de rateio usada; salvar os valores de uma Base
+   própria usada pela regra; alterar atendidos, m² ou vagas de um serviço participante; alterar a
+   lotação (profissionais) de um serviço participante. Em cada um, as despesas geradas antes são
+   encerradas (`ativo = FALSE`) e as novas, recalculadas, são gravadas. Fora desses cinco pontos
+   (ex.: um serviço encerrado), não recalcula sozinho — reabrir e salvar o lançamento de novo.
+6. **Depois do exercício aprovado**, as despesas geradas ficam congeladas como estão: nenhum dos
+   cinco pontos as altera mais (mesma regra de qualquer despesa aprovada: precisaria de
+   remanejamento ou suplementação).
+7. **Excluir o lançamento** (só com o exercício em elaboração) encerra o lançamento e todas as
+   despesas que ele gerou. Com o exercício aprovado, não há como excluir (regra 6).
+8. Regra sem nenhum serviço participante elegível (nenhum custo direto recebendo, como na regra 2
+   de R1): o lançamento grava normalmente, mas aparece um aviso "Nenhuma despesa gerada: ajuste a
+   Regra de rateio" — não bloqueia salvar.
+9. Alteração auditada: do Lançamento (colunas, nunca valores) e de cada despesa gerada ou encerrada
+   pelo recálculo (com o `lancamento_rateio_id` no detalhe).
+
+### Telas
+
+Orçamento › Despesas › **Lançamento de despesas por rateio** (lista e formulário).
+
+1. **Quem usa e o que quer fazer:** o Financeiro cadastra uma despesa que precisa dividir
+   proporcionalmente entre serviços, sem fazer a conta à mão. Caminho mais curto: abrir a tela,
+   preencher como uma despesa comum, escolher a Regra de rateio, ver a prévia e salvar.
+2. **Lista:** lançamentos do exercício, com descrição, grupo, regra usada, valor anual e quantos
+   serviços recebem. Ação principal: "Novo lançamento".
+3. **Formulário:** os mesmos campos de uma despesa (`Campo`, com dica e obrigatório) mais a Regra
+   de rateio (lista das regras ativas). Antes de salvar, mostra a **prévia** "como ficaria"
+   (reaproveita `previaDaRegra`, já existente nas Regras de rateio): quanto cada serviço
+   participante vai receber, em reais e percentual, com os valores atuais das bases.
+4. **Na lista comum de Despesas:** as linhas geradas mostram a `Etiqueta` "Gerada por rateio" (sem
+   botão de editar valor ou excluir) e um link "Ver lançamento de origem" que abre o Lançamento.
+5. **Estados:** vazio ("Nenhum lançamento de rateio ainda" + "Novo lançamento"); gravando
+   (`BotaoEnviar`); gravou (`?ok=`, com "X despesas geradas/atualizadas"); erro (`Aviso`, sem
+   perder o que foi digitado); sem permissão.
+6. **Ação sem volta:** excluir um lançamento (regra 7) pede confirmação (`FormularioConfirmado`)
+   explicando que todas as despesas geradas por ele serão encerradas.
+7. **Celular e teclado:** mesma lista e formulário em largura de celular; prévia em tabela rolável
+   na horizontal se precisar.
+8. **Sugestão (não está na proposta, a Diretoria decide):** mostrar, na tela do Lançamento, um
+   aviso quando a base cair para custo direto ou partes iguais em todos os participantes (regra 6
+   de R1), para o Financeiro notar antes de aprovar o exercício.
+
+### Fica de fora
+
+Pesos que variam mês a mês (hoje usa os mesmos pesos em todos os meses); recálculo fora dos cinco
+pontos listados (ex.: serviço encerrado); reabrir exercício aprovado para recalcular (segue a regra
+normal de remanejamento e suplementação).
+
+### Frentes
+
+`telas`, `regras e dados`. Sem infraestrutura, sem mudança no Núcleo.
+
+### Decisões tomadas sozinho
+
+- **Aba `LancamentosRateio` separada de `Despesas`**, em vez de reaproveitar `Despesas` para a
+  "mãe": mantém separado o que é configurado (o lançamento) do que é gerado (as despesas por
+  serviço). Se errado: dá para fundir depois (custo pequeno).
+- **Mesmos pesos em todos os meses** do lançamento (regra 2): bases como atendidos ou m² não variam
+  por mês hoje no Elo. Se a Diretoria quiser peso variável por mês, é entrega nova (custo médio).
+- **Lista fechada de cinco pontos de recálculo** (regra 5): cobre os pontos onde a base, a regra ou
+  o próprio lançamento mudam hoje no Orçamento. Se faltar um ponto (ex. serviço encerrado), o
+  recálculo não dispara sozinho; custo de ampliar a lista depois é pequeno a médio, por ponto.
+- **Aviso, não bloqueio, quando não há despesa gerada** (regra 8): evita impedir salvar o
+  lançamento enquanto a Diretoria ajusta o cadastro da regra. Custo se errado: pequeno.
+
+### Entrega
+
+Uma só: aba e coluna novas, cadastro e cálculo do Lançamento, geração e travamento das despesas,
+recálculo automático nos cinco pontos da regra 5.
+
+### Critérios de pronto
+
+- [ ] Testes: cálculo mês a mês com os pesos da regra; geração e travamento das despesas; cada um
+      dos cinco pontos de recálculo; nada muda com o exercício aprovado; excluir o lançamento
+      encerra as despesas geradas; auditoria sem valores; acesso (quem edita, quem só vê).
+- [ ] Na prévia (dados fictícios): cadastrar um Lançamento com uma Regra de dois níveis; ver a
+      prévia antes de salvar; confirmar as despesas geradas na lista comum, travadas, com a
+      etiqueta "Gerada por rateio"; mudar a base de um serviço participante e ver o recálculo
+      automático; excluir o lançamento e confirmar que as despesas geradas somem (encerradas).
+- [ ] `npm run verificar` e `npm run build` verdes.
