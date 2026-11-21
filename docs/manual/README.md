@@ -1,9 +1,11 @@
 # Manual do Elo
 
-- **Na plataforma**: menu Suporte › Ajuda (`src/app/ajuda/page.tsx`), com o passo a passo
-  de cada tela, filtrado pelo perfil de quem vê, e o botão "Baixar o manual (PDF)".
-- **Documento completo**: editado no Claude Docs ("Manual do Elo").
-  O PDF publicado fica em `public/manual/manual-elo.pdf`.
+- **Fonte única**: a Ajuda da plataforma, menu Suporte › Ajuda (`src/app/(elo)/ajuda/page.tsx`),
+  com o passo a passo de cada tela, filtrado pelo perfil de quem vê, e o botão "Baixar o manual (PDF)".
+- **PDF**: decisão da Diretoria de 21/11/2026, passa a ser gerado a partir da Ajuda, sem documento
+  editado à parte (proposta #232). Até lá, o PDF em
+  `public/manual/manual-elo.pdf` é o de 06/11/2026 e está desatualizado.
+- O documento "Manual do Elo" no Claude Docs deixa de ser mantido.
 
-Ao mudar uma tela: atualize a Ajuda e o documento no mesmo Pull Request, exporte o
-documento em PDF (A4) e substitua `public/manual/manual-elo.pdf`.
+Ao criar ou mudar uma tela: atualize a Ajuda no mesmo Pull Request (docs/metodologia.md, "Ajuda
+junto com a tela"). Quem faz é o Desenvolvedor; o DevOps confere antes do merge.

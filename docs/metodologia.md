@@ -147,6 +147,11 @@ repositório: habilidades da conta da Diretoria no Claude não vão junto.
   tem prévia, porque o site seria igual ao atual. A prévia aparece no PR de entrega.
 - **Pedido livre**: "@claude" e o pedido num comentário de issue ou PR (por exemplo, "@claude
   atualize este PR com a main").
+- **Ajuda junto com a tela** (decisão da Diretoria, 21/11/2026): toda entrega que cria ou muda tela
+  atualiza, no mesmo PR, a Ajuda da plataforma (menu Suporte › Ajuda, `src/app/(elo)/ajuda/`),
+  com o passo a passo e os atalhos, filtrados pelo perfil. Quem faz é o Desenvolvedor; o DevOps
+  confere no teste antes do merge. A Ajuda é a fonte única do manual: o PDF é gerado a partir
+  dela, nunca editado à parte.
 - **Fontes únicas**: proposta na issue; regras do app na especificação (`src/modulos/<id>/
   especificacao.md`); decisões de arquitetura nas ADRs; o que fica para depois no
   `docs/roadmap.md`; andamento da construção no plano (`docs/superpowers/plans/`).
