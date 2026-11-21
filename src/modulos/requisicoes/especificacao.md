@@ -16,6 +16,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 4. **Manutenção (Setor de Manutenção)**: ficha com tipo de serviço (elétrica, hidráulica, ar-condicionado, equipamento, portas/janelas/móveis, pintura, paredes/piso/telhado, outro), local, problema, urgência, equipamento, patrimônio, melhor horário e contato; perfil novo Setor de Manutenção; urgência na fila. Fotos e vídeo: entrega 6.
 5. **Painel de prazos e feriados**: painel com % de aprovação e de atendimento no prazo, tempo médio, atendidas em parte e atrasadas agora, por mês, setor e tipo; feriados fora das horas úteis (a lista é do Núcleo: Administração › Feriados, ADR-034).
 6. **Fotos e vídeo (ADR-014)**: até 3 fotos (reduzidas no celular) e 1 vídeo de até 30 s / 25 MB, gravados direto na abertura; arquivos numa pasta de unidade compartilhada do Drive da instituição; o tipo diz se aceita.
+7. **Aviso por e-mail (resumo diário, #61, ADR-027)**: resumo diário por e-mail para quem tem requisição aguardando a aprovação dela, devolvida para ela ajustar, ou atrasada no seu escopo, reaproveitando a ligação com o Gmail da Comunicação (#63).
 
 ## Usuários e permissões
 
@@ -45,6 +46,7 @@ aprova, o setor responsável atende, e tudo fica registrado com data e hora para
 | Parametros    | Expediente (início e fim) usado no SLA                                                                                                             | interno               |
 | Feriados      | Aba antiga: só leitura, copiada para o Núcleo em "Preparar estrutura" (a lista vive no Núcleo, ADR-034)                                            | interno               |
 | Anexos        | Fotos e vídeo de cada requisição: id do arquivo na pasta de anexos, tipo, tamanho, duração                                                         | sensível: arquivo     |
+| ResumosEnviados | Um dia (AAAA-MM-DD) por instituição e quantas pessoas receberam o resumo diário naquele dia (entrega 7)                                          | interno               |
 
 O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão da Diretoria); a ligação com o Orçamento foi removida (ADR-013, Atualização).
 
@@ -68,6 +70,9 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 16. Feriados (ADR-034): a lista é do Núcleo (Administração › Feriados, `core.feriados.gerenciar`); o SLA a lê de lá; os feriados não contam nas horas úteis de nenhum prazo (inclusive de requisições antigas, ao recalcular).
 17. Painel de prazos (`requisicoes.painel`: Diretoria, coordenação e setores): mostra só as requisições que a pessoa já pode ver. Aprovação conta no mês da decisão (aprovar, devolver ou recusar), com horas do envio à decisão; atendimento conta no mês da conclusão, com horas da aprovação à conclusão. Atrasadas agora: esperando decisão ou atendimento além do prazo.
 18. Fotos e vídeo: só nos tipos que aceitam (marcados no cadastro; sem marcação, as fichas de serviço); até 3 fotos de até 1,4 MB (já reduzidas) e 1 vídeo de até 30 s e 25 MB, em JPG/PNG/WebP e MP4/MOV/WebM/3GP. O servidor confere cada arquivo na pasta antes de ligar à requisição; um arquivo só pertence a uma requisição. Só quem vê a requisição vê os anexos, pelo Elo, e cada abertura vai para a auditoria. Ao ajustar uma devolvida, os anexos tirados são encerrados.
+19. **Resumo diário por e-mail (entrega 7, ADR-027)**: a rotina (a cada 15 minutos) roda a tarefa `requisicoes.resumo_diario`. Para cada instituição ativa com remetente de e-mail cadastrado (ADR-027), em dia útil (sem feriado do Núcleo, regra 16), por volta das 7h de Brasília, calcula para cada pessoa ativa: quantas requisições aguardam a aprovação dela (mesmo critério da tela "Para aprovar"), quantas ela tem devolvidas para ajuste e ainda não reenviou (mesmo critério de "Minhas requisições"), e quantas, no escopo dela de aprovação ou atendimento, estão atrasadas agora (mesmo critério do painel de prazos, regra 17). Sem nenhuma das três, não envia nada para essa pessoa; sem remetente cadastrado na instituição, a tarefa não roda (sem erro).
+20. O e-mail do resumo é individual (não em cópia oculta), com as três contagens que forem maiores que zero e um link para abrir o Elo — sem número de requisição, nome de requisitante nem texto do pedido, a mesma regra dos avisos da Comunicação (ADR-027, item 5).
+21. O resumo de uma instituição nunca sai duas vezes no mesmo dia: a tarefa grava o dia do envio (horário de Brasília) e quantas pessoas receberam na aba `ResumosEnviados` antes de mandar os e-mails; a rotina só tenta de novo se ainda não houver essa linha para o dia de hoje. Falha ao enviar para uma pessoa não impede o resumo das demais.
 
 ## Telas
 
@@ -77,6 +82,7 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 4. Tipos de requisição (setor, prazos, áreas permitidas, expediente do SLA) e Itens aceitos de cada tipo (um a um ou em lote).
 5. Painel de prazos: cartões, gráfico mês a mês, tabelas por mês, setor e tipo, atrasadas agora.
 6. Avisos: tela inicial ("N esperam a sua aprovação", "N na fila do seu setor", "N devolvidas") e número no menu.
+7. Resumo diário por e-mail: sem tela própria; usa o remetente já cadastrado na instituição (ADR-027). Melhoria sugerida, para a Diretoria decidir: mostrar na tela de Avisos (item 6) se o resumo de hoje já saiu e para quantas pessoas, para a coordenação conferir sem abrir o e-mail.
 
 ## Indicadores
 
@@ -169,5 +175,6 @@ Uma só: os quatro componentes de ficha novos, o casco enxuto, sem mudança de c
 
 ## Depois
 
-- Aviso por e-mail (precisa de ligação com o Gmail).
+- Preferência da pessoa para desligar o resumo diário por e-mail.
+- Escolher o horário do resumo por instituição (hoje é fixo no código, 7h de Brasília).
 - Ligar a requisição à execução do orçamento (1C): especificado na issue #115, em `docs/especificacao-ligacoes-entre-apps.md` (projeto, atividade, saldo e fonte na aprovação).
