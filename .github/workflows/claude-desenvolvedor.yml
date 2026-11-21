@@ -117,6 +117,8 @@ jobs:
                verificar e de novo antes de abrir o PR, seguindo "Atualizar o ramo com a main" do CLAUDE.md.
                Rode `npm run verificar` e `npm run build` até tudo passar. Se houver tela, faça também a
                "Revisão de usabilidade" da habilidade telas na demonstração e leve o resultado ao PR.
+               Se a entrega cria ou muda tela, atualize no mesmo PR a Ajuda (`src/app/(elo)/ajuda/`),
+               com o passo a passo filtrado pelo perfil; é a fonte única do manual.
             7. Abra o PR com `gh pr create --base main --label "PR: entrega"`: corpo em português começando com a linha
                "Entrega #${{ env.ISSUE }}", o que mudou, roteiro de conferência na prévia e as decisões
                tomadas sozinho (com o custo se estiverem erradas). A prévia é publicada sozinha.
