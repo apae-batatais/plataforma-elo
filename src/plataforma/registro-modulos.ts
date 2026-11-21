@@ -20,6 +20,7 @@ import { manifesto as avaliacao, popularAplicacoesFicticias, popularAvaliacoesFi
 import { manifesto as educacao, popularEducacaoFicticia, TABELAS_EDUCACAO } from '@/modulos/educacao';
 import { manifesto as projetos, popularProjetosFicticios, TABELAS_PROJETOS } from '@/modulos/projetos';
 import { manifesto as saude, popularSaudeFicticia, TABELAS_SAUDE } from '@/modulos/saude';
+import { FAMILIAS } from './familias';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 
 export const MODULOS: readonly Manifesto[] = [orcamento, parcerias, requisicoes, comunicacao, avaliacao, saude, educacao, projetos];
@@ -58,4 +59,4 @@ export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void>
   await popularProjetosFicticios(p);
 }
 
-validarRegistro(MODULOS);
+validarRegistro(MODULOS, Object.keys(FAMILIAS));

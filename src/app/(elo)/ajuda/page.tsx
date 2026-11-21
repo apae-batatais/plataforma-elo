@@ -236,7 +236,7 @@ export default async function Ajuda() {
   if (pode.avaliar || pode.painelAvaliacao) {
     assuntos.push({
       id: 'avaliacao',
-      titulo: 'Avaliação de Serviços Sociais',
+      titulo: 'Assistência Social',
       resumo: 'Avaliar as pessoas atendidas na entrada e uma vez por ano, comparar a evolução de cada uma e acompanhar os indicadores por serviço.',
       atalhos: [
         ...(pode.avaliar ? [{ rotulo: 'Nova avaliação', href: '/avaliacao/nova' }] : []),
@@ -250,7 +250,7 @@ export default async function Ajuda() {
               <Sub>Avaliar</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação de Serviços Sociais › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
+                  'Abra Avaliações › Assistência Social › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
                   'Identifique a pessoa só pelas iniciais, data de nascimento e sexo. O prontuário é opcional e o nome completo não é pedido.',
                   'Escolha o serviço atual (aparecem os serviços do seu escopo) e responda todas as perguntas. O que faltar fica em vermelho ao salvar.',
                   'O índice de necessidade de cuidado (0 a 12) é calculado enquanto você responde. Em suspeita de violação de direitos, siga o fluxo de notificação e o encaminhamento ao CREAS.',
@@ -267,7 +267,7 @@ export default async function Ajuda() {
               <Sub>Painel</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação de Serviços Sociais › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
+                  'Abra Avaliações › Assistência Social › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
                   'Filtre por serviço e por período (meses da data da avaliação). Cada pessoa conta uma vez, pela avaliação mais recente. Em cada gráfico, "Ver os números" mostra a tabela.',
                   'O painel tem quatro partes: necessidade de cuidado, evolução (entre avaliações da mesma pessoa e a percebida pela equipe), dependência e transporte, e análise por sexo.',
                   'Para imprimir ou salvar em PDF, clique em Imprimir painel: os gráficos saem com as cores e com a tabela de números, sem quadro cortado entre as páginas.',

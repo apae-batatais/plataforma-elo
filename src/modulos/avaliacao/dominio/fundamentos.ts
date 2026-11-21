@@ -1,5 +1,5 @@
 /**
- * Base técnica e legal do instrumento da Avaliação de Serviços Sociais: de onde
+ * Base técnica e legal do instrumento da Assistência Social: de onde
  * vem cada grupo de perguntas. Mostrado na tela "Sobre o instrumento".
  *
  * Referências normativas federais; a periodicidade anual e o índice de

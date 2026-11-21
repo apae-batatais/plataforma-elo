@@ -13,6 +13,7 @@ import { APPS_PLANEJADOS } from '@/plataforma/apps-planejados';
 import { MODULOS } from '@/plataforma/registro-modulos';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { ICONES, IconeAreas, IconeAtencao, IconeChave, IconeCerto, IconePessoas, IconeSeta, IconeServicos } from '@/ui/icones';
+import { agruparPorFamilia } from '@/plataforma/familias';
 import { iconeDoApp } from '@/plataforma/icones-dos-apps';
 import { agruparPendencias } from '@/plataforma/pendencias';
 import { appDoCaminho } from '@/ui/cor-do-app';
@@ -40,17 +41,20 @@ function CartaoApp({
   descricao,
   atalhos,
   vencida = false,
+  neutro = false,
 }: {
   href: string;
   icone: ReactNode;
   nome: string;
   descricao: string;
-  atalhos?: { rotulo: string; href: string }[];
+  atalhos?: { rotulo: string; href: string; vencida?: boolean }[];
+  /** Família de apps: o cartão usa a cor padrão, não a de um app só. */
+  neutro?: boolean;
   /** Pendência com prazo vencida neste app: anel que pulsa (o alerta também vai escrito, com ícone). */
   vencida?: boolean;
 }) {
   return (
-    <li data-app={appDoCaminho(href)} className={`cartao-brilho flex h-full flex-col rounded-cartao border border-borda bg-superficie ${vencida ? 'anel-pulsante' : ''}`}>
+    <li data-app={neutro ? undefined : appDoCaminho(href)} className={`cartao-brilho flex h-full flex-col rounded-cartao border border-borda bg-superficie ${vencida ? 'anel-pulsante' : ''}`}>
       <Link href={href} className="group flex flex-1 gap-4 rounded-t-cartao p-5">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-destaque-suave text-destaque">{icone}</span>
         <span className="min-w-0">
@@ -73,8 +77,14 @@ function CartaoApp({
         <ul className="mt-auto flex flex-wrap gap-x-4 gap-y-1 border-t border-borda px-5 py-3 text-sm">
           {atalhos.map((a) => (
             <li key={a.href}>
-              <Link href={a.href} className="font-semibold text-destaque hover:underline">
+              <Link href={a.href} data-app={neutro ? appDoCaminho(a.href) : undefined} className="inline-flex items-center gap-1 font-semibold text-destaque hover:underline">
                 {a.rotulo}
+                {a.vencida && (
+                  <>
+                    <IconeAtencao tamanho={14} />
+                    <span className="text-xs font-bold text-erro">pendência vencida</span>
+                  </>
+                )}
               </Link>
             </li>
           ))}
@@ -317,17 +327,37 @@ export default async function Portal() {
               descricao="Cadastro único: atendidos, familiares e equipe que você pode ver."
             />
           )}
-          {apps.map((x) => (
-            <CartaoApp
-              key={x.id}
-              href={x.itens[0]?.href ?? x.rota}
-              icone={(() => { const Icone = ICONES[iconeDoApp(x.id)]; return <Icone tamanho={24} />; })()}
-              nome={x.nome}
-              descricao={x.descricao}
-              atalhos={x.itens.slice(1, 4)}
-              vencida={vencidas.has(x.id)}
-            />
-          ))}
+          {agruparPorFamilia(apps).map((g) => {
+            if (g.tipo === 'familia') {
+              const Icone = ICONES[g.familia.icone];
+              const primeiro = g.apps[0];
+              return (
+                <CartaoApp
+                  key={g.id}
+                  neutro
+                  href={primeiro.itens[0]?.href ?? primeiro.rota}
+                  icone={<Icone tamanho={24} />}
+                  nome={g.familia.nome}
+                  descricao={g.familia.descricao}
+                  atalhos={g.apps.map((x) => ({ rotulo: x.nome, href: x.itens[0]?.href ?? x.rota, vencida: vencidas.has(x.id) }))}
+                  vencida={g.apps.some((x) => vencidas.has(x.id))}
+                />
+              );
+            }
+            const x = g.app;
+            const Icone = ICONES[iconeDoApp(x.id)];
+            return (
+              <CartaoApp
+                key={x.id}
+                href={x.itens[0]?.href ?? x.rota}
+                icone={<Icone tamanho={24} />}
+                nome={x.nome}
+                descricao={x.descricao}
+                atalhos={x.itens.slice(1, 4)}
+                vencida={vencidas.has(x.id)}
+              />
+            );
+          })}
           {a.temPermissao('core.acessos.gerenciar') && (
             <CartaoApp href="/admin/acessos" icone={<IconeChave tamanho={24} />} nome="Acessos" descricao="Quem entra na plataforma e com qual perfil." />
           )}
