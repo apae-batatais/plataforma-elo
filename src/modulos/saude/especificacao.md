@@ -179,3 +179,9 @@ Se a Educação (#163) for construída antes, o desenvolvedor **copia o desenho*
 - [ ] Testes de acesso (técnico do serviço, coordenação, Conselho, Financeiro, Administração, Diretoria)
 - [ ] `npm run verificar` e `npm run build` verdes
 - [ ] Conferido pela Diretoria na prévia, com dados fictícios: aplicar o instrumento, ver total e subtotais mudarem ao vivo, concluir, dar o ciente, comparar dois períodos e corrigir criando nova aplicação
+
+## Tela Instrumentos (proposta #223)
+
+Texto completo em `docs/especificacao-plataforma.md` (seção "Família Avaliações no menu e formulários uniformes") e ADR-037.
+Neste app: nova tela `/saude/instrumentos` com uma linha, o CER na versão em uso, com "Aplicar a uma pessoa" e "Sobre o instrumento";
+item "Instrumentos" no menu em Avaliar. O formulário da Saúde é o modelo do cabeçalho e não muda.

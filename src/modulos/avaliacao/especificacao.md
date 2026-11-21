@@ -226,3 +226,10 @@ Instrumentos reais (aguardam material da Diretoria); editor de instrumentos pela
 - Entrega 2: na prévia, aplicar o instrumento fictício a uma pessoa fictícia, concluir, ver o comparativo e confirmar que corrigir cria nova aplicação.
 - Entrega 3: ligar uma avaliação antiga e ver o comparativo passar a usar a pessoa do Cadastro Único.
 - `npm run verificar` e `npm run build` verdes.
+
+## Nome "Assistência Social", menu em família e cabeçalho uniforme (proposta #223)
+
+Texto completo em `docs/especificacao-plataforma.md` (seção "Família Avaliações no menu e formulários uniformes") e ADR-037.
+Neste app: o nome passa a ser **Assistência Social** em toda tela (id, rota `/avaliacao`, permissões e planilha não mudam); o
+formulário de aplicação ganha a seção "Quem e quando" no leiaute da Saúde, com o nome da pessoa só na busca e as iniciais depois
+de escolhida; `/avaliacao/nova` só ganha o título e a grade no bloco de identificação. A tela Instrumentos não muda.

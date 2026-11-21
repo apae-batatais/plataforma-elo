@@ -49,6 +49,7 @@ export const PERM = {
   acessar: 'educacao.acessar',
   avaliar: 'educacao.avaliar',
   ciente: 'educacao.ciente',
+  painel: 'educacao.painel',
 } as const;
 
 export const AREA_EDUCACAO = 'educacao';
@@ -94,11 +95,11 @@ async function instrumentosGravados(p: Planilhas, tabela: TabelaLida<typeof Inst
 }
 
 const instrumentoDe = (r: { definicao: string }): Instrumento => definirInstrumento(JSON.parse(r.definicao));
-const chaveInstrumento = (codigo: string, versao: number) => `${codigo}@${versao}`;
+export const chaveInstrumento = (codigo: string, versao: number) => `${codigo}@${versao}`;
 
 // Leitura básica -----------------------------------------------------------------
 
-async function carregar(p: Planilhas, agora: Date) {
+export async function carregar(p: Planilhas, agora: Date) {
   const [servicos, pessoas, vinculos, familiares, instrumentos, aplicacoes, respostas] = await lerTabelas(p, [
     Servicos,
     Pessoas,
@@ -135,7 +136,7 @@ function respostasDaAplicacao(b: Base, id: string): Respostas {
   return r;
 }
 
-function instrumentoDaAplicacao(b: Base, a: { instrumento: string; instrumento_versao: number }): Instrumento {
+export function instrumentoDaAplicacao(b: Base, a: { instrumento: string; instrumento_versao: number }): Instrumento {
   const i = b.instrumentos.get(chaveInstrumento(a.instrumento, a.instrumento_versao));
   if (!i) throw new ErroEducacao('O instrumento desta aplicação não está cadastrado.');
   return i.instrumento;
