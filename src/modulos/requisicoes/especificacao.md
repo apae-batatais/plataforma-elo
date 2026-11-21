@@ -89,3 +89,169 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 
 - Aviso por e-mail (precisa de ligação com o Gmail).
 - Ligar a requisição à execução do orçamento (1C): especificado na issue #115, em `docs/especificacao-ligacoes-entre-apps.md` (projeto, atividade, saldo e fonte na aprovação).
+
+## Agendamento de espaços (proposta #230, 21/11/2026)
+
+### Objetivo e para quem
+
+Qualquer pessoa da equipe reserva um espaço da instituição (salão, sala de reuniões, salão de
+eventos) para reunião ou evento, escolhendo espaço, data, horário, finalidade e número de pessoas.
+O perfil **Espaços** aprova vendo o conflito de agenda e, depois do uso, registra se o espaço foi
+usado com ou sem problema. Hoje isso é combinado fora do Elo, sem controle nem registro.
+
+É um **tipo novo de requisição, com ficha e tela próprias** (padrão da #228, proposta #234). Veículos
+(#229) é uma proposta irmã: aprovador por perfil dedicado, conflito visto por quem aprova e
+fechamento depois do uso são a mesma ideia. Quem for construído primeiro cria a parte comum
+(aprovação por perfil dedicado, caminho "aprovada → fechada", aviso de conflito); o outro a reaproveita.
+Sem ADR: tudo acontece dentro do módulo (ficha, perfil e abas novas), sem mudar Núcleo nem
+armazenamento.
+
+### Usuários e permissões
+
+| Perfil | Pode | Permissão |
+| --- | --- | --- |
+| Todos os perfis | Pedir um espaço, acompanhar, ajustar a devolvida e cancelar o próprio pedido enquanto não aprovado | `requisicoes.solicitar` |
+| Espaços (perfil novo) | Ver e decidir (aprovar, devolver, recusar) **todos** os pedidos de espaço, de qualquer coordenação; ver o conflito; fechar a reserva depois do uso | `requisicoes.espacos.decidir` (nova) |
+| Diretoria | Ver todos (`requisicoes.ver_todas`); aprovar pedido de espaço **feito por quem tem o perfil Espaços** (ninguém aprova o próprio pedido) | `requisicoes.espacos.decidir` (nova) |
+| Administração da plataforma | Cadastrar espaços e os períodos de indisponibilidade; criar o tipo "Reserva de espaço" | `requisicoes.tipos.gerenciar` (já existe) |
+
+A coordenação do centro de custo **não** aprova pedido de espaço (diferente do resto das requisições).
+Quem pede vê só os próprios pedidos; só quem decide vê os pedidos dos outros no conflito.
+
+### Entidades (planilha `requisicoes`, abas novas com `definirTabela`)
+
+| Aba | O que guarda | Sigilo |
+| --- | --- | --- |
+| Espacos | Nome, local ou unidade (texto), capacidade (pessoas), ativo | interno |
+| EspacoIndisponibilidades | Espaço, data de início, data de fim, motivo (reforma, obra…), ativo. Um espaço pode ter vários períodos | interno |
+
+O pedido é uma linha de `Requisicoes` como as outras. Os dados do espaço vão no JSON `detalhes`
+(`DetalhesEspaco`): id do espaço, data, hora de início, hora de fim, finalidade, pessoas esperadas.
+A ficha nova é `espaco` em `FORMULARIOS` (categoria "serviço", sem itens, sem centros de custo, sem
+anexos). Fechamento (resultado "sem problema" ou "com problema" e o texto) é gravado na mesma
+requisição, com data e quem fechou; o histórico recebe a inclusão. Coluna pessoal: as mesmas de hoje.
+
+### Regras de negócio (com teste)
+
+1. **Campos obrigatórios:** espaço, data, hora de início, hora de fim, finalidade (mín. 5 letras) e
+   pessoas esperadas (inteiro ≥ 1). Reserva é de **um dia só** (início e fim na mesma data) e o fim
+   é depois do início. Data não pode ser anterior a hoje (horário de Brasília).
+2. **Espaço indisponível:** espaço inativo, ou com período de indisponibilidade que cobre a data
+   pedida, não é aceito no pedido (nem no reenvio). A lista de espaços da tela já mostra só os
+   disponíveis na data escolhida.
+3. **Período novo sobre pedido já aprovado:** nada é cancelado sozinho; o pedido aprovado que cai
+   no período aparece com aviso para o Espaços resolver na mão (devolvendo ou fechando com texto).
+4. **Capacidade:** pessoas acima da capacidade do espaço **não bloqueiam**; o pedido é enviado com
+   aviso, e o aviso aparece de novo para quem decide.
+5. **Conflito:** dois horários se cruzam quando, no mesmo espaço e data, `início < fim do outro` e
+   `início do outro < fim` (encostar, como 10h–11h e 11h–12h, não conflita). Contam só pedidos
+   "aguardando aprovação" e "aprovada". O pedido nunca é bloqueado por conflito; quem decide vê a
+   lista dos que cruzam (quem pediu, horário, situação). Aprovar com conflito contra um pedido já
+   **aprovado** pede confirmação explícita; contra outro só enviado, não.
+6. **Quem decide:** pedido com ficha `espaco` vai sempre para o Espaços (regra 2 e 3 das regras
+   gerais não se aplicam: sem centros de custo, sem coordenação). Quem tem o perfil Espaços e pede,
+   é aprovado pela Diretoria. Ninguém decide o próprio pedido.
+7. **Caminho:** enviada → aprovada | devolvida | recusada; devolvida → enviada | cancelada;
+   aprovada → **usada** (fechada). Sem "receber" nem "em atendimento". Cancelar só enquanto não
+   aprovada, só quem pediu (igual às outras).
+8. **Fechamento:** só o Espaços, só depois que a hora de fim passou, só em pedido aprovado. Resultado
+   obrigatório: "usado sem problema" ou "usado com problema"; este exige texto explicando
+   (mín. 10 letras). Fechado não reabre. Situação final: "Atendida" (o resultado e o texto ficam
+   na ficha e no histórico).
+9. **Prazos:** só o prazo de aprovação (horas úteis) vale para esse tipo; não há prazo de atendimento
+   (o painel de prazos não conta o fechamento no "atendimento no prazo").
+10. **Cadastro:** só a Administração da plataforma cria e altera espaços e períodos; nome obrigatório
+    e sem repetir entre os ativos; capacidade inteira ≥ 1; período com fim não antes do início. Nada
+    é apagado: espaço e período encerrados ficam com `ativo = FALSE`. Pedido antigo mantém o espaço
+    mesmo se ele for inativado.
+11. Toda gravação registra auditoria só com colunas; toda leitura da lista de pedidos passa pelo
+    `Autorizador`, e o conflito só aparece para quem tem `requisicoes.espacos.decidir`.
+
+### Telas
+
+1. **Pedir um espaço** (`/requisicoes/nova`, ficha própria `FichaEspaco`, como na #228).
+   - Quem usa e quer: qualquer pessoa reservar um espaço. Caminho: escolher o tipo, preencher,
+     "Enviar pedido" (3 passos).
+   - Ordem dos campos (primeira dobra: tudo cabe sem rolar no computador): **Data**, **Hora de
+     início**, **Hora de fim**, **Espaço** (só os disponíveis na data; mostra a capacidade ao lado do
+     nome), **Pessoas esperadas**, **Finalidade ou evento**, Observações. Ação principal: "Enviar pedido".
+   - Componentes de `src/ui/`: os mesmos campos e botões da ficha atual; sem peça nova.
+   - Estados: sem espaço disponível na data → "Nenhum espaço está disponível nesta data. Escolha
+     outra data." Gravando → botão desabilitado "Enviando…". Enviado → leva para a ficha com "Pedido
+     enviado. O setor de Espaços vai responder." Erro → mensagem no topo, **o que foi digitado
+     fica**. Acima da capacidade → aviso amarelo, não impede o envio. Sem permissão: tipo não aparece.
+   - Rótulos sempre visíveis; dica de formato em data e hora; obrigatórios marcados.
+   - Celular: campos em uma coluna, teclado de data e hora do aparelho.
+2. **Ficha da requisição (espaço):** mostra os dados do pedido e, para o Espaços, o bloco
+   **"Conflitos neste horário"** acima dos botões (lista de quem cruza, ou "Nenhum pedido cruza com
+   este horário"). Ações do Espaços: "Aprovar reserva", "Devolver para ajuste", "Recusar" (os dois
+   últimos exigem comentário). Aprovar com conflito já aprovado abre confirmação: "Este horário já
+   está aprovado para outro pedido. Aprovar mesmo assim?" (a ação não tem volta; só devolve-se
+   ajustando manualmente).
+3. **Fechar reserva:** na ficha de pedido aprovado cuja hora de fim passou, o Espaços vê "Registrar
+   uso" com duas opções "Usado sem problema" / "Usado com problema" (este abre o campo de texto).
+   Antes da hora: o botão fica desabilitado com "Disponível depois de HH:MM de DD/MM".
+4. **Fila do Espaços:** em "Para aprovar" (pedidos enviados) e em uma aba nova **"Para fechar"**
+   (aprovados cuja hora de fim passou). Aviso de início de tela: "N esperam a sua decisão" e "N
+   reservas para registrar o uso".
+5. **Espaços** (Administração › Requisições): lista dos espaços com "Novo espaço"; em cada um, nome,
+   local, capacidade, ativo e a lista de **períodos de indisponibilidade** (início, fim, motivo, com
+   "Adicionar período" e "Encerrar período"). Vazio: "Nenhum espaço cadastrado. Cadastre o primeiro
+   para liberar os pedidos."
+6. **Agenda (sugestão, não obrigatória):** lista dos próximos dias com filtro de espaço, para o
+   Espaços ver a ocupação sem abrir pedido por pedido. Veja "Decisões tomadas sozinho".
+
+### Fica de fora
+
+Repetição (toda terça às 14h); itens de apoio, taxa de uso e aprovador por espaço; formulário
+público para quem é de fora; reserva de mais de um dia; cancelar reserva já aprovada; marcar
+"não usado" (reserva que ninguém usou); aviso por e-mail (entra com a #61 se a Diretoria quiser).
+
+### Decisões tomadas sozinho (com o custo se estiverem erradas)
+
+- **Reserva de um dia só.** O pedido traz uma data e duas horas, como a proposta descreve. Se
+  errado (evento de vários dias): trocar para início e fim com data; custo médio na regra 1 e 5.
+- **Sem centros de custo, anexos nem prazo de atendimento** nesse tipo: espaço não consome verba e
+  a proposta não os cita. Se errado: acrescentar o bloco comum da ficha; custo baixo.
+- **Ordem data → horário → espaço** na tela, para só mostrar espaços disponíveis na data. Se errado:
+  espaço primeiro, com aviso depois; custo baixo.
+- **Capacidade só avisa**, em linha com "conflito não bloqueia". Se errado: bloquear; custo baixo.
+- **Aprovar sobre conflito já aprovado pede confirmação**, para evitar clique por engano.
+- **Diretoria aprova o pedido de quem é do Espaços**, para ninguém decidir o próprio pedido
+  (regra 6 geral). Se errado: custo baixo.
+- **Vários períodos de indisponibilidade por espaço** (a proposta diz "um período"; veículos usa
+  uma data por vez). Se errado: limitar a um; custo baixo.
+- **Reserva fechada fica "Atendida"**, reaproveitando a situação existente, com o resultado separado;
+  evita situação nova nas listas e no painel.
+- **Cancelar reserva já aprovada** e **"não usado"** ficam fora (sugestões abaixo).
+- **Tipo "Reserva de espaço" é criado pela Administração** no cadastro de tipos, não por "Preparar
+  estrutura"; o perfil e a permissão novos entram pelo manifesto.
+- Nenhum nome real nas telas ou dados fictícios: "Espaço 1", "Sala de reuniões" etc.; os nomes
+  verdadeiros são cadastrados pela instituição.
+
+### Sugestões de melhoria (para a Diretoria decidir)
+
+- Permitir ao Espaços **cancelar uma reserva aprovada** (com motivo), liberando o horário.
+- Opção "Não foi usado" no fechamento.
+- Agenda por dia com filtro de espaço (tela 6).
+
+### Frentes
+
+`telas` (ficha, bloco de conflito, fechamento, cadastro), `regras e dados` (ficha `espaco`, abas
+novas, conflito, caminho e fechamento, perfil e permissão novos, testes de quem vê e quem decide).
+Sem `infraestrutura`.
+
+### Entregas
+
+Uma só, conferível na prévia (dados fictícios com dois espaços e pedidos que se cruzam). Depende
+da #228 (ficha própria por tipo): construir depois dela.
+
+### Critérios de pronto
+
+- [ ] Pedir um espaço: data → hora → espaço disponível; espaço com período de indisponibilidade
+      na data não aparece.
+- [ ] Dois pedidos no mesmo horário: ambos enviam; o Espaços vê o conflito na ficha e confirma ao aprovar.
+- [ ] Coordenação comum e quem pediu não aprovam; só Espaços (e Diretoria no caso de pedido do Espaços).
+- [ ] Fechar só depois da hora de fim; "com problema" exige texto.
+- [ ] Administração cadastra espaço e período; ninguém mais.
+- [ ] `npm run verificar` e `npm run build` verdes.
