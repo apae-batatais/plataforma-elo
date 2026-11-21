@@ -17,3 +17,6 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
   para auditoria nem histórico. Documento aprovado fica travado. `exigirTermoAprovado` (aplicacao/fases.ts) é a trava da regra 13:
   as entregas de implementação (P4) devem chamá-la.
 - Equipe (`ProjetoEquipe`) vê o projeto, não altera nem vê pareceres; passe `equipesAtivas` ao `podeVerProjeto`.
+- Ligação com o termo (L2): `aplicacao/termo.ts`. Parcerias chega pela interface `CatalogoTermos` (`catalogo-parcerias.ts`),
+  entregue por `src/plataforma/ligacoes.ts`; nunca importe Parcerias. A decisão da porta 2 nunca falha por causa do rascunho.
+  `financiador` e `objeto` só existem no Termo de Abertura de projeto `financiado` (`camposDe`).
