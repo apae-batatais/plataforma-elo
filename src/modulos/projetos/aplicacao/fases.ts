@@ -38,7 +38,7 @@ export function podeGerenciar(quem: Autorizador, r: Pick<RegProjeto, 'responsave
   return !!r.servico && quem.temPermissao('projetos.gerenciar', { tipo: 'servico', codigo: r.servico });
 }
 
-async function projetoVisivel(p: Planilhas, quem: Autorizador, id: string): Promise<RegProjeto> {
+export async function projetoVisivel(p: Planilhas, quem: Autorizador, id: string): Promise<RegProjeto> {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) throw new ErroPermissao();
   const [projetos, config, equipes] = await Promise.all([lerTabelas(p, [Projetos] as const).then(([t]) => t), lerConfig(p), equipesAtivas(p)]);
   const r = projetos.porId(id);
@@ -140,6 +140,10 @@ export async function adicionarItemMarco(p: Planilhas, quem: Autorizador, projet
     fonte_verificacao: d.fonteVerificacao?.trim() || null,
     pressuposto: d.pressuposto?.trim() || null,
     acima,
+    fonte_numero: 'manual' as const,
+    servico_id: null,
+    servico_nome: null,
+    meta: null,
   };
   const novo = await inserir(p, MarcoLogico, campos, autoriaDe(quem, agora));
   await auditar(p, quem, 'inclusao', 'MarcoLogico', novo.id, Object.keys(campos), agora);
