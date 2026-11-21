@@ -3,5 +3,5 @@
 - [x] 1. Abas e regras puras
 - [x] 2. Casos de uso, CSV e testes
 - [x] 3. Demonstração
-- [ ] 4. Telas
+- [x] 4. Telas
 - [ ] 5. Ajuda, documentos, verificação, PR
