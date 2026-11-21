@@ -76,6 +76,8 @@ export default async function Ajuda() {
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    resultadoInstagram: a.temPermissao('comunicacao.revisar'),
+    indicadoresComunicacao: a.temPermissao('comunicacao.indicadores'),
   };
 
   const assuntos: Assunto[] = [
@@ -275,6 +277,30 @@ export default async function Ajuda() {
               />
             </>
           )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.resultadoInstagram || pode.indicadoresComunicacao) {
+    assuntos.push({
+      id: 'resultado-instagram',
+      titulo: 'Resultado das postagens do Instagram',
+      resumo: 'Alcance, curtidas, comentários e salvamentos das postagens publicadas pelo Elo.',
+      atalhos: [
+        ...(pode.resultadoInstagram ? [{ rotulo: 'Abrir Pedidos', href: '/comunicacao/pedidos' }] : []),
+        ...(pode.indicadoresComunicacao ? [{ rotulo: 'Abrir Indicadores', href: '/comunicacao/indicadores' }] : []),
+      ],
+      conteudo: (
+        <>
+          <p className="mb-2">O Elo busca sozinho os números, uma vez por dia, de madrugada, nas postagens publicadas por ele (até 90 dias depois de publicadas). Depois disso, ficam os últimos números.</p>
+          <Itens
+            itens={[
+              pode.resultadoInstagram && 'No pedido: abra um pedido já publicado. Na faixa Instagram aparecem alcance, curtidas, comentários e salvamentos, com a data da última atualização. Se ainda não há número, aparece "Resultado ainda não disponível".',
+              pode.resultadoInstagram && 'Se aparecer que não é possível buscar o resultado da conta, a coordenação precisa reconectar o Instagram em Configurações para liberar a leitura dos números.',
+              pode.indicadoresComunicacao && 'Nos Indicadores: escolha mês, trimestre ou ano. O gráfico mostra o alcance médio por tipo de peça e a tabela traz uma linha por postagem do período.',
+            ]}
+          />
         </>
       ),
     });

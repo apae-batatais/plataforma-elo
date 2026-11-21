@@ -11,7 +11,7 @@ import type { Aplicacao } from './aplicacao';
 import { aplicacaoDa } from './aplicacao';
 import { rodarEnvios } from '@/modulos/comunicacao/aplicacao/envios';
 import { tarefaDeCredenciais } from './credenciais';
-import { tarefaDePublicacoes } from './publicacoes';
+import { tarefaDePublicacoes, tarefaDeResultadosDoInstagram } from './publicacoes';
 import type { TarefaDaRotina } from './tarefa-da-rotina';
 
 export type { TarefaDaRotina };
@@ -26,7 +26,7 @@ export const tarefaDeEnviosDaComunicacao: TarefaDaRotina = {
 };
 
 /** Tarefas da plataforma e dos apps. */
-export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [tarefaDeCredenciais, tarefaDePublicacoes, tarefaDeEnviosDaComunicacao];
+export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [tarefaDeCredenciais, tarefaDePublicacoes, tarefaDeEnviosDaComunicacao, tarefaDeResultadosDoInstagram];
 
 export interface ResultadoDaRotina {
   instituicoes: number;
