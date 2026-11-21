@@ -24,6 +24,7 @@ import {
 } from '../dominio/folha';
 import { calendarioDe, deslocamentoDeCaixa, picoDeCaixa, taxaDeEncargosSobreSalarial, validarCalendario, CONTRATOS, type Calendario, type Contrato, type DeslocamentoCaixa, type LinhaCalendario, type PicoDeCaixa } from '../dominio/caixa';
 import { CalendarioPagamento, Componentes, Parametros, Postos, Rateios, type RegComponentes, type RegPosto, type RegRateio } from '../dados/tabelas';
+import { recalcularLancamentosAfetados } from './recalculo-rateio';
 
 export class ErroValidacaoFolha extends Error {}
 
@@ -426,10 +427,9 @@ export interface DadosPosto {
 const iguais = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const ordenarRateio = (l: LinhaRateio[]) => [...l].sort((a, b) => a.centro.localeCompare(b.centro));
 
-/** Recalcula as despesas geradas por rateio dos serviços cuja lotação mudou (import tardio por causa do ciclo). */
+/** Recalcula as despesas geradas por rateio dos serviços cuja lotação mudou. */
 async function recalcularPorLotacao(p: Planilhas, quem: Autorizador, servicos: string[]) {
-  const { recalcularLancamentosAfetados } = await import('./lancamentos-rateio');
-  for (const servico of new Set(servicos.filter(Boolean))) await recalcularLancamentosAfetados(p, quem, { servico });
+  for (const servico of new Set(servicos.filter(Boolean))) await recalcularLancamentosAfetados(p, quem, { servico }, () => profissionaisPorServico(p));
 }
 
 export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto): Promise<string> {

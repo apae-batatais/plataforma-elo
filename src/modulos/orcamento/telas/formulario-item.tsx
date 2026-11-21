@@ -5,11 +5,12 @@
  * na hora e a distribuição nos meses mostra se fecha com o valor.
  * O servidor confere tudo de novo antes de gravar.
  */
-import { useActionState, useState } from 'react';
+import { useActionState, useRef, useState, useTransition } from 'react';
 import { Aviso } from '@/ui/aviso';
 import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
+import type { PreviaLancamento } from '../aplicacao/lancamentos-rateio';
 import type { LinhaDespesa, LinhaReceita, Previsao } from '../aplicacao/previsao';
 import { CAPTACAO, CATEGORIA, COTACAO, mesesUsados, PRIORIDADE, type Distribuicao } from '../dominio/previsao';
 import { MESES, reais } from './formato';
@@ -35,6 +36,8 @@ export function FormularioItem({
   cancelarHref,
   proposta = false,
   cotacao = false,
+  rateio = false,
+  previa,
 }: {
   tipo: 'despesa' | 'receita';
   acao: Acao;
@@ -46,8 +49,15 @@ export function FormularioItem({
   proposta?: boolean;
   /** Cotação do Setor de Compras: só valores, situação da cotação, observação e meses. */
   cotacao?: boolean;
+  /** Lançamento de despesa por rateio (#225): sem serviço (a regra decide) e com a Regra de rateio obrigatória. */
+  rateio?: boolean;
+  /** Mostra "como ficaria" antes de salvar (só no lançamento por rateio). */
+  previa?: (f: FormData) => Promise<PreviaLancamento | { erro: string }>;
 }) {
   const [estado, enviar] = useActionState(acao, {});
+  const formRef = useRef<HTMLFormElement>(null);
+  const [resultado, setResultado] = useState<PreviaLancamento | { erro: string } | null>(null);
+  const [calculando, calcular] = useTransition();
   const d = tipo === 'despesa' ? (item as LinhaDespesa | undefined) : undefined;
   const r = tipo === 'receita' ? (item as LinhaReceita | undefined) : undefined;
 
@@ -64,7 +74,7 @@ export function FormularioItem({
   const falta = arred(valor - somaManual);
 
   return (
-    <form action={enviar} className="space-y-4">
+    <form ref={formRef} action={enviar} className="space-y-4" onChange={() => setResultado(null)}>
       <input type="hidden" name="ano" value={ano} />
       {item && (
         <>
@@ -88,6 +98,24 @@ export function FormularioItem({
 
       {cotacao ? null : tipo === 'despesa' ? (
         <>
+          {rateio ? (
+            <Campo
+              rotulo="Regra de rateio"
+              obrigatorio
+              dica="Decide quais serviços recebem e quanto. Cadastre ou ajuste em Cadastros › Regras de rateio."
+            >
+              <select name="regra_rateio_id" required defaultValue={d?.regra_rateio_id ?? ''} className={estiloEntrada}>
+                <option value="" disabled>
+                  Escolha a regra
+                </option>
+                {(opcoes.regras ?? []).map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.nome}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+          ) : (
           <Campo rotulo="Serviço (centro de custo)" obrigatorio>
             <select name="servico" required defaultValue={d?.servico ?? ''} className={estiloEntrada}>
               <option value="" disabled>
@@ -106,6 +134,7 @@ export function FormularioItem({
               ))}
             </select>
           </Campo>
+          )}
           <Campo rotulo="Grupo de gasto" obrigatorio>
             <select name="grupo_id" required defaultValue={d?.grupo_id ?? ''} className={estiloEntrada}>
               <option value="" disabled>
@@ -119,7 +148,7 @@ export function FormularioItem({
               ))}
             </select>
           </Campo>
-          {!proposta && (opcoes.regras?.length ?? 0) > 0 && (
+          {!proposta && !rateio && (opcoes.regras?.length ?? 0) > 0 && (
             <Campo rotulo="Regra de rateio do item" dica="Deixe em “Regra do grupo” para seguir o padrão do grupo (ou do serviço).">
               <select name="regra_rateio_id" defaultValue={d?.regra_rateio_id ?? ''} className={estiloEntrada}>
                 <option value="">Regra do grupo</option>
@@ -201,7 +230,50 @@ export function FormularioItem({
         </Campo>
       )}
 
-      {tipo === 'despesa' && !cotacao && (
+      {rateio && previa && (
+        <div className="space-y-2 text-sm">
+          <button
+            type="button"
+            disabled={calculando}
+            className="rounded-md border border-borda px-3 py-1.5 font-semibold hover:bg-superficie-2 disabled:opacity-60"
+            onClick={() => {
+              const dados = new FormData(formRef.current!);
+              calcular(async () => setResultado(await previa(dados)));
+            }}
+          >
+            {calculando ? 'Calculando…' : 'Ver como ficaria'}
+          </button>
+          {resultado && 'erro' in resultado && <Aviso tipo="atencao">{resultado.erro}</Aviso>}
+          {resultado && !('erro' in resultado) &&
+            (resultado.linhas.length === 0 ? (
+              <Aviso tipo="atencao">Nenhuma despesa seria gerada: ajuste a Regra de rateio. Você ainda pode salvar o lançamento.</Aviso>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <caption className="mb-1 text-left text-xs text-texto-suave">Como ficaria, com os números atuais dos serviços (valor no ano)</caption>
+                  <thead>
+                    <tr className="text-xs text-texto-suave">
+                      <th className="py-1 pr-2 font-semibold">Serviço</th>
+                      <th className="py-1 pr-2 text-right font-semibold">Valor</th>
+                      <th className="py-1 text-right font-semibold">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultado.linhas.map((l) => (
+                      <tr key={l.codigo} className="border-t border-borda">
+                        <td className="py-1 pr-2">{l.nome}</td>
+                        <td className="py-1 pr-2 text-right tabular-nums">{reais(l.valor)}</td>
+                        <td className="py-1 text-right tabular-nums">{(l.percentual * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 })}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+        </div>
+      )}
+
+      {tipo === 'despesa' && !cotacao && !rateio && (
         <>
           <fieldset className="text-sm">
             <legend className="font-semibold">Categoria</legend>
@@ -341,7 +413,7 @@ export function FormularioItem({
       )}
       <div className="flex gap-2">
         <BotaoEnviar enviando="Salvando…" className="flex-1" disabled={(modo === 'manual' && falta !== 0) || (modo === 'meses' && meses.length === 0)}>
-          {cotacao ? 'Salvar cotação' : item ? 'Salvar alterações' : tipo === 'despesa' ? 'Lançar despesa' : 'Lançar receita'}
+          {cotacao ? 'Salvar cotação' : item ? 'Salvar alterações' : rateio ? 'Salvar lançamento' : tipo === 'despesa' ? 'Lançar despesa' : 'Lançar receita'}
         </BotaoEnviar>
         {item && (
           <LinkBotao href={cancelarHref} variante="secundario">
