@@ -106,6 +106,10 @@ fechamento depois do uso são a mesma ideia. Quem for construído primeiro cria 
 Sem ADR: tudo acontece dentro do módulo (ficha, perfil e abas novas), sem mudar Núcleo nem
 armazenamento.
 
+Ajuste de 21/11/2026: a Diretoria confirmou que o pedido de espaço tem centros de custo, como os
+outros tipos — exceto quando é cedido a um externo (parceiro, comunidade), caso em que não há
+serviço interno "usando" o espaço (regra 1-A e tela).
+
 ### Usuários e permissões
 
 | Perfil | Pode | Permissão |
@@ -126,16 +130,26 @@ Quem pede vê só os próprios pedidos; só quem decide vê os pedidos dos outro
 | EspacoIndisponibilidades | Espaço, data de início, data de fim, motivo (reforma, obra…), ativo. Um espaço pode ter vários períodos | interno |
 
 O pedido é uma linha de `Requisicoes` como as outras. Os dados do espaço vão no JSON `detalhes`
-(`DetalhesEspaco`): id do espaço, data, hora de início, hora de fim, finalidade, pessoas esperadas.
-A ficha nova é `espaco` em `FORMULARIOS` (categoria "serviço", sem itens, sem centros de custo, sem
-anexos). Fechamento (resultado "sem problema" ou "com problema" e o texto) é gravado na mesma
-requisição, com data e quem fechou; o histórico recebe a inclusão. Coluna pessoal: as mesmas de hoje.
+(`DetalhesEspaco`): id do espaço, data, hora de início, hora de fim, finalidade, pessoas esperadas,
+`usoExterno` (verdadeiro/falso) e `organizacaoExterna` (texto, só quando `usoExterno`). A ficha nova
+é `espaco` em `FORMULARIOS` (categoria "serviço", sem itens, sem anexos). Pedido com `usoExterno`
+falso reaproveita a aba `Centros` (comum a todos os tipos, regra 1 geral do módulo) para os centros
+de custo; com `usoExterno` verdadeiro não tem centros de custo. Fechamento (resultado "sem problema"
+ou "com problema" e o texto) é gravado na mesma requisição, com data e quem fechou; o histórico
+recebe a inclusão. Coluna pessoal: as mesmas de hoje; `organizacaoExterna` é dado de terceiro, não
+pessoal do funcionário.
 
 ### Regras de negócio (com teste)
 
 1. **Campos obrigatórios:** espaço, data, hora de início, hora de fim, finalidade (mín. 5 letras) e
    pessoas esperadas (inteiro ≥ 1). Reserva é de **um dia só** (início e fim na mesma data) e o fim
    é depois do início. Data não pode ser anterior a hoje (horário de Brasília).
+1-A. **Centros de custo ou uso externo (decisão da Diretoria, 21/11/2026):** o pedido marca se é
+   **uso externo** (cedido a um parceiro, organização ou pessoa de fora da instituição). Se não é
+   uso externo, tem centros de custo como os outros tipos (regra 1 geral do módulo: um ou mais
+   serviços, sem repetir, somando 100%) — a área/serviço que autoriza a cessão ou usa o espaço. Se
+   é uso externo, não pede centros de custo e exige o nome da organização ou pessoa externa (mín.
+   3 letras) em vez disso. Não gera despesa nem rateio em nenhum dos dois casos.
 2. **Espaço indisponível:** espaço inativo, ou com período de indisponibilidade que cobre a data
    pedida, não é aceito no pedido (nem no reenvio). A lista de espaços da tela já mostra só os
    disponíveis na data escolhida.
@@ -148,9 +162,11 @@ requisição, com data e quem fechou; o histórico recebe a inclusão. Coluna pe
    "aguardando aprovação" e "aprovada". O pedido nunca é bloqueado por conflito; quem decide vê a
    lista dos que cruzam (quem pediu, horário, situação). Aprovar com conflito contra um pedido já
    **aprovado** pede confirmação explícita; contra outro só enviado, não.
-6. **Quem decide:** pedido com ficha `espaco` vai sempre para o Espaços (regra 2 e 3 das regras
-   gerais não se aplicam: sem centros de custo, sem coordenação). Quem tem o perfil Espaços e pede,
-   é aprovado pela Diretoria. Ninguém decide o próprio pedido.
+6. **Quem decide:** pedido com ficha `espaco` vai sempre para o Espaços — as regras 2 e 3 gerais
+   (mesma coordenação entre os centros; quem pede da própria coordenação ou serviço sem coordenação
+   vai para a Diretoria) **não valem aqui**: mesmo tendo centros de custo (regra 1-A), quem decide
+   nunca é a coordenação deles. Quem tem o perfil Espaços e pede é aprovado pela Diretoria. Ninguém
+   decide o próprio pedido.
 7. **Caminho:** enviada → aprovada | devolvida | recusada; devolvida → enviada | cancelada;
    aprovada → **usada** (fechada). Sem "receber" nem "em atendimento". Cancelar só enquanto não
    aprovada, só quem pediu (igual às outras).
@@ -174,7 +190,10 @@ requisição, com data e quem fechou; o histórico recebe a inclusão. Coluna pe
      "Enviar pedido" (3 passos).
    - Ordem dos campos (primeira dobra: tudo cabe sem rolar no computador): **Data**, **Hora de
      início**, **Hora de fim**, **Espaço** (só os disponíveis na data; mostra a capacidade ao lado do
-     nome), **Pessoas esperadas**, **Finalidade ou evento**, Observações. Ação principal: "Enviar pedido".
+     nome), **Pessoas esperadas**, **Finalidade ou evento**, **É uma cessão para fora da
+     instituição?** (sim/não). Não: **Centros de custo** (um ou mais serviços, somando 100%, igual
+     aos outros tipos). Sim: **Organização ou pessoa** (quem vai usar o espaço), sem centros de
+     custo. Observações. Ação principal: "Enviar pedido".
    - Componentes de `src/ui/`: os mesmos campos e botões da ficha atual; sem peça nova.
    - Estados: sem espaço disponível na data → "Nenhum espaço está disponível nesta data. Escolha
      outra data." Gravando → botão desabilitado "Enviando…". Enviado → leva para a ficha com "Pedido
@@ -211,8 +230,8 @@ público para quem é de fora; reserva de mais de um dia; cancelar reserva já a
 
 - **Reserva de um dia só.** O pedido traz uma data e duas horas, como a proposta descreve. Se
   errado (evento de vários dias): trocar para início e fim com data; custo médio na regra 1 e 5.
-- **Sem centros de custo, anexos nem prazo de atendimento** nesse tipo: espaço não consome verba e
-  a proposta não os cita. Se errado: acrescentar o bloco comum da ficha; custo baixo.
+- **Sem anexos nem prazo de atendimento** nesse tipo: espaço não consome verba e a proposta não os
+  cita. Se errado: acrescentar o bloco comum da ficha; custo baixo.
 - **Ordem data → horário → espaço** na tela, para só mostrar espaços disponíveis na data. Se errado:
   espaço primeiro, com aviso depois; custo baixo.
 - **Capacidade só avisa**, em linha com "conflito não bloqueia". Se errado: bloquear; custo baixo.
@@ -254,4 +273,6 @@ da #228 (ficha própria por tipo): construir depois dela.
 - [ ] Coordenação comum e quem pediu não aprovam; só Espaços (e Diretoria no caso de pedido do Espaços).
 - [ ] Fechar só depois da hora de fim; "com problema" exige texto.
 - [ ] Administração cadastra espaço e período; ninguém mais.
+- [ ] Pedido comum pede centros de custo (somando 100%); marcado como uso externo pede a
+      organização ou pessoa em vez disso, sem centro de custo.
 - [ ] `npm run verificar` e `npm run build` verdes.
