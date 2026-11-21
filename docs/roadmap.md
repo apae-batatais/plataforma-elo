@@ -277,3 +277,11 @@ Especificada em 18/11/2026. Ficou para depois:
 - [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
 - [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
 
+
+## Requisições: agendamento de espaços (issue #230, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Repetição semanal (toda terça às 14h); reserva de mais de um dia.
+- [ ] Itens de apoio, taxa de uso, aprovador por espaço e formulário público.
+- [ ] Cancelar reserva já aprovada; marcar "não usado"; agenda por dia com filtro de espaço.
