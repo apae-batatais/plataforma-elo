@@ -85,6 +85,88 @@ O grupo de despesa saiu da ficha e do cadastro de tipos em 04/11/2026 (decisão 
 | requisicoes_aprovacao_no_prazo   | % de requisições decididas dentro do prazo de aprovação | Painel de prazos |
 | requisicoes_atendimento_no_prazo | % de atendimentos concluídos dentro do prazo            | Painel de prazos |
 
+## Tela própria por tipo de requisição (proposta #228, 21/11/2026)
+
+### Objetivo
+
+Hoje `formulario-requisicao.tsx` é um componente só, que muda os campos mostrados com `if`
+conforme o tipo escolhido (materiais, TI, mobiliário, manutenção). Esta entrega separa cada tipo
+numa tela própria (componente próprio), deixando o padrão pronto para os tipos novos de
+agendamento (veículos, #229; espaços, #230) nascerem já com tela própria, em vez de entrarem no
+mesmo `if`.
+
+Sem mudança de regra de negócio, de dado gravado ou de permissão: é só reorganização de tela. Sem
+ADR (não muda arquitetura, armazenamento nem Núcleo).
+
+### O que já existe (conferido no código em 21/11/2026)
+
+- `telas/formulario-requisicao.tsx` (770 linhas) tem: um bloco comum a todos os tipos (Tipo e
+  Área; Centros de custo com percentual; Anexos; Observações; aviso de erro; botão Enviar) e
+  quatro blocos condicionais (`tipo?.formulario === '...'`): materiais (itens, retirada ou
+  entrega, evento, utensílios), TI (categoria, equipamento, patrimônio, local, problema, urgência,
+  contato), mobiliário (o que fazer, móveis, origem, destino, data, devolução, contato) e
+  manutenção (tipo de serviço, local, equipamento, patrimônio, problema, horário, urgência,
+  contato).
+- Só existe uma rota, `/requisicoes/nova` (e `/requisicoes/[id]/editar`, para ajustar uma
+  devolvida), que usa esse componente único.
+
+### Regra (com teste, mas de tela — ver "Telas")
+
+1. A pessoa continua escolhendo o tipo no mesmo lugar (`/requisicoes/nova`); ao escolher, aparece
+   só a ficha daquele tipo. Nada muda na navegação nem na URL.
+2. Cada tipo tem seu próprio componente de ficha, que só conhece os campos daquele tipo; o
+   componente comum (Tipo e Área, Centros de custo, Anexos, Observações, Enviar) não sabe nada de
+   nenhum tipo específico.
+3. O JSON gravado em `Requisicoes.detalhes` (o formato de cada `Detalhes...` em
+   `dominio/requisicao.ts`) não muda: é o mesmo formato de hoje, só a tela que monta é outra.
+
+### Telas
+
+1. **Quem usa e o que quer fazer:** quem abre uma requisição escolhe o tipo e preenche só os
+   campos daquele tipo, sem ver nem rolar por campos de outros tipos. Caminho: igual ao de hoje
+   (escolher tipo → preencher → enviar).
+2. **Componentes:** um componente "casco" (`FormularioRequisicao`, o arquivo que existe hoje,
+   enxuto) cuida do que é comum: Tipo e Área, Centros de custo, Anexos, Observações, erro e Enviar.
+   Para cada tipo, um componente próprio novo: `FichaMateriais`, `FichaTi`, `FichaMobiliario`,
+   `FichaManutencao` (em `telas/`), cada um recebendo e devolvendo só os dados do seu tipo. O
+   casco escolhe qual Ficha mostrar pelo `tipo.formulario`, do mesmo jeito que hoje escolhe qual
+   bloco do `if` mostrar.
+3. **Sem tela nova para a Diretoria conferir** além de abrir cada tipo e ver que a ficha continua
+   igual à de hoje (mesmos campos, mesma ordem, mesmo texto) — é refatoração, não mudança visual.
+4. **Celular e teclado:** sem mudança (já funciona hoje).
+
+### Fica de fora
+
+Veículos (#229) e espaços (#230) entram como Fichas novas nas próprias propostas, seguindo este
+padrão; não fazem parte desta entrega.
+
+### Decisões tomadas sozinho
+
+- **Mesma URL, mesma navegação** (regra 1): é a leitura mais simples da proposta (tela própria =
+  componente próprio, não rota própria); a Diretoria não respondeu às perguntas da issue. Se errado: trocar para rota por tipo é entrega nova,
+  custo médio (muda navegação, menu e redirecionamentos).
+- **Uma entrega só**, cobrindo os quatro tipos já existentes de uma vez, em vez de uma entrega por
+  tipo (diferente do padrão "uma entrega por tipo de ficha" usado quando os tipos foram
+  construídos pela primeira vez): aqui não há ficha nova para testar com cuidado, só mover código
+  que já funciona para arquivos separados. Se o Desenvolvedor achar mais seguro dividir em PRs
+  menores (um tipo por vez), pode — sem mudar o resultado final.
+
+### Frentes
+
+`telas` (separar os componentes). Sem `regras e dados` nem `infraestrutura`.
+
+### Entrega
+
+Uma só: os quatro componentes de ficha novos, o casco enxuto, sem mudança de comportamento.
+
+### Critérios de pronto
+
+- [ ] Testes existentes de Requisições continuam passando (nenhuma regra de negócio muda).
+- [ ] Na prévia (dados fictícios): abrir uma requisição nova de cada um dos quatro tipos e
+      confirmar que a ficha tem os mesmos campos de hoje, na mesma ordem; ajustar uma devolvida de
+      cada tipo e confirmar que os dados salvos aparecem certos na tela de novo.
+- [ ] `npm run verificar` e `npm run build` verdes.
+
 ## Depois
 
 - Aviso por e-mail (precisa de ligação com o Gmail).
