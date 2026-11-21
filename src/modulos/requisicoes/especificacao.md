@@ -142,14 +142,18 @@ padrão; não fazem parte desta entrega.
 
 ### Decisões tomadas sozinho
 
-- **Mesma URL, mesma navegação** (regra 1): é a leitura que a Diretoria confirmou (tela própria =
-  componente próprio, não rota própria). Se errado: trocar para rota por tipo é entrega nova,
+- **Mesma URL, mesma navegação** (regra 1): é a leitura mais simples da proposta (tela própria =
+  componente próprio, não rota própria); a Diretoria não respondeu às perguntas da issue. Se errado: trocar para rota por tipo é entrega nova,
   custo médio (muda navegação, menu e redirecionamentos).
 - **Uma entrega só**, cobrindo os quatro tipos já existentes de uma vez, em vez de uma entrega por
   tipo (diferente do padrão "uma entrega por tipo de ficha" usado quando os tipos foram
   construídos pela primeira vez): aqui não há ficha nova para testar com cuidado, só mover código
   que já funciona para arquivos separados. Se o Desenvolvedor achar mais seguro dividir em PRs
   menores (um tipo por vez), pode — sem mudar o resultado final.
+
+### Frentes
+
+`telas` (separar os componentes). Sem `regras e dados` nem `infraestrutura`.
 
 ### Entrega
 
