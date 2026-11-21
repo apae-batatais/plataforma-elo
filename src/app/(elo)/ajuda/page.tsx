@@ -76,6 +76,9 @@ export default async function Ajuda() {
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    verPlanejamento: a.temPermissaoAlgumEscopo('projetos.acessar'),
+    planejarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
+    decidirPlano: a.temPermissao('projetos.decidir'),
   };
 
   const assuntos: Assunto[] = [
@@ -432,6 +435,57 @@ export default async function Ajuda() {
               />
             </>
           )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.verPlanejamento) {
+    assuntos.push({
+      id: 'projetos-planejamento',
+      titulo: 'Projetos: atividades e orçamento (fase 3)',
+      resumo: 'Planejar o que será feito, por quem e até quando, e quanto vai custar, antes de iniciar a implementação.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              'Depois que a Diretoria aprova o Termo de Abertura, o projeto entra na fase 3. A ficha do projeto mostra "O que falta para a próxima porta".',
+              'As abas Atividades e Orçamento mostram o plano em leitura para quem vê o projeto. Quem está só na equipe vê as atividades, mas não o orçamento.',
+              'Atividade que passou do fim previsto sem ser concluída aparece como "Atrasada" (a palavra vem junto da cor).',
+              'O orçamento do projeto é só o plano do projeto: ele não é enviado ao Orçamento da instituição.',
+            ]}
+          />
+          {pode.planejarProjeto && (
+            <>
+              <Sub>Cadastrar as atividades</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e a aba Atividades.',
+                  'Em Adicionar atividade, escreva o que será feito, o e-mail de quem é responsável (a pessoa precisa ter acesso ao Elo) e as datas previstas de início e fim. O peso é opcional.',
+                  'Para acompanhar, escolha a situação na própria linha. Para concluir, informe a data em que a atividade terminou.',
+                  'Retirar não apaga: a atividade sai da lista e fica guardada.',
+                ]}
+              />
+              <Sub>Montar o orçamento do projeto</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Orçamento e use Adicionar linha: categoria, descrição, valor planejado e, se quiser, de onde vem o dinheiro.',
+                  'O total aparece no alto, com o valor aprovado no Termo ao lado para comparar. Se forem diferentes, a tela só avisa; nada é bloqueado.',
+                  'O orçamento só muda na fase 3. Depois, mudanças passam por pedido de mudança.',
+                ]}
+              />
+              <Sub>Seguir para a implementação</Sub>
+              <Passos
+                itens={[
+                  'Com atividades e orçamento prontos (e, no porte completo, os demais documentos da fase), a ficha mostra o botão da próxima etapa.',
+                  'Porte completo: Abrir porta de decisão (porta 3, do plano). Porte enxuto: Iniciar a implementação, sem porta.',
+                  'Sem Termo de Abertura aprovado, o projeto não entra em implementação.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirPlano && <p className="mt-3">Na porta 3, a Diretoria decide seguir, ajustar ou parar, com justificativa, depois dos pareceres, como nas portas anteriores.</p>}
         </>
       ),
     });

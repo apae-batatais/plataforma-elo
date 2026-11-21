@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import { GRAUS, NIVEIS_MARCO, SITUACOES_RISCO } from '../dominio/fases';
+import { SITUACOES_ATIVIDADE } from '../dominio/planejamento';
 import { DECISOES, ETAPAS, NIVEIS_DECISAO, PORTES, RESULTADOS_PARECER, SITUACOES_PORTA, TIPOS_PARECER, TIPOS_PORTA, TIPOS_PROJETO } from '../dominio/projeto';
 
 export const PLANILHA_PROJETOS = 'projetos';
@@ -165,13 +166,48 @@ export const ProjetoEquipe = definirTabela({
   }),
 });
 
-export const TABELAS_PROJETOS = [Projetos, ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
+export const Atividades = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'Atividades',
+  esquema: z.object({
+    projeto_id: texto(),
+    descricao: texto(),
+    /** E-mail da pessoa responsável (uso interno). */
+    responsavel: texto(),
+    inicio_previsto: texto(),
+    fim_previsto: texto(),
+    inicio_real: dataOpcional(),
+    fim_real: dataOpcional(),
+    /** `atrasada` não é gravada: é calculada pela data (regra 20). */
+    situacao: z.enum(SITUACOES_ATIVIDADE),
+    /** Peso opcional no andamento do projeto. */
+    peso: numeroOpcional(),
+  }),
+});
+
+export const ProjetoOrcamento = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'ProjetoOrcamento',
+  esquema: z.object({
+    projeto_id: texto(),
+    categoria: texto(),
+    descricao: texto(),
+    valor_planejado: z.coerce.number().min(0),
+    fonte: textoOpcional(),
+    /** Número da versão do Termo de Abertura aprovado quando a linha foi gravada (vazio antes da aprovação). */
+    versao_termo: numeroOpcional(),
+  }),
+});
+
+export const TABELAS_PROJETOS = [Projetos, ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
 
 export type RegProjeto = Registro<typeof Projetos.esquema>;
 export type RegDocumento = Registro<typeof ProjetoDocumentos.esquema>;
 export type RegMarco = Registro<typeof MarcoLogico.esquema>;
 export type RegRisco = Registro<typeof Riscos.esquema>;
 export type RegEquipe = Registro<typeof ProjetoEquipe.esquema>;
+export type RegAtividade = Registro<typeof Atividades.esquema>;
+export type RegLinhaOrcamento = Registro<typeof ProjetoOrcamento.esquema>;
 export type RegPorta = Registro<typeof Portas.esquema>;
 export type RegParecer = Registro<typeof Pareceres.esquema>;
 export type RegDecisao = Registro<typeof Decisoes.esquema>;

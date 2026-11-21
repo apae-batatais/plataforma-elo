@@ -4,6 +4,8 @@ const ABAS = [
   { chave: 'resumo', rotulo: 'Resumo e fase atual', parte: '' },
   { chave: 'marco', rotulo: 'Marco lógico', parte: '/marco-logico' },
   { chave: 'riscos', rotulo: 'Riscos', parte: '/riscos' },
+  { chave: 'atividades', rotulo: 'Atividades', parte: '/atividades' },
+  { chave: 'orcamento', rotulo: 'Orçamento', parte: '/orcamento' },
   { chave: 'equipe', rotulo: 'Equipe', parte: '/equipe' },
 ] as const;
 
