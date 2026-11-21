@@ -3,7 +3,7 @@
 - **Fonte única**: a Ajuda da plataforma, menu Suporte › Ajuda (`src/app/(elo)/ajuda/page.tsx`),
   com o passo a passo de cada tela, filtrado pelo perfil de quem vê, e o botão "Baixar o manual (PDF)".
 - **PDF**: decisão da Diretoria de 21/11/2026, passa a ser gerado a partir da Ajuda, sem documento
-  editado à parte (proposta #232). Até lá, o PDF em
+  editado à parte (proposta #232). Até a entrega 1 da #232 (especificação na plataforma, ADR-040), o PDF em
   `public/manual/manual-elo.pdf` é o de 06/11/2026 e está desatualizado.
 - O documento "Manual do Elo" no Claude Docs deixa de ser mantido.
 
