@@ -9,7 +9,7 @@
 import { ErroPermissao, type Autorizador } from '@/nucleo/acesso/autorizador';
 import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { atualizar, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { Pessoas, Usuarios } from '@/nucleo/estrutura/tabelas';
+import { Areas, Perfis, Pessoas, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
   CategoriasConhecimento,
   CienciasConhecimento,
@@ -423,4 +423,14 @@ export async function acompanharPublicacao(p: Planilhas, quem: Autorizador, id: 
   const ordem = { pendente: 0, precisa_renovar: 1, em_dia: 2, sem_exigencia: 3 } as const;
   pessoas.sort((a, b) => ordem[a.situacao] - ordem[b.situacao] || a.nome.localeCompare(b.nome, 'pt-BR'));
   return { id: x.id, titulo: x.titulo, edicao: x.edicao, emDia: pessoas.filter((s) => s.situacao === 'em_dia').length, total: doPublico.length, pessoas };
+}
+
+/** Perfis e áreas que o formulário oferece em "Quem deve ler" (só nome e código; quem publica). */
+export async function opcoesDePublico(p: Planilhas, quem: Autorizador) {
+  exigirPublicar(quem);
+  const [perfis, areas] = await lerTabelas(p, [Perfis, Areas] as const);
+  return {
+    perfis: perfis.ativos().map((x) => ({ codigo: x.codigo, nome: x.nome })),
+    areas: areas.ativos().map((x) => ({ codigo: x.codigo, nome: x.nome })),
+  };
 }
