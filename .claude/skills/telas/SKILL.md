@@ -112,6 +112,8 @@ Antes do PR, confira (na demonstração, `npm run dev`, e no código):
 - [ ] Movimento dentro de 0,2 a 0,6 s e nada animado com "menos movimento".
 - [ ] Textos do ponto de vista de quem usa, sem caixa alta e sem nome próprio (o teste
       `tests/nucleo/sem-nomes-proprios.test.ts` confere).
+- [ ] Ajuda atualizada (`src/app/(elo)/ajuda/`): passo a passo da tela nova ou mudada, com
+      atalho, mostrado só para os perfis que podem usá-la. É a fonte única do manual (o PDF sai dela).
 
 ### Revisão de usabilidade (antes de abrir o PR)
 

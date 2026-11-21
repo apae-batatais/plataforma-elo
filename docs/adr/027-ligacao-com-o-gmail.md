@@ -64,7 +64,7 @@ família de credencial que a ADR-011 já usa nas planilhas.
 - A peça é de toda a plataforma, não da Comunicação (comentário da Diretoria na issue #63: os avisos cobrem todos
   os apps). Um app recebe `app.email` (pode ser nulo) na `Aplicacao` e nunca importa outro app; Requisições (#61)
   e o painel de prazos (#57) usam o mesmo `app.email` em entregas próprias.
-- O agendador é o workflow `rotina.yml` (modelo em `docs/infraestrutura/rotina.yml.pendente` até a DevOps ativar), com os Secrets `ROTINA_URL` e `ROTINA_TOKEN` (e a variável `ROTINA_TOKEN`
+- O agendador é o workflow `rotina.yml` (ativo desde 20/11/2026), com os Secrets `ROTINA_URL` e `ROTINA_TOKEN` (e a variável `ROTINA_TOKEN`
   na Netlify). As tarefas dos apps entram na lista `TAREFAS_DA_ROTINA` de `src/plataforma/rotina.ts`.
 - "E-mail de teste": botão na linha da instituição na área da rede; manda uma mensagem só para quem clicou.
 
