@@ -3,6 +3,8 @@ import Link from 'next/link';
 const ABAS = [
   { chave: 'resumo', rotulo: 'Resumo e fase atual', parte: '' },
   { chave: 'marco', rotulo: 'Marco lógico', parte: '/marco-logico' },
+  { chave: 'atividades', rotulo: 'Atividades', parte: '/atividades' },
+  { chave: 'orcamento', rotulo: 'Orçamento', parte: '/orcamento' },
   { chave: 'riscos', rotulo: 'Riscos', parte: '/riscos' },
   { chave: 'equipe', rotulo: 'Equipe', parte: '/equipe' },
 ] as const;

@@ -14,7 +14,7 @@ export type Porte = (typeof PORTES)[number];
 export const NOME_PORTE: Record<Porte, string> = { enxuto: 'Enxuto', completo: 'Completo' };
 
 /** Etapa do projeto. Até a entrega P2 o ciclo vai da ideia à porta 2 (Termo de Abertura); a fase 3 em diante vem nas próximas entregas. */
-export const ETAPAS = ['rascunho', 'aguardando_responsavel', 'ideia', 'em_porta', 'fase_1', 'fase_2', 'fase_3', 'parado', 'cancelado'] as const;
+export const ETAPAS = ['rascunho', 'aguardando_responsavel', 'ideia', 'em_porta', 'fase_1', 'fase_2', 'fase_3', 'implementacao', 'parado', 'cancelado'] as const;
 export type Etapa = (typeof ETAPAS)[number];
 export const NOME_ETAPA: Record<Etapa, string> = {
   rascunho: 'Rascunho',
@@ -24,6 +24,7 @@ export const NOME_ETAPA: Record<Etapa, string> = {
   fase_1: 'Fase 1 · Identificação e definição',
   fase_2: 'Fase 2 · Configuração',
   fase_3: 'Fase 3 · Planejamento',
+  implementacao: 'Fase 4 · Implementação',
   parado: 'Parado',
   cancelado: 'Cancelado',
 };
@@ -58,9 +59,9 @@ export const NOME_SITUACAO_PORTA: Record<SituacaoPorta, string> = {
 };
 
 /** Portas 1 (ideia) e 2 (Termo de Abertura); a 3 e a de encerramento chegam com P3 e P5. */
-export const TIPOS_PORTA = ['ideia', 'termo'] as const;
+export const TIPOS_PORTA = ['ideia', 'termo', 'plano'] as const;
 export type TipoPorta = (typeof TIPOS_PORTA)[number];
-export const NOME_PORTA: Record<TipoPorta, string> = { ideia: 'Porta 1 · Ideia', termo: 'Porta 2 · Termo de Abertura' };
+export const NOME_PORTA: Record<TipoPorta, string> = { ideia: 'Porta 1 · Ideia', termo: 'Porta 2 · Termo de Abertura', plano: 'Porta 3 · Plano' };
 
 export const PAPEIS_DESIGNADOS = ['tecnico', 'financeiro', 'juridico', 'alcada'] as const;
 export type PapelDesignado = (typeof PAPEIS_DESIGNADOS)[number];
@@ -129,7 +130,7 @@ export interface DestinoDaDecisao {
  */
 export function destinoDaDecisao(nivel: NivelDecisao, decisao: Decisao, exigeAlcadaNaPorta: boolean, porta: TipoPorta = 'ideia'): DestinoDaDecisao {
   if (nivel === 'diretoria' && decisao === 'seguir' && exigeAlcadaNaPorta) return { situacaoPorta: 'aguardando_alcada', etapa: null };
-  const [seguir, ajustar]: [Etapa, Etapa] = porta === 'ideia' ? ['fase_1', 'ideia'] : ['fase_3', 'fase_2'];
+  const [seguir, ajustar]: [Etapa, Etapa] = porta === 'ideia' ? ['fase_1', 'ideia'] : porta === 'termo' ? ['fase_3', 'fase_2'] : ['implementacao', 'fase_3'];
   return { situacaoPorta: 'decidida', etapa: decisao === 'seguir' ? seguir : decisao === 'ajustar' ? ajustar : 'parado' };
 }
 

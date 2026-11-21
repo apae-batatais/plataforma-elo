@@ -6,7 +6,7 @@ import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Usuarios } from '@/nucleo/estrutura/tabelas';
-import { MarcoLogico, ProjetoDocumentos, ProjetoEquipe, Projetos, Riscos, type RegDocumento, type RegEquipe, type RegMarco, type RegProjeto, type RegRisco } from '../dados/tabelas';
+import { Atividades, MarcoLogico, ProjetoDocumentos, ProjetoEquipe, ProjetoOrcamento, Projetos, Riscos, type RegAtividade, type RegDocumento, type RegEquipe, type RegLinhaOrcamento, type RegMarco, type RegProjeto, type RegRisco } from '../dados/tabelas';
 import {
   CAMPOS,
   ehDocumento,
@@ -38,7 +38,7 @@ export function podeGerenciar(quem: Autorizador, r: Pick<RegProjeto, 'responsave
   return !!r.servico && quem.temPermissao('projetos.gerenciar', { tipo: 'servico', codigo: r.servico });
 }
 
-async function projetoVisivel(p: Planilhas, quem: Autorizador, id: string): Promise<RegProjeto> {
+export async function projetoVisivel(p: Planilhas, quem: Autorizador, id: string): Promise<RegProjeto> {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) throw new ErroPermissao();
   const [projetos, config, equipes] = await Promise.all([lerTabelas(p, [Projetos] as const).then(([t]) => t), lerConfig(p), equipesAtivas(p)]);
   const r = projetos.porId(id);
@@ -46,7 +46,7 @@ async function projetoVisivel(p: Planilhas, quem: Autorizador, id: string): Prom
   return r;
 }
 
-async function projetoParaAlterar(p: Planilhas, quem: Autorizador, id: string, fases: NumeroFase[]): Promise<RegProjeto> {
+export async function projetoParaAlterar(p: Planilhas, quem: Autorizador, id: string, fases: NumeroFase[]): Promise<RegProjeto> {
   const r = await projetoVisivel(p, quem, id);
   if (!podeGerenciar(quem, r)) throw new ErroPermissao('Só quem gerencia o projeto altera esta parte.');
   const etapa = r.etapa;
@@ -265,16 +265,39 @@ export interface Fase {
   marco: RegMarco[];
   riscos: RegRisco[];
   equipe: RegEquipe[];
+  atividades: RegAtividade[];
+  orcamento: RegLinhaOrcamento[];
   tolerancias: Tolerancias | null;
   podeAlterar: boolean;
   /** Pode avançar da fase 1 para a 2 (tudo pronto). */
   podeAvancar: boolean;
   /** Pode abrir a porta 2 (fase 2 com tudo pronto). */
   podeAbrirPorta2: boolean;
+  /** Pode abrir a porta 3 (fase 3 pronta, porte completo). */
+  podeAbrirPorta3: boolean;
+  /** Pode iniciar a implementação direto (fase 3 pronta, porte enxuto: a porta 3 fica desligada). */
+  podeIniciarImplementacao: boolean;
 }
 
-export function situacaoDosItens(porte: RegProjeto['porte'], fase: NumeroFase, docs: readonly RegDocumento[], marco: readonly RegMarco[], riscos: readonly RegRisco[]): ItemSituacao[] {
+export function situacaoDosItens(
+  porte: RegProjeto['porte'],
+  fase: NumeroFase,
+  docs: readonly RegDocumento[],
+  marco: readonly RegMarco[],
+  riscos: readonly RegRisco[],
+  atividades: readonly RegAtividade[] = [],
+  orcamento: readonly RegLinhaOrcamento[] = [],
+): ItemSituacao[] {
   return itensDaFase(porte, fase).map((item) => {
+    if (item === 'atividades') {
+      const abertas = atividades.filter((a) => a.situacao !== 'cancelada');
+      const ok = abertas.length > 0;
+      return { item, nome: NOME_ITEM[item], pronto: ok, falta: ok ? [] : ['Cadastre ao menos uma atividade, com datas e responsável.'] };
+    }
+    if (item === 'orcamento') {
+      const ok = orcamento.length > 0;
+      return { item, nome: NOME_ITEM[item], pronto: ok, falta: ok ? [] : ['Inclua ao menos uma linha no orçamento do projeto.'] };
+    }
     if (item === 'marco_logico') {
       const falta = pendenciasDoMarco(marco.map((m) => ({ id: m.id, nivel: m.nivel, descricao: m.descricao, indicador: m.indicador, fonte_verificacao: m.fonte_verificacao, acima: m.acima })));
       return { item, nome: NOME_ITEM[item], pronto: falta.length === 0, falta };
@@ -298,12 +321,14 @@ export async function lerFase(p: Planilhas, quem: Autorizador, projetoId: string
     if (e instanceof ErroProjetos) return null;
     throw e;
   }
-  const [docs, marco, riscos, equipe] = await lerTabelas(p, [ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe] as const);
+  const [docs, marco, riscos, equipe, atividades, orcamento] = await lerTabelas(p, [ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento] as const);
   const meusDocs = docs.ativos().filter((d) => d.projeto_id === projetoId);
   const meuMarco = marco.ativos().filter((m) => m.projeto_id === projetoId).sort((a, b) => NIVEIS_MARCO.indexOf(a.nivel) - NIVEIS_MARCO.indexOf(b.nivel) || a.ordem - b.ordem);
   const meusRiscos = riscos.ativos().filter((x) => x.projeto_id === projetoId);
-  const fase: NumeroFase | null = r.etapa === 'fase_1' ? 1 : r.etapa === 'fase_2' ? 2 : null;
-  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos) : [];
+  const minhasAtividades = atividades.ativos().filter((a) => a.projeto_id === projetoId).sort((a, b) => a.inicio_previsto.localeCompare(b.inicio_previsto) || a.fim_previsto.localeCompare(b.fim_previsto));
+  const meuOrcamento = orcamento.ativos().filter((l) => l.projeto_id === projetoId);
+  const fase: NumeroFase | null = r.etapa === 'fase_1' ? 1 : r.etapa === 'fase_2' ? 2 : r.etapa === 'fase_3' ? 3 : null;
+  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos, minhasAtividades, meuOrcamento) : [];
   const documentos: Fase['documentos'] = {};
   for (const t of new Set(meusDocs.map((d) => d.tipo))) if (ehDocumento(t as ItemDaFase)) documentos[t as TipoDocumento] = ultimo(meusDocs.filter((d) => d.tipo === t));
   const termo = documentos.termo_abertura;
@@ -317,10 +342,14 @@ export async function lerFase(p: Planilhas, quem: Autorizador, projetoId: string
     marco: meuMarco,
     riscos: meusRiscos,
     equipe: equipe.ativos().filter((m) => m.projeto_id === projetoId),
+    atividades: minhasAtividades,
+    orcamento: meuOrcamento,
     tolerancias: termo ? toleranciasDoTermo(conteudoDe(termo)) : null,
     podeAlterar: alterar,
     podeAvancar: alterar && fase === 1 && tudo,
     podeAbrirPorta2: alterar && ehEu(quem, r.responsavel) && fase === 2 && tudo,
+    podeAbrirPorta3: alterar && ehEu(quem, r.responsavel) && fase === 3 && tudo && r.porte === 'completo',
+    podeIniciarImplementacao: alterar && ehEu(quem, r.responsavel) && fase === 3 && tudo && r.porte === 'enxuto',
   };
 }
 

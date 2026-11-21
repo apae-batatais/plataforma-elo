@@ -1,6 +1,6 @@
 # Especificação — Módulo Projetos
 
-- Situação: aprovada pela Diretoria; entregas P1 e P2 construídas, P3 a P7 pendentes (issue #143: seção "Construção de P2 a P7" no fim deste arquivo)
+- Situação: aprovada pela Diretoria; entregas P1, P2 e P3 construídas, P4 a P7 pendentes (issue #143: seção "Construção de P2 a P7" no fim deste arquivo)
 - Dono do produto: Diretoria
 - Proposta de origem: issue #107; ligações da onda 2: issue #116. Arquitetura: ADR-011, ADR-013, ADR-021, ADR-022 e ADR-023.
 - Referência do método: Guia Project DPro (PMD Pro), 2ª edição, PM4NGOs, 2020 (licença Creative
@@ -628,3 +628,16 @@ para depois: Gantt, caminho crítico, prestação de contas ao financiador e con
 - **P7:** aba "Ligações" mostra "ligação indisponível" com o app desligado e nunca erro.
 - Em todas: nenhum texto de tela cita nome real de instituição, unidade, marca ou cidade; `npm run verificar` e
   `npm run build` verdes.
+
+### Decisões da construção da P3 (issue #244, tomadas sozinho)
+
+- **Etapa nova `implementacao`** ("Fase 4 · Implementação"): é onde o projeto cai ao seguir na porta 3 (ou ao iniciar a implementação no
+  porte enxuto). Já era o que `aceitaCompra` esperava. Custo se errado: baixo (nome de etapa).
+- **Documentos da fase 3 no porte completo:** atividades, orçamento, monitoramento e avaliação, comunicação, compras e
+  sustentabilidade e encerramento (este junta os dois itens da regra 5). O **cronograma é a própria lista de atividades** com datas.
+  Enxuto: só atividades. Custo se errado: médio (texto dos documentos).
+- **Porta 3** usa os mesmos pareceres exigidos da configuração (como a porta 2) e o valor considerado é o valor aprovado do Termo.
+  `ajustar` devolve à fase 3; `parar` leva a `parado`. Porte enxuto: porta desligada, botão "Iniciar a implementação".
+- **Planejamento trava** com a porta aberta e na implementação; só o andamento das atividades continua. Mudanças depois disso são da P4.
+- **Responsável da atividade** precisa ter acesso à plataforma (como a equipe). Concluir exige o fim real; datas reais não vão ao futuro.
+- **Orçamento do projeto** guarda a versão do Termo aprovado em cada linha e mostra a diferença para o valor do Termo (aviso, não bloqueio).

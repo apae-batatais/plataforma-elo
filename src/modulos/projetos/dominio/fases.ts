@@ -5,7 +5,7 @@
 import { z } from 'zod';
 import { ErroProjetos, type Porte } from './projeto';
 
-export const TIPOS_DOCUMENTO = ['necessidade', 'partes_interessadas', 'problema_objetivos', 'estimativas', 'proposta', 'termo_abertura', 'lancamento'] as const;
+export const TIPOS_DOCUMENTO = ['necessidade', 'partes_interessadas', 'problema_objetivos', 'estimativas', 'proposta', 'termo_abertura', 'lancamento', 'monitoramento', 'comunicacao', 'compras', 'sustentabilidade'] as const;
 export type TipoDocumento = (typeof TIPOS_DOCUMENTO)[number];
 
 export const NOME_DOCUMENTO: Record<TipoDocumento, string> = {
@@ -16,22 +16,28 @@ export const NOME_DOCUMENTO: Record<TipoDocumento, string> = {
   proposta: 'Proposta',
   termo_abertura: 'Termo de Abertura',
   lancamento: 'Lançamento',
+  monitoramento: 'Monitoramento e avaliação',
+  comunicacao: 'Comunicação',
+  compras: 'Compras',
+  sustentabilidade: 'Sustentabilidade e encerramento',
 };
 
 /** Itens que também contam para a porta, mas têm tela própria (não são um formulário de documento). */
-export type ItemEspecial = 'marco_logico' | 'riscos';
+export type ItemEspecial = 'marco_logico' | 'riscos' | 'atividades' | 'orcamento';
 export type ItemDaFase = TipoDocumento | ItemEspecial;
-export const NOME_ITEM: Record<ItemDaFase, string> = { ...NOME_DOCUMENTO, marco_logico: 'Marco lógico', riscos: 'Riscos' };
+export const NOME_ITEM: Record<ItemDaFase, string> = { ...NOME_DOCUMENTO, marco_logico: 'Marco lógico', riscos: 'Riscos', atividades: 'Atividades', orcamento: 'Orçamento' };
 
-export type NumeroFase = 1 | 2;
+export type NumeroFase = 1 | 2 | 3;
 
 /** Regra 5: o que cada fase exige, por porte. O enxuto traz só o mínimo. */
 export const EXIGIDOS: Record<Porte, Record<NumeroFase, ItemDaFase[]>> = {
   completo: {
     1: ['necessidade', 'partes_interessadas', 'problema_objetivos', 'marco_logico', 'estimativas', 'proposta'],
     2: ['termo_abertura', 'riscos', 'lancamento'],
+    // O cronograma é a própria lista de atividades com datas (sem Gantt nesta entrega).
+    3: ['atividades', 'orcamento', 'monitoramento', 'comunicacao', 'compras', 'sustentabilidade'],
   },
-  enxuto: { 1: ['proposta'], 2: ['termo_abertura'] },
+  enxuto: { 1: ['proposta'], 2: ['termo_abertura'], 3: ['atividades'] },
 };
 
 export const itensDaFase = (porte: Porte, fase: NumeroFase): ItemDaFase[] => [...EXIGIDOS[porte][fase]];
@@ -39,6 +45,7 @@ export const ehDocumento = (i: ItemDaFase): i is TipoDocumento => (TIPOS_DOCUMEN
 
 /** Em que fase cada documento é preenchido (a mesma lista vale para os dois portes). */
 export function faseDoDocumento(tipo: TipoDocumento): NumeroFase {
+  if (tipo === 'monitoramento' || tipo === 'comunicacao' || tipo === 'compras' || tipo === 'sustentabilidade') return 3;
   return tipo === 'termo_abertura' || tipo === 'lancamento' ? 2 : 1;
 }
 
@@ -76,6 +83,16 @@ export const CAMPOS: Record<TipoDocumento, CampoDocumento[]> = {
     { nome: 'escopo_livre', rotulo: 'Escopo livre', dica: 'O que o responsável pode mudar sem pedir à Diretoria. Deixe em branco se nada.', tipo: 'longo', obrigatorio: false },
   ],
   lancamento: [{ nome: 'descricao', rotulo: 'Como o projeto será lançado e comunicado', dica: 'Quem será avisado, quando e como.', tipo: 'longo', obrigatorio: true }],
+  monitoramento: [
+    { nome: 'como', rotulo: 'Como o andamento e os resultados serão acompanhados?', dica: 'O que será medido, com que frequência e por quem.', tipo: 'longo', obrigatorio: true },
+    { nome: 'avaliacao', rotulo: 'Como o projeto será avaliado no fim?', tipo: 'longo', obrigatorio: true },
+  ],
+  comunicacao: [{ nome: 'plano', rotulo: 'Quem recebe informação do projeto, quando e como', dica: 'ex.: relatório mensal para a Diretoria.', tipo: 'longo', obrigatorio: true }],
+  compras: [{ nome: 'plano', rotulo: 'O que será comprado ou contratado e quando', dica: 'Uma compra por linha, com o mês previsto.', tipo: 'longo', obrigatorio: true }],
+  sustentabilidade: [
+    { nome: 'sustentabilidade', rotulo: 'O que garante que os resultados continuam depois do projeto?', tipo: 'longo', obrigatorio: true },
+    { nome: 'encerramento', rotulo: 'Como o projeto será encerrado?', dica: 'O que precisa estar pronto para fechar o projeto.', tipo: 'longo', obrigatorio: true },
+  ],
 };
 
 export type ConteudoDocumento = Record<string, string | number | null>;

@@ -18,6 +18,17 @@ import {
   salvarDocumento,
 } from '@/modulos/projetos/aplicacao/fases';
 import { abrirPorta, darParecer, decidirPorta } from '@/modulos/projetos/aplicacao/portas';
+import {
+  adicionarAtividade,
+  adicionarLinhaOrcamento,
+  alterarAtividade,
+  alterarLinhaOrcamento,
+  iniciarImplementacao,
+  lancarAndamento,
+  retirarAtividade,
+  retirarLinhaOrcamento,
+} from '@/modulos/projetos/aplicacao/planejamento';
+import { SITUACOES_ATIVIDADE, type SituacaoAtividade } from '@/modulos/projetos/dominio/planejamento';
 import { GRAUS, NIVEIS_MARCO, TIPOS_DOCUMENTO, type Grau, type NivelMarco, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
 import {
   DECISOES,
@@ -266,4 +277,69 @@ export async function acaoEncerrarMembro(f: FormData) {
   const id = texto(f, 'id');
   const volta = fichaDe(id, '/equipe');
   await executar(() => volta, volta, 'Participação encerrada.', ({ usuario, app }) => encerrarMembro(app.planilhas, usuario.autorizador, id, texto(f, 'membro'), Number(texto(f, 'versao_membro'))));
+}
+
+// ---------- Fase 3: atividades e orçamento ----------
+
+const planoDaAtividade = (f: FormData) => {
+  const peso = texto(f, 'peso').replace(',', '.');
+  return {
+    descricao: texto(f, 'descricao'),
+    responsavel: texto(f, 'responsavel'),
+    inicioPrevisto: texto(f, 'inicio_previsto'),
+    fimPrevisto: texto(f, 'fim_previsto'),
+    peso: peso === '' ? null : Number(peso),
+  };
+};
+
+export async function acaoSalvarAtividade(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/atividades');
+  const atividade = texto(f, 'atividade');
+  if (atividade) {
+    await executar(() => volta, volta, 'Atividade alterada.', ({ usuario, app }) => alterarAtividade(app.planilhas, usuario.autorizador, id, atividade, Number(texto(f, 'versao_atividade')), planoDaAtividade(f)));
+    return;
+  }
+  await executar(() => volta, volta, 'Atividade incluída.', ({ usuario, app }) => adicionarAtividade(app.planilhas, usuario.autorizador, id, planoDaAtividade(f)));
+}
+
+export async function acaoAndamentoAtividade(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/atividades');
+  await executar(() => volta, volta, 'Andamento salvo.', ({ usuario, app }) =>
+    lancarAndamento(app.planilhas, usuario.autorizador, id, texto(f, 'atividade'), Number(texto(f, 'versao_atividade')), {
+      situacao: lista<SituacaoAtividade>(SITUACOES_ATIVIDADE, texto(f, 'situacao')),
+      inicioReal: texto(f, 'inicio_real') || null,
+      fimReal: texto(f, 'fim_real') || null,
+    }),
+  );
+}
+
+export async function acaoRetirarAtividade(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/atividades');
+  await executar(() => volta, volta, 'Atividade retirada. Ela continua guardada.', ({ usuario, app }) => retirarAtividade(app.planilhas, usuario.autorizador, id, texto(f, 'atividade'), Number(texto(f, 'versao_atividade'))));
+}
+
+export async function acaoSalvarLinhaOrcamento(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/orcamento');
+  const dados = { categoria: texto(f, 'categoria'), descricao: texto(f, 'descricao'), valorPlanejado: numeroDe(f, 'valor'), fonte: texto(f, 'fonte') || null };
+  const linha = texto(f, 'linha');
+  if (linha) {
+    await executar(() => volta, volta, 'Linha alterada.', ({ usuario, app }) => alterarLinhaOrcamento(app.planilhas, usuario.autorizador, id, linha, Number(texto(f, 'versao_linha')), dados));
+    return;
+  }
+  await executar(() => volta, volta, 'Linha incluída.', ({ usuario, app }) => adicionarLinhaOrcamento(app.planilhas, usuario.autorizador, id, dados));
+}
+
+export async function acaoRetirarLinhaOrcamento(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/orcamento');
+  await executar(() => volta, volta, 'Linha retirada. Ela continua guardada.', ({ usuario, app }) => retirarLinhaOrcamento(app.planilhas, usuario.autorizador, id, texto(f, 'linha'), Number(texto(f, 'versao_linha'))));
+}
+
+export async function acaoIniciarImplementacao(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(() => fichaDe(id), fichaDe(id), 'Fase 3 concluída. O projeto está em implementação.', ({ usuario, app }) => iniciarImplementacao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))));
 }

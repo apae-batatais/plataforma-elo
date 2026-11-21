@@ -8,8 +8,9 @@ import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estr
 import { salvarConfig } from '../aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
 import { adicionarMembro, avancarFase, salvarDocumento } from '../aplicacao/fases';
+import { adicionarAtividade, adicionarLinhaOrcamento } from '../aplicacao/planejamento';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
-import { Projetos } from '../dados/tabelas';
+import { Portas, Projetos } from '../dados/tabelas';
 import { CONFIG_PADRAO } from '../dominio/projeto';
 
 const FUNCIONARIO = 'funcionario@exemplo.local';
@@ -73,6 +74,26 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   const [apos] = await lerTabelas(p, [Projetos] as const);
   await avancarFase(p, coord, seis.id, apos.porId(seis.id)!.versao, { agora: dia(23) });
   await adicionarMembro(p, coord, seis.id, FUNCIONARIO, 'Apoio às oficinas', { agora: dia(24) });
+  // 7. Porte enxuto na fase 3: Termo aprovado, atividades (uma já atrasada) e orçamento do projeto.
+  const sete = await cadastrarIdeia(p, func, { ...base, porte: 'enxuto', titulo: 'Feira de artesanato (exemplo)', resumo: 'Ideia fictícia: feira com produtos feitos nas oficinas.', valorEstimado: 9000 }, { agora: dia(17), enviar: true });
+  await assumirIdeia(p, coord, sete.id, 1, { agora: dia(18) });
+  const abertaSete = await abrirPorta(p, coord, sete.id, 2, { agora: dia(19) });
+  await darParecer(p, await como(p, TECNICO), abertaSete.portaId, 'tecnico', 'satisfatorio', null, { agora: dia(20) });
+  await decidirPorta(p, diretoria, abertaSete.portaId, 1, 'seguir', 'Texto fictício: vale seguir.', { agora: dia(21) });
+  await salvarDocumento(p, coord, sete.id, 'proposta', { descricao: 'Texto fictício: feira aberta ao público com as oficinas.' }, true, null, { agora: dia(22) });
+  const [aposSete] = await lerTabelas(p, [Projetos] as const);
+  await avancarFase(p, coord, sete.id, aposSete.porId(sete.id)!.versao, { agora: dia(23) });
+  const termoSete = { objetivo: 'Texto fictício: realizar a feira.', escopo: 'Texto fictício: barracas, divulgação e dia do evento.', valor_total: '9000', tolerancia_custo_linha: '10', tolerancia_custo_total: '5', tolerancia_prazo_fim: '15', tolerancia_prazo_marco: '7' };
+  await salvarDocumento(p, coord, sete.id, 'termo_abertura', termoSete, true, null, { agora: dia(24) });
+  const [aposTermo] = await lerTabelas(p, [Projetos] as const);
+  const portaTermo = await abrirPorta(p, coord, sete.id, aposTermo.porId(sete.id)!.versao, { agora: dia(25) });
+  await darParecer(p, await como(p, TECNICO), portaTermo.portaId, 'tecnico', 'satisfatorio', null, { agora: dia(26) });
+  const [portasAgora] = await lerTabelas(p, [Portas] as const);
+  await decidirPorta(p, diretoria, portaTermo.portaId, portasAgora.porId(portaTermo.portaId)!.versao, 'seguir', 'Texto fictício: Termo aprovado.', { agora: dia(27) });
+  await adicionarAtividade(p, coord, sete.id, { descricao: 'Reservar o espaço (exemplo)', responsavel: FUNCIONARIO, inicioPrevisto: '2026-11-02', fimPrevisto: '2026-11-06', peso: null }, { agora: dia(28) });
+  await adicionarAtividade(p, coord, sete.id, { descricao: 'Convidar as famílias (exemplo)', responsavel: COORDENACAO, inicioPrevisto: '2026-12-01', fimPrevisto: '2026-12-10', peso: 2 }, { agora: dia(28) });
+  await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Materiais', descricao: 'Barracas e mesas (exemplo)', valorPlanejado: 5000, fonte: 'Recurso próprio', }, { agora: dia(29) });
+  await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Divulgação', descricao: 'Cartazes e convites (exemplo)', valorPlanejado: 1500.5, fonte: null }, { agora: dia(29) });
   // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
   const datas: [string, string, string][] = [
     [quatro.id, '2026-12-01', '2027-02-26'],

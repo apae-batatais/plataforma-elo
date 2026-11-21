@@ -76,6 +76,8 @@ export default async function Ajuda() {
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
+    gerenciarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
   };
 
   const assuntos: Assunto[] = [
@@ -428,6 +430,49 @@ export default async function Ajuda() {
                   'Diga em qual aba estão os dados e qual coluna corresponde a cada campo (o sistema sugere). Faça o mesmo para a lotação.',
                   'Confira o resumo e confirme. Quem já está cadastrado não é duplicado nem tem os valores alterados: dá para importar de novo com segurança.',
                   'Se o arquivo trouxer lotação para quem já está cadastrado: quem não tem recebe a do arquivo; quem tem uma diferente é atualizado a partir da data que você escolher, se você deixar marcado. A lotação anterior fica no histórico.',
+                ]}
+              />
+            </>
+          )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.projetos) {
+    assuntos.push({
+      id: 'projetos-planejamento',
+      titulo: 'Projeto: atividades e orçamento',
+      resumo: 'Como planejar as atividades e o orçamento na fase 3 e acompanhar o andamento.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              'Depois que a porta 2 aprova o Termo de Abertura, o projeto entra na fase 3 (planejamento). Abra o projeto: "O que falta para a próxima porta" lista o que preencher.',
+              'A aba Atividades é também o cronograma: cada atividade tem responsável e datas previstas. Atividade que passou do fim previsto sem ser concluída aparece como "Atrasada".',
+              'A aba Orçamento é o plano de gastos do projeto. Ela soma as linhas e compara com o valor do Termo. Não é o Orçamento da instituição: nada é enviado para lá.',
+              'Quem só acompanha o projeto (equipe, Leitura) vê as abas, mas não altera.',
+            ]}
+          />
+          {pode.gerenciarProjeto && (
+            <>
+              <Sub>Planejar a fase 3 (quem é responsável pelo projeto)</Sub>
+              <Passos
+                itens={[
+                  'Na aba Atividades, preencha o que será feito, a pessoa responsável (com acesso ao Elo) e as datas previstas, e clique em Adicionar atividade.',
+                  'Na aba Orçamento, inclua cada linha com categoria, descrição e valor, e clique em Incluir linha.',
+                  'No porte completo, preencha também os documentos de monitoramento, comunicação, compras e sustentabilidade, pelos botões "Preencher" na página do projeto.',
+                  'Com tudo pronto, o porte completo usa "Abrir porta de decisão" (porta 3: a Diretoria decide o plano). O porte enxuto usa "Iniciar a implementação", sem porta.',
+                  'Depois de aberta a porta, ou de iniciada a implementação, atividades e orçamento ficam travados.',
+                ]}
+              />
+              <Sub>Acompanhar a implementação</Sub>
+              <Passos
+                itens={[
+                  'Na aba Atividades, abra "Lançar andamento" da atividade.',
+                  'Escolha a situação e as datas reais. Para concluir, o fim real é obrigatório.',
+                  'Clique em Salvar andamento.',
                 ]}
               />
             </>
