@@ -298,3 +298,12 @@ Especificada em 21/11/2026. Ficou para depois:
 - [ ] Componente único de formulário de avaliação entre os três apps (hoje só o mesmo leiaute).
 - [ ] Página própria da família "Avaliações" e painel comum aos três eixos.
 - [ ] Busca por nome também no formulário da Saúde (sugestão).
+
+## Requisições: agendamento de veículos (issue #229, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Campo de passageiros conferido com a capacidade do veículo.
+- [ ] Aviso por e-mail ao Transporte (junto com o aviso por e-mail das requisições).
+- [ ] Relatório de quilometragem e de usos com problema por veículo e mês.
+- [ ] Condutor ligado ao cadastro de pessoas; abastecimento, multas e vistoria com foto.
