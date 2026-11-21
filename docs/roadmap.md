@@ -277,3 +277,11 @@ Especificada em 18/11/2026. Ficou para depois:
 - [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
 - [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
 
+
+## Avaliações: menu em família e formulários uniformes (issue #223, especificação em `docs/especificacao-plataforma.md`, ADR-037)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Componente único de formulário de avaliação entre os três apps (hoje só o mesmo leiaute).
+- [ ] Página própria da família "Avaliações" e painel comum aos três eixos.
+- [ ] Busca por nome também no formulário da Saúde (sugestão).
