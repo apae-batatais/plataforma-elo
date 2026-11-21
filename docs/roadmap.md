@@ -290,3 +290,11 @@ Três entregas (1 de 3 a 3 de 3).
 - [ ] Agrupar e somar painéis pelo plano de contas (Área, Grupo e Item), se a Diretoria quiser (outra proposta).
 - [ ] Importar o plano de contas de uma planilha (por ora é cadastro manual).
 - [ ] Item contábil e Área do plano no realizado importado, quando a importação do realizado existir.
+
+## Avaliações: menu em família e formulários uniformes (issue #223, especificação em `docs/especificacao-plataforma.md`, ADR-037)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Componente único de formulário de avaliação entre os três apps (hoje só o mesmo leiaute).
+- [ ] Página própria da família "Avaliações" e painel comum aos três eixos.
+- [ ] Busca por nome também no formulário da Saúde (sugestão).
