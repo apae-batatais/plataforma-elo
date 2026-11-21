@@ -642,3 +642,146 @@ encarregado/`, `src/app/(elo)/ajuda/page.tsx`, menu de Administração, manual.
   inventados; os testes geram números válidos.
 - **E-mail do encarregado visível a todos os logados** (a LGPD pede divulgação dos dados de contato).
 - **Demonstração sem encarregado**, para mostrar o estado vazio.
+
+## Família "Avaliações" no menu e formulários uniformes (proposta #223)
+
+Especificada em 21/11/2026. Decisões da Diretoria de 20/11/2026 na issue; o que o Arquiteto decidiu sozinho está listado no PR.
+
+### Objetivo e para quem
+
+Quem avalia nos três eixos (Assistência Social, Educação, Saúde) e quem navega entre eles. Os três apps hoje aparecem soltos
+no menu, têm cabeçalhos de formulário diferentes e só a Assistência Social tem a tela "Instrumentos".
+
+### Entregas (ordem de construção)
+
+1. **Menu em família** (Núcleo e composição; ADR-037): item "Avaliações" com os três apps dentro, no menu lateral e nos cartões
+   do início, e o nome "Assistência Social" no lugar de "Avaliação de Serviços Sociais".
+2. **Tela Instrumentos em Educação e Saúde** (cada uma na própria pasta).
+3. **Cabeçalho uniforme "Quem e quando"** nos formulários de Assistência Social e Educação.
+
+Cada entrega é conferível sozinha na prévia. A 1 não depende das outras; a 2 e a 3 mexem em pastas de módulo diferentes
+e podem andar em paralelo.
+
+### Usuários e permissões
+
+Nada novo. O grupo "Avaliações" aparece para quem vê ao menos um dos três apps, e cada app dentro dele aparece só para quem tem a
+permissão de acesso dele (`avaliacao.acessar`, `educacao.acessar`, `saude.acessar`). A tela Instrumentos de Educação e Saúde
+usa a permissão de avaliar do app (`educacao.avaliar`, `saude.avaliar`), como a da Assistência Social usa `avaliacao.avaliar`;
+quem só tem acesso de leitura continua vendo "Sobre o instrumento" e o painel.
+
+### Entidades
+
+Nenhuma aba nova nem alterada. Nenhuma coluna nova.
+
+### Regras de negócio (com teste)
+
+1. **Família no manifesto.** O manifesto do módulo ganha o campo opcional `familia` (id da família, por exemplo `avaliacoes`).
+   O Núcleo guarda o nome e o ícone de cada família num mapa único (como `ICONE_DO_APP`). Família desconhecida no manifesto é
+   erro de validação do registro de módulos.
+2. **Montagem do menu.** A navegação agrupa os apps com a mesma `familia` num único item de família, na posição do primeiro app
+   dela; apps sem família ficam como hoje. Família sem nenhum app visível para a pessoa não aparece. Teste: perfil com os três,
+   com um só (a família aparece com um app dentro) e sem nenhum (some).
+3. **Atalhos e ordem.** Dentro da família a ordem é Assistência Social, Educação, Saúde (ordem de `familia` no mapa, não alfabética).
+4. **Nome.** O manifesto de `avaliacao` passa a ter `nome: 'Assistência Social'`. O texto "Avaliação de Serviços Sociais" some de
+   menu, cartão, título de página (`metadata.title`), trilha de navegação, ajuda, textos de permissão e comentários. Os
+   identificadores (`id: 'avaliacao'`, schema `avaliacao`, rota `/avaliacao`, permissões `avaliacao.*`, planilha
+   `avaliacao_assistencia`) **não mudam**: endereço e permissões salvos continuam valendo. Teste: nenhum arquivo em `src/` e na
+   ajuda contém o nome antigo (documentos internos como ADR e especificação podem citá-lo como histórico).
+5. **Instrumentos de Educação** (`/educacao/instrumentos`): uma linha por instrumento de `INSTRUMENTOS_EDUCACAO` (os três que já
+   existem), com nome, versão, nº de dimensões e itens, e a ação "Aplicar a uma pessoa" levando a `/educacao/nova?instrumento=<código>`
+   (o formulário abre com o instrumento já escolhido; a Educação escolhe o instrumento no próprio formulário). Pedir um
+   instrumento que não existe ignora o parâmetro.
+6. **Instrumentos de Saúde** (`/saude/instrumentos`): uma linha só, o CER, com a versão em uso (a `atual` de `instrumentosDoCer`),
+   nº de dimensões e itens, a ação "Aplicar a uma pessoa" (`/saude/nova`) e o link "Sobre o instrumento" (`/saude/sobre`).
+7. **"Sobre o instrumento" não muda** em Educação e Saúde. Fica também acessível pela linha da tela Instrumentos.
+8. **Cabeçalho uniforme.** Os formulários de aplicação de Assistência Social e de Educação passam a abrir com a seção
+   "Quem e quando" no mesmo leiaute do da Saúde (cartão, título de seção, grade de campos no componente `Campo`,
+   obrigatórios marcados, mesmos textos de dica e de erro). Campos que o eixo tem a mais (Educação: instrumento; Assistência Social:
+   tipo inicial/anual) entram na mesma grade. A Saúde não muda.
+9. **Sigilo da Assistência Social preservado.** Na escolha da pessoa (busca e lista) o nome aparece, como hoje. Escolhida a pessoa, o
+   cabeçalho mostra só as iniciais ("Iniciais que aparecem na avaliação: XX. O nome não é mostrado nas telas da avaliação."), e
+   ao continuar um rascunho ou corrigir só as iniciais, nunca o nome. Nenhuma tela de avaliação, painel, comparativo ou ficha da
+   Assistência Social mostra nome. Teste: a página e o formulário continuam sem o nome completo da pessoa depois de escolhida.
+10. **Formulário "Nova avaliação" da Assistência Social** (`/avaliacao/nova`, identificação por iniciais digitadas, sem escolha de
+    pessoa): só o bloco de identificação ganha o título "Quem e quando" e a grade com `Campo`; os campos e as regras de validação não mudam.
+
+### Telas
+
+**1. Menu e início**
+
+- Quem usa e o que quer: qualquer pessoa que avalia e quer ir de um eixo a outro. Caminho: 2 cliques até uma tela de um app
+  (abrir o app dentro de "Avaliações" e escolher a tela); o grupo da tela atual já vem aberto.
+- Menu lateral, três níveis: **Avaliações** (ícone próprio) → **Assistência Social / Educação / Saúde** → telas do app (com as
+  seções "Avaliar" e "Acompanhar", como hoje). Só o app da tela atual vem expandido; a família da tela atual vem aberta; a escolha da
+  pessoa de abrir ou fechar é lembrada no navegador (mesmo mecanismo dos grupos do menu).
+- Componentes: `src/ui/casca.tsx` ganha o nível de família (mudança no Núcleo, pedida pela proposta) usando `grupos-do-menu.ts` e
+  `ICONES`; a cor de destaque continua a do app da tela atual (`data-app`); a família sem tela aberta usa a cor padrão.
+- Menu recolhido (só ícones): mostra o ícone de "Avaliações" e, ao clicar, leva à primeira tela do primeiro app visível, como os
+  demais itens.
+- Início: no lugar dos três cartões, **um cartão "Avaliações"** com a descrição "Avaliação de evolução das pessoas atendidas:
+  Assistência Social, Educação e Saúde." e três atalhos, um por app, cada um levando à tela inicial do app. Pendência vencida de
+  qualquer um dos três apps destaca o cartão da família (anel pulsante) e o atalho do app. O painel de pendências já separa por
+  app e não muda.
+- Estado sem permissão: quem não tem nenhum dos três não vê o item nem o cartão. Com um app só, vê a família com esse app.
+- Celular: o menu em gaveta mostra os três níveis; alvos de toque de 44 px; teclado: Tab percorre na ordem visual, e os botões que
+  abrem/fecham levam `aria-expanded` (como hoje).
+- Trilha de navegação das páginas dos três apps: Início › Avaliações › <app> › tela. "Avaliações" na trilha não é link
+  (não existe página própria da família).
+
+**2. Instrumentos (Educação e Saúde)**
+
+- Quem usa: quem avalia e quer escolher o instrumento ou ler sobre ele. Primeira dobra: título "Instrumentos" e a tabela; ação
+  principal "Aplicar a uma pessoa" (1 clique até o formulário).
+- Componentes: `CabecalhoPagina`, `Secao`, `tabela`, `LinkBotao` (`pequeno`), `EstadoVazio`: os mesmos da tela da Assistência Social.
+  Colunas: Instrumento, Versão, Domínios e itens, Ações. Na Educação, "Serviço" não entra (o instrumento é escolhido pelo serviço da
+  pessoa no formulário).
+- Texto de apoio: Educação: "Os três instrumentos de avaliação de evolução de Educação, com escala de 0 a 3."; Saúde: "O instrumento
+  do CER, na versão em uso, com escala de 0 a 3."
+- Estados: vazio não existe (instrumentos fixos no código); sem permissão para avaliar: redireciona para "Sobre o instrumento"
+  (igual às telas de Nova avaliação). Nada grava nesta tela.
+- Ordem do menu: Avaliações, Nova avaliação, **Instrumentos** (seção Avaliar), como na Assistência Social; "Sobre o instrumento"
+  segue em Acompanhar.
+- Celular: tabela com rolagem lateral (componente `tabela.moldura`).
+
+**3. Cabeçalho "Quem e quando"**
+
+- Quem usa: quem começa uma avaliação e precisa dizer de quem, onde e quando. Caminho mais curto: escolher a pessoa já sugere
+  serviço (e instrumento, na Educação, quando há um só) e a data de ingresso quando o vínculo tem entrada.
+- Primeira dobra: a seção "Quem e quando" e, no alto da página, os totais ao vivo onde o eixo já os tem. Ação principal do
+  formulário não muda ("Salvar rascunho" / "Concluir e assinar" ou o rótulo atual de cada app).
+- Grade: pessoa, serviço, depois os campos do eixo (instrumento ou tipo), datas. Em tela estreita uma coluna; rótulo sempre visível;
+  obrigatórios marcados; erro de campo ao lado do campo, e um erro de gravação mantém tudo o que foi digitado ("O que você
+  respondeu continua na tela.").
+- Pessoa fixa (continuar rascunho ou corrigir): campo desabilitado, como na Saúde; na Assistência Social mostra as iniciais.
+- Componentes: `Campo` e `estiloEntrada` de `src/ui/campo.tsx` (já usados pela Saúde). Não falta peça em `src/ui/`.
+- Código: a proposta pede o mesmo leiaute, não o mesmo código. **Não se cria componente compartilhado** (módulo não importa
+  módulo, e o Núcleo não deve conhecer o formulário de avaliação): cada app reescreve a sua seção seguindo a da Saúde.
+- Sugestão de melhoria (não está na proposta, para a Diretoria decidir): campo de busca por nome também na Saúde, hoje só uma lista.
+
+### Fica de fora
+
+Mudar a regra de sigilo da Assistência Social; componente único de formulário entre os três apps; mudar "Sobre o instrumento";
+página própria da família "Avaliações"; painel comum aos três eixos; renomear rota, schema, permissões ou planilha da Assistência
+Social; mudanças no formulário da Saúde.
+
+### Frentes
+
+- **telas** (as três entregas): menu, cartão, tela Instrumentos, seção "Quem e quando", textos do nome novo.
+- **regras e dados** (entrega 1): campo `familia` no manifesto, montagem do menu e testes; entrega 2: leitura dos instrumentos
+  (sem aba nova).
+- **infraestrutura**: nenhuma.
+
+Mudança no Núcleo, pedida pela proposta: `src/nucleo/modulos/manifesto.ts` (campo `familia`), `src/plataforma/navegacao.ts`,
+`src/ui/casca.tsx` e o cartão em `src/app/(elo)/page.tsx`. Os três manifestos ganham `familia: 'avaliacoes'`; o de `avaliacao`
+também o nome novo.
+
+### Critérios de pronto
+
+- Entrega 1: na prévia, o menu mostra "Avaliações" com os três apps; abrir um app mostra as telas dele; a Assistência Social
+  aparece com o nome novo no menu, no cartão, na trilha e nos títulos; perfil de Conselho (só painel) vê só o que pode; o início
+  tem um cartão "Avaliações" com três atalhos.
+- Entrega 2: Educação e Saúde têm "Instrumentos" no menu; Educação lista os três instrumentos, Saúde o CER com a versão em uso;
+  "Aplicar a uma pessoa" abre o formulário (na Educação, já com o instrumento escolhido) e "Sobre o instrumento" abre como antes.
+- Entrega 3: os formulários dos três apps têm a mesma seção "Quem e quando"; na Assistência Social o nome aparece só ao buscar
+  a pessoa e, depois de escolhida, só as iniciais; um erro ao gravar não apaga o que foi digitado.
+- `npm run verificar` e `npm run build` verdes.

@@ -290,3 +290,41 @@ Três entregas (1 de 3 a 3 de 3).
 - [ ] Agrupar e somar painéis pelo plano de contas (Área, Grupo e Item), se a Diretoria quiser (outra proposta).
 - [ ] Importar o plano de contas de uma planilha (por ora é cadastro manual).
 - [ ] Item contábil e Área do plano no realizado importado, quando a importação do realizado existir.
+
+## Avaliações: menu em família e formulários uniformes (issue #223, especificação em `docs/especificacao-plataforma.md`, ADR-037)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Componente único de formulário de avaliação entre os três apps (hoje só o mesmo leiaute).
+- [ ] Página própria da família "Avaliações" e painel comum aos três eixos.
+- [ ] Busca por nome também no formulário da Saúde (sugestão).
+
+## Requisições: agendamento de veículos (issue #229, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Campo de passageiros conferido com a capacidade do veículo.
+- [ ] Aviso por e-mail ao Transporte (junto com o aviso por e-mail das requisições).
+- [ ] Relatório de quilometragem e de usos com problema por veículo e mês.
+- [ ] Condutor ligado ao cadastro de pessoas; abastecimento, multas e vistoria com foto.
+
+## Requisições: agendamento de espaços (issue #230, especificação em `src/modulos/requisicoes/especificacao.md`)
+
+Especificada em 21/11/2026. Ficou para depois:
+
+- [ ] Repetição semanal (toda terça às 14h); reserva de mais de um dia.
+- [ ] Itens de apoio, taxa de uso, aprovador por espaço e formulário público.
+- [ ] Cancelar reserva já aprovada; marcar "não usado"; agenda por dia com filtro de espaço.
+
+## Base de Conhecimento (especificado em 21/11/2026, issue #231)
+
+Especificação: `src/modulos/conhecimento/especificacao.md` (ADR-039). Ordem: publicação e ciência → teste
+de compreensão → curtir e comentar → aviso por e-mail.
+
+- [ ] Geolocalização na ciência (sem travar quem negar a permissão do navegador).
+- [ ] Carimbo de tempo ICP-Brasil (depende de a Diretoria contratar um prestador credenciado).
+- [ ] Prazo de ciência por publicação e lembrete por e-mail para quem segue pendente.
+- [ ] Vídeo, mais de um anexo e link externo como formato de publicação.
+- [ ] Exportar a lista de ciências; relatório por pessoa entre publicações.
+- [ ] Editar o próprio comentário, respostas a comentários e aviso ao editor de novos comentários.
+- [ ] Embaralhar a ordem das opções do teste a cada tentativa.
