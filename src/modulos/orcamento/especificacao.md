@@ -788,3 +788,162 @@ Uma só (pequena): colunas e regras 1–6, telas dos cadastros, depois o botão 
 
 Especificado em `especificacao-sustentabilidade.md` (cobertura do déficit dos serviços, origem e dependência, fôlego, resultado e
 execução das parcerias). Acrescenta a coluna `origem` em `CentrosCusto`, `recorrencia` em `Fontes` e a aba `LimitesSustentabilidade`.
+
+## Lançamento de despesas por rateio (proposta #225, 21/11/2026)
+
+Arquitetura: ADR-037. Vai além da Entrega R1 (regras de rateio): em vez de só **mostrar** o valor
+rateado na Análise por área, o Elo **grava uma despesa por serviço** e a mantém atualizada enquanto o
+exercício está em elaboração. Reaproveita `RegrasRateio`, `BasesRateio` e o cálculo de
+`dominio/rateio-custos.ts` (`ratearPelaRegra`); não cria cadastro de base paralelo.
+
+### Objetivo e para quem
+
+Financeiro, ao planejar uma despesa da sede que deve ser dividida entre serviços (por atendidos, m²,
+profissionais, vagas, custo direto, partes iguais ou base própria), sem fazer a conta à mão nem lançar
+cada parte separadamente.
+
+### Conceitos
+
+- **Despesa de rateio** (a origem): o lançamento único da sede, com a Regra de rateio escolhida. Fica
+  na aba nova `DespesasRateio`, **fora** da lista comum de Despesas (assim o total nunca conta duas vezes).
+- **Despesa gerada**: uma linha em `Despesas` para cada serviço que recebe parte, criada e atualizada
+  pelo Elo. Tem a coluna nova `rateio_origem_id` (id da despesa de rateio). É uma despesa de verdade:
+  entra na Previsão, no Painel, na Análise por área, nos ajustes e na Execução como qualquer outra.
+- **Travada**: despesa gerada não se edita nem se exclui pelo cadastro comum; muda-se a origem.
+
+### Usuários e permissões
+
+| Quem | Faz | Permissão |
+| --- | --- | --- |
+| Financeiro | Cria, altera e encerra despesas de rateio | `orcamento.previsao.editar` com todos os serviços no escopo |
+| Quem vê o painel | Vê as despesas geradas (dentro do escopo de serviços de cada um), com o selo "Gerada por rateio" | `orcamento.painel.ver` / escopo de serviço |
+| Coordenação | Vê só as linhas geradas dos seus serviços; não vê a lista de origens | escopo de serviço |
+
+A origem é da sede; por isso exige escopo de todos os serviços. Sem a permissão, o botão não aparece e a
+rota responde "sem permissão".
+
+### Entidades
+
+- **`DespesasRateio`** (planilha `orcamento`, sem dado pessoal): `ano`, `grupo_id`, `fonte_id` (opcional),
+  `descricao`, `regra_rateio_id` (obrigatória), `quantidade`, `ocorrencias`, `valor_unitario`,
+  `distribuicao` (`igual`/`meses`/`manual`) e `m1..m12`, `categoria` (operacional/projetos),
+  `observacao`, `ativo`. Mesma forma do item de despesa, para a pessoa não aprender outro formulário.
+- **`Despesas`**: coluna nova opcional `rateio_origem_id`. Linhas geradas nascem com `regra_rateio_id`
+  **vazia** (senão o cálculo da Análise por área rateava de novo) e `situacao = aceito`.
+- Colunas sensíveis: nenhuma. Toda aba nova com `definirTabela` e registrada em "Preparar estrutura".
+
+### Como a linha de cada serviço é calculada
+
+1. Cada mês da origem (`m1..m12`) é dividido entre os participantes com `ratearPelaRegra` (mesmas bases,
+   dois níveis e centavos ajustados no maior participante da regra R1). O valor da linha é a soma dos 12
+   meses; `distribuicao = manual`, `quantidade = 1`, `ocorrencias = 1`.
+2. Participantes que são **áreas** viram os serviços diretos da área; participantes **serviços** recebem direto.
+3. Se a regra incluir serviço de apoio ou o administrativo, a linha é gerada nele e o que ele acumulou
+   continua seguindo a regra do próprio serviço **na Análise por área**, como já é hoje (R1, regra 3).
+   Nenhuma linha extra é gravada para esse segundo passo.
+4. Grupo, fonte e categoria vêm da origem. Prioridade, cotação e proposta não se aplicam.
+5. Participante com base zero recebe zero e **não ganha linha** (a linha existente é encerrada).
+
+### Regras de negócio (com teste)
+
+1. A soma das linhas geradas é **exatamente** a da origem, em cada mês e no total.
+2. Uma origem tem no máximo uma linha ativa por serviço; recalcular **atualiza** a linha existente
+   (mesma versão lida), cria a que faltar e encerra (`ativo = FALSE`) a que saiu. Nada é apagado.
+3. **Recalcula sozinho, sem confirmação, só com o exercício "em elaboração"** quando mudar: o valor, os
+   meses, o grupo, a fonte ou a regra da origem; os participantes da regra; a base de um serviço
+   (atendidos, m², vagas, base própria, profissionais da lotação da folha, custo direto).
+4. **Exercício aprovado ou encerrado: nada recalcula.** As linhas ficam como estão, e a origem também
+   fica travada (sem editar nem encerrar). Mudança depois da aprovação é por ajuste (remanejamento ou
+   suplementação), que já aceita uma despesa gerada como alvo.
+5. Linha gerada não é editada nem excluída pelo cadastro comum de Despesas, nem por importação ou
+   cadastro em lote (a importação a ignora e avisa); só o rateio de fonte (R3b) da linha continua livre
+   e **não é perdido** quando o valor da linha é recalculado (o rateio de fonte guarda percentuais).
+6. Regra de rateio usada por origem ativa de exercício em elaboração **não pode ser excluída**
+   (estende a regra 10 de R1; o aviso diz quantas despesas de rateio a usam). Origem de exercício
+   aprovado guarda o nome da regra; se a regra foi excluída depois, a tela mostra "<nome> (excluída)".
+7. Regra sem participante com serviço ativo no exercício: a origem não grava ("A regra não tem serviço
+   para receber o valor").
+8. **Encerrar** a origem (só em elaboração) encerra suas linhas geradas; a origem some da lista e pode
+   ser reativada, o que gera as linhas de novo.
+9. Só quem tem a permissão da tabela acima grava origem; toda gravação, inclusive os recálculos,
+   chama `registrarAuditoria` com as colunas alteradas (nunca os valores). O recálculo disparado por
+   mudança de base é auditado com o usuário que mudou a base.
+10. O total do orçamento não muda por causa do rateio: origem ativa de R$ X gera linhas que somam R$ X.
+11. **Recálculo idempotente**: rodar de novo sem mudança não grava nada (compara antes) e uma falha de
+    versão (outra pessoa gravou ao mesmo tempo) deixa a linha para a próxima rodada, sem derrubar a ação.
+
+### Quando o recálculo roda (decisão de arquitetura, ADR-037)
+
+Função única `sincronizarDespesasRateio(p, ano, usuario)` chamada: (a) ao gravar ou encerrar a origem;
+(b) ao gravar regra, participantes, valores de base própria, centro de custo (atendidos, m², vagas) e
+lotação da folha no exercício em elaboração; (c) ao abrir a lista de Despesas e a Análise por área, como
+rede de segurança, auditada como `sistema`. Calcula só as origens do ano.
+
+### Telas
+
+**Despesas de rateio** (Previsão › Despesas de rateio; Financeiro).
+- Quem usa e o que quer: Financeiro lançar uma despesa da sede e ver como ela vai para os serviços.
+  Caminho mais curto: **Nova despesa de rateio** → preencher → **Salvar** (3 passos, a prévia aparece
+  sem clicar).
+- Primeira dobra: botão **Nova despesa de rateio**, lista (descrição, grupo, regra, valor total, nº de
+  serviços, situação "Em elaboração" ou "Travada"). Ação principal: o botão.
+- Componentes de `src/ui/`: os mesmos do formulário de item (`formulario-item.tsx`) e da lista de
+  Despesas; seletor de regra; tabela de prévia. Nenhuma peça nova no Núcleo.
+- Formulário: descrição, grupo, regra (obrigatórios; dica "A regra diz quem participa e por qual base"),
+  fonte, categoria, quantidade × ocorrências × valor unitário, meses. Link "Criar ou ver regras" abre
+  Cadastros › Regras de rateio. Rótulos sempre visíveis; se der erro, tudo o que foi digitado fica.
+- **Prévia ao lado do formulário**: "Como vai ficar" com uma linha por serviço (serviço, base usada,
+  valor, %), e total conferido ("Soma: R$ X, igual ao valor lançado"). Atualiza ao digitar.
+- Estados: vazio ("Nenhuma despesa de rateio. Use quando uma despesa da sede precisa ser dividida entre
+  serviços."); gravando (botão "Gravando…" desligado); gravou ("Salva. Foram criadas 5 despesas, uma por
+  serviço."); erro (texto da regra violada + o que fazer); sem permissão ("Só o Financeiro lança despesa
+  de rateio."); exercício travado ("O orçamento já foi aprovado. Para mudar, peça um ajuste.", campos
+  somente leitura, sem botão Salvar).
+- Ação sem volta: nenhuma (encerrar é reversível). A confirmação de **Encerrar** diz: "As N despesas
+  geradas também serão encerradas. Você pode reativar depois."
+- Celular: formulário em coluna única, prévia abaixo dos campos; teclado: ordem dos campos como na tela,
+  Enter não envia no meio do formulário.
+
+**Despesas (lista comum)**: linha gerada mostra o selo **Gerada por rateio**, a descrição e o link
+"Ver despesa de rateio" (só para quem pode abrir a origem; os demais veem o selo e o texto "Lançada pela
+sede"). **Sem** botões Editar e Excluir nelas; tooltip/texto: "Mude pela despesa de rateio". Filtro novo
+"Só geradas por rateio".
+
+**Cadastros › Regras de rateio**: ao tentar excluir regra em uso, o aviso conta as despesas de rateio.
+
+### Gráficos
+Nenhum. A Análise por área e o Painel já somam as linhas geradas como despesa comum.
+
+### Sugestões de melhoria (não estão na proposta; a Diretoria decide)
+- Aviso na Análise por área quando um serviço participante tem base vazia (o valor cairia para o custo
+  direto ou partes iguais, R1 regra 6), antes de gravar.
+- Duplicar a despesa de rateio para o exercício seguinte.
+
+### Fica de fora
+- Rateio da despesa **realizada** (Realizado/Execução) e da folha por esta via.
+- Rateio das linhas geradas em outras fontes além do rateio de fonte (R3b) já existente.
+- Reabrir exercício aprovado (hoje não existe; se vier, as linhas só voltam a recalcular com a reabertura).
+- Item de despesa "Comum" da R1 continua como está; migrá-lo para despesa de rateio fica no roadmap.
+- Campos do plano de contas estruturado (#221): quando essa proposta entrar, Item e Área do plano
+  também valem na origem e são copiados às linhas geradas.
+
+### Entregas
+1. **Origem e geração**: aba `DespesasRateio`, coluna `rateio_origem_id`, cálculo mensal, gravar/encerrar,
+   travamento na lista de Despesas e na aprovação, tela "Despesas de rateio" com prévia (regras 1, 2, 4–8, 10).
+2. **Recálculo pelas entradas**: gatilhos (b) e (c) acima — bases, participantes, lotação — e as regras 3, 9 e 11.
+   Cada entrega é conferível na prévia com os dados fictícios.
+
+### Frentes
+- `regras e dados`: tabelas, caso de uso `despesas-rateio.ts` (aplicação) e função de cálculo em `dominio/`;
+  testes de quem vê e quem altera.
+- `telas`: tela de origem, selo e filtro na lista de Despesas.
+- `infraestrutura`: nenhuma além de "Preparar estrutura" com a aba e coluna novas.
+
+### Critérios de pronto (conferência na prévia)
+- [ ] Cadastro uma despesa de R$ 12.000 com uma regra por atendidos; a prévia e a lista de Despesas
+      mostram uma linha por serviço, a soma dá R$ 12.000,00.
+- [ ] As linhas têm o selo e não têm Editar/Excluir; o link leva à origem.
+- [ ] Mudo o valor ou os atendidos de um serviço (exercício em elaboração): as linhas mudam sozinhas.
+- [ ] Aprovo o exercício: mudar atendidos não altera mais as linhas; a origem fica só leitura.
+- [ ] Regra em uso não deixa ser excluída e diz quantas despesas a usam.
+- [ ] Coordenação vê só as linhas dos seus serviços e não vê a tela de origens.

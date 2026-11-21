@@ -277,3 +277,12 @@ Especificada em 18/11/2026. Ficou para depois:
 - [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
 - [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
 
+
+## Orçamento: despesas geradas por rateio · para depois (21/11/2026, issue #225, ADR-037)
+
+Especificado em `src/modulos/orcamento/especificacao.md` (seção "Lançamento de despesas por rateio").
+
+- [ ] Rateio da despesa **realizada** e da folha pela mesma via.
+- [ ] Migrar o item "Comum" da R1 para despesa de rateio.
+- [ ] Reabrir exercício aprovado (hoje não existe) e o que fazer com as linhas travadas.
+- [ ] Aviso de base vazia antes de gravar; duplicar a despesa de rateio para o exercício seguinte.
