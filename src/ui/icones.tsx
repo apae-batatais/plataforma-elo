@@ -65,6 +65,13 @@ export const IconeEducacao = (p: Props) => (
     <path d="M6 11.5V16c0 1.2 2.7 3 6 3s6-1.8 6-3v-4.5M22 9v6" />
   </Icone>
 );
+/** Base de Conhecimento: livro aberto. */
+export const IconeConhecimento = (p: Props) => (
+  <Icone {...p}>
+    <path d="M12 6.5C10.5 5 8 4.5 3.5 4.5V18c4.5 0 7 .5 8.5 2 1.5-1.5 4-2 8.5-2V4.5C16 4.5 13.5 5 12 6.5Z" />
+    <path d="M12 6.5V20" />
+  </Icone>
+);
 export const IconeComunicacao = (p: Props) => (
   <Icone {...p}>
     <path d="M3 10v4a1 1 0 0 0 1 1h3l9 5V4L7 9H4a1 1 0 0 0-1 1Z" />
@@ -262,6 +269,7 @@ export const ICONES = {
   orcamento: IconeOrcamento,
   requisicoes: IconeRequisicao,
   comunicacao: IconeComunicacao,
+  conhecimento: IconeConhecimento,
   avaliacao: IconeAvaliacao,
   saude: IconeSaude,
   educacao: IconeEducacao,
