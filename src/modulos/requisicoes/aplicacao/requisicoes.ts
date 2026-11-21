@@ -24,6 +24,8 @@ import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/
 import { Areas, Atribuicoes, Feriados, PerfilPermissoes, Perfis, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import {
   CatalogoItens,
+  EspacoIndisponibilidades,
+  Espacos,
   FeriadosRequisicoes,
   ParametrosRequisicoes,
   RequisicaoAnexos,
@@ -33,6 +35,7 @@ import {
   Requisicoes,
   TiposRequisicao,
   type RegCentro,
+  type RegEspaco,
   type RegItem,
   type RegRequisicao,
   type RegTipo,
@@ -68,6 +71,20 @@ import {
   type RotaAprovacao,
   type Situacao,
 } from '../dominio/requisicao';
+import {
+  conferirEspaco,
+  conferirFechamento,
+  conferirPeriodo,
+  dataBR,
+  fimDaReserva,
+  hojeEmBrasilia,
+  PERFIL_ESPACOS,
+  periodoQueCobre,
+  reservasEmConflito,
+  RESULTADOS_USO,
+  type DetalhesEspaco,
+  type ReservaParaConflito,
+} from '../dominio/espaco';
 import { aceitaAnexos, conferirArquivo, conferirQuantidade, type TipoAnexo } from '../dominio/anexos';
 import { mesDe, montarPainel } from '../dominio/painel';
 import { diaLimite, EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
@@ -81,6 +98,7 @@ const PERM = {
   verTodas: 'requisicoes.ver_todas',
   tipos: 'requisicoes.tipos.gerenciar',
   painel: 'requisicoes.painel',
+  espacos: 'requisicoes.espacos.decidir',
 } as const;
 
 const hoje = (agora: Date) => agora.toISOString().slice(0, 10);
@@ -92,7 +110,7 @@ const vigente = (r: { ativo: boolean; inicio: string | null; fim: string | null 
 // ---------------------------------------------------------------------------
 
 async function ler(p: Planilhas, agora: Date) {
-  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, feriados, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis] =
+  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, feriados, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis, espacos, periodos] =
     await lerTabelas(p, [
       TiposRequisicao,
       CatalogoItens,
@@ -107,6 +125,8 @@ async function ler(p: Planilhas, agora: Date) {
       Servicos,
       Areas,
       Perfis,
+      Espacos,
+      EspacoIndisponibilidades,
     ] as const);
   const dia = hoje(agora);
   const ativos = new Set(usuarios.ativos().map((u) => u.email));
@@ -150,6 +170,8 @@ async function ler(p: Planilhas, agora: Date) {
     servicos,
     areas,
     perfis,
+    espacos,
+    periodos,
     perfilPermissoes,
     tipoPorId: new Map(tipos.todos().map((t) => [t.id, t])),
     servicoPorCodigo,
@@ -179,19 +201,63 @@ function coordenacaoAtual(d: Dados, r: RegRequisicao): Set<string> {
   return new Set([...sets[0]].filter((e) => sets.every((s) => s.has(e))));
 }
 
+// --- Reserva de espaço: decidida sempre pelo setor Espaços, nunca pela coordenação dos centros ---
+
+const ehEspaco = (d: Dados, r: RegRequisicao) => d.tipoPorId.get(r.tipo_id)?.formulario === 'espaco';
+const doSetorEspacos = (quem: Autorizador, d: Dados) => quem.temPermissaoAlgumEscopo(PERM.espacos) && d.perfisDe(quem.email).has(PERFIL_ESPACOS);
+
+/** Espaços decide os pedidos de todos; o pedido de quem é do Espaços é decidido pela Diretoria. Ninguém decide o próprio. */
+function podeDecidirEspaco(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
+  if (r.requisitante === quem.email || !quem.temPermissaoAlgumEscopo(PERM.espacos)) return false;
+  return d.perfisDe(r.requisitante).has(PERFIL_ESPACOS) ? quem.temPermissao(PERM.aprovar) : doSetorEspacos(quem, d);
+}
+
+function detalhesDeEspaco(r: RegRequisicao): DetalhesEspaco | null {
+  try {
+    return r.detalhes ? (JSON.parse(r.detalhes) as DetalhesEspaco) : null;
+  } catch {
+    return null;
+  }
+}
+
+const paraConflito = (r: RegRequisicao): ReservaParaConflito | null => {
+  const x = detalhesDeEspaco(r);
+  return x ? { id: r.id, espacoId: x.espacoId, data: x.data, inicio: x.inicio, fim: x.fim, situacao: r.situacao } : null;
+};
+
+/** Outros pedidos de espaço que cruzam com este (só o setor que decide vê). */
+function conflitosDe(d: Dados, r: RegRequisicao): { reserva: ReservaParaConflito; r: RegRequisicao }[] {
+  const alvo = paraConflito(r);
+  if (!alvo) return [];
+  const porId = new Map<string, RegRequisicao>();
+  const todas = d.requisicoes
+    .ativos()
+    .filter((x) => ehEspaco(d, x))
+    .flatMap((x) => {
+      const c = paraConflito(x);
+      if (!c) return [];
+      porId.set(x.id, x);
+      return [c];
+    });
+  return reservasEmConflito(alvo, todas).map((c) => ({ reserva: c, r: porId.get(c.id)! }));
+}
+
 function podeAprovar(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
+  if (ehEspaco(d, r)) return podeDecidirEspaco(quem, d, r);
   if (quem.temPermissao(PERM.aprovar)) return true; // Diretoria (global)
   if (r.aprovacao !== 'coordenacao' || !quem.temPermissaoAlgumEscopo(PERM.aprovar)) return false;
   return coordenacaoAtual(d, r).has(quem.email) && r.requisitante !== quem.email;
 }
 
 function podeAtender(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
+  if (ehEspaco(d, r)) return false; // reserva não tem "receber" nem "atender": só "registrar o uso"
   const tipo = d.tipoPorId.get(r.tipo_id);
   return Boolean(tipo && quem.temPermissaoAlgumEscopo(PERM.atender) && d.perfisDe(quem.email).has(tipo.perfil_responsavel));
 }
 
 function podeVer(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
   if (r.requisitante === quem.email || quem.temPermissao(PERM.verTodas)) return true;
+  if (ehEspaco(d, r)) return doSetorEspacos(quem, d);
   if (quem.temPermissaoAlgumEscopo(PERM.aprovar) && (r.aprovacao === 'coordenacao' ? coordenacaoAtual(d, r).has(quem.email) : quem.temPermissao(PERM.aprovar)))
     return true;
   return podeAtender(quem, d, r) && !['enviada', 'devolvida', 'recusada', 'cancelada'].includes(r.situacao);
@@ -205,6 +271,7 @@ function acoesPossiveis(quem: Autorizador, d: Dados, r: RegRequisicao): Acao[] {
   if (s === 'enviada' && podeAprovar(quem, d, r)) a.push('aprovar', 'devolver', 'recusar');
   if (s === 'aprovada' && podeAtender(quem, d, r)) a.push('receber');
   if (s === 'em_atendimento' && podeAtender(quem, d, r)) a.push('concluir');
+  if (s === 'aprovada' && ehEspaco(d, r) && doSetorEspacos(quem, d)) a.push('fechar');
   return a;
 }
 
@@ -215,7 +282,7 @@ function sla(d: Dados, r: RegRequisicao, agora: Date) {
   const agoraISO = agora.toISOString();
   const aprovacao = prazoDaEtapa(r.enviada_em, r.decidida_em, tipo.prazo_aprovacao, agoraISO, d.expediente);
   const atendimento =
-    r.situacao === 'aprovada' || r.situacao === 'em_atendimento' || r.situacao === 'atendida' || r.situacao === 'atendida_parcial'
+    ehEspaco(d, r) ? null : r.situacao === 'aprovada' || r.situacao === 'em_atendimento' || r.situacao === 'atendida' || r.situacao === 'atendida_parcial'
       ? prazoDaEtapa(r.decidida_em!, r.concluida_em, tipo.prazo_atendimento, agoraISO, d.expediente)
       : null;
   return {
@@ -282,6 +349,20 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, opcoes
       .ativos()
       .map((s) => ({ codigo: s.codigo, nome: s.nome, area: s.area, areaNome: s.area ? (nomeArea.get(s.area) ?? s.area) : 'Sem área' }))
       .sort((a, b) => a.areaNome.localeCompare(b.areaNome, 'pt-BR') || a.nome.localeCompare(b.nome, 'pt-BR')),
+    /** Espaços ativos com os períodos em que não podem ser reservados (a ficha de espaço mostra só os livres na data). */
+    espacos: d.espacos
+      .ativos()
+      .map((e) => ({
+        id: e.id,
+        nome: e.nome,
+        local: e.local,
+        capacidade: e.capacidade,
+        indisponiveis: d.periodos
+          .ativos()
+          .filter((x) => x.espaco_id === e.id)
+          .map((x) => ({ inicio: x.inicio, fim: x.fim })),
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     anexosAtivos: Boolean(opcoes.anexosAtivos),
     /** A plataforma preenche com os projetos que a pessoa vê e que aceitam compra (ADR-022). */
     projetos: undefined as ProjetoEscolhivel[] | undefined,
@@ -289,15 +370,24 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, opcoes
 }
 
 /** Confere a ficha e devolve o que gravar (sem gravar). */
-function conferirFicha(d: Dados, requisitante: string, dados: DadosRequisicao, projetos: readonly ProjetoEscolhivel[] | null = null) {
+function conferirFicha(
+  d: Dados,
+  requisitante: string,
+  dados: DadosRequisicao,
+  projetos: readonly ProjetoEscolhivel[] | null = null,
+  agora: Date = new Date(),
+) {
   const erros: string[] = [];
   const tipo = d.tipos.ativos().find((t) => t.id === dados.tipoId);
   if (!tipo) erros.push('Escolha o tipo de requisição.');
   const area = d.areas.ativos().find((a) => a.codigo === dados.area);
   if (!area) erros.push('Escolha a área.');
   else if (tipo && !permitido(lerLista(tipo.areas), area.codigo)) erros.push(`O tipo "${tipo.nome}" não pode ser usado pela área ${area.nome}.`);
-  erros.push(...conferirCentros(dados.centros));
-  if (dados.centros.some((c) => c.servico && !d.servicos.ativos().some((s) => s.codigo === c.servico))) erros.push('Há centro de custo que não existe mais.');
+  const espaco = tipo?.formulario === 'espaco';
+  // Reserva cedida para fora da instituição não tem centro de custo (decisão da Diretoria, 21/11/2026).
+  const semCentros = espaco && (dados.detalhes as { usoExterno?: unknown } | null)?.usoExterno === true;
+  if (!semCentros) erros.push(...conferirCentros(dados.centros));
+  if (!semCentros && dados.centros.some((c) => c.servico && !d.servicos.ativos().some((s) => s.codigo === c.servico))) erros.push('Há centro de custo que não existe mais.');
   let detalhes: unknown = null;
   let itens: (ItemPedido & { catalogoId: string | null })[] = [];
   if (tipo?.formulario === 'materiais') {
@@ -308,16 +398,38 @@ function conferirFicha(d: Dados, requisitante: string, dados: DadosRequisicao, p
   if (tipo) {
     const r = ESQUEMA_DETALHES[tipo.formulario].safeParse(dados.detalhes ?? {});
     if (!r.success) erros.push(...r.error.issues.map((i) => i.message));
-    else detalhes = r.data;
+    else {
+      detalhes = r.data;
+      if (espaco) erros.push(...conferirReserva(d, r.data as DetalhesEspaco, agora));
+    }
   }
-  const ligacao = conferirProjeto(dados.projetoId, dados.atividadeId, dados.centros, projetos);
+  const ligacao = conferirProjeto(espaco ? null : dados.projetoId, espaco ? null : dados.atividadeId, semCentros ? [] : dados.centros, espaco ? null : projetos);
   erros.push(...ligacao.erros);
   if (erros.length) throw new ErroRequisicao([...new Set(erros)].join(' '));
-  const rota = rotaDeAprovacao(
-    requisitante,
-    dados.centros.map((c) => d.coordenacao(c.servico)),
-  );
-  return { tipo: tipo!, detalhes, rota, itens, projeto: ligacao.projeto, atividade: ligacao.atividade };
+  if (espaco && detalhes) (detalhes as DetalhesEspaco).fechamento = null;
+  // Espaço: quem decide é o setor Espaços (a Diretoria, se quem pede é do setor); nunca a coordenação dos centros.
+  const rota: RotaAprovacao = espaco
+    ? d.perfisDe(requisitante).has(PERFIL_ESPACOS)
+      ? { tipo: 'diretoria', motivo: 'propria_coordenacao' }
+      : { tipo: 'coordenacao', coordenadores: [] }
+    : rotaDeAprovacao(
+        requisitante,
+        dados.centros.map((c) => d.coordenacao(c.servico)),
+      );
+  return { tipo: tipo!, detalhes, rota, itens, projeto: ligacao.projeto, atividade: ligacao.atividade, espaco, semCentros };
+}
+
+/** Espaço ativo, livre na data (sem período de indisponibilidade) e data de hoje em diante (Brasília). */
+function conferirReserva(d: Dados, x: DetalhesEspaco, agora: Date): string[] {
+  const erros: string[] = [];
+  if (x.data < hojeEmBrasilia(agora)) erros.push('A data não pode ser anterior a hoje.');
+  const e = d.espacos.ativos().find((y) => y.id === x.espacoId);
+  if (!e) erros.push('Este espaço não está disponível. Escolha outro.');
+  else {
+    const per = periodoQueCobre(e.id, x.data, d.periodos.ativos().map((y) => ({ espacoId: y.espaco_id, inicio: y.inicio, fim: y.fim, motivo: y.motivo })));
+    if (per) erros.push(`O espaço "${e.nome}" está indisponível em ${dataBR(x.data)} (${per.motivo}). Escolha outra data ou outro espaço.`);
+  }
+  return erros;
 }
 
 const colunasDeProjeto = (x: ReturnType<typeof conferirProjeto>) => ({
@@ -353,17 +465,19 @@ const textoRota = (rota: RotaAprovacao) =>
       ? 'Pedido da própria coordenação: aprovação da Diretoria.'
       : 'Serviço sem coordenação cadastrada: aprovação da Diretoria.';
 
+const textoRotaEspaco = (rota: RotaAprovacao) => (rota.tipo === 'diretoria' ? 'Pedido de quem é do setor Espaços: aprovação da Diretoria.' : null);
+
 export async function enviarRequisicao(
   p: Planilhas,
   quem: Autorizador,
   dados: DadosRequisicao & { nomeRequisitante: string },
   opcoes: { agora?: Date; arquivos?: ArmazenamentoArquivos | null } & OpcoesProjetos = {},
-): Promise<{ id: string; numero: string; rota: RotaAprovacao }> {
+): Promise<{ id: string; numero: string; rota: RotaAprovacao; espaco: boolean }> {
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   conferirTransicao('enviar', null);
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
-  const { tipo, detalhes, rota, itens, projeto, atividade } = conferirFicha(d, quem.email, dados, opcoes.projetos ?? null);
+  const { tipo, detalhes, rota, itens, projeto, atividade, espaco, semCentros } = conferirFicha(d, quem.email, dados, opcoes.projetos ?? null, agora);
   const anexos = await conferirAnexosDaFicha(p, opcoes.arquivos ?? null, tipo, dados.anexos ?? [], null);
   const numero = proximoNumero(
     agora.getUTCFullYear(),
@@ -391,7 +505,7 @@ export async function enviarRequisicao(
     },
     autoria,
   );
-  await gravarFilhos(p, d, r.id, { ...dados, itens }, autoria);
+  await gravarFilhos(p, d, r.id, { ...dados, itens, centros: semCentros ? [] : dados.centros }, autoria);
   if (anexos.linhas.length && anexos.tabela)
     await inserirRegistros(
       p,
@@ -399,13 +513,14 @@ export async function enviarRequisicao(
       anexos.linhas.map((l) => ({ ...l, requisicao_id: r.id })),
       autoria,
     );
-  await gravarHistorico(p, r.id, quem.email, 'enviar', null, 'enviada', agora, textoRota(rota));
+  await gravarHistorico(p, r.id, quem.email, 'enviar', null, 'enviada', agora, espaco ? textoRotaEspaco(rota) : textoRota(rota));
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Requisicoes', registroId: r.id });
-  return { id: r.id, numero, rota };
+  return { id: r.id, numero, rota, espaco };
 }
 
 async function gravarFilhos(p: Planilhas, d: Dados, id: string, dados: DadosRequisicao, autoria: { email: string; agora: () => Date }) {
-  await inserirRegistros(
+  if (dados.centros.length > 0)
+    await inserirRegistros(
     p,
     d.centros,
     dados.centros.map((c) => ({ requisicao_id: id, servico: c.servico, percentual: c.percentual })),
@@ -454,11 +569,12 @@ export async function reenviarRequisicao(
   if (dados.tipoId !== r.tipo_id) throw new ErroRequisicao('O tipo da requisição não pode mudar. Cancele e abra outra.');
   // O projeto já gravado continua valendo se a pessoa não o mudou (ele pode ter saído da lista de compras depois).
   const mantem = Boolean(dados.projetoId) && dados.projetoId === r.projeto_id && (dados.atividadeId ?? null) === (r.atividade_id ?? null);
-  const { tipo, detalhes, rota, itens, projeto, atividade } = conferirFicha(
+  const { tipo, detalhes, rota, itens, projeto, atividade, espaco, semCentros } = conferirFicha(
     d,
     quem.email,
     mantem ? { ...dados, projetoId: null, atividadeId: null } : dados,
     opcoes.projetos ?? null,
+    agora,
   );
   const colunasProjeto = mantem
     ? { projeto_id: r.projeto_id, projeto_codigo: r.projeto_codigo, projeto_titulo: r.projeto_titulo, atividade_id: r.atividade_id, atividade_descricao: r.atividade_descricao }
@@ -488,7 +604,7 @@ export async function reenviarRequisicao(
   const encerrar = <T extends { id: string; versao: number }>(l: T[]) => l.map((x) => ({ id: x.id, versao: x.versao, mudancas: { ativo: false } }));
   await atualizarVarios(p, RequisicaoCentros, encerrar(d.centrosPor.get(id) ?? []), autoria);
   await atualizarVarios(p, RequisicaoItens, encerrar(d.itensPor.get(id) ?? []), autoria);
-  await gravarFilhos(p, d, id, { ...dados, itens }, autoria);
+  await gravarFilhos(p, d, id, { ...dados, itens, centros: semCentros ? [] : dados.centros }, autoria);
   if (anexos?.tabela) {
     const atuais = anexos.tabela.ativos().filter((a) => a.requisicao_id === id);
     const ficam = new Set(anexos.linhas.map((l) => l.arquivo_id));
@@ -503,7 +619,7 @@ export async function reenviarRequisicao(
         autoria,
       );
   }
-  await gravarHistorico(p, id, quem.email, 'reenviar', 'devolvida', 'enviada', agora, [opcoes.comentario, textoRota(rota)].filter(Boolean).join(' ') || null);
+  await gravarHistorico(p, id, quem.email, 'reenviar', 'devolvida', 'enviada', agora, [opcoes.comentario, espaco ? textoRotaEspaco(rota) : textoRota(rota)].filter(Boolean).join(' ') || null);
   await registrarAuditoria(p, {
     usuario: quem.email,
     acao: 'alteracao',
@@ -528,7 +644,7 @@ export async function decidirRequisicao(
   versao: number,
   acao: 'aprovar' | 'devolver' | 'recusar',
   comentario: string | null,
-  opcoes: { agora?: Date; conferencia?: ConferenciaDaAprovacao } = {},
+  opcoes: { agora?: Date; conferencia?: ConferenciaDaAprovacao; confirmarConflito?: boolean } = {},
 ) {
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
@@ -538,13 +654,18 @@ export async function decidirRequisicao(
     throw new ErroPermissao(
       r.requisitante === quem.email
         ? 'Você não pode aprovar a própria requisição.'
-        : r.aprovacao === 'diretoria'
+        : ehEspaco(d, r)
+          ? 'Esta reserva é decidida pelo setor Espaços (ou pela Diretoria, se o pedido for de alguém do setor).'
+          : r.aprovacao === 'diretoria'
           ? 'Esta requisição é aprovada pela Diretoria.'
           : 'Só a coordenação destes centros de custo pode decidir.',
     );
   }
   if (acao !== 'aprovar' && !comentario?.trim())
     throw new ErroRequisicao(acao === 'devolver' ? 'Escreva o que precisa ser ajustado.' : 'Escreva o motivo da recusa.');
+  // Aprovar sobre um horário já aprovado pede confirmação; contra pedido só enviado, não (regra 5).
+  if (acao === 'aprovar' && ehEspaco(d, r) && !opcoes.confirmarConflito && conflitosDe(d, r).some((c) => c.r.situacao === 'aprovada'))
+    throw new ErroRequisicao('Este horário já está aprovado para outro pedido. Confirme para aprovar mesmo assim.');
   const para: Situacao = acao === 'aprovar' ? 'aprovada' : acao === 'devolver' ? 'devolvida' : 'recusada';
   // Só a aprovação grava a conferência; nunca é obrigatória nem bloqueia (R5).
   const conferencia: Record<string, unknown> = {};
@@ -660,6 +781,41 @@ export async function concluirRequisicao(
   return para;
 }
 
+/** O setor Espaços registra o uso depois do evento: fecha a reserva (situação "Atendida"). */
+export async function fecharReserva(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  fechamento: { resultado: string; texto?: string | null },
+  opcoes: { agora?: Date } = {},
+) {
+  const agora = opcoes.agora ?? new Date();
+  const d = await ler(p, agora);
+  const r = acharComVersao(d, id, versao);
+  if (!ehEspaco(d, r)) throw new ErroRequisicao('Só reservas de espaço têm o uso registrado.');
+  if (!doSetorEspacos(quem, d)) throw new ErroPermissao('Só o setor Espaços registra o uso da reserva.');
+  conferirTransicao('fechar', r.situacao);
+  const x = detalhesDeEspaco(r)!;
+  const c = conferirFechamento(x, fechamento.resultado, fechamento.texto, agora);
+  if ('erro' in c) throw new ErroRequisicao(c.erro);
+  const { colunasAlteradas } = await atualizar(
+    p,
+    Requisicoes,
+    id,
+    versao,
+    {
+      situacao: 'atendida',
+      concluida_em: agora.toISOString(),
+      executada_por: quem.email,
+      detalhes: JSON.stringify({ ...x, fechamento: { resultado: c.resultado, texto: c.texto, em: agora.toISOString() } }),
+    },
+    { email: quem.email, agora: () => agora },
+  );
+  await gravarHistorico(p, id, quem.email, 'fechar', 'aprovada', 'atendida', agora, `${RESULTADOS_USO[c.resultado]}${c.texto ? `: ${c.texto}` : ''}`);
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
+}
+
 function conferirValorGasto(v: number | null | undefined): number | null {
   if (v == null) return null;
   const erro = conferirValor(v, 'Valor gasto');
@@ -712,7 +868,7 @@ async function concluirServico(
 // Listas, detalhe e contadores
 // ---------------------------------------------------------------------------
 
-export type Visao = 'minhas' | 'aprovar' | 'atender' | 'todas';
+export type Visao = 'minhas' | 'aprovar' | 'atender' | 'todas' | 'espacos' | 'fechar';
 
 export interface LinhaRequisicao {
   id: string;
@@ -728,11 +884,13 @@ export interface LinhaRequisicao {
   /** Chamados com urgência (TI): para ordenar a fila. */
   urgencia: Urgencia | null;
   prazo: { etapa: 'aprovação' | 'atendimento'; situacao: SituacaoPrazo; horas: number; limite: number } | null;
+  /** Reserva de espaço: o que, quando e onde. */
+  reserva: { espaco: string; data: string; inicio: string; fim: string } | null;
 }
 
 export async function listarRequisicoes(p: Planilhas, quem: Autorizador, visao: Visao, opcoes: { agora?: Date } = {}): Promise<LinhaRequisicao[]> {
   const agora = opcoes.agora ?? new Date();
-  const exigido = { minhas: PERM.solicitar, aprovar: PERM.aprovar, atender: PERM.atender, todas: PERM.verTodas }[visao];
+  const exigido = { minhas: PERM.solicitar, aprovar: PERM.aprovar, atender: PERM.atender, todas: PERM.verTodas, espacos: PERM.espacos, fechar: PERM.espacos }[visao];
   if (visao === 'todas' ? !quem.temPermissao(exigido) : !quem.temPermissaoAlgumEscopo(exigido)) throw new ErroPermissao();
   const d = await ler(p, agora);
   const filtro: Record<Visao, (r: RegRequisicao) => boolean> = {
@@ -740,12 +898,22 @@ export async function listarRequisicoes(p: Planilhas, quem: Autorizador, visao: 
     aprovar: (r) => podeVer(quem, d, r) && (podeAprovar(quem, d, r) || r.decidida_por === quem.email) && r.requisitante !== quem.email,
     atender: (r) => podeAtender(quem, d, r) && !['enviada', 'devolvida', 'recusada', 'cancelada'].includes(r.situacao),
     todas: () => true,
+    espacos: (r) => ehEspaco(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r),
+    fechar: (r) => {
+      const x = ehEspaco(d, r) ? detalhesDeEspaco(r) : null;
+      return Boolean(x) && r.situacao === 'aprovada' && doSetorEspacos(quem, d) && agora >= fimDaReserva(x!.data, x!.fim);
+    },
   };
   return d.requisicoes
     .ativos()
     .filter(filtro[visao])
     .sort((a, b) => b.enviada_em.localeCompare(a.enviada_em))
     .map((r) => linha(d, r, agora));
+}
+
+function reservaDe(d: Dados, r: RegRequisicao) {
+  const x = ehEspaco(d, r) ? detalhesDeEspaco(r) : null;
+  return x ? { espaco: d.espacos.porId(x.espacoId)?.nome ?? '—', data: x.data, inicio: x.inicio, fim: x.fim } : null;
 }
 
 function linha(d: Dados, r: RegRequisicao, agora: Date): LinhaRequisicao {
@@ -770,7 +938,30 @@ function linha(d: Dados, r: RegRequisicao, agora: Date): LinhaRequisicao {
     centros: (d.centrosPor.get(r.id) ?? []).map((c) => d.servicoPorCodigo.get(c.servico)?.nome ?? c.servico).join(', '),
     aprovacao: r.aprovacao,
     urgencia: urgenciaDe(r.detalhes),
+    reserva: reservaDe(d, r),
     prazo: etapa ? { etapa: etapa.etapa, situacao: etapa.situacao, horas: etapa.horas, limite: etapa.prazo } : null,
+  };
+}
+
+function dadosDaReserva(d: Dados, r: RegRequisicao, agora: Date) {
+  const x = detalhesDeEspaco(r)!;
+  const e = d.espacos.porId(x.espacoId);
+  const periodos = d.periodos.ativos().map((y) => ({ espacoId: y.espaco_id, inicio: y.inicio, fim: y.fim, motivo: y.motivo }));
+  return {
+    local: e?.local ?? null,
+    capacidade: e?.capacidade ?? null,
+    pessoas: x.pessoas,
+    acimaDaCapacidade: Boolean(e && x.pessoas > e.capacidade),
+    usoExterno: x.usoExterno,
+    organizacaoExterna: x.organizacaoExterna ?? null,
+    finalidade: x.finalidade,
+    fechamento: x.fechamento ?? null,
+    jaPodeFechar: agora >= fimDaReserva(x.data, x.fim),
+    /** Período de indisponibilidade cadastrado depois da aprovação (regra 3). */
+    aviso:
+      r.situacao === 'aprovada' && periodoQueCobre(x.espacoId, x.data, periodos)
+        ? 'O espaço ganhou um período de indisponibilidade que cobre esta data. Resolva com quem pediu.'
+        : null,
   };
 }
 
@@ -808,6 +999,22 @@ export async function detalharRequisicao(p: Planilhas, quem: Autorizador, id: st
       .filter((a) => a.requisicao_id === id)
       .map((a) => ({ id: a.id, tipo: a.tipo, nome: a.nome, tamanho: a.tamanho, duracao: a.duracao, arquivoId: a.arquivo_id })),
     acoes: acoesPossiveis(quem, d, r),
+    reserva: reservaDe(d, r) && {
+      ...reservaDe(d, r)!,
+      ...dadosDaReserva(d, r, agora),
+      // O conflito aparece só para quem decide as reservas (regra 11).
+      conflitos: quem.temPermissaoAlgumEscopo(PERM.espacos)
+        ? conflitosDe(d, r).map((c) => ({
+            id: c.r.id,
+            numero: c.r.numero,
+            quem: c.r.requisitante_nome,
+            inicio: c.reserva.inicio,
+            fim: c.reserva.fim,
+            situacao: c.r.situacao,
+            situacaoNome: NOME_SITUACAO[c.r.situacao],
+          }))
+        : null,
+    },
     podeCorrigirValorGasto: (r.situacao === 'atendida' || r.situacao === 'atendida_parcial') && podeAtender(quem, d, r),
     sla: sla(d, r, agora),
     expediente: d.expediente,
@@ -824,6 +1031,13 @@ export async function contadoresRequisicoes(p: Planilhas, quem: Autorizador, opc
     aprovar: quem.temPermissaoAlgumEscopo(PERM.aprovar) ? ativas.filter((r) => r.situacao === 'enviada' && podeAprovar(quem, d, r)).length : 0,
     atender: quem.temPermissaoAlgumEscopo(PERM.atender)
       ? ativas.filter((r) => (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && podeAtender(quem, d, r)).length
+      : 0,
+    espacosDecidir: quem.temPermissaoAlgumEscopo(PERM.espacos) ? ativas.filter((r) => ehEspaco(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r)).length : 0,
+    espacosFechar: doSetorEspacos(quem, d)
+      ? ativas.filter((r) => {
+          const x = ehEspaco(d, r) ? detalhesDeEspaco(r) : null;
+          return Boolean(x) && r.situacao === 'aprovada' && agora >= fimDaReserva(x!.data, x!.fim);
+        }).length
       : 0,
     devolvidas: ativas.filter((r) => r.requisitante === quem.email && r.situacao === 'devolvida').length,
   };
@@ -851,7 +1065,7 @@ export async function listarTipos(p: Planilhas, quem: Autorizador) {
   if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
   const d = await ler(p, new Date());
   const nomeArea = new Map(d.areas.todos().map((a) => [a.codigo, a.nome]));
-  const elegiveis = d.perfisCom(PERM.atender);
+  const elegiveis = new Set([...d.perfisCom(PERM.atender), PERFIL_ESPACOS]);
   const nomePerfil = new Map(d.perfis.todos().map((x) => [x.codigo, x.nome]));
   const uso = agrupar(d.requisicoes.ativos(), (r) => r.tipo_id);
   const ordem = (l: RegTipo[]) => l.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -889,7 +1103,9 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, dados: DadosTi
   if (igual) erros.push(igual.ativo ? `Já existe o tipo "${igual.nome}".` : `"${igual.nome}" está entre os excluídos: reative em vez de cadastrar de novo.`);
   if (!['material', 'servico'].includes(dados.categoria)) erros.push('Escolha se é material ou serviço.');
   if (!FORMULARIOS.includes(dados.formulario)) erros.push('Escolha a ficha.');
-  if (!d.perfisCom(PERM.atender).has(dados.perfilResponsavel)) erros.push('Escolha o setor (perfil) que atende.');
+  if (dados.formulario === 'espaco') {
+    if (dados.perfilResponsavel !== PERFIL_ESPACOS) erros.push('A reserva de espaço é decidida pelo setor Espaços: escolha este setor.');
+  } else if (!d.perfisCom(PERM.atender).has(dados.perfilResponsavel)) erros.push('Escolha o setor (perfil) que atende.');
   if ((dados.areas ?? []).some((a) => !areasValidas.has(a))) erros.push('Há área marcada que não existe mais.');
   for (const [v, rotulo] of [
     [dados.prazoAprovacao, 'aprovação'],
@@ -1109,9 +1325,10 @@ export async function painelDePrazos(p: Planilhas, quem: Autorizador, periodo: {
           situacao: r.situacao,
           enviadaEm: r.enviada_em,
           decididaEm: r.decidida_em,
-          concluidaEm: r.concluida_em,
+          // Reserva de espaço só tem prazo de aprovação (regra 9).
+          concluidaEm: t.formulario === 'espaco' ? null : r.concluida_em,
           prazoAprovacao: t.prazo_aprovacao,
-          prazoAtendimento: t.prazo_atendimento,
+          prazoAtendimento: t.formulario === 'espaco' ? Number.POSITIVE_INFINITY : t.prazo_atendimento,
         },
       ];
     });
@@ -1332,7 +1549,7 @@ export async function itensDaAgenda(p: Planilhas, quem: Autorizador, opcoes: { a
     const tipo = d.tipoPorId.get(r.tipo_id);
     if (!tipo) continue;
     const aprovando = r.situacao === 'enviada';
-    const atendendo = (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && r.decidida_em;
+    const atendendo = (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && r.decidida_em && tipo.formulario !== 'espaco';
     if (!aprovando && !atendendo) continue;
     const data = aprovando ? diaLimite(r.enviada_em, tipo.prazo_aprovacao, d.expediente) : diaLimite(r.decidida_em!, tipo.prazo_atendimento, d.expediente);
     itens.push({
@@ -1407,4 +1624,75 @@ export async function comprasDoProjeto(p: Planilhas, quem: Autorizador, projetoI
         valorGasto: r.valor_gasto,
       })),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Cadastro de espaços e períodos de indisponibilidade (só a Administração da plataforma)
+// ---------------------------------------------------------------------------
+
+export async function listarEspacos(p: Planilhas, quem: Autorizador) {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  const d = await ler(p, new Date());
+  const ordem = (l: RegEspaco[]) => l.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const periodos = d.periodos.ativos();
+  const monta = (e: RegEspaco) => ({ ...e, periodos: periodos.filter((x) => x.espaco_id === e.id).sort((a, b) => a.inicio.localeCompare(b.inicio)) });
+  return { ativos: ordem(d.espacos.ativos()).map(monta), encerrados: ordem(d.espacos.todos().filter((e) => !e.ativo)).map(monta) };
+}
+
+export async function salvarEspaco(
+  p: Planilhas,
+  quem: Autorizador,
+  dados: { nome: string; local?: string | null; capacidade: number },
+  existente?: { id: string; versao: number },
+) {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  const [espacos] = await lerTabelas(p, [Espacos] as const);
+  const erros = conferirEspaco(
+    dados,
+    espacos
+      .ativos()
+      .filter((e) => e.id !== existente?.id)
+      .map((e) => e.nome),
+  );
+  if (erros.length) throw new ErroRequisicao(erros.join(' '));
+  const campos = { nome: limpar(dados.nome), local: dados.local?.trim() || null, capacidade: dados.capacidade };
+  if (!existente) {
+    const e = await inserir(p, Espacos, campos, { email: quem.email });
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Espacos', registroId: e.id });
+    return;
+  }
+  const { colunasAlteradas } = await atualizar(p, Espacos, existente.id, existente.versao, campos, { email: quem.email });
+  if (colunasAlteradas.length)
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Espacos', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
+}
+
+/** Encerra ou reativa o espaço (nada é apagado; pedidos antigos continuam mostrando o nome). */
+export async function mudarSituacaoEspaco(p: Planilhas, quem: Autorizador, id: string, versao: number, ativo: boolean) {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  const [espacos] = await lerTabelas(p, [Espacos] as const);
+  const e = espacos.porId(id);
+  if (!e || e.ativo === ativo) throw new ErroRequisicao('Espaço não encontrado.');
+  if (ativo && espacos.ativos().some((x) => x.nome.toLowerCase() === e.nome.toLowerCase())) throw new ErroRequisicao('Já existe um espaço ativo com este nome.');
+  await atualizar(p, Espacos, id, versao, { ativo }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: ativo ? 'alteracao' : 'encerramento', entidade: 'Espacos', registroId: id, detalhes: { colunas: ['ativo'] } });
+}
+
+export async function adicionarPeriodoDeEspaco(p: Planilhas, quem: Autorizador, espacoId: string, periodo: { inicio: string; fim: string; motivo: string }) {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  const [espacos] = await lerTabelas(p, [Espacos] as const);
+  const e = espacos.porId(espacoId);
+  if (!e || !e.ativo) throw new ErroRequisicao('Espaço não encontrado.');
+  const erros = conferirPeriodo(periodo);
+  if (erros.length) throw new ErroRequisicao(erros.join(' '));
+  const x = await inserir(p, EspacoIndisponibilidades, { espaco_id: espacoId, inicio: periodo.inicio, fim: periodo.fim, motivo: limpar(periodo.motivo) }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'EspacoIndisponibilidades', registroId: x.id });
+}
+
+export async function encerrarPeriodoDeEspaco(p: Planilhas, quem: Autorizador, id: string, versao: number) {
+  if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
+  const [periodos] = await lerTabelas(p, [EspacoIndisponibilidades] as const);
+  const x = periodos.porId(id);
+  if (!x || !x.ativo) throw new ErroRequisicao('Período não encontrado.');
+  await atualizar(p, EspacoIndisponibilidades, id, versao, { ativo: false }, { email: quem.email });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: 'EspacoIndisponibilidades', registroId: id, detalhes: { colunas: ['ativo'] } });
 }
