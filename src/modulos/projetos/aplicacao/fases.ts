@@ -8,8 +8,9 @@ import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/
 import { Usuarios } from '@/nucleo/estrutura/tabelas';
 import { MarcoLogico, ProjetoDocumentos, ProjetoEquipe, Projetos, Riscos, type RegDocumento, type RegEquipe, type RegMarco, type RegProjeto, type RegRisco } from '../dados/tabelas';
 import {
-  CAMPOS,
+  camposDe,
   ehDocumento,
+  faltaDoFinanciamento,
   faseDoDocumento,
   GRAUS,
   itensDaFase,
@@ -82,7 +83,7 @@ export async function salvarDocumento(
   const agora = opcoes.agora ?? new Date();
   const r = await projetoParaAlterar(p, quem, projetoId, [faseDoDocumento(tipo)]);
   if (!itensDaFase(r.porte, faseDoDocumento(tipo)).includes(tipo)) throw new ErroProjetos(`O porte ${r.porte} não usa o documento ${NOME_ITEM[tipo].toLowerCase()}.`);
-  const conteudo = validarConteudo(tipo, bruto, pronto);
+  const conteudo = validarConteudo(tipo, bruto, pronto, r.tipo);
   const [docs] = await lerTabelas(p, [ProjetoDocumentos] as const);
   const atual = ultimo(docs.ativos().filter((d) => d.projeto_id === projetoId && d.tipo === tipo));
   if (atual?.situacao === 'aprovado') throw new ErroProjetos('Este documento já foi aprovado e está travado. Mudanças passam por pedido de mudança.');
@@ -273,7 +274,7 @@ export interface Fase {
   podeAbrirPorta2: boolean;
 }
 
-export function situacaoDosItens(porte: RegProjeto['porte'], fase: NumeroFase, docs: readonly RegDocumento[], marco: readonly RegMarco[], riscos: readonly RegRisco[]): ItemSituacao[] {
+export function situacaoDosItens(porte: RegProjeto['porte'], fase: NumeroFase, docs: readonly RegDocumento[], marco: readonly RegMarco[], riscos: readonly RegRisco[], tipoProjeto: RegProjeto['tipo'] = 'interno'): ItemSituacao[] {
   return itensDaFase(porte, fase).map((item) => {
     if (item === 'marco_logico') {
       const falta = pendenciasDoMarco(marco.map((m) => ({ id: m.id, nivel: m.nivel, descricao: m.descricao, indicador: m.indicador, fonte_verificacao: m.fonte_verificacao, acima: m.acima })));
@@ -285,6 +286,11 @@ export function situacaoDosItens(porte: RegProjeto['porte'], fase: NumeroFase, d
     }
     const d = ultimo(docs.filter((x) => x.tipo === item));
     const pronto = !!d && (d.pronto || d.situacao === 'aprovado');
+    // Regra L7: projeto financiado só abre a porta 2 com financiador e objeto no Termo de Abertura.
+    if (item === 'termo_abertura' && pronto && d.situacao !== 'aprovado' && tipoProjeto === 'financiado') {
+      const falta = faltaDoFinanciamento(conteudoDe(d));
+      if (falta.length > 0) return { item, nome: NOME_ITEM[item], pronto: false, falta: [`Informe ${falta.join(' e ')}.`] };
+    }
     return { item, nome: NOME_ITEM[item], pronto, falta: pronto ? [] : [d ? 'Falta marcar como pronto.' : 'Ainda não preenchido.'] };
   });
 }
@@ -303,7 +309,7 @@ export async function lerFase(p: Planilhas, quem: Autorizador, projetoId: string
   const meuMarco = marco.ativos().filter((m) => m.projeto_id === projetoId).sort((a, b) => NIVEIS_MARCO.indexOf(a.nivel) - NIVEIS_MARCO.indexOf(b.nivel) || a.ordem - b.ordem);
   const meusRiscos = riscos.ativos().filter((x) => x.projeto_id === projetoId);
   const fase: NumeroFase | null = r.etapa === 'fase_1' ? 1 : r.etapa === 'fase_2' ? 2 : null;
-  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos) : [];
+  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos, r.tipo) : [];
   const documentos: Fase['documentos'] = {};
   for (const t of new Set(meusDocs.map((d) => d.tipo))) if (ehDocumento(t as ItemDaFase)) documentos[t as TipoDocumento] = ultimo(meusDocs.filter((d) => d.tipo === t));
   const termo = documentos.termo_abertura;
@@ -333,7 +339,7 @@ export async function termoPreenchido(p: Planilhas, quem: Autorizador, projetoId
   const proposta = f.documentos.proposta ? conteudoDe(f.documentos.proposta) : {};
   const estimativas = f.documentos.estimativas ? conteudoDe(f.documentos.estimativas) : {};
   const t = config.tolerancias;
-  const base: ConteudoDocumento = Object.fromEntries(CAMPOS.termo_abertura.map((c) => [c.nome, null]));
+  const base: ConteudoDocumento = Object.fromEntries(camposDe('termo_abertura', f.projeto.tipo).map((c) => [c.nome, null]));
   return {
     ...base,
     objetivo: f.projeto.titulo,
