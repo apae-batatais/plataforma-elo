@@ -645,6 +645,62 @@ export default async function Ajuda() {
     });
   }
 
+  if (pode.verPlanejamento) {
+    assuntos.push({
+      id: 'projetos-implementacao',
+      titulo: 'Projetos: problemas, mudanças e relatórios (implementação)',
+      resumo: 'Acompanhar o projeto depois do início: registrar o que deu errado, pedir mudança de prazo, custo ou escopo e enviar relatórios.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              'Estas abas só funcionam com o projeto em implementação, isto é, com o Termo de Abertura aprovado. Antes disso, aparecem em leitura.',
+              'Riscos e problemas: risco é o que pode dar errado; problema é o que já deu. Problema aberto continua na carteira até ter solução e data. Gravidade alta aparece em destaque.',
+              'Quem está só na equipe do projeto vê riscos e problemas, mas não vê pedidos de mudança, relatórios nem o orçamento.',
+              'A situação do relatório vem sempre com a palavra (Verde, Amarelo ou Vermelho), nunca só com a cor.',
+            ]}
+          />
+          {pode.planejarProjeto && (
+            <>
+              <Sub>Registrar um problema</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e a aba Riscos e problemas.',
+                  'Em Registrar problema, descreva o que aconteceu, escolha a gravidade e, se quiser, quem cuida da solução.',
+                  'Quando resolver, use Registrar solução: escreva como foi resolvido e a data. Nada é apagado.',
+                ]}
+              />
+              <Sub>Pedir uma mudança</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Mudanças e clique em Pedir mudança. Escolha prazo, custo ou escopo.',
+                  'Preencha o que muda e o motivo e clique em Conferir a tolerância. O Elo mostra em palavras a variação (por exemplo, “a linha sobe 5% de 10% permitidos”) e diz quem decide.',
+                  'Dentro da tolerância do Termo de Abertura, você aplica na hora e fica no histórico. Fora dela, o pedido vai para a Diretoria e nada muda até a decisão.',
+                  'A comparação é feita com a última versão aprovada do Termo: várias mudanças pequenas somam e podem passar do limite.',
+                  'Mudança de escopo sempre vai para a Diretoria, a não ser que o Termo tenha declarado um “escopo livre” e você marque que a mudança cabe nele.',
+                ]}
+              />
+              <Sub>Enviar um relatório</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Relatórios e preencha o período, o que aconteceu e, se quiser, quanto já foi gasto.',
+                  'O Elo compara planejado e realizado, conta atividades atrasadas e problemas abertos e calcula a situação geral. Você só pode escolher uma situação pior que a calculada, explicando o motivo.',
+                  'Se o projeto usa números do cadastro nos indicadores, o relatório também registra a medição do dia.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirProjeto && (
+            <p className="mt-3">
+              Pedido fora da tolerância aparece em “Espera uma ação sua”, na tela inicial de Projetos. A Diretoria aprova ou recusa, sempre com justificativa. Aprovado, o Elo aplica a mudança e gera uma nova versão do Termo de Abertura (a anterior fica guardada como substituída). Se o novo valor total passar do limite de alçada, a aprovação da Diretoria segue para a Presidência ou o Conselho. Quem fez o pedido não decide o próprio pedido.
+            </p>
+          )}
+        </>
+      ),
+    });
+  }
+
   if (pode.projetos) {
     assuntos.push({
       id: 'projetos-termo',
