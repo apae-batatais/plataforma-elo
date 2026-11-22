@@ -10,7 +10,7 @@ import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina, EstadoVazio } from '@/ui/pagina';
 
-export const metadata: Metadata = { title: 'Painel da Avaliação de Serviços Sociais' };
+export const metadata: Metadata = { title: 'Painel da Assistência Social' };
 
 const MES = /^\d{4}-\d{2}$/;
 
@@ -30,7 +30,7 @@ export default async function PainelAvaliacao({ searchParams }: { searchParams: 
   return (
     <div className="space-y-5">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' }, { rotulo: 'Painel' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Assistência Social', href: '/avaliacao' }, { rotulo: 'Painel' }]}
         titulo="Painel por serviço atual"
         descricao={
           p.todos

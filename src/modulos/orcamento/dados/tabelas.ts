@@ -203,6 +203,31 @@ export const Despesas = definirTabela({
     /** aceito (entra no orçamento), proposta (aguarda o Financeiro) ou recusada. */
     situacao: z.preprocess((v) => (vazio(v) ? 'aceito' : v), z.enum(['aceito', 'proposta', 'recusada'])),
     observacao: textoOpcional(),
+    /** Preenchido só nas linhas geradas por um Lançamento de rateio (#225, ADR-038): ficam travadas no cadastro comum. */
+    lancamento_rateio_id: textoOpcional(),
+  }),
+});
+
+/**
+ * Lançamento de despesa por rateio (#225, ADR-038): a "mãe" que gera uma despesa por serviço participante
+ * da Regra de rateio. Não pertence a nenhum serviço; a regra decide quem recebe.
+ */
+export const LancamentosRateio = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'LancamentosRateio',
+  esquema: z.object({
+    ano: numero(),
+    grupo_id: texto(),
+    fonte_id: textoOpcional(),
+    descricao: texto(),
+    regra_rateio_id: texto(),
+    quantidade: numero(),
+    ocorrencias: numero(),
+    valor_unitario: numero(),
+    distribuicao: distribuicao(),
+    ...MESES_COLUNAS,
+    categoria: z.preprocess((v) => (vazio(v) ? 'operacional' : v), z.enum(['operacional', 'projetos'])),
+    observacao: textoOpcional(),
   }),
 });
 
@@ -532,6 +557,7 @@ export type RegAjuste = Registro<typeof Ajustes.esquema>;
 
 export type RegGrupo = Registro<typeof GruposGasto.esquema>;
 export type RegFonte = Registro<typeof Fontes.esquema>;
+export type RegLancamentoRateio = Registro<typeof LancamentosRateio.esquema>;
 export type RegDespesa = Registro<typeof Despesas.esquema>;
 export type RegReceita = Registro<typeof Receitas.esquema>;
 
@@ -644,4 +670,4 @@ export type RegAreaPlano = Registro<typeof AreasPlano.esquema>;
 export type RegItemContabil = Registro<typeof ItensContabeis.esquema>;
 export type RegPlanoContas = Registro<typeof PlanoContas.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, FontesTermo, CategoriasPlanoOrigens, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, UsosReserva, AreasPlano, ItensContabeis, PlanoContas] as const;
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, LancamentosRateio, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, FontesTermo, CategoriasPlanoOrigens, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, UsosReserva, AreasPlano, ItensContabeis, PlanoContas] as const;

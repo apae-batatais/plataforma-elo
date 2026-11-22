@@ -25,7 +25,8 @@ async function autorizador(p: Planilhas, email: string) {
   return new Autorizador(email, { usuarios: u.ativos(), atribuicoes: a.ativos(), perfilPermissoes: pp.ativos(), servicos: s.todos() });
 }
 
-const itensDoMenu = (aut: Autorizador) => navegacaoDoUsuario(aut, false).flatMap((g) => g.itens.flatMap((i) => [i.rotulo, ...(i.filhos ?? []).map((f) => f.rotulo)]));
+const itensDoMenu = (aut: Autorizador) =>
+  navegacaoDoUsuario(aut, false).flatMap((g) => g.itens.flatMap((i) => [i.rotulo, ...(i.filhos ?? []).map((f) => f.rotulo), ...(i.apps ?? []).flatMap((a) => [a.rotulo, ...(a.filhos ?? []).map((f) => f.rotulo)])]));
 
 describe('conferência da estrutura', () => {
   it('em dia logo depois de preparar; aponta permissão nova sem gravar; preparar resolve', async () => {

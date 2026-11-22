@@ -16,7 +16,7 @@ export default async function SobreOInstrumento() {
   return (
     <div className="max-w-5xl space-y-6">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: 'Sobre o instrumento' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: 'Sobre o instrumento' }]}
         titulo="Sobre o instrumento"
         descricao="Os três instrumentos de avaliação de evolução de Educação, como o Elo calcula o total e os subtotais e o que cada faixa significa."
       />
