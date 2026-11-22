@@ -69,11 +69,72 @@ export function conferirPublicacao(d: DadosParaConferir, categoriasAtivas: Reado
 
 export type SituacaoDaPessoa = 'sem_exigencia' | 'pendente' | 'precisa_renovar' | 'em_dia';
 
-/** Regras 8 e 10: a ciência vale pela edição atual; a de edição anterior pede renovação. */
-export function situacaoDaPessoa(exigeCiencia: boolean, edicaoAtual: number, edicoesComCiencia: readonly number[]): SituacaoDaPessoa {
-  if (!exigeCiencia) return 'sem_exigencia';
-  if (edicoesComCiencia.includes(edicaoAtual)) return 'em_dia';
-  return edicoesComCiencia.length > 0 ? 'precisa_renovar' : 'pendente';
+/** Teste de compreensão ligado à publicação (regras 11 e 12). */
+export interface ExigenciaTeste {
+  tem: boolean;
+  edicoesAprovadas: readonly number[];
+}
+
+/**
+ * Regras 8, 10 e 11: o que a pessoa cumpriu vale pela edição atual. Em dia = ciência (se exigida) e
+ * aprovação no teste (se houver) na edição atual; algo cumprido só em edição anterior pede renovação.
+ */
+export function situacaoDaPessoa(
+  exigeCiencia: boolean,
+  edicaoAtual: number,
+  edicoesComCiencia: readonly number[],
+  teste: ExigenciaTeste = { tem: false, edicoesAprovadas: [] },
+): SituacaoDaPessoa {
+  if (!exigeCiencia && !teste.tem) return 'sem_exigencia';
+  const cienciaOk = !exigeCiencia || edicoesComCiencia.includes(edicaoAtual);
+  const testeOk = !teste.tem || teste.edicoesAprovadas.includes(edicaoAtual);
+  if (cienciaOk && testeOk) return 'em_dia';
+  const feitoAgora = (exigeCiencia && edicoesComCiencia.includes(edicaoAtual)) || (teste.tem && teste.edicoesAprovadas.includes(edicaoAtual));
+  const feitoAntes = edicoesComCiencia.length > 0 || teste.edicoesAprovadas.length > 0;
+  return !feitoAgora && feitoAntes ? 'precisa_renovar' : 'pendente';
+}
+
+export const TESTE = { maxPerguntas: 10, minOpcoes: 2, maxOpcoes: 5, textoPergunta: 300, textoOpcao: 200 } as const;
+
+export interface PerguntaEntrada {
+  texto: string;
+  opcoes: string[];
+  /** Posição (a partir de 0) da única opção certa. */
+  correta: number;
+}
+
+/** Regra 12: de 1 a 10 perguntas, cada uma com 2 a 5 opções e exatamente uma correta. */
+export function conferirPerguntas(perguntas: readonly PerguntaEntrada[], exigirAlguma: boolean): string[] {
+  const erros: string[] = [];
+  if (exigirAlguma && perguntas.length === 0) erros.push('Cadastre ao menos uma pergunta para o teste.');
+  if (perguntas.length > TESTE.maxPerguntas) erros.push(`O teste pode ter até ${TESTE.maxPerguntas} perguntas.`);
+  perguntas.forEach((q, i) => {
+    const n = i + 1;
+    if (!q.texto.trim()) erros.push(`Escreva o texto da pergunta ${n}.`);
+    else if (q.texto.trim().length > TESTE.textoPergunta) erros.push(`A pergunta ${n} passa de ${TESTE.textoPergunta} caracteres.`);
+    if (q.opcoes.length < TESTE.minOpcoes || q.opcoes.length > TESTE.maxOpcoes) erros.push(`A pergunta ${n} precisa de ${TESTE.minOpcoes} a ${TESTE.maxOpcoes} opções.`);
+    else if (q.opcoes.some((o) => !o.trim())) erros.push(`Preencha todas as opções da pergunta ${n}.`);
+    else if (q.opcoes.some((o) => o.trim().length > TESTE.textoOpcao)) erros.push(`Uma opção da pergunta ${n} passa de ${TESTE.textoOpcao} caracteres.`);
+    if (!Number.isInteger(q.correta) || q.correta < 0 || q.correta >= q.opcoes.length) erros.push(`Marque a opção certa da pergunta ${n}.`);
+  });
+  return erros;
+}
+
+export interface ResultadoDoTeste {
+  acertos: number;
+  total: number;
+  aprovada: boolean;
+  /** Números (a partir de 1) das perguntas erradas; nunca a resposta certa (regra 13). */
+  erradas: number[];
+}
+
+/** Regra 13: aprovada = todas certas. */
+export function corrigirTeste(corretas: readonly number[], respostas: readonly number[]): ResultadoDoTeste {
+  const erradas: number[] = [];
+  corretas.forEach((c, i) => {
+    if (respostas[i] !== c) erradas.push(i + 1);
+  });
+  return { acertos: corretas.length - erradas.length, total: corretas.length, aprovada: erradas.length === 0, erradas };
 }
 
 export const ROTULO_SITUACAO: Record<SituacaoDaPessoa, string> = {

@@ -832,8 +832,11 @@ export function montarAssuntos(ctx: {
               'Abra Base de Conhecimento. No alto, "Falta você" lista os documentos que pedem a sua ciência; a tela inicial também avisa.',
               'Clique em Abrir. Leia o texto e, se houver, abra o PDF ou a imagem anexada.',
               'No cartão "O que falta", clique em "Li e estou de acordo" e confirme. Isso registra o seu nome, a data e a hora e não dá para desfazer.',
-              'Se o conteúdo mudar numa versão nova, o documento volta a ficar pendente e você dá ciência de novo.',
-              'Em Meus documentos, veja o que já está em dia (com a data da ciência) e o que falta. Pendência com mais de 15 dias fica marcada como vencida.',
+              'Se a publicação tem teste de compreensão, ele aparece abaixo do cartão "O que falta": marque uma opção em cada pergunta e clique em "Enviar respostas". Você precisa acertar todas.',
+              'Se errar, a tela diz quantas acertou e quais perguntas revisar, sem mostrar a resposta certa. Clique em "Tentar de novo" quantas vezes precisar; errar não avisa ninguém.',
+              'Quando a publicação exige teste e ciência, o botão "Li e estou de acordo" só é liberado depois de você acertar o teste.',
+              'Se o conteúdo ou o teste mudar numa versão nova, o documento volta a ficar pendente e você refaz o que for pedido.',
+              'Em Meus documentos, veja o que já está em dia (com a data da ciência e do teste) e o que falta. Pendência com mais de 15 dias fica marcada como vencida.',
             ]}
           />
           <p className="mt-2">Você só vê as publicações do seu público (todos, um perfil ou uma área). Ninguém vê a ciência de outra pessoa, só quem acompanha.</p>
@@ -845,8 +848,9 @@ export function montarAssuntos(ctx: {
                   'Abra Publicações › Nova publicação (se faltar categoria, cadastre em Categorias).',
                   'Preencha título, categoria e resumo; escreva o texto, envie um anexo (PDF até 10 MB ou imagem), ou os dois.',
                   'Em "Quem deve ler", escolha Todos, Um perfil ou Uma área. Marque "Exige ciência" se a pessoa precisa confirmar que leu.',
+                  'Para pedir um teste, marque "Tem teste de compreensão" e cadastre de 1 a 10 perguntas, cada uma com 2 a 5 opções; marque em cada pergunta a opção certa (quem faz o teste não a vê). Publicação com teste precisa de ao menos uma pergunta.',
                   'Salve como rascunho para revisar (ninguém recebe pendência) ou clique em Publicar.',
-                  'Ao editar o texto de uma publicação que já tem ciências, escolha "Correção pequena" (as ciências continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
+                  'Ao editar o texto ou o teste de uma publicação que já tem ciências ou tentativas, escolha "Correção pequena" (as ciências e aprovações continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
                   'Arquivar tira a publicação das listas e das pendências, mas guarda o registro de quem deu ciência; dá para reativar.',
                 ]}
               />
@@ -857,7 +861,7 @@ export function montarAssuntos(ctx: {
               <Sub>Acompanhar quem está em dia</Sub>
               <Itens
                 itens={[
-                  'Acompanhamento lista as publicações que exigem ciência com "X de Y em dia". Clique em "Ver as pessoas" para ver quem deu ciência, quem precisa renovar e quem está pendente; os filtros separam cada grupo.',
+                  'Acompanhamento lista as publicações que exigem ciência ou teste com "X de Y em dia". Clique em "Ver as pessoas" para ver quem deu ciência, a melhor tentativa de cada um no teste, quem precisa renovar e quem está pendente; os filtros separam cada grupo.',
                   'Abrir a lista de pessoas fica registrado na auditoria.',
                 ]}
               />
