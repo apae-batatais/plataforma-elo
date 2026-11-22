@@ -13,6 +13,7 @@ import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpci
 import { FONTES_NUMERO, MOTIVOS_SEM_NUMERO, ORIGENS_MEDICAO } from '../dominio/indicadores';
 import { APPS_LIGACAO } from '../dominio/ligacoes';
 import { GRAUS, NIVEIS_MARCO, SITUACOES_RISCO } from '../dominio/fases';
+import { SITUACOES_PEDIDO, SITUACOES_RELATORIO, TIPOS_MUDANCA } from '../dominio/acompanhamento';
 import { SITUACOES_ATIVIDADE } from '../dominio/planejamento';
 import { DECISOES, ETAPAS, NIVEIS_DECISAO, PORTES, RESULTADOS_PARECER, SITUACOES_PORTA, TIPOS_PARECER, TIPOS_PORTA, TIPOS_PROJETO } from '../dominio/projeto';
 
@@ -242,7 +243,83 @@ export const LigacoesProjeto = definirTabela({
   }),
 });
 
-export const TABELAS_PROJETOS = [Projetos, LigacoesProjeto, ProjetoDocumentos, MarcoLogico, IndicadoresMedidos, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
+
+export const Problemas = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'Problemas',
+  esquema: z.object({
+    projeto_id: texto(),
+    descricao: texto(),
+    gravidade: z.enum(GRAUS),
+    dono: textoOpcional(),
+    aberto_em: texto(),
+    aberto_por: texto(),
+    /** Problema aberto = sem solução e sem data (regra 21). */
+    solucao: textoOpcional(),
+    resolvido_em: dataOpcional(),
+  }),
+});
+
+/** Pedido de mudança (regras 16 a 19). Nunca editado além da decisão; nada é apagado. */
+export const PedidosMudanca = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'PedidosMudanca',
+  esquema: z.object({
+    projeto_id: texto(),
+    tipo: z.enum(TIPOS_MUDANCA),
+    /** Custo: id da linha do orçamento. Prazo: "projeto" ou id da atividade. Escopo: vazio. */
+    alvo: textoOpcional(),
+    /** Valor, data ou texto do escopo antes e depois (em texto). */
+    atual: texto(),
+    proposto: texto(),
+    /** % de custo da linha ou dias de prazo; vazio no escopo. */
+    variacao: numeroOpcional(),
+    limite: numeroOpcional(),
+    variacao_total: numeroOpcional(),
+    limite_total: numeroOpcional(),
+    dentro_tolerancia: booleano(),
+    /** O novo valor total passa do limite de alçada: depois da Diretoria, decide a Presidência ou o Conselho. */
+    exige_alcada: booleano(),
+    justificativa: texto(),
+    pedido_por: texto(),
+    pedido_em: texto(),
+    situacao: z.enum(SITUACOES_PEDIDO),
+    /** Diretoria que passou o pedido para a alçada (quando houve). */
+    diretoria_por: textoOpcional(),
+    decidido_por: textoOpcional(),
+    decidido_em: textoOpcional(),
+    decisao_justificativa: textoOpcional(),
+    /** Versão do Termo aprovada quando o pedido foi feito e versão nova gerada pela aprovação. */
+    versao_termo_base: z.coerce.number().int().min(1),
+    versao_termo_nova: numeroOpcional(),
+  }),
+});
+
+export const Relatorios = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'Relatorios',
+  esquema: z.object({
+    projeto_id: texto(),
+    periodo_inicio: texto(),
+    periodo_fim: texto(),
+    planejado_pct: z.coerce.number().min(0).max(100),
+    realizado_pct: z.coerce.number().min(0).max(100),
+    orcamento_total: numeroOpcional(),
+    gasto_realizado: numeroOpcional(),
+    atividades_atrasadas: z.coerce.number().int().min(0),
+    problemas_abertos: z.coerce.number().int().min(0),
+    fora_tolerancia: booleano(),
+    situacao_calculada: z.enum(SITUACOES_RELATORIO),
+    situacao: z.enum(SITUACOES_RELATORIO),
+    /** Obrigatória quando a pessoa piorou a situação. */
+    justificativa: textoOpcional(),
+    texto: texto(),
+    enviado_por: texto(),
+    enviado_em: texto(),
+  }),
+});
+
+export const TABELAS_PROJETOS = [Projetos, LigacoesProjeto, ProjetoDocumentos, MarcoLogico, IndicadoresMedidos, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento, Problemas, PedidosMudanca, Relatorios, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
 
 export type RegProjeto = Registro<typeof Projetos.esquema>;
 export type RegDocumento = Registro<typeof ProjetoDocumentos.esquema>;
@@ -253,6 +330,9 @@ export type RegRisco = Registro<typeof Riscos.esquema>;
 export type RegEquipe = Registro<typeof ProjetoEquipe.esquema>;
 export type RegAtividade = Registro<typeof Atividades.esquema>;
 export type RegLinhaOrcamento = Registro<typeof ProjetoOrcamento.esquema>;
+export type RegProblema = Registro<typeof Problemas.esquema>;
+export type RegPedido = Registro<typeof PedidosMudanca.esquema>;
+export type RegRelatorio = Registro<typeof Relatorios.esquema>;
 export type RegPorta = Registro<typeof Portas.esquema>;
 export type RegParecer = Registro<typeof Pareceres.esquema>;
 export type RegDecisao = Registro<typeof Decisoes.esquema>;
