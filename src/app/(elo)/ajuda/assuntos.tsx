@@ -419,6 +419,7 @@ export function montarAssuntos(ctx: {
   if (pode.avaliarEducacao) {
     assuntos.push({
       id: 'educacao',
+      permissoes: ['educacao.avaliar'],
       titulo: 'Educação',
       resumo: 'Ver os instrumentos de avaliação de Educação e aplicar um a uma pessoa.',
       atalhos: [
@@ -443,6 +444,7 @@ export function montarAssuntos(ctx: {
   if (pode.avaliarSaude) {
     assuntos.push({
       id: 'saude',
+      permissoes: ['saude.avaliar'],
       titulo: 'Saúde',
       resumo: 'Ver o instrumento de avaliação de Saúde, na versão em uso, e aplicar a uma pessoa.',
       atalhos: [
@@ -717,6 +719,7 @@ export function montarAssuntos(ctx: {
   if (pode.verPlanejamento) {
     assuntos.push({
       id: 'projetos-implementacao',
+      permissoes: ['projetos.acessar'],
       titulo: 'Projetos: problemas, mudanças e relatórios (implementação)',
       resumo: 'Acompanhar o projeto depois do início: registrar o que deu errado, pedir mudança de prazo, custo ou escopo e enviar relatórios.',
       atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
