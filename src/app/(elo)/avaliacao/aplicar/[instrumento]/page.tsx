@@ -33,8 +33,8 @@ export default async function AplicarInstrumento({ params }: { params: Promise<{
     <div>
       <CabecalhoPagina
         trilha={[
-          { rotulo: 'Início', href: '/' },
-          { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' },
+          { rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' },
+          { rotulo: 'Assistência Social', href: '/avaliacao' },
           { rotulo: 'Instrumentos', href: '/avaliacao/instrumentos' },
           { rotulo: instrumento.nome },
         ]}

@@ -58,7 +58,7 @@ export default async function NovaAvaliacaoDeSaude({ searchParams }: { searchPar
   return (
     <div>
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: corrige ? 'Corrigir avaliação' : 'Nova avaliação' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: corrige ? 'Corrigir avaliação' : 'Nova avaliação' }]}
         titulo={corrige ? 'Corrigir avaliação' : 'Nova avaliação'}
         descricao={
           corrige

@@ -28,7 +28,7 @@ export default async function PainelDeEducacao({ searchParams }: { searchParams:
   return (
     <div className="space-y-5">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: 'Painel' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: 'Painel' }]}
         titulo="Painel de Educação"
         descricao={
           p.todos
