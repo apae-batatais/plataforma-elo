@@ -21,9 +21,10 @@ export function EtiquetaDaPessoa({ situacao, vencida }: { situacao: SituacaoDaPe
   return <Etiqueta tipo={TIPO[situacao]}>{ROTULO_SITUACAO[situacao]}</Etiqueta>;
 }
 
-export const FALTA: Record<SituacaoDaPessoa, string> = {
-  sem_exigencia: '',
-  pendente: 'Dar ciência',
-  precisa_renovar: 'Dar ciência de novo (versão nova)',
-  em_dia: '',
-};
+/** O que falta a quem ainda não está em dia (a ciência só vale depois do teste, regra 11). */
+export function faltaDe(x: { minhaSituacao: SituacaoDaPessoa; exigeCiencia: boolean; temTeste: boolean }): string {
+  if (x.minhaSituacao !== 'pendente' && x.minhaSituacao !== 'precisa_renovar') return '';
+  const nova = x.minhaSituacao === 'precisa_renovar' ? ' de novo (versão nova)' : '';
+  if (x.temTeste) return `Fazer o teste${nova}${x.exigeCiencia ? ' e dar ciência' : ''}`;
+  return `Dar ciência${nova}`;
+}

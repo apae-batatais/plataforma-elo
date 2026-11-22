@@ -21,18 +21,19 @@ export default async function MeusDocumentos() {
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Base de Conhecimento', href: '/conhecimento' }, { rotulo: 'Meus documentos' }]}
         titulo="Meus documentos"
-        descricao="O que pede a sua ciência e o que você já confirmou. Pendentes primeiro."
+        descricao="O que pede a sua ciência ou um teste e o que você já cumpriu. Pendentes primeiro."
       />
       {docs.length === 0 ? (
-        <EstadoVazio titulo="Nada exige sua ciência por enquanto">Quando uma publicação pedir, ela aparece aqui e na tela inicial.</EstadoVazio>
+        <EstadoVazio titulo="Nada exige sua ciência ou teste por enquanto">Quando uma publicação pedir, ela aparece aqui e na tela inicial.</EstadoVazio>
       ) : (
         <TabelaDados
-          legenda="Documentos que exigem ciência"
+          legenda="Documentos que exigem ciência ou teste"
           colunas={[
             { chave: 'titulo', rotulo: 'Título' },
             { chave: 'categoria', rotulo: 'Categoria' },
             { chave: 'situacao', rotulo: 'Situação' },
             { chave: 'ciencia', rotulo: 'Ciência em' },
+            { chave: 'teste', rotulo: 'Teste em' },
             { chave: 'abrir', rotulo: 'Abrir', fixa: true },
           ]}
           linhas={docs.map((d) => ({
@@ -43,6 +44,7 @@ export default async function MeusDocumentos() {
               categoria: d.categoriaNome,
               situacao: d.minhaSituacao,
               ciencia: d.minhaCienciaEm ? formatarDataHora(d.minhaCienciaEm) : null,
+              teste: d.minhaAprovacaoEm ? formatarDataHora(d.minhaAprovacaoEm) : null,
               abrir: null,
             },
             celulas: {

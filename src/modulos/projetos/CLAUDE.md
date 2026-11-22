@@ -28,6 +28,9 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
 - Ligação com o termo (L2): `aplicacao/termo.ts`. Parcerias chega pela interface `CatalogoTermos` (`catalogo-parcerias.ts`),
   entregue por `src/plataforma/ligacoes.ts`; nunca importe Parcerias. A decisão da porta 2 nunca falha por causa do rascunho.
   `financiador` e `objeto` só existem no Termo de Abertura de projeto `financiado` (`camposDe`).
+- Ligações com outros apps (**P7 pronta**): `aplicacao/ligacoes.ts`, aba `LigacoesProjeto` (identificador e cópia do nome; encerrada com `ativo = FALSE`).
+  O Projetos define `CatalogoLeitura` (`catalogo-leitura.ts`); a plataforma entrega (`catalogoDeLeitura`). Hoje só `compras` (Requisições) está ligado;
+  as entregas L2 a L5 de cada onda acrescentam um leitor em `leitores` e chamam `registrarLigacao`. Leitor ausente = "Ligação indisponível".
 - Fase 4 (`aplicacao/acompanhamento.ts`, `dominio/acompanhamento.ts`): `Problemas`, `PedidosMudanca`, `Relatorios`. Tudo só com o projeto em `implementacao`
   e Termo aprovado (`exigirTermoAprovado`). Pedido dentro da tolerância é aplicado na hora (`aplicada`); fora dela fica `pendente`, passa por
   `aguardando_alcada` se o novo total passa do limite e, aprovado, gera nova versão do Termo (`novaVersaoDoTermo`). A base da variação é a última
