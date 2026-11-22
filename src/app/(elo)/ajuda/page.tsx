@@ -375,13 +375,22 @@ export default async function Ajuda() {
               <Sub>Lançar</Sub>
               <Itens
                 itens={[
-                  'Antes de tudo, confira em Cadastros os Grupos de gasto (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
+                  'Antes de tudo, confira em Cadastros os Grupos de contas (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
                   'Em Previsão do ano, use Abrir exercício para começar um ano novo.',
                   'Despesas › Lançar despesa: serviço, grupo, fonte (pode ficar "a definir" na elaboração), quantidade × vezes × valor unitário e os meses.',
                   'A folha de pagamento entra sozinha, por serviço. No fim da tela Despesas, escolha a fonte que paga a folha de cada serviço: ao escolher, já fica salvo.',
                   'Receitas › Lançar receita: fonte, área, valor, meses e a situação da captação (garantida, em negociação ou a captar).',
                   'Para trazer de uma planilha: Importar despesas e receitas. Escolha o arquivo, diga se são despesas ou receitas e qual coluna corresponde a cada campo (o Elo sugere), confira e diga a qual cadastro corresponde cada nome que ele não reconheceu.',
                   'Importar de novo o mesmo tipo substitui a importação anterior do ano: os itens importados antes vão para o histórico. O que foi lançado à mão e as propostas não mudam.',
+                ]}
+              />
+              <Sub>Plano de contas</Sub>
+              <Itens
+                itens={[
+                  'Em Cadastros, cadastre as Áreas do plano (as áreas da contabilidade, que podem ser diferentes das áreas dos serviços) e, em Grupos de contas, os itens contábeis de cada grupo (botão "Cadastrar itens").',
+                  'Planejamento › Plano de contas: escolha o exercício e use Montar plano. Em cada área, marque os grupos e os itens que ela usa e diga a partir de quando vale (dentro do ano). Salvar cria uma versão nova; as anteriores ficam em "Versões anteriores".',
+                  'Para um ano novo, use "Começar do plano de" o ano anterior: o plano vem preenchido, você ajusta e salva. Nada é gravado até salvar.',
+                  'O plano só orienta: nenhum lançamento é bloqueado por ele. "Baixar planilha" entrega o plano do exercício em CSV.',
                 ]}
               />
               <Sub>Decidir as propostas</Sub>
