@@ -90,7 +90,7 @@ function lerFicha(f: FormData): DadosRequisicao {
 
 export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise<EstadoFicha> {
   const { usuario, app } = await contexto();
-  let r: { id: string; numero: string; rota: { tipo: string }; espaco: boolean };
+  let r: { id: string; numero: string; rota: { tipo: string }; espaco: boolean; veiculo: boolean };
   try {
     r = await enviarRequisicao(app.planilhas, usuario.autorizador, { ...lerFicha(f), nomeRequisitante: usuario.nome }, {
       arquivos: app.arquivos,
@@ -105,7 +105,11 @@ export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise
   esquecerAlertas();
   revalidatePath('/', 'layout');
   const quem = r.rota.tipo === 'diretoria' ? 'a Diretoria' : 'a coordenação';
-  const aviso = r.espaco
+  const aviso = r.veiculo
+    ? r.rota.tipo === 'diretoria'
+      ? `Pedido ${r.numero} enviado. A Diretoria vai responder.`
+      : `Pedido ${r.numero} enviado. O Transporte vai responder.`
+    : r.espaco
     ? r.rota.tipo === 'diretoria'
       ? `Pedido ${r.numero} enviado. A Diretoria vai responder.`
       : 'Pedido enviado. O setor de Espaços vai responder.'
@@ -337,7 +341,9 @@ export async function acaoReativarVeiculo(f: FormData) {
 }
 
 export async function acaoMarcarManutencaoFeita(f: FormData) {
-  await executar('/requisicoes/veiculos', 'Manutenção marcada como feita.', ({ usuario, app }) =>
+  // O Transporte marca pela agenda e volta para ela; a Administração, pelo cadastro.
+  const voltar = texto(f, 'voltar') === 'agenda' ? '/requisicoes/veiculos/agenda' : '/requisicoes/veiculos';
+  await executar(voltar, 'Manutenção marcada como feita.', ({ usuario, app }) =>
     marcarManutencaoFeita(app.planilhas, usuario.autorizador, texto(f, 'id'), texto(f, 'proxima') || null),
   );
 }

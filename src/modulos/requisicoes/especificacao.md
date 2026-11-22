@@ -358,6 +358,11 @@ entrega 2 cria `FichaVeiculo` já como componente próprio.
    manutenção, aprovar/devolver/recusar/cancelar reserva, agenda.
 3. **Fechamento:** "Confirmar uso", quilometragem e `VeiculoUsos`.
 
+### Como a entrega 2 ficou (22/11/2026)
+
+- Telas do Transporte: **Pedidos de veículo** (`/requisicoes/veiculos/pedidos`, lista para decidir, ordenada pela saída, com os selos Conflito e Manutenção) e **Agenda dos veículos** (`/requisicoes/veiculos/agenda`, com o botão de marcar manutenção feita). O Transporte não tem a permissão `requisicoes.aprovar`, por isso não usa "Para aprovar".
+- "Para atender" (Confirmar uso) fica na entrega 3.
+
 ### Critérios de pronto
 
 - [ ] Prévia: Administração cadastra dois veículos e uma data de manutenção; o veículo some da

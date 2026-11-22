@@ -3,9 +3,11 @@ import Link from 'next/link';
 const ABAS = [
   { chave: 'resumo', rotulo: 'Resumo e fase atual', parte: '' },
   { chave: 'marco', rotulo: 'Marco lógico', parte: '/marco-logico' },
-  { chave: 'riscos', rotulo: 'Riscos', parte: '/riscos' },
+  { chave: 'riscos', rotulo: 'Riscos e problemas', parte: '/riscos' },
   { chave: 'atividades', rotulo: 'Atividades', parte: '/atividades' },
   { chave: 'orcamento', rotulo: 'Orçamento', parte: '/orcamento' },
+  { chave: 'mudancas', rotulo: 'Mudanças', parte: '/mudancas' },
+  { chave: 'relatorios', rotulo: 'Relatórios', parte: '/relatorios' },
   { chave: 'equipe', rotulo: 'Equipe', parte: '/equipe' },
   { chave: 'ligacoes', rotulo: 'Ligações', parte: '/ligacoes' },
 ] as const;
