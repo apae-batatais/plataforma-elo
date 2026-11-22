@@ -9,7 +9,7 @@ import type { Instrumento } from '@/capacidades/motor-avaliacao';
 import { Aviso } from '@/ui/aviso';
 import { Botao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
-import { estiloEntrada } from '@/ui/campo';
+import { Campo, estiloEntrada } from '@/ui/campo';
 import { LEGENDA_FREQUENCIA, LEGENDA_NOTAS, ITEM_FREQUENCIA, instrumentoSugerido, notaDeFrequencia, resultadoDe } from '../dominio/educacao';
 
 export type EstadoFormulario = { erro?: string };
@@ -48,7 +48,6 @@ export interface ValoresIniciais {
 }
 
 const entrada = `${estiloEntrada} !mt-1`;
-const rotuloCampo = 'block text-sm font-semibold';
 
 export function FormularioAplicacao({
   pessoas,
@@ -131,109 +130,83 @@ export function FormularioAplicacao({
         </Aviso>
       )}
 
-      <fieldset className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-        <legend className="px-1 text-sm font-bold text-destaque">1. Quem é avaliado</legend>
-        {editando ? (
-          <p>
-            <b>{nomePessoaTravada}</b> · {servicos.find((s) => s.codigo === v.servico)?.nome ?? v.servico} · {instrumento?.nome}
-          </p>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <label className={rotuloCampo} htmlFor="busca-pessoa">
-                Pessoa atendida
-              </label>
-              <input
-                id="busca-pessoa"
-                type="search"
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                placeholder="Digite parte do nome para filtrar"
-                className={entrada}
-                autoComplete="off"
-              />
-              <select
-                aria-label="Escolha a pessoa"
-                value={v.pessoaId}
-                onChange={(e) => escolherPessoa(e.target.value)}
-                className={entrada}
-                size={Math.min(6, Math.max(2, filtradas.length + 1))}
-              >
-                <option value="">{filtradas.length === 0 ? 'Nenhuma pessoa encontrada' : 'Escolha a pessoa…'}</option>
-                {filtradas.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-texto-suave">Só aparecem pessoas do Cadastro Único que você pode ver e que estão num serviço seu.</p>
-            </div>
-            <div>
-              <label className={rotuloCampo} htmlFor="servico">
-                Serviço
-              </label>
-              <select id="servico" value={v.servico} onChange={(e) => escolherServico(e.target.value)} className={entrada} disabled={!pessoa}>
-                <option value="">{pessoa ? 'Escolha o serviço…' : 'Escolha a pessoa primeiro'}</option>
-                {servicosDaPessoa.map((s) => (
-                  <option key={s.codigo} value={s.codigo}>
-                    {s.nome}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={rotuloCampo} htmlFor="instrumento">
-                Instrumento
-              </label>
-              <select id="instrumento" value={v.instrumento} onChange={(e) => mudar({ instrumento: e.target.value, respostas: {} })} className={entrada}>
-                <option value="">Escolha o instrumento…</option>
-                {instrumentos.map((i) => (
-                  <option key={i.codigo} value={i.codigo}>
-                    {i.nome}
-                  </option>
-                ))}
-              </select>
-              {instrumento?.referenciais && <p className="mt-1 text-xs text-texto-suave">{instrumento.referenciais}</p>}
-            </div>
-          </div>
-        )}
-      </fieldset>
-
-      <fieldset className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-        <legend className="px-1 text-sm font-bold text-destaque">2. Período e responsável</legend>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <label className={rotuloCampo} htmlFor="inicio">
-              Período avaliado: início
-            </label>
-            <input id="inicio" type="date" max={hoje} value={v.periodoInicio} onChange={(e) => mudar({ periodoInicio: e.target.value })} className={entrada} />
-          </div>
-          <div>
-            <label className={rotuloCampo} htmlFor="fim">
-              Período avaliado: fim
-            </label>
-            <input id="fim" type="date" max={hoje} value={v.periodoFim} onChange={(e) => mudar({ periodoFim: e.target.value })} className={entrada} />
-          </div>
-          <div>
-            <label className={rotuloCampo} htmlFor="ingresso">
-              Data de ingresso no serviço
-            </label>
-            <input id="ingresso" type="date" max={hoje} value={v.dataIngresso} onChange={(e) => mudar({ dataIngresso: e.target.value })} className={entrada} />
-          </div>
-          <div className="md:col-span-2">
-            <label className={rotuloCampo} htmlFor="profissional">
-              Profissional responsável
-            </label>
-            <input id="profissional" value={v.profissional} onChange={(e) => mudar({ profissional: e.target.value })} className={entrada} autoComplete="off" />
-          </div>
-          <div>
-            <label className={rotuloCampo} htmlFor="funcao">
-              Função ou categoria profissional
-            </label>
-            <input id="funcao" value={v.funcao} onChange={(e) => mudar({ funcao: e.target.value })} className={entrada} autoComplete="off" />
-          </div>
+      <section aria-labelledby="sec-quem" className="rounded-cartao border border-borda bg-superficie p-5">
+        <h2 id="sec-quem" className="mb-3 text-sm font-bold text-destaque">
+          Quem e quando
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {editando ? (
+            <Campo rotulo="Pessoa" obrigatorio>
+              <input value={nomePessoaTravada ?? ''} disabled readOnly className={entrada} />
+            </Campo>
+          ) : (
+            <>
+              <Campo rotulo="Buscar pessoa pelo nome" dica="Só aparecem pessoas do Cadastro Único que você pode ver e que estão num serviço seu.">
+                <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Digite parte do nome para filtrar" className={entrada} autoComplete="off" />
+              </Campo>
+              <Campo rotulo="Pessoa" obrigatorio>
+                <select value={v.pessoaId} onChange={(e) => escolherPessoa(e.target.value)} className={entrada}>
+                  <option value="">{filtradas.length === 0 ? 'Nenhuma pessoa encontrada' : 'Escolha a pessoa…'}</option>
+                  {filtradas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </>
+          )}
+          <Campo rotulo="Serviço" obrigatorio>
+            <select value={v.servico} onChange={(e) => escolherServico(e.target.value)} className={entrada} disabled={editando || !pessoa}>
+              {editando ? (
+                <option value={v.servico}>{servicos.find((s) => s.codigo === v.servico)?.nome ?? v.servico}</option>
+              ) : (
+                <>
+                  <option value="">{pessoa ? 'Escolha o serviço…' : 'Escolha a pessoa primeiro'}</option>
+                  {servicosDaPessoa.map((s) => (
+                    <option key={s.codigo} value={s.codigo}>
+                      {s.nome}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
+          </Campo>
+          <Campo rotulo="Instrumento" obrigatorio dica={instrumento?.referenciais ?? undefined}>
+            <select value={v.instrumento} onChange={(e) => mudar({ instrumento: e.target.value, respostas: {} })} className={entrada} disabled={editando}>
+              <option value="">Escolha o instrumento…</option>
+              {instrumentos.map((i) => (
+                <option key={i.codigo} value={i.codigo}>
+                  {i.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo rotulo="Data de ingresso no serviço">
+            <input type="date" max={hoje} value={v.dataIngresso} onChange={(e) => mudar({ dataIngresso: e.target.value })} className={entrada} />
+          </Campo>
+          <Campo rotulo="Período avaliado: início" obrigatorio>
+            <input type="date" max={hoje} value={v.periodoInicio} onChange={(e) => mudar({ periodoInicio: e.target.value })} className={entrada} />
+          </Campo>
+          <Campo rotulo="Período avaliado: fim" obrigatorio>
+            <input type="date" max={hoje} value={v.periodoFim} onChange={(e) => mudar({ periodoFim: e.target.value })} className={entrada} />
+          </Campo>
         </div>
-      </fieldset>
+      </section>
+
+      <section aria-labelledby="sec-resp" className="rounded-cartao border border-borda bg-superficie p-5">
+        <h2 id="sec-resp" className="mb-3 text-sm font-bold text-destaque">
+          Responsável
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <Campo rotulo="Profissional responsável">
+            <input value={v.profissional} onChange={(e) => mudar({ profissional: e.target.value })} className={entrada} autoComplete="off" />
+          </Campo>
+          <Campo rotulo="Função ou categoria profissional">
+            <input value={v.funcao} onChange={(e) => mudar({ funcao: e.target.value })} className={entrada} autoComplete="off" />
+          </Campo>
+        </div>
+      </section>
 
       {instrumento && resultado ? (
         <section aria-labelledby="titulo-itens" className="space-y-4">
