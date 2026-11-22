@@ -70,8 +70,10 @@ export default async function PedidosDeVeiculo() {
   if (!usuario) redirect('/entrar');
   const app = await obterAplicacao();
   let decidir;
+  let usar;
   try {
     decidir = await listarRequisicoes(app.planilhas, usuario.autorizador, 'veiculos');
+    usar = await listarRequisicoes(app.planilhas, usuario.autorizador, 'usar');
   } catch (erro) {
     if (erro instanceof ErroPermissao) redirect('/requisicoes');
     throw erro;
@@ -81,10 +83,14 @@ export default async function PedidosDeVeiculo() {
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Requisições', href: '/requisicoes' }, { rotulo: 'Pedidos de veículo' }]}
         titulo="Pedidos de veículo"
-        descricao="Abra a ficha para ver os pedidos no mesmo horário e aprovar, devolver ou recusar. Para ver a ocupação dos próximos dias, use a Agenda dos veículos."
+        descricao="Abra a ficha para ver os pedidos no mesmo horário e aprovar, devolver ou recusar, e depois para confirmar o uso. Para ver a ocupação dos próximos dias, use a Agenda dos veículos."
       />
       <Secao titulo={`Para aprovar (${decidir.length})`} id="t-aprovar">
         <Tabela linhas={decidir} legenda="Pedidos de veículo para aprovar" vazio="Nenhum pedido de veículo espera a sua decisão." />
+      </Secao>
+      <Secao titulo={`Para confirmar o uso (${usar.length})`} id="t-usar">
+        <p className="mb-3 text-sm text-texto-suave">Pedidos aprovados cuja saída já passou. Abra a ficha, diga como foi o uso e informe a quilometragem; o pedido é encerrado.</p>
+        <Tabela linhas={usar} legenda="Pedidos de veículo para confirmar o uso" vazio="Nenhum uso espera confirmação." />
       </Secao>
     </div>
   );

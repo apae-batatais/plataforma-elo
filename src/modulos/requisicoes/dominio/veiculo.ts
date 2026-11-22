@@ -90,3 +90,36 @@ export interface PedidoParaConflito {
 export function pedidosEmConflito(alvo: PedidoParaConflito, todos: readonly PedidoParaConflito[]): PedidoParaConflito[] {
   return todos.filter((o) => o.id !== alvo.id && o.veiculoId === alvo.veiculoId && (o.situacao === 'enviada' || o.situacao === 'aprovada') && periodosSeCruzam(alvo, o));
 }
+
+// ---------------------------------------------------------------------------
+// Fechamento do uso (entrega 3)
+// ---------------------------------------------------------------------------
+export const RESULTADOS_USO_VEICULO = { sem_problema: 'Usado sem problema', com_problema: 'Usado com problema' } as const;
+export type ResultadoUsoVeiculo = keyof typeof RESULTADOS_USO_VEICULO;
+
+export interface EntradaFechamentoVeiculo {
+  resultado?: string | null;
+  problema?: string | null;
+  kmSaida?: number | null;
+  kmVolta?: number | null;
+}
+
+/** Só depois do horário de saída o uso pode ser confirmado (regra 10). */
+export const jaPodeConfirmarUso = (saida: string, agora: Date) => agora >= instante(saida);
+
+/** Confere o fechamento: resultado, texto do problema e quilometragem (inteiros ≥ 0, volta ≥ saída). */
+export function conferirUsoVeiculo(
+  x: { saida: string },
+  e: EntradaFechamentoVeiculo,
+  agora: Date,
+): { erro: string } | { resultado: ResultadoUsoVeiculo; problema: string | null; kmSaida: number; kmVolta: number } {
+  if (!jaPodeConfirmarUso(x.saida, agora)) return { erro: `O uso só pode ser confirmado depois da saída (${momentoBR(x.saida)}).` };
+  if (e.resultado !== 'sem_problema' && e.resultado !== 'com_problema') return { erro: 'Diga se o veículo foi usado sem ou com problema.' };
+  const texto = e.problema?.trim() ?? '';
+  if (e.resultado === 'com_problema' && texto.length < 10) return { erro: 'Explique o problema (mínimo de 10 letras).' };
+  const inteiro = (n: number | null | undefined) => typeof n === 'number' && Number.isInteger(n) && n >= 0;
+  if (!inteiro(e.kmSaida)) return { erro: 'Informe a quilometragem de saída (número inteiro, de 0 em diante).' };
+  if (!inteiro(e.kmVolta)) return { erro: 'Informe a quilometragem de volta (número inteiro, de 0 em diante).' };
+  if (e.kmVolta! < e.kmSaida!) return { erro: 'A quilometragem de volta não pode ser menor que a de saída.' };
+  return { resultado: e.resultado, problema: e.resultado === 'com_problema' ? texto : null, kmSaida: e.kmSaida!, kmVolta: e.kmVolta! };
+}

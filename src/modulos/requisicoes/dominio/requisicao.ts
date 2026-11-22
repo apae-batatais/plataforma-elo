@@ -49,7 +49,7 @@ export const NOME_ACAO: Record<Acao, string> = {
   cancelar: 'Cancelou',
   receber: 'Recebeu para atender',
   concluir: 'Concluiu o atendimento',
-  fechar: 'Registrou o uso do espaço',
+  fechar: 'Registrou o uso',
 };
 
 /** De quais situações cada ação pode partir. */

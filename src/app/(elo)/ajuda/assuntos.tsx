@@ -289,6 +289,7 @@ export function montarAssuntos(ctx: {
                   'Se já existe um pedido aprovado no mesmo horário, o sistema pede confirmação antes de aprovar; a confirmação fica no histórico. Se o outro ainda está aguardando, aprova direto.',
                   'Para resolver um conflito ou o aviso de manutenção de um pedido já aprovado, abra a ficha e clique em Cancelar reserva (o motivo é obrigatório e quem pediu vê no histórico). Nada é cancelado sozinho.',
                   'Em Agenda dos veículos, veja por veículo os pedidos dos próximos 30 dias e a manutenção prevista; ali também dá para marcar a manutenção como feita.',
+                  'Depois da saída, o pedido aprovado aparece em "Para confirmar o uso" (na mesma tela Pedidos de veículo e na tela inicial). Abra a ficha, clique em Confirmar uso, diga se foi usado sem ou com problema (com problema pede o texto, mínimo de 10 letras) e informe a quilometragem de saída e de volta (números inteiros; a volta não pode ser menor que a saída). Ao confirmar, o pedido é encerrado e não pode ser reaberto.',
                 ]}
               />
             </>
