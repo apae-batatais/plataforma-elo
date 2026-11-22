@@ -221,8 +221,10 @@ describe('excluir, aviso e auditoria', () => {
     const auditoria = (await lerTabela(p, RegistrosAuditoria)).todos().filter((a) => ['LancamentosRateio', 'Despesas'].includes(a.entidade));
     expect(auditoria.some((a) => a.entidade === 'LancamentosRateio' && a.acao === 'alteracao')).toBe(true);
     expect(auditoria.some((a) => a.entidade === 'Despesas' && JSON.stringify(a).includes(id))).toBe(true);
-    expect(JSON.stringify(auditoria)).not.toContain('Segredo');
-    expect(JSON.stringify(auditoria)).not.toContain('777');
+    // Só o detalhe, sem os identificadores: um id aleatório ou a hora (milissegundos) podem conter "777".
+    const detalhes = auditoria.map((a) => a.detalhes ?? '').join(' ').replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, '');
+    expect(detalhes).not.toContain('Segredo');
+    expect(detalhes).not.toContain('777');
   });
 });
 
