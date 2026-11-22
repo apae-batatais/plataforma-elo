@@ -86,7 +86,6 @@ export default async function Ajuda() {
     publicar: a.temPermissao('conhecimento.publicar'),
     acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
     categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
-    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
     gerenciarProjetos: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
     equipeComunicacao: a.temPermissao('comunicacao.revisar'),
