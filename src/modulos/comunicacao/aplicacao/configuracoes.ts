@@ -44,3 +44,36 @@ export async function salvarAntecedencia(p: Planilhas, quem: Autorizador, dias: 
   await atualizar(p, ParametrosComunicacao, atual.id, opcoes.versao, { valor: dias }, autoria);
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'ParametrosComunicacao', registroId: atual.id, detalhes: { colunas: ['valor'] } }, agora);
 }
+
+// ---------------------------------------------------------------------------
+// Avisos por e-mail (ADR-027, entrega 3): liga e desliga da instituição. Começa desligado.
+// ---------------------------------------------------------------------------
+
+const CHAVE_AVISOS = 'avisos_por_email';
+
+/** Os avisos por e-mail estão ligados? E a versão da linha (null enquanto nunca foi salvo). */
+export async function lerAvisosPorEmail(p: Planilhas): Promise<{ ligado: boolean; versao: number | null }> {
+  const [parametros] = await lerTabelas(p, [ParametrosComunicacao] as const);
+  const linha = parametros.ativos().find((x) => x.chave === CHAVE_AVISOS);
+  return { ligado: linha?.valor === 1, versao: linha?.versao ?? null };
+}
+
+/** Só a coordenação (comunicacao.configurar). `versao` é a que a pessoa viu; obrigatória quando a linha já existe. */
+export async function salvarAvisosPorEmail(p: Planilhas, quem: Autorizador, ligado: boolean, opcoes: { agora?: Date; versao?: number | null } = {}): Promise<void> {
+  if (!quem.temPermissao('comunicacao.configurar')) throw new ErroPermissao();
+  const agora = opcoes.agora ?? new Date();
+  const autoria = { email: quem.email, agora: () => agora };
+  const [parametros] = await lerTabelas(p, [ParametrosComunicacao] as const);
+  const atual = parametros.ativos().find((x) => x.chave === CHAVE_AVISOS);
+  const valor = ligado ? 1 : 0;
+  if (!atual) {
+    const novo = await inserir(p, ParametrosComunicacao, { chave: CHAVE_AVISOS, valor }, autoria);
+    await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'ParametrosComunicacao', registroId: novo.id, detalhes: { colunas: ['valor'] } }, agora);
+    return;
+  }
+  if (opcoes.versao === undefined || opcoes.versao === null || !Number.isInteger(opcoes.versao)) throw new ErroComunicacao('Abra a página de novo para salvar.');
+  if (atual.versao !== opcoes.versao) throw new ErroConflito(atual.id);
+  if (atual.valor === valor) return;
+  await atualizar(p, ParametrosComunicacao, atual.id, opcoes.versao, { valor }, autoria);
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'ParametrosComunicacao', registroId: atual.id, detalhes: { colunas: ['valor'] } }, agora);
+}
