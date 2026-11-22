@@ -1,16 +1,25 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { lerFase } from '@/modulos/projetos/aplicacao/fases';
+import { lerIndicadores } from '@/modulos/projetos/aplicacao/indicadores';
+import { ehPercentual, FONTES_NUMERO, fraseDoNumero, NOME_FONTE_NUMERO, NOME_ORIGEM, TEXTO_MOTIVO } from '@/modulos/projetos/dominio/indicadores';
 import { NIVEIS_MARCO, NIVEL_ACIMA, NOME_NIVEL, pendenciasDoMarco } from '@/modulos/projetos/dominio/fases';
 import { AbasProjeto } from '@/modulos/projetos/telas/abas-projeto';
+import { lerTabela } from '@/nucleo/armazenamento/tabela';
+import { Servicos } from '@/nucleo/estrutura/tabelas';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { numerosDePessoas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
-import { CabecalhoPagina, EstadoVazio, Secao } from '@/ui/pagina';
-import { acaoRetirarItemMarco, acaoSalvarItemMarco } from '../../acoes';
+import { pequeno } from '@/ui/botao';
+import { Indicadores } from '@/ui/graficos';
+import { SelecaoAutomatica } from '@/ui/selecao-automatica';
+import { TabelaDados } from '@/ui/tabela-dados';
+import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
+import { acaoFonteDoItem, acaoRegistrarMedicao, acaoRetirarItemMarco, acaoSalvarItemMarco } from '../../acoes';
 
 export const metadata: Metadata = { title: 'Marco lógico' };
 
@@ -24,6 +33,11 @@ export default async function PaginaMarcoLogico({ params }: { params: Promise<{ 
   const editavel = f.podeAlterar && (f.fase === 1 || f.fase === 2);
   const itens = f.marco.map((m) => ({ id: m.id, nivel: m.nivel, descricao: m.descricao, indicador: m.indicador, fonte_verificacao: m.fonte_verificacao, acima: m.acima }));
   const falta = pendenciasDoMarco(itens);
+  const ind = await lerIndicadores(planilhas, usuario.autorizador, id, numerosDePessoas(planilhas));
+  const servicos = (await lerTabela(planilhas, Servicos)).ativos().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const dataBR = ind.data.split('-').reverse().join('/');
+  const automaticos = ind.itens.filter((i) => i.hoje);
+  const nomeDoItem = (itemId: string) => ind.itens.find((i) => i.itemId === itemId)?.descricao ?? '—';
   const nome = (acima: string | null) => f.marco.find((m) => m.id === acima)?.descricao ?? '—';
 
   return (
@@ -42,6 +56,87 @@ export default async function PaginaMarcoLogico({ params }: { params: Promise<{ 
       ) : (
         <Aviso tipo="sucesso">O marco lógico está completo.</Aviso>
       )}
+      {ind.itens.length > 0 && (
+        <Secao
+          id="t-indicadores"
+          titulo="Indicadores"
+          descricao={`Os números marcados “Calculado do cadastro” vêm das pessoas atendidas, sem nomes, e valem para ${dataBR}.`}
+          acoes={
+            ind.podeRegistrar && automaticos.length > 0 && (
+              <form action={acaoRegistrarMedicao}>
+                <input type="hidden" name="id" value={id} />
+                <BotaoEnviar enviando="Registrando…" className={pequeno}>Registrar medição</BotaoEnviar>
+              </form>
+            )
+          }
+        >
+          {automaticos.some((i) => i.hoje?.estado === 'ok' && i.hoje.situacao === 'abaixo') && (
+            <p className="mb-3 text-sm font-semibold">Há indicador abaixo da meta. Converse com a equipe técnica sobre o que fazer.</p>
+          )}
+          <ul className="space-y-4">
+            {ind.itens.map((i) => {
+              const h = i.hoje;
+              const grafico = h?.estado === 'ok' && h.valor !== null && ehPercentual(i.fonte);
+              return (
+                <li key={i.itemId} className="space-y-1 text-sm">
+                  <p className="font-semibold">{i.indicador ?? i.descricao}</p>
+                  <p className="text-texto-suave">{i.meta !== null ? `Meta: ${i.meta.toLocaleString('pt-BR')}${ehPercentual(i.fonte) ? '%' : ''}` : 'Sem meta definida'}</p>
+                  {!h && <p>Número digitado à mão: o Elo não calcula este indicador.</p>}
+                  {h?.estado === 'sem_servico' && <p>Escolha o serviço para calcular.</p>}
+                  {h?.estado === 'indisponivel' && <p>{TEXTO_MOTIVO.indisponivel}</p>}
+                  {h?.estado === 'ok' && !grafico && (
+                    <p className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold tabular-nums">{h.valor !== null ? fraseDoNumero(i.fonte, h.valor) : TEXTO_MOTIVO[h.motivo ?? 'sem_dados']}</span>
+                      <Etiqueta tipo="info">Calculado do cadastro</Etiqueta>
+                      {h.situacao && <Etiqueta tipo={h.situacao === 'dentro' ? 'sucesso' : 'atencao'}>{h.situacao === 'dentro' ? 'Dentro da meta' : 'Abaixo da meta'}</Etiqueta>}
+                    </p>
+                  )}
+                  {h?.estado === 'ok' && grafico && h.valor !== null && (
+                    <div className="space-y-1">
+                      <Indicadores
+                        itens={[
+                          {
+                            nome: i.indicador ?? i.descricao,
+                            valor: h.valor,
+                            explicacao: `${fraseDoNumero(i.fonte, h.valor)} (${h.base} pessoas). Calculado do cadastro em ${dataBR}.`,
+                            referencia: i.meta !== null ? { valor: i.meta, sentido: 'desde' } : undefined,
+                            anteriores: [],
+                          },
+                        ]}
+                      />
+                      {h.situacao === 'abaixo' && <p className="text-xs">Peça à equipe técnica para reavaliar as pessoas com avaliação vencida.</p>}
+                    </div>
+                  )}
+                  {i.servicoNome && <p className="text-xs text-texto-suave">Serviço: {i.servicoNome}</p>}
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-4">
+            <TabelaDados
+              legenda="Medições registradas"
+              vazio="Nenhuma medição registrada ainda. Use “Registrar medição” para guardar os números de hoje."
+              colunas={[
+                { chave: 'data', rotulo: 'Data' },
+                { chave: 'indicador', rotulo: 'Indicador' },
+                { chave: 'numero', rotulo: 'Número' },
+                { chave: 'base', rotulo: 'Pessoas', tipo: 'numero' },
+                { chave: 'origem', rotulo: 'Origem' },
+              ]}
+              linhas={ind.medicoes.map((m) => ({
+                id: m.id,
+                valores: {
+                  data: m.data.split('-').reverse().join('/'),
+                  indicador: nomeDoItem(m.itemId),
+                  numero: m.valor !== null ? m.valor : m.motivo ? TEXTO_MOTIVO[m.motivo] : '—',
+                  base: m.base,
+                  origem: NOME_ORIGEM[m.origem],
+                },
+              }))}
+            />
+          </div>
+        </Secao>
+      )}
       {f.marco.length === 0 ? (
         <EstadoVazio titulo="Nada aqui ainda.">Comece pelo impacto: a mudança maior que o projeto quer ajudar a alcançar.</EstadoVazio>
       ) : (
@@ -58,6 +153,28 @@ export default async function PaginaMarcoLogico({ params }: { params: Promise<{ 
                     {m.indicador && <p>Indicador: {m.indicador}</p>}
                     {m.fonte_verificacao && <p>Fonte de verificação: {m.fonte_verificacao}</p>}
                     {m.pressuposto && <p>Pressuposto: {m.pressuposto}</p>}
+                    {ind.podeAlterar && m.indicador && (
+                      <form action={acaoFonteDoItem} className="flex flex-wrap items-end gap-3 pt-1">
+                        <input type="hidden" name="id" value={id} />
+                        <input type="hidden" name="item" value={m.id} />
+                        <input type="hidden" name="versao_item" value={m.versao} />
+                        <Campo rotulo="De onde vem o número" dica="Escolha “Digitado à mão” para informar você mesmo.">
+                          <SelecaoAutomatica name="fonte" defaultValue={m.fonte_numero} className={estiloEntrada}>
+                            {FONTES_NUMERO.map((v) => <option key={v} value={v}>{NOME_FONTE_NUMERO[v]}</option>)}
+                          </SelecaoAutomatica>
+                        </Campo>
+                        <Campo rotulo="Serviço" dica="Só vale para número do cadastro.">
+                          <SelecaoAutomatica name="servico" defaultValue={m.servico_id ?? ''} className={estiloEntrada}>
+                            <option value="">Escolha o serviço</option>
+                            {servicos.map((s) => <option key={s.codigo} value={s.codigo}>{s.nome}</option>)}
+                          </SelecaoAutomatica>
+                        </Campo>
+                        <Campo rotulo="Meta" dica="ex.: 80 (opcional)">
+                          <input name="meta" inputMode="decimal" defaultValue={m.meta ?? ''} className={`${estiloEntrada} w-28`} />
+                        </Campo>
+                        <BotaoEnviar enviando="Salvando…" className={pequeno}>Salvar meta</BotaoEnviar>
+                      </form>
+                    )}
                     {editavel && (
                       <FormularioConfirmado
                         acao={acaoRetirarItemMarco}

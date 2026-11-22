@@ -22,6 +22,8 @@ export const manifesto = defineModulo({
     { rotulo: 'Para atender', caminho: '/atender', permissao: 'requisicoes.atender', secao: 'Acompanhar' },
     { rotulo: 'Todas as requisições', caminho: '/todas', permissao: 'requisicoes.ver_todas', secao: 'Acompanhar' },
     { rotulo: 'Painel de prazos', caminho: '/painel', permissao: 'requisicoes.painel', secao: 'Acompanhar' },
+    { rotulo: 'Reservas de espaço', caminho: '/espacos', permissao: 'requisicoes.espacos.decidir', secao: 'Acompanhar' },
+    { rotulo: 'Espaços', caminho: '/espacos/cadastro', permissao: 'requisicoes.tipos.gerenciar', secao: 'Cadastros' },
     { rotulo: 'Tipos de requisição', caminho: '/tipos', permissao: 'requisicoes.tipos.gerenciar', secao: 'Cadastros' },
     { rotulo: 'Veículos', caminho: '/veiculos', permissao: 'requisicoes.veiculos.cadastrar', secao: 'Cadastros' },
   ],
@@ -32,8 +34,10 @@ export const manifesto = defineModulo({
     'requisicoes.atender': 'Receber e atender as requisições dos tipos do seu setor',
     'requisicoes.ver_todas': 'Ver todas as requisições e o histórico',
     'requisicoes.painel': 'Ver o painel de prazos (SLA) das requisições que a pessoa já pode ver',
+    'requisicoes.espacos.decidir':
+      'Decidir as reservas de espaço (aprovar, devolver, recusar), ver o conflito de horário e registrar o uso (setor Espaços; a Diretoria decide as reservas de quem é do setor)',
     'requisicoes.tipos.gerenciar':
-      'Cadastrar e alterar os tipos de requisição, os itens aceitos, o setor responsável, os prazos e o expediente (Administração da plataforma); os feriados são do Núcleo',
+      'Cadastrar e alterar os tipos de requisição, os espaços e seus períodos de indisponibilidade, os itens aceitos, o setor responsável, os prazos e o expediente (Administração da plataforma); os feriados são do Núcleo',
     'requisicoes.veiculos.cadastrar':
       'Cadastrar e alterar os veículos institucionais e a manutenção prevista de cada um (Administração da plataforma)',
   },
@@ -55,10 +59,15 @@ export const manifesto = defineModulo({
       nome: 'Setor de Manutenção',
       descricao: 'Recebe e atende os pedidos de manutenção (elétrica, hidráulica, ar-condicionado, equipamentos, predial).',
     },
+    {
+      codigo: 'espacos',
+      nome: 'Setor de Espaços',
+      descricao: 'Decide as reservas de espaço (salões e salas), vê os conflitos de horário e registra o uso depois do evento.',
+    },
   ],
   permissoesPorPerfil: {
     administrador_plataforma: [...BASE, 'requisicoes.tipos.gerenciar', 'requisicoes.veiculos.cadastrar'],
-    diretoria: [...BASE, 'requisicoes.aprovar', 'requisicoes.ver_todas', 'requisicoes.painel'],
+    diretoria: [...BASE, 'requisicoes.aprovar', 'requisicoes.ver_todas', 'requisicoes.painel', 'requisicoes.espacos.decidir'],
     financeiro: [...BASE],
     coordenacao_servico: [...BASE, 'requisicoes.aprovar', 'requisicoes.painel'],
     tecnico_avaliador: [...BASE],
@@ -72,6 +81,7 @@ export const manifesto = defineModulo({
     patrimonio: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
     manutencao: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
     cozinha: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
+    espacos: [...BASE, 'requisicoes.espacos.decidir'],
   },
   // Tipos de requisição: só a Administração da plataforma da instituição (decisão de 31/10/2026).
   permissoesRetiradas: { diretoria: ['requisicoes.tipos.gerenciar'] },
