@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
 import { contadoresComunicacao } from '@/modulos/comunicacao/aplicacao/pedidos';
+import { pendenciasDaPessoa as pendenciasConhecimento } from '@/modulos/conhecimento/aplicacao/publicacoes';
 import { contadoresRequisicoes } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { painelDeAcessos } from '@/nucleo/acesso/gestao';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
@@ -228,6 +229,22 @@ export default async function Portal() {
       }
     } catch {
       // Planilha da Comunicação ainda não configurada: a página do app explica.
+    }
+  }
+  if (a.temPermissaoAlgumEscopo('conhecimento.ler')) {
+    try {
+      const c = await pendenciasConhecimento(app.planilhas, a);
+      if (c.total > 0) {
+        pendencias.push({
+          app: 'conhecimento',
+          texto: `${c.total} ${c.total === 1 ? 'documento aguarda' : 'documentos aguardam'} a sua ciência`,
+          detalhe: c.vencidas > 0 ? `${c.vencidas} ${c.vencidas === 1 ? 'está vencido' : 'estão vencidos'}, com mais de 15 dias sem ciência.` : 'Leia e confirme que está de acordo.',
+          href: c.total === 1 ? `/conhecimento/${c.itens[0].id}` : '/conhecimento/meus-documentos',
+          acao: 'Ler e dar ciência',
+        });
+      }
+    } catch {
+      // Planilha da Base de Conhecimento ainda não configurada: a página do app explica.
     }
   }
   if (a.temPermissao('core.organizacao.gerenciar')) {
