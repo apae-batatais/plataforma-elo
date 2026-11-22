@@ -543,7 +543,7 @@ abaixo declara as abas novas com `definirTabela` e as registra em "Preparar estr
 | P4 | `Problemas`, `Relatorios`, `PedidosMudanca` | 13, 16 a 22 | Abas "Riscos e problemas", "Mudanças", "Relatórios"; tela "Pedido de mudança" | P3 |
 | P5 | `Licoes`, `Encerramento` | 23 a 25 | Check-list, relatório final, porta de encerramento, tela "Lições aprendidas" | P4 |
 | P6 | nenhuma (lê as anteriores) | 21, 25 e 28 | Tela "Carteira" | P2 a P5 |
-| P7 | `LigacoesProjeto` (e colunas da onda 2) | 26 e 27 | Aba "Ligações" | L1 da onda 2 (pronta); o resto das ligações é construído pelas entregas L2 a L5 de cada onda |
+| P7 (**pronta**, #248) | `LigacoesProjeto` (e colunas da onda 2) | 26 e 27 | Aba "Ligações" | L1 da onda 2 (pronta); o resto das ligações é construído pelas entregas L2 a L5 de cada onda |
 
 A P7 **não reconstrói** o que as entregas de ligação das ondas 1 e 2 já descrevem: ela entrega a aba "Ligações"
 do projeto, a aba `LigacoesProjeto` e o catálogo de leitura de cada app (ADR-013 e ADR-022), de modo que L2 a L5
