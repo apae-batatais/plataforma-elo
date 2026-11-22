@@ -6,6 +6,7 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
 import { ErroValidacaoFolha } from '@/modulos/orcamento/aplicacao/folha';
+import { excluirLancamentoRateio, previaDoLancamento, salvarLancamentoRateio, type DadosLancamento, type PreviaLancamento } from '@/modulos/orcamento/aplicacao/lancamentos-rateio';
 import {
   abrirExercicio, cancelarItem, definirFonteDaFolha, excluirFonte, excluirGrupo, reativarFonte, reativarGrupo,
   salvarDespesa, salvarFonte, salvarGrupo, salvarReceita, type DadosDistribuicao,
@@ -528,4 +529,62 @@ export async function acaoSalvarLimite(f: FormData) {
 
 export async function acaoRemoverLimite(f: FormData) {
   await executar('/orcamento/previsao/limites', 'Limite removido.', ({ usuario, app }) => removerLimite(app.planilhas, usuario.autorizador, texto(f, 'id')));
+}
+
+// ---------------------------------------------------------------------------
+// Lançamento de despesas por rateio (#225)
+// ---------------------------------------------------------------------------
+
+function dadosLancamento(f: FormData): DadosLancamento {
+  return {
+    ano: Number(texto(f, 'ano')),
+    grupo_id: texto(f, 'grupo_id'),
+    fonte_id: texto(f, 'fonte_id') || null,
+    descricao: texto(f, 'descricao'),
+    regra_rateio_id: texto(f, 'regra_rateio_id'),
+    quantidade: numero(f, 'quantidade'),
+    ocorrencias: numero(f, 'ocorrencias'),
+    valor_unitario: numero(f, 'valor_unitario'),
+    categoria: texto(f, 'categoria') === 'projetos' ? 'projetos' : 'operacional',
+    observacao: texto(f, 'observacao') || null,
+    ...distribuicaoDe(f),
+  };
+}
+
+export async function acaoSalvarLancamento(_: EstadoItem, f: FormData): Promise<EstadoItem> {
+  const ctx = await contexto();
+  const ano = Number(texto(f, 'ano'));
+  const id = texto(f, 'id');
+  let mensagem: string;
+  try {
+    const r = await salvarLancamentoRateio(ctx.app.planilhas, ctx.usuario.autorizador, dadosLancamento(f), id ? { id, versao: Number(texto(f, 'versao')) } : undefined);
+    mensagem = r.semDespesa
+      ? 'Lançamento salvo, mas nenhuma despesa foi gerada: ajuste a Regra de rateio.'
+      : r.geradas === 0
+        ? 'Lançamento salvo. As despesas já estavam certas.'
+        : `Lançamento salvo: ${r.geradas} ${r.geradas === 1 ? 'despesa gerada' : 'despesas geradas'}.`;
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
+  revalidatePath('/orcamento', 'layout');
+  redirect(`/orcamento/previsao/rateio?ano=${ano}&ok=${encodeURIComponent(mensagem)}`);
+}
+
+export async function acaoExcluirLancamento(f: FormData) {
+  const ano = Number(texto(f, 'ano'));
+  await executar(`/orcamento/previsao/rateio?ano=${ano}`, 'Lançamento excluído. As despesas geradas por ele foram encerradas.', ({ usuario, app }) =>
+    excluirLancamentoRateio(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
+}
+
+/** "Como ficaria": só calcula, não grava. */
+export async function acaoPreviaLancamento(f: FormData): Promise<PreviaLancamento | { erro: string }> {
+  const { usuario, app } = await contexto();
+  try {
+    return await previaDoLancamento(app.planilhas, usuario.autorizador, dadosLancamento(f));
+  } catch (erro) {
+    if (conhecido(erro)) return { erro: (erro as Error).message };
+    throw erro;
+  }
 }

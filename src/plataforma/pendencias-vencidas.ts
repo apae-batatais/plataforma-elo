@@ -1,10 +1,11 @@
 /**
  * Quais apps têm pendência com prazo vencido para esta pessoa (anel que pulsa na tela inicial).
- * Conta como vencida: requisição atrasada na aprovação ou no atendimento e reavaliação atrasada.
+ * Conta como vencida: requisição atrasada na aprovação ou no atendimento, reavaliação atrasada e ciência pendente há mais de 15 dias.
  * Só lê, sempre pelos casos de uso dos apps (que passam pelo Autorizador): quem não vê o app
  * ou o dado não recebe o anel.
  */
 import { PERM as PERM_AVALIACAO, listarAvaliacoes, painelDaAvaliacao } from '@/modulos/avaliacao/aplicacao/avaliacoes';
+import { pendenciasDaPessoa as pendenciasConhecimento } from '@/modulos/conhecimento/aplicacao/publicacoes';
 import { painelDePrazos } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
@@ -22,6 +23,11 @@ export async function appsComPendenciaVencida(p: Planilhas, quem: Autorizador, o
       ? (await listarAvaliacoes(p, quem, opcoes)).some((a) => a.reavaliacao?.situacao === 'atrasada')
       : ((await painelDaAvaliacao(p, quem, {}, opcoes)).reavaliacao.atrasadas ?? 0) > 0;
     if (atrasadas) vencidas.add('avaliacao');
+  } catch {
+    // sem anel
+  }
+  try {
+    if (quem.temPermissaoAlgumEscopo('conhecimento.ler') && (await pendenciasConhecimento(p, quem, opcoes)).vencidas > 0) vencidas.add('conhecimento');
   } catch {
     // sem anel
   }

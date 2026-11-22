@@ -388,10 +388,11 @@ const NOME_DA_PLANILHA: Record<string, string> = {
   orcamento_execucao: 'Orçamento — execução e tesouraria',
   parcerias: 'Parcerias',
   requisicoes: 'Requisições',
-  avaliacao_assistencia: 'Avaliação de Serviços Sociais',
+  avaliacao_assistencia: 'Assistência Social',
   avaliacao_saude: 'Avaliação de Saúde',
   avaliacao_educacao: 'Educação (avaliações)',
   comunicacao: 'Comunicação',
+  conhecimento: 'Base de Conhecimento',
   projetos: 'Projetos',
   anexos: 'Pasta de anexos',
 };

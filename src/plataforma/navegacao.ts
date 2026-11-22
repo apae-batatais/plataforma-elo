@@ -5,6 +5,7 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
 import type { GrupoNavegacao } from '@/ui/casca';
+import { agruparPorFamilia } from './familias';
 import { iconeDoApp } from './icones-dos-apps';
 import { MODULOS } from './registro-modulos';
 
@@ -35,13 +36,24 @@ export function navegacaoDoUsuario(
     if (apps.length) {
       grupos.push({
         titulo: 'Apps',
-        itens: apps.map((a) => ({
-          rotulo: a.nome,
-          href: a.rota,
-          icone: iconeDoApp(a.id),
-          alerta: opcoes.alertasApps?.[a.rota],
-          filhos: a.itens.map((i) => ({ rotulo: i.rotulo, href: i.href, secao: i.secao })),
-        })),
+        itens: agruparPorFamilia(apps).map((g) => {
+          const doApp = (a: (typeof apps)[number]) => ({
+            rotulo: a.nome,
+            href: a.rota,
+            icone: iconeDoApp(a.id),
+            alerta: opcoes.alertasApps?.[a.rota],
+            filhos: a.itens.map((i) => ({ rotulo: i.rotulo, href: i.href, secao: i.secao })),
+          });
+          if (g.tipo === 'app') return doApp(g.app);
+          const filhosApps = g.apps.map(doApp);
+          return {
+            rotulo: g.familia.nome,
+            // Menu recolhido: o ícone leva à primeira tela do primeiro app visível.
+            href: filhosApps[0].filhos[0]?.href ?? filhosApps[0].href,
+            icone: g.familia.icone,
+            apps: filhosApps,
+          };
+        }),
       });
     }
   }

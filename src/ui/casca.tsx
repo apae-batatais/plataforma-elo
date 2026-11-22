@@ -22,6 +22,8 @@ export interface ItemNavegacao {
   href: string;
   icone: NomeIcone;
   filhos?: { rotulo: string; href: string; secao?: string }[];
+  /** Família de apps (ex.: Avaliações): o item vira um grupo que abre e fecha, com um app em cada filho (terceiro nível do menu). */
+  apps?: ItemNavegacao[];
   /** Marca de pendência ao lado do nome (ex.: "Atualizar"). */
   alerta?: string;
 }
@@ -125,6 +127,98 @@ function TelasDoApp({ item, caminho, aoNavegar }: { item: ItemNavegacao; caminho
   );
 }
 
+/** Um app no menu (também dentro de uma família): link com ícone e, se a tela atual é dele, as telas dele. */
+function ItemDeApp({ item, caminho, aoNavegar, recolhido, marcado }: { item: ItemNavegacao; caminho: string; aoNavegar?: () => void; recolhido: boolean; marcado?: boolean }) {
+  const Icone = ICONES[item.icone];
+  const dentro = marcado ?? ativo(caminho, item.href);
+  const aqui = item.filhos ? caminho === item.href : dentro;
+  return (
+    <li data-app={appDoCaminho(item.href)}>
+      <Link
+        href={item.filhos?.[0]?.href ?? item.href}
+        onClick={aoNavegar}
+        aria-current={aqui ? 'page' : undefined}
+        title={recolhido ? item.rotulo : undefined}
+        className={`relative flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-[0.95rem] transition-colors ${recolhido ? 'justify-center' : ''} ${
+          dentro ? 'bg-destaque-suave font-bold text-texto' : 'font-semibold text-texto-suave hover:bg-superficie-2 hover:text-texto'
+        }`}
+      >
+        {dentro && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-destaque" aria-hidden="true" />}
+        <span className={dentro ? 'text-destaque' : ''}>
+          <Icone />
+        </span>
+        <span className={recolhido ? 'sr-only' : ''}>{item.rotulo}</span>
+        {item.alerta && (
+          <span
+            className={
+              recolhido
+                ? 'absolute right-1.5 top-1.5 size-2.5 rounded-full bg-aviso'
+                : 'ml-auto rounded-full bg-aviso-fundo px-2 py-0.5 text-[0.75rem] font-bold text-aviso'
+            }
+          >
+            <span className={recolhido ? 'sr-only' : ''}>{item.alerta}</span>
+          </span>
+        )}
+      </Link>
+      {item.filhos && dentro && !recolhido && <TelasDoApp item={item} caminho={caminho} aoNavegar={aoNavegar} />}
+    </li>
+  );
+}
+
+/** Família de apps: botão que abre e fecha (a da tela atual sempre vem aberta; a escolha fica lembrada) com os apps dentro. */
+function FamiliaDeApps({ item, caminho, aoNavegar }: { item: ItemNavegacao; caminho: string; aoNavegar?: () => void }) {
+  const apps = item.apps ?? [];
+  const chave = `elo-menu-familia:${item.rotulo}`;
+  const [escolha, setEscolha] = useState<boolean | undefined>(undefined);
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(chave);
+      setEscolha(v ? v === 'aberto' : undefined);
+    } catch {
+      // Navegador sem armazenamento: a escolha vale só até recarregar.
+    }
+  }, [chave]);
+  const appAtual = apps.find((a) => ativo(caminho, a.href));
+  const aberto = appAtual ? true : (escolha ?? false);
+  const Icone = ICONES[item.icone];
+  const id = `familia-${item.rotulo.replace(/\W+/g, '-')}`;
+  function alternar() {
+    setEscolha(!aberto);
+    try {
+      localStorage.setItem(chave, !aberto ? 'aberto' : 'fechado');
+    } catch {
+      // Sem armazenamento, vale até recarregar.
+    }
+  }
+  return (
+    <li data-app={appAtual ? appDoCaminho(appAtual.href) : undefined}>
+      <button
+        type="button"
+        onClick={alternar}
+        aria-expanded={aberto}
+        aria-controls={id}
+        className={`relative flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[0.95rem] transition-colors ${
+          appAtual ? 'font-bold text-texto' : 'font-semibold text-texto-suave hover:bg-superficie-2 hover:text-texto'
+        }`}
+      >
+        <span className={appAtual ? 'text-destaque' : ''}>
+          <Icone />
+        </span>
+        <span>{item.rotulo}</span>
+        {apps.some((a) => a.alerta) && <span className="size-2.5 rounded-full bg-aviso" aria-hidden="true" />}
+        <IconeSeta tamanho={14} className={`ml-auto shrink-0 text-texto-suave transition-transform duration-200 ${aberto ? 'rotate-90' : ''}`} />
+      </button>
+      {aberto && (
+        <ul id={id} className="mb-1 ml-[1.375rem] mt-0.5 space-y-0.5 border-l border-borda pl-2">
+          {apps.map((a) => (
+            <ItemDeApp key={a.href} item={a} caminho={caminho} aoNavegar={aoNavegar} recolhido={false} />
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 function Navegacao({ grupos, aoNavegar, recolhido = false }: { grupos: GrupoNavegacao[]; aoNavegar?: () => void; recolhido?: boolean }) {
   const caminho = usePathname();
   return (
@@ -133,42 +227,16 @@ function Navegacao({ grupos, aoNavegar, recolhido = false }: { grupos: GrupoNave
         <div key={g.titulo ?? i}>
           {g.titulo && <p className={`mb-1.5 px-3 text-xs font-semibold tracking-wide text-texto-suave ${recolhido ? 'sr-only' : ''}`}>{g.titulo}</p>}
           <ul className="space-y-0.5">
-            {g.itens.map((item) => {
-              const Icone = ICONES[item.icone];
-              const dentro = ativo(caminho, item.href);
-              const aqui = item.filhos ? caminho === item.href : dentro;
-              return (
-                <li key={item.href} data-app={appDoCaminho(item.href)}>
-                  <Link
-                    href={item.filhos?.[0]?.href ?? item.href}
-                    onClick={aoNavegar}
-                    aria-current={aqui ? 'page' : undefined}
-                    title={recolhido ? item.rotulo : undefined}
-                    className={`relative flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-[0.95rem] transition-colors ${recolhido ? 'justify-center' : ''} ${
-                      dentro ? 'bg-destaque-suave font-bold text-texto' : 'font-semibold text-texto-suave hover:bg-superficie-2 hover:text-texto'
-                    }`}
-                  >
-                    {dentro && <span className="absolute inset-y-1.5 left-0 w-1 rounded-r bg-destaque" aria-hidden="true" />}
-                    <span className={dentro ? 'text-destaque' : ''}>
-                      <Icone />
-                    </span>
-                    <span className={recolhido ? 'sr-only' : ''}>{item.rotulo}</span>
-                    {item.alerta && (
-                      <span
-                        className={
-                          recolhido
-                            ? 'absolute right-1.5 top-1.5 size-2.5 rounded-full bg-aviso'
-                            : 'ml-auto rounded-full bg-aviso-fundo px-2 py-0.5 text-[0.75rem] font-bold text-aviso'
-                        }
-                      >
-                        <span className={recolhido ? 'sr-only' : ''}>{item.alerta}</span>
-                      </span>
-                    )}
-                  </Link>
-                  {item.filhos && dentro && !recolhido && <TelasDoApp item={item} caminho={caminho} aoNavegar={aoNavegar} />}
-                </li>
-              );
-            })}
+            {g.itens.map((item) =>
+              item.apps && !recolhido ? (
+                <FamiliaDeApps key={item.rotulo} item={item} caminho={caminho} aoNavegar={aoNavegar} />
+              ) : item.apps ? (
+                // Menu recolhido (só ícones): a família é um ícone que leva à primeira tela do primeiro app.
+                <ItemDeApp key={item.rotulo} item={{ ...item, apps: undefined, alerta: item.apps.find((a) => a.alerta)?.alerta }} marcado={item.apps.some((a) => ativo(caminho, a.href))} caminho={caminho} aoNavegar={aoNavegar} recolhido />
+              ) : (
+                <ItemDeApp key={item.href} item={item} caminho={caminho} aoNavegar={aoNavegar} recolhido={recolhido} />
+              ),
+            )}
           </ul>
         </div>
       ))}

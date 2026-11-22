@@ -33,7 +33,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-5">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Educação' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Educação' }]}
         titulo="Avaliações de Educação"
         descricao="Avaliações de evolução dos atendidos dos serviços de Educação em que você avalia, uma por período."
         acoes={

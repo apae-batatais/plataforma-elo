@@ -75,10 +75,15 @@ export default async function Ajuda() {
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
+    veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
     verPlanejamento: a.temPermissaoAlgumEscopo('projetos.acessar'),
     planejarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     decidirPlano: a.temPermissao('projetos.decidir'),
+    ler: a.temPermissaoAlgumEscopo('conhecimento.ler'),
+    publicar: a.temPermissao('conhecimento.publicar'),
+    acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
+    categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
     equipeComunicacao: a.temPermissao('comunicacao.revisar'),
     configurarComunicacao: a.temPermissao('comunicacao.configurar'),
@@ -243,6 +248,17 @@ export default async function Ajuda() {
               </p>
             </>
           )}
+          {pode.veiculos && (
+            <>
+              <Sub>Veículos</Sub>
+              <p>
+                Em Requisições › Veículos (só a Administração da plataforma), cadastre cada veículo da instituição com nome, placa e capacidade de passageiros.
+                Ao alterar um veículo, informe a data da próxima manutenção: a partir desse dia ele deixa de aparecer para pedido novo, até você clicar em
+                &ldquo;Marcar feita&rdquo; (e, se já souber, informar a data da seguinte). Veículo excluído some da lista de pedido, mas pode ser reativado
+                em &ldquo;Veículos excluídos&rdquo;. Nada é apagado.
+              </p>
+            </>
+          )}
         </>
       ),
     });
@@ -251,7 +267,7 @@ export default async function Ajuda() {
   if (pode.avaliar || pode.painelAvaliacao) {
     assuntos.push({
       id: 'avaliacao',
-      titulo: 'Avaliação de Serviços Sociais',
+      titulo: 'Assistência Social',
       resumo: 'Avaliar as pessoas atendidas na entrada e uma vez por ano, comparar a evolução de cada uma e acompanhar os indicadores por serviço.',
       atalhos: [
         ...(pode.avaliar ? [{ rotulo: 'Nova avaliação', href: '/avaliacao/nova' }] : []),
@@ -265,7 +281,7 @@ export default async function Ajuda() {
               <Sub>Avaliar</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação de Serviços Sociais › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
+                  'Abra Avaliações › Assistência Social › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
                   'Identifique a pessoa só pelas iniciais, data de nascimento e sexo. O prontuário é opcional e o nome completo não é pedido.',
                   'Escolha o serviço atual (aparecem os serviços do seu escopo) e responda todas as perguntas. O que faltar fica em vermelho ao salvar.',
                   'O índice de necessidade de cuidado (0 a 12) é calculado enquanto você responde. Em suspeita de violação de direitos, siga o fluxo de notificação e o encaminhamento ao CREAS.',
@@ -282,7 +298,7 @@ export default async function Ajuda() {
               <Sub>Painel</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação de Serviços Sociais › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
+                  'Abra Avaliações › Assistência Social › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
                   'Filtre por serviço e por período (meses da data da avaliação). Cada pessoa conta uma vez, pela avaliação mais recente. Em cada gráfico, "Ver os números" mostra a tabela.',
                   'O painel tem quatro partes: necessidade de cuidado, evolução (entre avaliações da mesma pessoa e a percebida pela equipe), dependência e transporte, e análise por sexo.',
                   'Para imprimir ou salvar em PDF, clique em Imprimir painel: os gráficos saem com as cores e com a tabela de números, sem quadro cortado entre as páginas.',
@@ -381,6 +397,8 @@ export default async function Ajuda() {
                   'Antes de tudo, confira em Cadastros os Grupos de contas (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
                   'Em Previsão do ano, use Abrir exercício para começar um ano novo.',
                   'Despesas › Lançar despesa: serviço, grupo, fonte (pode ficar "a definir" na elaboração), quantidade × vezes × valor unitário e os meses.',
+                  'Despesa dividida entre vários serviços: Despesas › Despesas por rateio › Novo lançamento. Preencha como uma despesa comum, escolha a Regra de rateio e use "Ver como ficaria" para conferir quanto cada serviço recebe. Ao salvar, o Elo gera uma despesa por serviço.',
+                  'As despesas geradas aparecem na lista de Despesas com a etiqueta "Gerada por rateio" e não podem ser alteradas ali: use "Ver lançamento de origem". Enquanto o exercício está em elaboração, elas se recalculam sozinhas quando muda o lançamento, a regra, uma base própria, os números de um serviço (atendidos, m², vagas) ou a lotação. Depois de aprovado, ficam como estão. Excluir o lançamento encerra todas as despesas geradas.',
                   'A folha de pagamento entra sozinha, por serviço. No fim da tela Despesas, escolha a fonte que paga a folha de cada serviço: ao escolher, já fica salvo.',
                   'Receitas › Lançar receita: fonte, área, valor, meses e a situação da captação (garantida, em negociação ou a captar).',
                   'Para trazer de uma planilha: Importar despesas e receitas. Escolha o arquivo, diga se são despesas ou receitas e qual coluna corresponde a cada campo (o Elo sugere), confira e diga a qual cadastro corresponde cada nome que ele não reconheceu.',
@@ -531,6 +549,68 @@ export default async function Ajuda() {
             </>
           )}
           {pode.decidirPlano && <p className="mt-3">Na porta 3, a Diretoria decide seguir, ajustar ou parar, com justificativa, depois dos pareceres, como nas portas anteriores.</p>}
+        </>
+      ),
+    });
+  }
+
+  if (pode.ler) {
+    assuntos.push({
+      id: 'conhecimento',
+      titulo: 'Base de Conhecimento',
+      resumo: 'Ler comunicados e normas, dar ciência e ver o que falta; para quem publica, criar publicações e acompanhar quem está em dia.',
+      atalhos: [
+        { rotulo: 'Biblioteca', href: '/conhecimento' },
+        { rotulo: 'Meus documentos', href: '/conhecimento/meus-documentos' },
+        ...(pode.publicar ? [{ rotulo: 'Nova publicação', href: '/conhecimento/publicacoes/nova' }] : []),
+        ...(pode.acompanharConhecimento ? [{ rotulo: 'Acompanhamento', href: '/conhecimento/acompanhamento' }] : []),
+        ...(pode.categoriasConhecimento ? [{ rotulo: 'Categorias', href: '/conhecimento/categorias' }] : []),
+      ],
+      conteudo: (
+        <>
+          <Sub>Ler e dar ciência</Sub>
+          <Passos
+            itens={[
+              'Abra Base de Conhecimento. No alto, "Falta você" lista os documentos que pedem a sua ciência; a tela inicial também avisa.',
+              'Clique em Abrir. Leia o texto e, se houver, abra o PDF ou a imagem anexada.',
+              'No cartão "O que falta", clique em "Li e estou de acordo" e confirme. Isso registra o seu nome, a data e a hora e não dá para desfazer.',
+              'Se o conteúdo mudar numa versão nova, o documento volta a ficar pendente e você dá ciência de novo.',
+              'Em Meus documentos, veja o que já está em dia (com a data da ciência) e o que falta. Pendência com mais de 15 dias fica marcada como vencida.',
+            ]}
+          />
+          <p className="mt-2">Você só vê as publicações do seu público (todos, um perfil ou uma área). Ninguém vê a ciência de outra pessoa, só quem acompanha.</p>
+          {pode.publicar && (
+            <>
+              <Sub>Publicar</Sub>
+              <Passos
+                itens={[
+                  'Abra Publicações › Nova publicação (se faltar categoria, cadastre em Categorias).',
+                  'Preencha título, categoria e resumo; escreva o texto, envie um anexo (PDF até 10 MB ou imagem), ou os dois.',
+                  'Em "Quem deve ler", escolha Todos, Um perfil ou Uma área. Marque "Exige ciência" se a pessoa precisa confirmar que leu.',
+                  'Salve como rascunho para revisar (ninguém recebe pendência) ou clique em Publicar.',
+                  'Ao editar o texto de uma publicação que já tem ciências, escolha "Correção pequena" (as ciências continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
+                  'Arquivar tira a publicação das listas e das pendências, mas guarda o registro de quem deu ciência; dá para reativar.',
+                ]}
+              />
+            </>
+          )}
+          {pode.acompanharConhecimento && (
+            <>
+              <Sub>Acompanhar quem está em dia</Sub>
+              <Itens
+                itens={[
+                  'Acompanhamento lista as publicações que exigem ciência com "X de Y em dia". Clique em "Ver as pessoas" para ver quem deu ciência, quem precisa renovar e quem está pendente; os filtros separam cada grupo.',
+                  'Abrir a lista de pessoas fica registrado na auditoria.',
+                ]}
+              />
+            </>
+          )}
+          {pode.categoriasConhecimento && (
+            <>
+              <Sub>Categorias</Sub>
+              <p>Em Categorias, adicione e desative categorias. Não dá para desativar uma categoria que ainda tem publicação (que não esteja arquivada); desativadas podem ser reativadas.</p>
+            </>
+          )}
         </>
       ),
     });

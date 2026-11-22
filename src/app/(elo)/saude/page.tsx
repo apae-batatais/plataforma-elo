@@ -37,7 +37,7 @@ export default async function AvaliacoesDeSaude({ searchParams }: { searchParams
   return (
     <div className="space-y-5">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Saúde' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Saúde' }]}
         titulo="Avaliações de Saúde"
         descricao="Avaliações de evolução das pessoas atendidas nos serviços de Saúde em que você avalia."
         acoes={
