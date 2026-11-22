@@ -35,7 +35,8 @@ export function CabecalhoPagina({
                     {t.rotulo}
                   </Link>
                 ) : (
-                  <span aria-current="page">{t.rotulo}</span>
+                  // Só o último item é "a página atual"; um item sem link no meio (ex.: família de apps) é só texto.
+                  <span aria-current={i === trilha.length - 1 ? 'page' : undefined}>{t.rotulo}</span>
                 )}
               </li>
             ))}

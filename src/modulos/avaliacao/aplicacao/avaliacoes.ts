@@ -1,5 +1,5 @@
 /**
- * Casos de uso da Avaliação de Serviços Sociais (camada de aplicação).
+ * Casos de uso da Assistência Social (camada de aplicação).
  *
  * Quem vê o quê:
  * - "avaliacao.avaliar" no serviço (escopo global, da unidade, da área ou do

@@ -28,7 +28,7 @@ export default async function ComparativoDeSaude({ params }: { params: Promise<{
   return (
     <div className="space-y-6">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: c.pessoaNome, href: `/saude/${id}` }, { rotulo: 'Comparativo' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: c.pessoaNome, href: `/saude/${id}` }, { rotulo: 'Comparativo' }]}
         titulo={`Comparativo de ${c.pessoaNome}`}
         descricao="Só entram avaliações concluídas e não corrigidas, da mesma versão do instrumento."
         acoes={

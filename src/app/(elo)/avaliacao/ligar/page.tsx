@@ -21,7 +21,7 @@ export default async function LigarAvaliacoes() {
   return (
     <div className="space-y-5">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' }, { rotulo: 'Ligar avaliações antigas' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Assistência Social', href: '/avaliacao' }, { rotulo: 'Ligar avaliações antigas' }]}
         titulo="Ligar avaliações antigas"
         descricao="As avaliações feitas só por iniciais podem ser ligadas à pessoa do Cadastro Único. Confira cada uma e confirme: a avaliação original não muda, e o comparativo passa a usar a pessoa cadastrada."
       />

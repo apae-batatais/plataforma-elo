@@ -1,4 +1,4 @@
-/** Interface pública do módulo Avaliação de Serviços Sociais (usada só pela composição e pelas rotas). */
+/** Interface pública do módulo Assistência Social (usada só pela composição e pelas rotas). */
 export { manifesto } from './manifesto';
 export { TABELAS_AVALIACAO } from './dados/tabelas';
 export { popularAplicacoesFicticias, popularAvaliacoesFicticias } from './dados/ficticios';

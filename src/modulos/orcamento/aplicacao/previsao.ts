@@ -65,7 +65,7 @@ export async function abrirExercicio(p: Planilhas, quem: Autorizador, ano: numbe
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Exercicios', registroId: e.id });
 }
 
-function exigirEmElaboracao(exercicios: { ativos(): { ano: number; situacao: string }[] }, ano: number) {
+export function exigirEmElaboracao(exercicios: { ativos(): { ano: number; situacao: string }[] }, ano: number) {
   const e = exercicios.ativos().find((x) => x.ano === ano);
   if (!e) throw new ErroPrevisao(`Abra o exercício ${ano} antes de lançar itens.`);
   if (e.situacao !== 'elaboracao') {
@@ -247,7 +247,7 @@ export interface DadosDespesa extends DadosDistribuicao {
   observacao?: string | null;
 }
 
-function mesesDaDistribuicao(valor: number, d: DadosDistribuicao): number[] {
+export function mesesDaDistribuicao(valor: number, d: DadosDistribuicao): number[] {
   try {
     return distribuir(valor, d.distribuicao, { meses: d.meses, manual: d.manual });
   } catch (erro) {
@@ -255,6 +255,8 @@ function mesesDaDistribuicao(valor: number, d: DadosDistribuicao): number[] {
     throw erro;
   }
 }
+
+const TRAVADA_POR_RATEIO = 'Esta despesa foi gerada por um Lançamento de rateio e não muda por aqui. Altere o Lançamento de origem.';
 
 export async function salvarDespesa(p: Planilhas, quem: Autorizador, dados: DadosDespesa, existente?: { id: string; versao: number }): Promise<string> {
   exigir(quem, PERM.editar);
@@ -297,6 +299,7 @@ export async function salvarDespesa(p: Planilhas, quem: Autorizador, dados: Dado
   const alvo = despesas.porId(existente.id);
   if (!alvo || !alvo.ativo) throw new ErroPrevisao('Item não encontrado.');
   if (alvo.ano !== dados.ano) throw new ErroPrevisao('O item é de outro exercício.');
+  if (alvo.lancamento_rateio_id) throw new ErroPrevisao(TRAVADA_POR_RATEIO);
   const { colunasAlteradas } = await atualizar(p, Despesas, existente.id, existente.versao, campos as never, { email: quem.email });
   if (colunasAlteradas.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Despesas', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
   return existente.id;
@@ -357,6 +360,7 @@ export async function cancelarItem(p: Planilhas, quem: Autorizador, tipo: 'despe
   const alvo = lida.porId(id) as { ano: number; ativo: boolean } | undefined;
   if (!alvo || !alvo.ativo) throw new ErroPrevisao('Item não encontrado.');
   exigirEmElaboracao(exercicios, alvo.ano);
+  if (tipo === 'despesa' && (alvo as { lancamento_rateio_id?: string | null }).lancamento_rateio_id) throw new ErroPrevisao(TRAVADA_POR_RATEIO);
   await atualizar(p, tabela, id, versao, { ativo: false } as never, { email: quem.email });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: tipo === 'despesa' ? 'Despesas' : 'Receitas', registroId: id, detalhes: { colunas: ['ativo'] } });
 }
@@ -402,6 +406,8 @@ export interface LinhaDespesa {
   grupoCodigo: string | null;
   /** Regra de rateio do item (vazio = a do grupo). */
   regra_rateio_id?: string | null;
+  /** Lançamento de rateio que gerou a linha (travada no cadastro comum). */
+  lancamento_rateio_id?: string | null;
   rh: boolean;
   fonte_id: string | null;
   fonteNome: string;
@@ -558,6 +564,7 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         grupoNome: g?.nome ?? '?',
         grupoCodigo: g?.codigo_conta ?? null,
         regra_rateio_id: d.regra_rateio_id ?? null,
+        lancamento_rateio_id: d.lancamento_rateio_id ?? null,
         rh: g?.rh ?? false,
         fonte_id: d.fonte_id,
         fonteNome: nomeFonte(d.fonte_id),

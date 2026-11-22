@@ -1,5 +1,5 @@
 /**
- * Painel da Avaliação de Serviços Sociais: números agregados por serviço atual.
+ * Painel da Assistência Social: números agregados por serviço atual.
  * Nada aqui identifica pessoas: só contagens, percentuais e a distribuição do índice.
  *
  * Retrato atual: cada pessoa conta uma vez, pela avaliação mais recente.

@@ -24,6 +24,7 @@ import {
 } from '../dominio/folha';
 import { calendarioDe, deslocamentoDeCaixa, picoDeCaixa, taxaDeEncargosSobreSalarial, validarCalendario, CONTRATOS, type Calendario, type Contrato, type DeslocamentoCaixa, type LinhaCalendario, type PicoDeCaixa } from '../dominio/caixa';
 import { CalendarioPagamento, Componentes, Parametros, Postos, Rateios, type RegComponentes, type RegPosto, type RegRateio } from '../dados/tabelas';
+import { recalcularLancamentosAfetados } from './recalculo-rateio';
 
 export class ErroValidacaoFolha extends Error {}
 
@@ -426,6 +427,11 @@ export interface DadosPosto {
 const iguais = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 const ordenarRateio = (l: LinhaRateio[]) => [...l].sort((a, b) => a.centro.localeCompare(b.centro));
 
+/** Recalcula as despesas geradas por rateio dos serviços cuja lotação mudou. */
+async function recalcularPorLotacao(p: Planilhas, quem: Autorizador, servicos: string[]) {
+  for (const servico of new Set(servicos.filter(Boolean))) await recalcularLancamentosAfetados(p, quem, { servico }, () => profissionaisPorServico(p));
+}
+
 export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto): Promise<string> {
   exigir(quem, PERM.editar);
   const f = await lerFolha(p);
@@ -495,6 +501,8 @@ export async function salvarPosto(p: Planilhas, quem: Autorizador, d: DadosPosto
 
   if (!d.id) await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Postos', registroId: postoId });
   else if (colunas.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Postos', registroId: postoId, detalhes: { colunas } });
+  // A lotação define o nº de profissionais por serviço; recalcula as despesas geradas por rateio (ADR-038).
+  if (colunas.includes('rateio') || !d.id) await recalcularPorLotacao(p, quem, [...d.rateio.map((l) => l.centro), ...(d.id ? (f.rateio(postoId) ?? []).map((l) => l.centro) : [])]);
   return postoId;
 }
 
@@ -567,6 +575,7 @@ export async function salvarRateios(
   });
   await inserirRegistros(p, rateios, linhas, { email: quem.email });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Rateios', detalhes: { postos: mudancas.length, colunas: ['rateio'] } });
+  await recalcularPorLotacao(p, quem, mudancas.flatMap((x) => [...x.rateio.map((l) => l.centro), ...(f.rateio(x.postoId) ?? []).map((l) => l.centro)]));
   return mudancas.length;
 }
 
