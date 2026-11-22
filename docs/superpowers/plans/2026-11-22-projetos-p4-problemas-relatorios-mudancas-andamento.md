@@ -1,0 +1,7 @@
+# Andamento — Projetos P4
+
+- [x] 1. Domínio
+- [x] 2. Tabelas
+- [x] 3. Casos de uso e testes
+- [ ] 4. Telas, Ajuda e demonstração
+- [ ] 5. Verificar, build e PR
