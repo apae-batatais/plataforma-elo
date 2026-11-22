@@ -15,8 +15,8 @@ import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } fro
 import { criarRascunhoDeTermo, listarRascunhos, termoParaProjeto, termosParaOrcamento, type NumerosDePessoas, type RascunhoDeTermo } from '@/modulos/parcerias';
 import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
 import { custoDoServico, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type SaldoParaConferencia } from '@/modulos/orcamento';
-import { projetosComTermoParadosOuCancelados, projetosDoServico, projetosParaCompra, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
-import { requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
+import { projetosComTermoParadosOuCancelados, projetosDoServico, projetosParaCompra, type CatalogoLeitura, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
+import { comprasDoProjeto, requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
 import { MODULOS } from './registro-modulos';
 
 export type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
@@ -206,4 +206,20 @@ export function catalogoDeTermos(p: Planilhas, opcoes: Desligados = {}): Catalog
 export async function rascunhosDeTermo(p: Planilhas, quem: Autorizador, opcoes: Desligados = {}): Promise<RascunhoDeTermo[]> {
   const comProblema = opcoes.desligados?.has('projetos') || !MODULOS.some((m) => m.id === 'projetos') ? new Set<string>() : await projetosComTermoParadosOuCancelados(p).catch(() => new Set<string>());
   return listarRascunhos(p, quem, comProblema);
+}
+
+/**
+ * Catálogo de leitura do Projetos (regra 26): compras ligadas ao projeto, vindas de Requisições. Os leitores dos
+ * demais apps entram nas entregas de ligação de cada onda; até lá a aba mostra "Ligação indisponível".
+ * O Projetos confere que a pessoa vê o projeto antes de chamar.
+ */
+export function catalogoDeLeitura(p: Planilhas, opcoes: Desligados = {}): CatalogoLeitura {
+  return {
+    leitores: {},
+    async compras(quem, projetoId) {
+      const lida = await lerLigacao('requisicoes', () => comprasDoProjeto(p, quem, projetoId), opcoes);
+      if (lida.estado !== 'ok') return lida;
+      return { estado: 'ok', dados: lida.dados.map((c) => ({ id: c.id, numero: c.numero, tipo: c.tipo, situacaoNome: c.situacaoNome, enviadaEm: c.enviadaEm })) };
+    },
+  };
 }
