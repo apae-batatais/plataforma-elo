@@ -193,7 +193,7 @@ importa outro módulo; o Núcleo é a base compartilhada.
 
 ## Ajustes da onda 2 (issue #116): rascunho vindo do projeto e meta com número do cadastro
 
-- Situação: aguardando aprovação da Diretoria. Arquitetura: ADR-023. Contexto e telas do projeto:
+- Situação: especificação aprovada; **regras 22, 24, 25 (leitura) e 28 (parte do ponto de atenção) e a lista de rascunhos construídas na entrega L2 (#241, 21/11/2026)**. Faltam as regras 23 e 26 (ficha do rascunho, concluir e encerrar), 27 já construída (L1). Arquitetura: ADR-023. Contexto e telas do projeto:
   `src/modulos/projetos/especificacao.md`, seção "Ligações, onda 2".
 - Parcerias **continua sem importar outro módulo**. As funções abaixo ficam no `index.ts` e a plataforma as liga.
 

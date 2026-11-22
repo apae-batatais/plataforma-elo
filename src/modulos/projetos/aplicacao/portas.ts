@@ -25,6 +25,7 @@ import {
   type TipoPorta,
 } from '../dominio/projeto';
 import { aprovarTermo, conteudoDe, lerFase } from './fases';
+import { pedirRascunhoNaDecisao, type CatalogoTermos, type ResultadoRascunho } from './termo';
 import { auditar, autoriaDe, designado, equipesAtivas, lerConfig, podeVerPareceres, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
 
 const exigidosDe = (porta: Pick<RegPorta, 'pareceres_exigidos'>): TipoParecer[] =>
@@ -47,7 +48,10 @@ export async function abrirPorta(p: Planilhas, quem: Autorizador, projetoId: str
     // Regra 6: não se abre porta com documento exigido em branco.
     const fase = await lerFase(p, quem, r.id);
     const falta = fase?.itens.filter((i) => !i.pronto) ?? [];
-    if (falta.length > 0) throw new ErroProjetos(`Antes de abrir a porta 2, complete: ${falta.map((i) => NOME_ITEM[i.item].toLowerCase()).join(', ')}.`);
+    if (falta.length > 0) {
+      const detalhe = falta.map((i) => (i.item === 'termo_abertura' && i.falta[0]?.startsWith('Informe') ? i.falta[0].replace(/\.$/, '').toLowerCase() : NOME_ITEM[i.item].toLowerCase()));
+      throw new ErroProjetos(`Antes de abrir a porta 2, complete: ${detalhe.join(', ')}.`);
+    }
     const termo = fase?.documentos.termo_abertura;
     const total = termo ? conteudoDe(termo).valor_total : null;
     valor = typeof total === 'number' ? total : valor;
@@ -105,7 +109,7 @@ export async function darParecer(p: Planilhas, quem: Autorizador, portaId: strin
  * Regras 10 a 12. Porta aberta: decide a Diretoria (todos os pareceres dados). Porta aguardando alçada:
  * decide quem a configuração designou para a alçada.
  */
-export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: string, versaoPorta: number, decisao: Decisao, justificativa: string, opcoes: Opcoes = {}): Promise<void> {
+export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: string, versaoPorta: number, decisao: Decisao, justificativa: string, opcoes: Opcoes & { parcerias?: CatalogoTermos | null } = {}): Promise<{ rascunho: ResultadoRascunho }> {
   const agora = opcoes.agora ?? new Date();
   const config = await lerConfig(p);
   const { porta, projeto, pareceres } = await lerPortaAberta(p, portaId);
@@ -145,6 +149,10 @@ export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: str
   if (porta.tipo === 'termo' && destino.etapa === 'fase_3') await aprovarTermo(p, quem, projeto.id, agora);
   const quemDecidiu = nivel === 'alcada' ? 'Presidência ou Conselho' : 'Diretoria';
   await registrarHistorico(p, quem, projeto.id, `${quemDecidiu}: ${NOME_DECISAO[decisao].toLowerCase()}`, j, agora);
+  // Regras L8 e L9: projeto financiado ganha o rascunho do termo; se falhar, a decisão continua valendo.
+  const rascunho: ResultadoRascunho =
+    porta.tipo === 'termo' && destino.etapa === 'fase_3' ? await pedirRascunhoNaDecisao(p, quem, projeto.id, opcoes.parcerias, agora) : { estado: 'nao_se_aplica' };
+  return { rascunho };
 }
 
 export interface PendenciaProjetos {

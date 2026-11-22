@@ -78,11 +78,14 @@ export default async function Ajuda() {
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
+    decidirProjeto: a.temPermissao('projetos.decidir') || a.temPermissaoAlgumEscopo('projetos.decidir_alcada'),
+    gerenciarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
+    termos: a.temPermissaoAlgumEscopo('parcerias.termos.ver'),
     ler: a.temPermissaoAlgumEscopo('conhecimento.ler'),
     publicar: a.temPermissao('conhecimento.publicar'),
     acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
     categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
-    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
     gerenciarProjetos: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
     equipeComunicacao: a.temPermissao('comunicacao.revisar'),
@@ -534,6 +537,43 @@ export default async function Ajuda() {
               />
             </>
           )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.projetos) {
+    assuntos.push({
+      id: 'projetos-termo',
+      titulo: 'Projeto financiado: termo de parceria',
+      resumo: 'O que informar no Termo de Abertura e o que acontece quando a porta 2 aprova.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }, ...(pode.termos ? [{ rotulo: 'Termos de parceria', href: '/parcerias' }] : [])],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              pode.gerenciarProjeto && 'No Termo de Abertura de um projeto com financiamento externo, informe quem financia e o que o financiamento cobre (objeto). Sem os dois, a porta 2 não abre; a tela diz o que falta.',
+              pode.decidirProjeto && 'Ao seguir na porta 2 de um projeto financiado, o Elo cria sozinho o rascunho do termo em Parcerias, uma vez só, com financiador, objeto, serviço, vigência prevista e o valor aprovado.',
+              'O número do termo, o tipo de instrumento e o cronograma ficam para o Financeiro completar; ninguém digita de novo o que já está no projeto.',
+              'Se o rascunho não puder ser criado, a decisão da porta continua valendo.',
+              'O rascunho não entra no orçamento, na ocupação nem nos alertas de Parcerias até o Financeiro concluir o termo.',
+              pode.termos && 'Em Termos de parceria, o quadro "Rascunhos para completar" lista o que veio de projetos.',
+            ]}
+          />
+          {pode.gerenciarProjeto && (
+            <>
+              <Sub>Refazer o rascunho do termo</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e entre na aba Ligações.',
+                  'Se aparecer "Este projeto ainda não tem termo", clique em Criar rascunho do termo.',
+                  'Clicar de novo não duplica: o Elo reaproveita o rascunho que já existe.',
+                ]}
+              />
+            </>
+          )}
+          <Sub>Valores diferentes</Sub>
+          <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
         </>
       ),
     });

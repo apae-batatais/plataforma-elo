@@ -12,10 +12,10 @@ import { Servicos, type RegServico } from '@/nucleo/estrutura/tabelas';
 import { lerTabela } from '@/nucleo/armazenamento/tabela';
 import type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
 import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
-import { termosParaOrcamento, type NumerosDePessoas } from '@/modulos/parcerias';
+import { criarRascunhoDeTermo, listarRascunhos, termoParaProjeto, termosParaOrcamento, type NumerosDePessoas, type RascunhoDeTermo } from '@/modulos/parcerias';
 import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
 import { custoDoServico, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type SaldoParaConferencia } from '@/modulos/orcamento';
-import { projetosDoServico, projetosParaCompra, type ProjetosDoServico } from '@/modulos/projetos';
+import { projetosComTermoParadosOuCancelados, projetosDoServico, projetosParaCompra, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
 import { requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
 import { MODULOS } from './registro-modulos';
 
@@ -185,4 +185,25 @@ export async function grupoDeGastoConferido(
     }
   }
   return null;
+}
+
+/**
+ * Parcerias visto pelo Projetos (ADR-023): cria o rascunho do termo e lê o termo ligado. Parcerias desligado
+ * devolve `null` e o projeto mostra "Ligação indisponível". Um módulo nunca importa o outro: só esta composição.
+ */
+export function catalogoDeTermos(p: Planilhas, opcoes: Desligados = {}): CatalogoTermos | null {
+  if (opcoes.desligados?.has('parcerias') || !MODULOS.some((m) => m.id === 'parcerias')) return null;
+  return {
+    criarRascunhoDeTermo: (quem, pedido, agora) => criarRascunhoDeTermo(p, quem, pedido, agora),
+    termoParaProjeto: (quem, termoId, agora) => termoParaProjeto(p, quem, termoId, agora),
+  };
+}
+
+/**
+ * Rascunhos de termo para o Financeiro completar (regra L11): Parcerias não importa Projetos, então a
+ * composição informa quais projetos de origem foram cancelados ou parados.
+ */
+export async function rascunhosDeTermo(p: Planilhas, quem: Autorizador, opcoes: Desligados = {}): Promise<RascunhoDeTermo[]> {
+  const comProblema = opcoes.desligados?.has('projetos') || !MODULOS.some((m) => m.id === 'projetos') ? new Set<string>() : await projetosComTermoParadosOuCancelados(p).catch(() => new Set<string>());
+  return listarRascunhos(p, quem, comProblema);
 }

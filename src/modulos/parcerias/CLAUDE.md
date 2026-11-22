@@ -14,3 +14,5 @@ Leia antes `especificacao.md` desta pasta, o ADR-020 e o `CLAUDE.md` da raiz.
 - A conta vinculada de cada fonte fica no Orçamento (ADR-020), não aqui.
 - O número de parcelas nunca entra no cálculo do valor da fonte (regra 11).
 - Permissões: `parcerias.<recurso>.<acao>`, declaradas no manifesto.
+- Rascunho de termo (ADR-023): só nasce por `criarRascunhoDeTermo`, chamado pela plataforma a pedido do Projetos. Todo cálculo lê
+  os termos pela visão sem rascunhos (`ler()` em `aplicacao/parcerias.ts`); nunca leia `Termos` direto para calcular.

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { conteudoDe, lerFase, termoPreenchido } from '@/modulos/projetos/aplicacao/fases';
-import { CAMPOS, ehDocumento, faseDoDocumento, itensDaFase, NOME_DOCUMENTO, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
+import { camposDe, ehDocumento, faseDoDocumento, itensDaFase, NOME_DOCUMENTO, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -43,7 +43,7 @@ export default async function PaginaDocumento({ params }: { params: Promise<{ id
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="tipo" value={tipo} />
           {doc && <input type="hidden" name="versao_doc" value={doc.versao} />}
-          {CAMPOS[tipo].map((c) => (
+          {camposDe(tipo, r.tipo).map((c) => (
             <Campo key={c.nome} rotulo={c.rotulo} dica={c.dica} obrigatorio={c.obrigatorio}>
               {c.tipo === 'longo' ? (
                 <textarea name={`c_${c.nome}`} rows={4} defaultValue={String(valores[c.nome] ?? '')} disabled={!editavel} className={estiloEntrada} />
