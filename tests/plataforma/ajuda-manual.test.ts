@@ -87,8 +87,6 @@ describe('Ajuda e manual: fonte única (ADR-040)', () => {
       '/admin/feriados': 'entrega 2 (Administração: Feriados)',
       '/admin/encarregado': 'entrega 2 (Administração: Encarregado de dados)',
       '/admin/estrutura': 'entrega 2 (Administração: Estrutura das planilhas)',
-      '/educacao': 'entrega 3 (Educação)',
-      '/saude': 'entrega 3 (Saúde)',
     };
     // Telas só de apoio, sem passo a passo próprio (motivo ao lado).
     const apoio: Record<string, string> = { '/ajuda': 'A própria Ajuda.' };
