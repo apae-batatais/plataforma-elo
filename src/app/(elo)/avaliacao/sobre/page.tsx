@@ -15,9 +15,9 @@ export default async function SobreOInstrumento() {
   return (
     <div className="max-w-5xl space-y-6">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' }, { rotulo: 'Sobre o instrumento' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Assistência Social', href: '/avaliacao' }, { rotulo: 'Sobre o instrumento' }]}
         titulo="Sobre o instrumento"
-        descricao="De onde vêm as perguntas da Avaliação de Serviços Sociais, quando ela é feita e como o índice de necessidade de cuidado é calculado."
+        descricao="De onde vêm as perguntas da Assistência Social, quando ela é feita e como o índice de necessidade de cuidado é calculado."
       />
 
       <Secao titulo="Quando a avaliação é feita">

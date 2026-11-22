@@ -48,7 +48,7 @@ export default async function NovaAvaliacao({ searchParams }: { searchParams: Pr
   return (
     <div>
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' }, { rotulo: 'Nova avaliação' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Assistência Social', href: '/avaliacao' }, { rotulo: 'Nova avaliação' }]}
         titulo={anterior ? 'Acompanhamento anual' : 'Nova avaliação'}
         descricao={
           anterior

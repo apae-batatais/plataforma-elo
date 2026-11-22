@@ -1,5 +1,5 @@
 /**
- * Avaliação de Serviços Sociais, com dados FICTÍCIOS: conferência das respostas,
+ * Assistência Social, com dados FICTÍCIOS: conferência das respostas,
  * índice de necessidade de cuidado, painel, quem avalia e quem vê, auditoria.
  */
 import { beforeEach, describe, expect, it } from 'vitest';
