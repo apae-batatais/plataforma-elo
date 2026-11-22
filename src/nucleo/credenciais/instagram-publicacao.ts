@@ -12,6 +12,16 @@ export const MENSAGEM_IMAGEM_RECUSADA = 'A imagem não foi aceita pelo Instagram
 export const MENSAGEM_VIDEO_RECUSADO = 'O vídeo não foi aceito pelo Instagram.';
 export const MENSAGEM_SEM_RESPOSTA = 'O Instagram não respondeu como esperado.';
 
+export const MENSAGEM_SEM_PERMISSAO_RESULTADO = 'A conta não autorizou a leitura de resultados.';
+
+/** Números de uma postagem; o que a Meta não devolver fica nulo. */
+export interface ResultadoDaPostagem {
+  alcance: number | null;
+  curtidas: number | null;
+  comentarios: number | null;
+  salvamentos: number | null;
+}
+
 export type StatusDoContainer = 'pronto' | 'processando' | 'erro';
 
 export interface PublicadorInstagram {
@@ -28,6 +38,12 @@ export interface PublicadorInstagram {
   publicar(token: string, containerId: string): Promise<string>;
   /** Endereço público do post. */
   linkDoPost(token: string, postId: string): Promise<string>;
+  /**
+   * Alcance, curtidas, comentários e salvamentos (Fase 4). Lança `MENSAGEM_SEM_PERMISSAO_RESULTADO` quando a conta
+   * não deu a permissão de leitura, `MENSAGEM_RECONECTAR` quando o token não vale mais e `MENSAGEM_SEM_RESPOSTA`
+   * quando a Meta recusa só aquela postagem (apagada, por exemplo).
+   */
+  buscarResultado(token: string, postId: string): Promise<ResultadoDaPostagem>;
 }
 
 const VERSAO = 'v21.0';
@@ -35,7 +51,7 @@ const VERSAO = 'v21.0';
 export class PublicadorMeta implements PublicadorInstagram {
   constructor(private readonly fetchFn: typeof fetch = fetch) {}
 
-  private async chamar(metodo: 'GET' | 'POST', caminho: string, token: string, params: Record<string, string> = {}, recusa = MENSAGEM_SEM_RESPOSTA): Promise<Record<string, unknown>> {
+  private async chamar(metodo: 'GET' | 'POST', caminho: string, token: string, params: Record<string, string> = {}, recusa = MENSAGEM_SEM_RESPOSTA, comPermissao = false): Promise<Record<string, unknown>> {
     const q = new URLSearchParams({ ...params, access_token: token });
     let r: Response;
     try {
@@ -55,6 +71,10 @@ export class PublicadorMeta implements PublicadorInstagram {
     if (!r.ok) {
       const e = (j.error ?? {}) as { code?: number };
       if (r.status === 401 || e.code === 190) throw new ErroInstagram(MENSAGEM_RECONECTAR);
+      // Códigos 10 e 200 a 299 da Meta: falta permissão (só distinguimos na leitura de resultado).
+      if (comPermissao && (r.status === 403 || e.code === 10 || (e.code !== undefined && e.code >= 200 && e.code <= 299))) {
+        throw new ErroInstagram(MENSAGEM_SEM_PERMISSAO_RESULTADO);
+      }
       throw new ErroInstagram(recusa);
     }
     return j;
@@ -102,6 +122,26 @@ export class PublicadorMeta implements PublicadorInstagram {
     if (typeof j.permalink !== 'string' || !j.permalink.startsWith('https://')) throw new ErroInstagram(MENSAGEM_SEM_RESPOSTA);
     return j.permalink;
   }
+
+  async buscarResultado(token: string, postId: string): Promise<ResultadoDaPostagem> {
+    const id = encodeURIComponent(postId);
+    const base = await this.chamar('GET', id, token, { fields: 'like_count,comments_count' }, MENSAGEM_SEM_RESPOSTA, true);
+    const numero = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    let alcance: number | null = null;
+    let salvamentos: number | null = null;
+    try {
+      const ins = await this.chamar('GET', `${id}/insights`, token, { metric: 'reach,saved' }, MENSAGEM_SEM_RESPOSTA, true);
+      for (const m of Array.isArray(ins.data) ? (ins.data as { name?: string; values?: { value?: unknown }[] }[]) : []) {
+        const v = numero(m.values?.[0]?.value);
+        if (m.name === 'reach') alcance = v;
+        if (m.name === 'saved') salvamentos = v;
+      }
+    } catch (e) {
+      // Sem permissão ou sem token valem para a conta toda; outra recusa só deixa esses dois números vazios.
+      if (e instanceof ErroInstagram && (e.message === MENSAGEM_SEM_PERMISSAO_RESULTADO || e.message === MENSAGEM_RECONECTAR)) throw e;
+    }
+    return { alcance, curtidas: numero(base.like_count), comentarios: numero(base.comments_count), salvamentos };
+  }
 }
 
 /** Demonstração e testes: a "Meta" é fictícia e guarda o que recebeu. */
@@ -114,6 +154,12 @@ export class PublicadorInstagramMemoria implements PublicadorInstagram {
   falharStatus = false;
   falharPublicar: string | null = null;
   falharLink = false;
+  /** Resultados por identificador do post; sem entrada, um resultado fictício fixo. */
+  resultados = new Map<string, ResultadoDaPostagem>();
+  /** Postagens que a Meta recusa (apagadas, por exemplo). */
+  postsRecusados = new Set<string>();
+  semPermissaoDeResultado = false;
+  buscasDeResultado: string[] = [];
   private consultas = 0;
 
   async criarContainerDeImagem(token: string, url: string, legenda: string): Promise<string> {
@@ -157,5 +203,12 @@ export class PublicadorInstagramMemoria implements PublicadorInstagram {
   async linkDoPost(_token: string, postId: string): Promise<string> {
     if (this.falharLink) throw new ErroInstagram(MENSAGEM_SEM_RESPOSTA);
     return `https://www.instagram.com/p/${postId}/`;
+  }
+
+  async buscarResultado(_token: string, postId: string): Promise<ResultadoDaPostagem> {
+    if (this.semPermissaoDeResultado) throw new ErroInstagram(MENSAGEM_SEM_PERMISSAO_RESULTADO);
+    if (this.postsRecusados.has(postId)) throw new ErroInstagram(MENSAGEM_SEM_RESPOSTA);
+    this.buscasDeResultado.push(postId);
+    return this.resultados.get(postId) ?? { alcance: 1240, curtidas: 86, comentarios: 5, salvamentos: 12 };
   }
 }
