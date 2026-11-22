@@ -92,6 +92,11 @@ export function calcularPode(v: Verificador, todos = false) {
     resultadoInstagram: v.temPermissao('comunicacao.revisar'),
     aprovarComunicacao: v.temPermissao('comunicacao.aprovar'),
     indicadoresComunicacao: v.temPermissao('comunicacao.indicadores'),
+    pessoas: v.temPermissaoAlgumEscopo('core.pessoas.ver'),
+    editarPessoas: v.temPermissaoAlgumEscopo('core.pessoas.editar'),
+    indicadores: v.temPermissao('plataforma.indicadores.ver'),
+    servicos: v.temPermissaoAlgumEscopo('plataforma.servicos.ver'),
+    feriados: v.temPermissao('core.feriados.gerenciar'),
   };
 }
 export type Pode = ReturnType<typeof calcularPode>;
@@ -993,15 +998,132 @@ export function montarAssuntos(ctx: {
     });
   }
 
-  if (pode.organizacao || pode.acessos) {
+  assuntos.push({
+    id: 'agenda-busca',
+    titulo: 'Agenda e busca',
+    resumo: 'Ver o que vence ou acontece em todos os apps e procurar um registro pelo nome.',
+    atalhos: [
+      { rotulo: 'Agenda', href: '/agenda' },
+      { rotulo: 'Busca', href: '/busca' },
+    ],
+    conteudo: (
+      <>
+        <Sub>Agenda</Sub>
+        <Passos
+          itens={[
+            'Abra Agenda. A tela junta prazos e datas dos apps que o seu perfil acessa: projetos, parcerias, comunicação, avaliação e requisições.',
+            'Se houver itens vencidos, eles aparecem primeiro, com a etiqueta Vencido. Clique num item para abrir o registro e resolver.',
+            'Use Lista ou Mês para mudar a visão; Anterior, Próximo e Hoje trocam o mês. No Mês, clique num dia para ver só o que cai nele.',
+            'Para filtrar, escolha um app nos botões redondos ou um serviço na lista e clique em Aplicar. Limpar filtros volta ao todo.',
+          ]}
+        />
+        <Sub>Busca</Sub>
+        <Passos
+          itens={[
+            'Clique na lupa (ou campo) no alto da página, ou aperte a tecla / fora de um campo de texto, e digite pelo menos 2 letras.',
+            'O resultado vem agrupado por tipo (projetos, termos, requisições, pedidos e pessoas) e mostra só o que o seu perfil já pode ver.',
+            'Clique num resultado para abrir o registro. Sem resultado: tente menos letras ou outra grafia.',
+          ]}
+        />
+      </>
+    ),
+  });
+
+  if (pode.pessoas) {
+    assuntos.push({
+      id: 'pessoas',
+      permissoes: ['core.pessoas.ver'],
+      titulo: 'Pessoas',
+      resumo: 'Cadastro único de atendidos, familiares e equipe: cadastrar, corrigir e vincular a um serviço.',
+      atalhos: [{ rotulo: 'Pessoas', href: '/nucleo/pessoas' }],
+      conteudo: (
+        <>
+          <Sub>Encontrar uma pessoa</Sub>
+          <Passos
+            itens={[
+              'Abra Pessoas. A lista mostra só quem o seu perfil pode ver; quem não aparece está fora do seu escopo de acesso.',
+              'Digite o nome em Buscar pelo nome (sem acento também vale) ou escolha um papel (Atendido, Familiar, Colaborador…) nos botões redondos.',
+              'Clique em Abrir para ver os dados e os serviços da pessoa.',
+            ]}
+          />
+          {pode.editarPessoas && (
+            <>
+              <Sub>Cadastrar</Sub>
+              <Passos
+                itens={[
+                  'Clique em Cadastrar pessoa. Só o nome completo é obrigatório; CPF, NIS, contato e endereço ficam em Mais dados.',
+                  'Escolha o papel e, se for atendido, o serviço e a data de entrada. Sem serviço, o atendido não aparece para avaliar.',
+                  'Clique em Cadastrar e vincular. Se já existir alguém com o mesmo nome, o Elo avisa; se for outra pessoa mesmo, clique em É outra pessoa, cadastrar.',
+                ]}
+              />
+              <Sub>Corrigir, vincular e encerrar</Sub>
+              <Itens
+                itens={[
+                  'Em Corrigir dados, altere e clique em Salvar correção.',
+                  'Em Vincular a serviço, escolha o serviço e a entrada (pode ser data passada) e clique em Vincular.',
+                  'Encerrar vínculo pede o motivo e a data de saída. Nada é apagado: o histórico fica e a pessoa pode voltar com um novo vínculo.',
+                ]}
+              />
+            </>
+          )}
+          <p className="mt-3 text-texto-suave">Abrir os dados de uma pessoa fica registrado (quem abriu e quando), porque são dados pessoais.</p>
+        </>
+      ),
+    });
+  }
+
+  if (pode.indicadores) {
+    assuntos.push({
+      id: 'indicadores',
+      permissoes: ['plataforma.indicadores.ver'],
+      titulo: 'Indicadores',
+      resumo: 'Os números dos apps num painel só, mês a mês.',
+      atalhos: [{ rotulo: 'Indicadores', href: '/indicadores' }],
+      conteudo: (
+        <Passos
+          itens={[
+            'Abra Indicadores. No alto, números de destaque: requisições aprovadas no prazo, pedidos de comunicação no ano e resultado previsto do último exercício.',
+            'Abaixo, um bloco por app (Requisições, Comunicação, Orçamento), com gráfico e tabela. Cada número diz se está dentro do esperado e compara com o período anterior.',
+            'Para ver outro ano, escolha-o no seletor do alto da página.',
+            'São os mesmos números que cada app mostra; aqui eles só são reunidos. Um bloco sem acesso ao app avisa isso, e um mês sem dado não vale zero.',
+          ]}
+        />
+      ),
+    });
+  }
+
+  if (pode.servicos) {
+    assuntos.push({
+      id: 'fichas-de-servico',
+      permissoes: ['plataforma.servicos.ver'],
+      titulo: 'Fichas de serviço',
+      resumo: 'Tudo sobre um serviço numa tela: custo, vagas, projetos, requisições, publicações e avaliação.',
+      atalhos: [{ rotulo: 'Fichas de serviço', href: '/servicos' }],
+      conteudo: (
+        <Passos
+          itens={[
+            'Abra Fichas de serviço e clique no nome do serviço. A lista mostra os serviços do seu escopo, com área, unidade, vagas e situação.',
+            'A ficha abre com o resumo e números do serviço. Depois vêm os blocos: Custo e fontes, Vagas e atendidos, Projetos, Requisições, Publicações e Avaliação.',
+            'Cada bloco segue a permissão do app dele: se você não acessa o app, o bloco não traz o dado. Vagas e avaliação mostram só quantidades, sem nomes.',
+            'Use o link de cada bloco para abrir o app e ver o detalhe. Serviço encerrado mostra o histórico.',
+          ]}
+        />
+      ),
+    });
+  }
+
+  if (pode.organizacao || pode.acessos || pode.feriados || pode.dpo) {
     assuntos.push({
       id: 'administracao',
-      permissoes: ['core.organizacao.gerenciar', 'core.acessos.gerenciar'],
+      permissoes: ['core.organizacao.gerenciar', 'core.acessos.gerenciar', 'core.feriados.gerenciar', 'core.dpo.gerenciar'],
       titulo: 'Administração',
-      resumo: 'Serviços, áreas, acessos e estrutura das planilhas.',
+      resumo: 'Serviços, áreas, acessos, feriados, encarregado de dados e estrutura das planilhas.',
       atalhos: [
         ...(pode.acessos ? [{ rotulo: 'Acessos', href: '/admin/acessos' }] : []),
         ...(pode.organizacao ? [{ rotulo: 'Áreas', href: '/admin/areas' }, { rotulo: 'Serviços', href: '/admin/servicos' }] : []),
+        ...(pode.feriados ? [{ rotulo: 'Feriados', href: '/admin/feriados' }] : []),
+        ...(pode.dpo ? [{ rotulo: 'Encarregado de dados', href: '/admin/encarregado' }] : []),
+        ...(pode.organizacao ? [{ rotulo: 'Estrutura das planilhas', href: '/admin/estrutura' }] : []),
       ],
       conteudo: (
         <Itens
@@ -1013,8 +1135,12 @@ export function montarAssuntos(ctx: {
               'Acessos: "Dar acesso" cadastra o e-mail institucional e o primeiro perfil (já vem marcado Funcionário, o perfil básico de quem trabalha na instituição: faz requisições e acompanha as suas); "Atribuir perfil" acrescenta outro. Em "Vale para", escolha toda a instituição, uma unidade, uma área ou um serviço.',
             pode.acessos &&
               'Acessos em lote: "Cadastrar em lote" recebe uma lista copiada da planilha com Nome, E-mail, Perfil (opcional, padrão Funcionário) e Vale para (opcional: unidade, área ou serviço). Confira a prévia: quem já tem acesso só ganha o perfil, acesso desativado é reativado e as linhas com problema ficam de fora.',
+            pode.feriados &&
+              'Feriados: dias que não contam como úteis nos prazos de Requisições e Comunicação. Em Incluir feriados, escolha o ano e clique em "Incluir feriados nacionais" (entra também o 9 de julho); para um feriado municipal ou ponto facultativo, informe a data e o nome e clique em "Incluir feriado". O ícone da lixeira tira um dia da lista, depois de confirmar.',
+            pode.dpo &&
+              'Encarregado de dados: quem a instituição indicou para a LGPD. Use "Cadastrar encarregado" (pessoa física ou jurídica, com documento e e-mail para onde os titulares escrevem), "Corrigir dados" para um erro de digitação e "Trocar encarregado" quando for outra pessoa: informe a data da troca e o anterior fica no histórico.',
             pode.organizacao &&
-              'Estrutura das planilhas: a Administração da rede cria as planilhas na pasta da instituição e roda "Preparar estrutura" (abas, colunas, perfis e permissões) depois de cada atualização do Elo; por isso a tela Estrutura não aparece no menu. Se o Elo avisar que há atualização esperando, peça a ela; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
+              'Estrutura das planilhas: a Administração da rede cria as planilhas na pasta da instituição e roda "Preparar estrutura" (abas, colunas, perfis e permissões) depois de cada atualização do Elo; por isso, com a rede, a tela Estrutura das planilhas não aparece no menu (em instituição sem rede, ela fica em Administração, com o botão Preparar estrutura). Se o Elo avisar que há atualização esperando, peça a ela; depois, quem estiver usando deve sair e entrar de novo. Nada é apagado.',
             pode.organizacao &&
               'Fotos e vídeos das requisições: ficam numa pasta de uma unidade compartilhada do Drive da instituição, com a conta de serviço do Elo como Gerente de conteúdo. O Elo cria essa pasta sozinho dentro da pasta da instituição, quando a Administração da rede prepara a estrutura.',
           ]}
