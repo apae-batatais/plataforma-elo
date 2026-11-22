@@ -39,8 +39,8 @@ export default async function AbrirAvaliacao({ params }: { params: Promise<{ id:
     <div>
       <CabecalhoPagina
         trilha={[
-          { rotulo: 'Início', href: '/' },
-          { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' },
+          { rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' },
+          { rotulo: 'Assistência Social', href: '/avaliacao' },
           { rotulo: `${d.iniciais} · ${br(d.nascimento)}` },
         ]}
         titulo={`Avaliação de ${d.iniciais} · ${br(d.nascimento)} · ${d.sexo}`}

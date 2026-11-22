@@ -1,5 +1,5 @@
 /**
- * Avaliação de Serviços Sociais: as perguntas, a conferência das respostas e o
+ * Assistência Social: as perguntas, a conferência das respostas e o
  * índice de necessidade de cuidado. Regras puras, sem planilha.
  *
  * A base técnica e legal de cada pergunta está em FUNDAMENTOS (./fundamentos.ts).
