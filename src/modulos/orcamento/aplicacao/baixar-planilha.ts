@@ -8,6 +8,7 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 import { montarCsv } from '../dominio/codigo-conta';
+import { lerPlano } from './plano-contas';
 import { ErroPrevisao, lerPrevisao, listarCadastros } from './previsao';
 
 export interface ArquivoCsv {
@@ -58,5 +59,26 @@ export async function baixarItensCsv(p: Planilhas, quem: Autorizador, tipo: 'des
       ['Fonte', 'Código da conta da fonte', 'Descrição', 'Captação', 'Valor anual', ...MESES],
       prev.receitas.map((r) => [r.fonteNome, r.fonteCodigo, r.descricao, CAPTACAO[r.captacao], r.valor, ...meses(r.meses)]),
     ),
+  };
+}
+
+/** Plano de contas de um exercício (um arquivo por exercício): a versão mais recente, uma linha por área, grupo e item. */
+export async function baixarPlanoCsv(p: Planilhas, quem: Autorizador, ano?: number): Promise<ArquivoCsv> {
+  const plano = await lerPlano(p, quem, ano);
+  if (!plano.atual) throw new ErroPrevisao('Nada para baixar ainda.');
+  const { areas, itens, grupos } = plano.cadastros;
+  const area = new Map([...areas.ativos, ...areas.excluidos].map((a) => [a.id, a]));
+  const grupo = new Map(grupos.map((g) => [g.id, g]));
+  const item = new Map([...itens.ativos, ...itens.excluidos].map((i) => [i.id, i]));
+  const linhas = plano.atual.linhas.map((l) => [
+    area.get(l.area_id)?.nome ?? '', area.get(l.area_id)?.codigo ?? null,
+    grupo.get(l.grupo_id)?.nome ?? '', grupo.get(l.grupo_id)?.codigo_conta ?? null,
+    l.item_id ? (item.get(l.item_id)?.nome ?? '') : null, l.item_id ? (item.get(l.item_id)?.codigo ?? null) : null,
+    plano.atual!.vigencia,
+  ]);
+  linhas.sort((a, b) => String(a[0]).localeCompare(String(b[0]), 'pt-BR') || String(a[2]).localeCompare(String(b[2]), 'pt-BR') || String(a[4] ?? '').localeCompare(String(b[4] ?? ''), 'pt-BR'));
+  return {
+    nome: `plano-de-contas-${plano.ano}.csv`,
+    conteudo: montarCsv(['Área', 'Código da área', 'Grupo de contas', 'Código do grupo', 'Item contábil', 'Código do item', 'Vale desde'], linhas),
   };
 }
