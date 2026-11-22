@@ -21,6 +21,8 @@ export const esquemaManifesto = z
     schema: z.string().regex(SCHEMA),
     /** Rota base, ex.: "/orcamento". */
     rota: z.string().regex(/^\/[a-z0-9-]+$/),
+    /** Família de apps no menu (ex.: "avaliacoes"); nome, ícone e ordem ficam no mapa de src/plataforma/familias.ts. */
+    familia: z.string().regex(SCHEMA).optional(),
     /** Permissão mínima para o app aparecer no portal. */
     permissaoAcesso: z.string(),
     menu: z

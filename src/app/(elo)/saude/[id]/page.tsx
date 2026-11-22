@@ -31,7 +31,7 @@ export default async function AbrirAvaliacaoDeSaude({ params }: { params: Promis
     if (erro instanceof ErroSaude || erro instanceof ErroPermissao) redirect(`/saude?erro=${encodeURIComponent(erro.message)}`);
     throw erro;
   }
-  const trilha = [{ rotulo: 'Início', href: '/' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: a.pessoaNome }];
+  const trilha = [{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: a.pessoaNome }];
   const periodo = `${br(a.periodoInicio)} a ${br(a.periodoFim)}`;
 
   if (a.situacao === 'aberta') {

@@ -295,6 +295,7 @@ Três entregas (1 de 3 a 3 de 3).
       POR ÁREA) da #185 com a contabilidade.
 - [ ] Agrupar e somar painéis pelo plano de contas (Área, Grupo e Item), se a Diretoria quiser (outra proposta).
 - [ ] Importar o plano de contas de uma planilha (por ora é cadastro manual).
+- [ ] Plano de contas, entrega 1 (#221): "Cadastrar em lote" de Áreas e de Itens contábeis e busca por nome ou código na tela do Plano (previstos na especificação; não entraram na entrega 1).
 - [ ] Item contábil e Área do plano no realizado importado, quando a importação do realizado existir.
 
 ## Avaliações: menu em família e formulários uniformes (issue #223, especificação em `docs/especificacao-plataforma.md`, ADR-037)

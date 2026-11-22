@@ -5,7 +5,7 @@ Documento editável: https://claude.ai/artifact/WnRmuEPtZNBagyMgZTHn98 (esta é 
 
 ## Conceito
 
-O Elo é uma marca neutra em grafite: quem dá cor à tela é o app que está aberto. A plataforma reúne vários apps para organizações da sociedade civil (Orçamento, Requisições, Questionários, Avaliação de Serviços Sociais) e vai atender organizações diferentes, então não carrega a cor de nenhuma delas.
+O Elo é uma marca neutra em grafite: quem dá cor à tela é o app que está aberto. A plataforma reúne vários apps para organizações da sociedade civil (Orçamento, Requisições, Questionários, Assistência Social) e vai atender organizações diferentes, então não carrega a cor de nenhuma delas.
 
 O Elo mostra o que precisa de ação, não planilhas. A tela inicial reúne as pendências de todos os apps e dá acesso a cada um deles.
 
@@ -59,7 +59,7 @@ A marca é grafite; o destaque de cada tela é a cor do app aberto. Todas as cor
 | Orçamento | Petróleo | #0E7C86 | #3CC8C8 |
 | Requisições | Índigo | #3730A3 | #8F8CFF |
 | Questionários | Magenta | #A8197F | #F27ACF |
-| Avaliação de Serviços Sociais (antes Avaliação Diagnóstica) | Cobre | #8C4A2F | #E0A07E |
+| Assistência Social (antes Avaliação de Serviços Sociais e, antes, Avaliação Diagnóstica) | Cobre | #8C4A2F | #E0A07E |
 | Comunicação | Azul-celeste | #0369A1 | #5CC8F5 |
 | Parcerias | Lilás (decisão de 13/11/2026, proposta #118) | #7E3F98 | #D2A2EA |
 | Saúde | Framboesa (escolhida pelo Desenvolvedor na entrega #68, aguarda a Diretoria; rosada, longe do vermelho de alerta: conferir sempre com nome e ícone) | #A32A52 | #F09AB4 |
@@ -146,3 +146,5 @@ Este documento usa a estrutura de um material de curso (identidade visual de um 
 - [ ] Validar as quatro cores por app com quem vai usar
 - [ ] Desenhar o logotipo definitivo do Elo (por enquanto, os dois elos de corrente em grafite)
 - [ ] Definir o conjunto de ícones de cada app
+
+**Família Avaliações (ADR-037):** Assistência Social, Educação e Saúde aparecem dentro de um item "Avaliações" no menu e num cartão só no início. O item e o cartão da família usam a cor padrão (grafite); só a tela de cada app usa a cor dele.
