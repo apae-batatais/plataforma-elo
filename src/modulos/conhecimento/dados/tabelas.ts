@@ -37,6 +37,8 @@ export const PublicacoesConhecimento = definirTabela({
     /** Código do perfil ou da área, conforme `publico_tipo`. */
     publico_valor: textoOpcional(),
     exige_ciencia: booleano(),
+    /** Tem teste de compreensão (as perguntas ficam na aba Perguntas, por edição). */
+    tem_teste: booleano(),
     /** Edição atual do conteúdo (começa em 1; "nova versão" soma 1). */
     edicao: inteiro(),
     /** Data e hora (ISO) em que a edição atual começou; conta o prazo de 15 dias. */
@@ -62,8 +64,42 @@ export const CienciasConhecimento = definirTabela({
   sigilo: { usuario: 'pessoal' },
 });
 
-export const TABELAS_CONHECIMENTO = [CategoriasConhecimento, PublicacoesConhecimento, CienciasConhecimento] as const;
+export const PerguntasConhecimento = definirTabela({
+  planilha: PLANILHA_CONHECIMENTO,
+  aba: 'Perguntas',
+  esquema: z.object({
+    publicacao_id: texto(),
+    edicao: inteiro(),
+    ordem: inteiro(),
+    texto: texto(),
+    /** Lista JSON de 2 a 5 opções. */
+    opcoes: texto(),
+    /** Posição (a partir de 0) da opção certa; o gabarito nunca vai ao navegador antes do envio. */
+    correta: inteiro(),
+  }),
+  sigilo: { correta: 'sensivel' },
+});
+
+/** Cada tentativa fica gravada (somente inclusão): nunca alterada. */
+export const TentativasTeste = definirTabela({
+  planilha: PLANILHA_CONHECIMENTO,
+  aba: 'TentativasTeste',
+  esquema: z.object({
+    publicacao_id: texto(),
+    edicao: inteiro(),
+    usuario: texto(),
+    feita_em: texto(),
+    acertos: inteiro(),
+    total: inteiro(),
+    aprovada: booleano(),
+  }),
+  sigilo: { usuario: 'pessoal' },
+});
+
+export const TABELAS_CONHECIMENTO = [CategoriasConhecimento, PublicacoesConhecimento, CienciasConhecimento, PerguntasConhecimento, TentativasTeste] as const;
 
 export type RegCategoria = Registro<typeof CategoriasConhecimento.esquema>;
 export type RegPublicacao = Registro<typeof PublicacoesConhecimento.esquema>;
+export type RegPergunta = Registro<typeof PerguntasConhecimento.esquema>;
+export type RegTentativa = Registro<typeof TentativasTeste.esquema>;
 export type RegCiencia = Registro<typeof CienciasConhecimento.esquema>;

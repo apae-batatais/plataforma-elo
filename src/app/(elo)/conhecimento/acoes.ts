@@ -9,7 +9,8 @@ import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { iniciarEnvioAnexo } from '@/modulos/conhecimento/aplicacao/anexos';
 import { criarCategoria, mudarSituacaoCategoria } from '@/modulos/conhecimento/aplicacao/categorias';
 import { darCiencia, mudarArquivamento, salvarPublicacao } from '@/modulos/conhecimento/aplicacao/publicacoes';
-import { ErroConhecimento, PUBLICOS, type PublicoTipo } from '@/modulos/conhecimento/dominio/publicacao';
+import { enviarTeste } from '@/modulos/conhecimento/aplicacao/teste';
+import { ErroConhecimento, PUBLICOS, type PerguntaEntrada, type PublicoTipo } from '@/modulos/conhecimento/dominio/publicacao';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -56,6 +57,23 @@ export async function acaoSalvarPublicacao(f: FormData): Promise<{ erro: string 
       return { erro: 'O anexo não foi lido. Envie o arquivo de novo.' };
     }
   }
+  const temTeste = f.get('tem_teste') === 'on';
+  let perguntas: PerguntaEntrada[] | undefined;
+  if (temTeste) {
+    try {
+      const bruto = JSON.parse(texto(f, 'perguntas') || '[]') as { texto?: unknown; opcoes?: unknown; correta?: unknown }[];
+      perguntas = bruto
+        .map((q) => ({
+          texto: String(q.texto ?? ''),
+          opcoes: Array.isArray(q.opcoes) ? q.opcoes.map((o) => String(o ?? '')) : [],
+          correta: Number(q.correta),
+        }))
+        // Pergunta em branco (só o esqueleto do formulário) é ignorada.
+        .filter((q) => q.texto.trim() || q.opcoes.some((o) => o.trim()));
+    } catch {
+      return { erro: 'As perguntas não foram lidas. Confira o teste e tente de novo.' };
+    }
+  }
   const publicar = texto(f, 'intencao') === 'publicar';
   const edicao = texto(f, 'tipo_edicao');
   let destino: string;
@@ -70,6 +88,8 @@ export async function acaoSalvarPublicacao(f: FormData): Promise<{ erro: string 
       publicoTipo: ((PUBLICOS as readonly string[]).includes(tipo) ? tipo : 'todos') as PublicoTipo,
       publicoValor: texto(f, 'publico_valor') || null,
       exigeCiencia: f.get('exige_ciencia') === 'on',
+      temTeste,
+      perguntas,
       anexo,
       publicar,
       tipoEdicao: edicao === 'pequena' || edicao === 'nova' ? edicao : undefined,
@@ -99,6 +119,20 @@ export async function acaoReativar(f: FormData) {
 export async function acaoDarCiencia(f: FormData) {
   const id = texto(f, 'id');
   await executar(`/conhecimento/${id}`, `/conhecimento/${id}`, 'Ciência registrada.', ({ usuario, app }) => darCiencia(app.planilhas, usuario.autorizador, id));
+}
+
+/** Envia as respostas do teste; devolve o resultado para a tela (sem a resposta certa). */
+export async function acaoEnviarTeste(id: string, respostas: (number | null)[]): Promise<{ erro: string } | { acertos: number; total: number; aprovada: boolean; erradas: number[] }> {
+  const { usuario, app } = await contexto();
+  try {
+    const r = await enviarTeste(app.planilhas, usuario.autorizador, id, respostas);
+    esquecerAlertas();
+    revalidatePath('/', 'layout');
+    return r;
+  } catch (erro) {
+    if (!conhecido(erro)) throw erro;
+    return { erro: (erro as Error).message };
+  }
 }
 
 export async function acaoCriarCategoria(f: FormData) {
