@@ -7,11 +7,12 @@ import { atualizar, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/ta
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { salvarConfig } from '../aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
-import { adicionarItemMarco, adicionarMembro, avancarFase, salvarDocumento } from '../aplicacao/fases';
+import { enviarRelatorio, pedirMudanca, registrarProblema } from '../aplicacao/acompanhamento';
+import { adicionarItemMarco, adicionarMembro, avancarFase, iniciarImplementacao, salvarDocumento } from '../aplicacao/fases';
 import { definirFonteDoItem } from '../aplicacao/indicadores';
 import { adicionarAtividade, adicionarLinhaOrcamento } from '../aplicacao/planejamento';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
-import { MarcoLogico, Projetos } from '../dados/tabelas';
+import { MarcoLogico, ProjetoOrcamento, Projetos } from '../dados/tabelas';
 import { CONFIG_PADRAO } from '../dominio/projeto';
 
 const FUNCIONARIO = 'funcionario@exemplo.local';
@@ -98,6 +99,34 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   await adicionarAtividade(p, coord, sete.id, { descricao: 'Montar o espaço', responsavel: COORDENACAO, inicioPrevisto: '2026-12-10', fimPrevisto: '2026-12-12', peso: null }, { agora: dia(31) });
   await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Alimentação', descricao: 'Lanche coletivo', valor: 1800, fonte: 'Recurso próprio' }, { agora: dia(31) });
   await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Material', descricao: 'Som e decoração', valor: 1200, fonte: null }, { agora: dia(31) });
+  // 8. Porte enxuto em implementação: uma mudança dentro da tolerância (já aplicada), uma fora (esperando a Diretoria),
+  // um problema aberto e um relatório de monitoramento.
+  const oito = await cadastrarIdeia(p, func, { ...base, porte: 'enxuto', titulo: 'Horta comunitária (exemplo)', resumo: 'Ideia fictícia: horta cuidada pelas famílias.', valorEstimado: 10000 }, { agora: dia(20), enviar: true });
+  await assumirIdeia(p, coord, oito.id, 1, { agora: dia(21) });
+  const abertaOito = await abrirPorta(p, coord, oito.id, 2, { agora: dia(21) });
+  await darParecer(p, await como(p, TECNICO), abertaOito.portaId, 'tecnico', 'satisfatorio', null, { agora: dia(22) });
+  await decidirPorta(p, diretoria, abertaOito.portaId, 1, 'seguir', 'Texto fictício: vale seguir.', { agora: dia(22) });
+  await salvarDocumento(p, coord, oito.id, 'proposta', { descricao: 'Texto fictício: canteiros e oficinas de cultivo.' }, true, null, { agora: dia(22) });
+  const versaoOito = async () => (await lerTabelas(p, [Projetos] as const))[0].porId(oito.id)!.versao;
+  await avancarFase(p, coord, oito.id, await versaoOito(), { agora: dia(22) });
+  const termoOito = { objetivo: 'Cultivar uma horta com as famílias', escopo: 'Canteiros, ferramentas e oficinas', valor_total: '10000', tolerancia_custo_linha: '10', tolerancia_custo_total: '5', tolerancia_prazo_fim: '15', tolerancia_prazo_marco: '7' };
+  await salvarDocumento(p, coord, oito.id, 'termo_abertura', termoOito, true, null, { agora: dia(23) });
+  const portaOito = await abrirPorta(p, coord, oito.id, await versaoOito(), { agora: dia(23) });
+  await darParecer(p, await como(p, TECNICO), portaOito.portaId, 'tecnico', 'satisfatorio', null, { agora: dia(24) });
+  await decidirPorta(p, diretoria, portaOito.portaId, 1, 'seguir', 'Texto fictício: Termo autorizado.', { agora: dia(24) });
+  await adicionarAtividade(p, coord, oito.id, { descricao: 'Preparar os canteiros', responsavel: FUNCIONARIO, inicioPrevisto: '2026-10-26', fimPrevisto: '2026-11-13', peso: null }, { agora: dia(25) });
+  await adicionarAtividade(p, coord, oito.id, { descricao: 'Oficinas de cultivo', responsavel: COORDENACAO, inicioPrevisto: '2026-11-16', fimPrevisto: '2026-12-18', peso: null }, { agora: dia(25) });
+  await adicionarLinhaOrcamento(p, coord, oito.id, { categoria: 'Material', descricao: 'Ferramentas e sementes', valor: 6000, fonte: 'Recurso próprio' }, { agora: dia(25) });
+  await adicionarLinhaOrcamento(p, coord, oito.id, { categoria: 'Pessoal', descricao: 'Instrutor das oficinas', valor: 4000, fonte: null }, { agora: dia(25) });
+  await iniciarImplementacao(p, coord, oito.id, await versaoOito(), { agora: dia(26) });
+  const [linhasOito] = await lerTabelas(p, [ProjetoOrcamento] as const);
+  const material = linhasOito.ativos().find((l) => l.projeto_id === oito.id && l.categoria === 'Material')!;
+  const pessoal = linhasOito.ativos().find((l) => l.projeto_id === oito.id && l.categoria === 'Pessoal')!;
+  await pedirMudanca(p, coord, oito.id, { tipo: 'custo', alvo: material.id, proposto: '6300', justificativa: 'Texto fictício: as sementes ficaram mais caras.' }, { agora: dia(28) });
+  await pedirMudanca(p, coord, oito.id, { tipo: 'custo', alvo: pessoal.id, proposto: '5000', justificativa: 'Texto fictício: mais encontros com o instrutor.' }, { agora: dia(29) });
+  await registrarProblema(p, coord, oito.id, { descricao: 'Texto fictício: o terreno alaga com a chuva.', gravidade: 'alto', dono: COORDENACAO }, { agora: dia(29) });
+  await enviarRelatorio(p, coord, oito.id, { periodoInicio: '2026-10-26', periodoFim: '2026-10-30', texto: 'Texto fictício: início dos canteiros, sem intercorrências além do terreno.', gasto: null }, undefined, { agora: dia(30) });
+
   // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
   const datas: [string, string, string][] = [
     [quatro.id, '2026-12-01', '2027-02-26'],
