@@ -156,6 +156,15 @@ export default async function Portal() {
           acao: 'Decidir',
         });
       }
+      if (c.veiculosDecidir > 0) {
+        pendencias.push({
+          app: 'requisicoes',
+          texto: n(c.veiculosDecidir, 'pedido de veículo espera a sua decisão', 'pedidos de veículo esperam a sua decisão'),
+          detalhe: 'Veja o conflito de horário e aprove, devolva ou recuse.',
+          href: '/requisicoes/veiculos/pedidos',
+          acao: 'Decidir',
+        });
+      }
       if (c.espacosFechar > 0) {
         pendencias.push({
           app: 'requisicoes',
@@ -255,8 +264,8 @@ export default async function Portal() {
       if (c.total > 0) {
         pendencias.push({
           app: 'conhecimento',
-          texto: `${c.total} ${c.total === 1 ? 'documento aguarda' : 'documentos aguardam'} a sua ciência`,
-          detalhe: c.vencidas > 0 ? `${c.vencidas} ${c.vencidas === 1 ? 'está vencido' : 'estão vencidos'}, com mais de 15 dias sem ciência.` : 'Leia e confirme que está de acordo.',
+          texto: `${c.total} ${c.total === 1 ? 'documento aguarda' : 'documentos aguardam'} a sua ciência ou teste`,
+          detalhe: c.vencidas > 0 ? `${c.vencidas} ${c.vencidas === 1 ? 'está vencido' : 'estão vencidos'}, com mais de 15 dias sem ciência.` : 'Leia, faça o teste quando houver e confirme que está de acordo.',
           href: c.total === 1 ? `/conhecimento/${c.itens[0].id}` : '/conhecimento/meus-documentos',
           acao: 'Ler e dar ciência',
         });

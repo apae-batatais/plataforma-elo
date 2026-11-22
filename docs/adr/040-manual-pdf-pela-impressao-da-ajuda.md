@@ -1,6 +1,6 @@
 # ADR-040 · Manual em PDF gerado da Ajuda pela impressão do navegador
 
-Situação: proposta · Data: 21 de novembro de 2026 · Proposta: #232
+Situação: aceita · Data: 21 de novembro de 2026 · Proposta: #232
 
 ## Contexto
 O manual em PDF era um arquivo editado à parte (`public/manual/manual-elo.pdf`) e ficou

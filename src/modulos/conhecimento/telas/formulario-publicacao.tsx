@@ -8,7 +8,7 @@ import { useState, useTransition } from 'react';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
-import { LIMITES } from '../dominio/publicacao';
+import { LIMITES, TESTE, type PerguntaEntrada } from '../dominio/publicacao';
 import { CampoAnexo } from './campo-anexo';
 
 export interface ValorPublicacao {
@@ -21,10 +21,15 @@ export interface ValorPublicacao {
   publicoTipo: 'todos' | 'perfil' | 'area';
   publicoValor: string | null;
   exigeCiencia: boolean;
+  temTeste: boolean;
+  perguntas: PerguntaEntrada[];
   situacao: 'rascunho' | 'publicada' | 'arquivada';
   anexoNome: string | null;
   comCiencia: number;
+  comTentativas: number;
 }
+
+const novaPergunta = (): PerguntaEntrada => ({ texto: '', opcoes: ['', ''], correta: 0 });
 
 export function FormularioPublicacao({
   acao,
@@ -46,8 +51,13 @@ export function FormularioPublicacao({
   const [erro, setErro] = useState<string | null>(null);
   const [publicoTipo, setPublicoTipo] = useState(valor?.publicoTipo ?? 'todos');
   const [corpo, setCorpo] = useState(valor?.corpo ?? '');
+  const [temTeste, setTemTeste] = useState(valor?.temTeste ?? false);
+  const [perguntas, setPerguntas] = useState<PerguntaEntrada[]>(valor?.perguntas.length ? valor.perguntas : [novaPergunta()]);
   const corpoMudou = Boolean(valor) && corpo.trim() !== (valor?.corpo ?? '').trim();
-  const pedeEscolha = corpoMudou && (valor?.comCiencia ?? 0) > 0;
+  const testeMudou =
+    Boolean(valor) && (temTeste !== valor!.temTeste || (temTeste && JSON.stringify(perguntas) !== JSON.stringify(valor!.perguntas.length ? valor!.perguntas : [novaPergunta()])));
+  const registros = (valor?.comCiencia ?? 0) + (valor?.comTentativas ?? 0);
+  const pedeEscolha = (corpoMudou || testeMudou) && registros > 0;
   const publicada = valor?.situacao === 'publicada';
 
   function enviar(e: React.FormEvent<HTMLFormElement>) {
@@ -96,12 +106,12 @@ export function FormularioPublicacao({
       {pedeEscolha && (
         <fieldset className="space-y-2 rounded-lg border border-borda-forte bg-superficie-2 p-4">
           <legend className="px-1 text-sm font-semibold">
-            O texto mudou e {valor!.comCiencia} {valor!.comCiencia === 1 ? 'pessoa já deu' : 'pessoas já deram'} ciência. O que fazer?
+            {corpoMudou ? 'O texto' : 'O teste'} mudou e {valor!.comCiencia} {valor!.comCiencia === 1 ? 'pessoa já deu' : 'pessoas já deram'} ciência ({valor!.comTentativas} {valor!.comTentativas === 1 ? 'tentativa' : 'tentativas'} no teste). O que fazer?
           </legend>
           <label className="flex min-h-11 items-start gap-2 text-sm">
             <input type="radio" name="tipo_edicao" value="pequena" required className="mt-1 size-4" />
             <span>
-              <span className="font-semibold">Correção pequena.</span> As ciências já dadas continuam valendo.
+              <span className="font-semibold">Correção pequena.</span> As ciências e aprovações já dadas continuam valendo.
             </span>
           </label>
           <label className="flex min-h-11 items-start gap-2 text-sm">
@@ -161,6 +171,13 @@ export function FormularioPublicacao({
           <span className="font-semibold">Exige ciência.</span> <span className="text-texto-suave">A pessoa confirma que leu e está de acordo.</span>
         </span>
       </label>
+      <label className="flex min-h-11 items-start gap-2 text-sm">
+        <input type="checkbox" name="tem_teste" checked={temTeste} onChange={(e) => setTemTeste(e.target.checked)} className="mt-1 size-4" />
+        <span>
+          <span className="font-semibold">Tem teste de compreensão.</span> <span className="text-texto-suave">A pessoa precisa acertar todas as perguntas.</span>
+        </span>
+      </label>
+      {temTeste && <EditorDePerguntas perguntas={perguntas} aoMudar={setPerguntas} />}
       <div className="flex flex-wrap gap-3 border-t border-borda pt-4">
         {valor?.situacao !== 'publicada' && (
           <BotaoEnviar name="intencao" value="rascunho" variante="secundario" pendente={pendente || enviandoAnexo} enviando="Salvando…">
@@ -172,5 +189,69 @@ export function FormularioPublicacao({
         </BotaoEnviar>
       </div>
     </form>
+  );
+}
+
+/** Editor das perguntas (regra 12): de 1 a 10, cada uma com 2 a 5 opções e uma certa. Vai ao servidor em JSON. */
+function EditorDePerguntas({ perguntas, aoMudar }: { perguntas: PerguntaEntrada[]; aoMudar: (p: PerguntaEntrada[]) => void }) {
+  const mudar = (i: number, q: Partial<PerguntaEntrada>) => aoMudar(perguntas.map((x, k) => (k === i ? { ...x, ...q } : x)));
+  return (
+    <fieldset className="space-y-4 rounded-lg border border-borda-forte bg-superficie-2 p-4">
+      <legend className="px-1 text-sm font-semibold">Perguntas do teste</legend>
+      <input type="hidden" name="perguntas" value={JSON.stringify(perguntas)} />
+      <p className="text-sm text-texto-suave">
+        De 1 a {TESTE.maxPerguntas} perguntas, cada uma com {TESTE.minOpcoes} a {TESTE.maxOpcoes} opções e uma resposta certa marcada. A resposta certa não aparece para quem faz o teste.
+      </p>
+      {perguntas.map((q, i) => (
+        <div key={i} className="space-y-2 rounded-lg border border-borda bg-superficie p-3">
+          <Campo rotulo={`Pergunta ${i + 1}`} obrigatorio>
+            <input value={q.texto} maxLength={TESTE.textoPergunta} onChange={(e) => mudar(i, { texto: e.target.value })} className={estiloEntrada} />
+          </Campo>
+          <div role="radiogroup" aria-label={`Opção certa da pergunta ${i + 1}`} className="space-y-2">
+            {q.opcoes.map((o, j) => (
+              <div key={j} className="flex flex-wrap items-center gap-2">
+                <label className="flex min-h-11 items-center gap-2 text-sm">
+                  <input type="radio" checked={q.correta === j} onChange={() => mudar(i, { correta: j })} className="size-4" />
+                  <span className="whitespace-nowrap">{q.correta === j ? 'Certa' : 'Marcar como certa'}</span>
+                </label>
+                <input
+                  aria-label={`Opção ${j + 1} da pergunta ${i + 1}`}
+                  value={o}
+                  maxLength={TESTE.textoOpcao}
+                  onChange={(e) => mudar(i, { opcoes: q.opcoes.map((x, k) => (k === j ? e.target.value : x)) })}
+                  className={`${estiloEntrada} min-w-0 flex-1`}
+                />
+                {q.opcoes.length > TESTE.minOpcoes && (
+                  <button
+                    type="button"
+                    className="min-h-11 px-2 text-sm font-semibold underline"
+                    onClick={() => mudar(i, { opcoes: q.opcoes.filter((_, k) => k !== j), correta: q.correta === j ? 0 : q.correta > j ? q.correta - 1 : q.correta })}
+                  >
+                    Remover opção
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {q.opcoes.length < TESTE.maxOpcoes && (
+              <button type="button" className="min-h-11 text-sm font-semibold underline" onClick={() => mudar(i, { opcoes: [...q.opcoes, ''] })}>
+                Adicionar opção
+              </button>
+            )}
+            {perguntas.length > 1 && (
+              <button type="button" className="min-h-11 text-sm font-semibold underline" onClick={() => aoMudar(perguntas.filter((_, k) => k !== i))}>
+                Remover pergunta
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+      {perguntas.length < TESTE.maxPerguntas && (
+        <button type="button" className="inline-flex min-h-11 items-center rounded-md border border-borda-forte bg-superficie px-4 text-sm font-semibold" onClick={() => aoMudar([...perguntas, novaPergunta()])}>
+          Adicionar pergunta
+        </button>
+      )}
+    </fieldset>
   );
 }
