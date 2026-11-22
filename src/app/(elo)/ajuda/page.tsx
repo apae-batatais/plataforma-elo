@@ -75,6 +75,8 @@ export default async function Ajuda() {
     decidirEspacos: a.temPermissaoAlgumEscopo('requisicoes.espacos.decidir'),
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
+    avaliarEducacao: a.temPermissaoAlgumEscopo('educacao.avaliar'),
+    avaliarSaude: a.temPermissaoAlgumEscopo('saude.avaliar'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
@@ -353,6 +355,53 @@ export default async function Ajuda() {
     });
   }
 
+  if (pode.avaliarEducacao) {
+    assuntos.push({
+      id: 'educacao',
+      titulo: 'Educação',
+      resumo: 'Ver os instrumentos de avaliação de Educação e aplicar um a uma pessoa.',
+      atalhos: [
+        { rotulo: 'Instrumentos', href: '/educacao/instrumentos' },
+        { rotulo: 'Nova avaliação', href: '/educacao/nova' },
+      ],
+      conteudo: (
+        <>
+          <Sub>Instrumentos</Sub>
+          <Passos
+            itens={[
+              'Abra Avaliações › Educação › Instrumentos. A tela lista os três instrumentos, com a versão e o número de domínios e itens.',
+              'Clique em Aplicar a uma pessoa: a nova avaliação abre com o instrumento já escolhido. Depois escolha a pessoa, o serviço e o período.',
+              'Clique em Sobre o instrumento para ler como o total, os subtotais e as faixas são calculados.',
+            ]}
+          />
+        </>
+      ),
+    });
+  }
+
+  if (pode.avaliarSaude) {
+    assuntos.push({
+      id: 'saude',
+      titulo: 'Saúde',
+      resumo: 'Ver o instrumento de avaliação de Saúde, na versão em uso, e aplicar a uma pessoa.',
+      atalhos: [
+        { rotulo: 'Instrumentos', href: '/saude/instrumentos' },
+        { rotulo: 'Nova avaliação', href: '/saude/nova' },
+      ],
+      conteudo: (
+        <>
+          <Sub>Instrumentos</Sub>
+          <Passos
+            itens={[
+              'Abra Avaliações › Saúde › Instrumentos. A tela mostra o instrumento do CER na versão em uso.',
+              'Clique em Aplicar a uma pessoa para abrir a nova avaliação, ou em Sobre o instrumento para ler como o total e as faixas são calculados.',
+            ]}
+          />
+        </>
+      ),
+    });
+  }
+
   if (pode.resultadoInstagram || pode.indicadoresComunicacao) {
     assuntos.push({
       id: 'resultado-instagram',
@@ -454,6 +503,7 @@ export default async function Ajuda() {
                   'Planejamento › Plano de contas: escolha o exercício e use Montar plano. Em cada área, marque os grupos e os itens que ela usa e diga a partir de quando vale (dentro do ano). Salvar cria uma versão nova; as anteriores ficam em "Versões anteriores".',
                   'Para um ano novo, use "Começar do plano de" o ano anterior: o plano vem preenchido, você ajusta e salva. Nada é gravado até salvar.',
                   'O plano só orienta: nenhum lançamento é bloqueado por ele. "Baixar planilha" entrega o plano do exercício em CSV.',
+                  'Ao lançar uma despesa (e ao informar o realizado de uma despesa), escolha, se quiser, o Item contábil e a Área do plano. A lista mostra primeiro os itens habilitados no plano do ano e, abaixo, "Outros itens do grupo". Se a escolha estiver fora do plano, aparece um aviso amarelo e você pode salvar mesmo assim. O Elo nunca preenche esses campos sozinho. Um item de outro grupo não é aceito.',
                 ]}
               />
               <Sub>Decidir as propostas</Sub>

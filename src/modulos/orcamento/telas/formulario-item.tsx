@@ -11,6 +11,8 @@ import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import type { PreviaLancamento } from '../aplicacao/lancamentos-rateio';
+import type { OpcoesPlano } from '../aplicacao/plano-lancamento';
+import { CamposPlano } from './campos-plano';
 import type { LinhaDespesa, LinhaReceita, Previsao } from '../aplicacao/previsao';
 import { CAPTACAO, CATEGORIA, COTACAO, mesesUsados, PRIORIDADE, type Distribuicao } from '../dominio/previsao';
 import { MESES, reais } from './formato';
@@ -38,6 +40,7 @@ export function FormularioItem({
   cotacao = false,
   rateio = false,
   previa,
+  plano,
 }: {
   tipo: 'despesa' | 'receita';
   acao: Acao;
@@ -53,7 +56,10 @@ export function FormularioItem({
   rateio?: boolean;
   /** Mostra "como ficaria" antes de salvar (só no lançamento por rateio). */
   previa?: (f: FormData) => Promise<PreviaLancamento | { erro: string }>;
+  /** Plano de contas (#221): mostra Item contábil e Área do plano. Só na despesa comum, nunca em proposta nem rateio. */
+  plano?: OpcoesPlano;
 }) {
+  const [grupo, setGrupo] = useState(((item as LinhaDespesa | undefined)?.grupo_id) ?? '');
   const [estado, enviar] = useActionState(acao, {});
   const formRef = useRef<HTMLFormElement>(null);
   const [resultado, setResultado] = useState<PreviaLancamento | { erro: string } | null>(null);
@@ -136,7 +142,7 @@ export function FormularioItem({
           </Campo>
           )}
           <Campo rotulo="Grupo de contas" obrigatorio>
-            <select name="grupo_id" required defaultValue={d?.grupo_id ?? ''} className={estiloEntrada}>
+            <select name="grupo_id" required value={grupo} onChange={(e) => setGrupo(e.target.value)} className={estiloEntrada}>
               <option value="" disabled>
                 Escolha o grupo
               </option>
@@ -148,6 +154,9 @@ export function FormularioItem({
               ))}
             </select>
           </Campo>
+          {plano && !proposta && !rateio && !cotacao && (
+            <CamposPlano plano={plano} ano={ano} grupoId={grupo} itemInicial={d?.item_id ?? null} areaInicial={d?.area_plano_id ?? null} />
+          )}
           {!proposta && !rateio && (opcoes.regras?.length ?? 0) > 0 && (
             <Campo rotulo="Regra de rateio do item" dica="Deixe em “Regra do grupo” para seguir o padrão do grupo (ou do serviço).">
               <select name="regra_rateio_id" defaultValue={d?.regra_rateio_id ?? ''} className={estiloEntrada}>

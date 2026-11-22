@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BotaoBaixar } from '@/modulos/orcamento/telas/botao-baixar';
 import { redirect } from 'next/navigation';
+import { opcoesDoPlano } from '@/modulos/orcamento/aplicacao/plano-lancamento';
 import { lerPrevisao } from '@/modulos/orcamento/aplicacao/previsao';
 import { CATEGORIA, COTACAO_CURTA, PRIORIDADE_CURTA } from '@/modulos/orcamento/dominio/previsao';
 import { faixaDeMeses, reais } from '@/modulos/orcamento/telas/formato';
@@ -33,6 +34,9 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
   const app = await obterAplicacao();
   const incluir = sp.cedidos !== '0';
   const prev = await lerPrevisao(app.planilhas, usuario.autorizador, Number(sp.ano) || undefined, { incluirCedidos: incluir });
+  const plano = await opcoesDoPlano(app.planilhas, prev.ano);
+  const nomeItem = new Map(plano.itens.map((i) => [i.id, i.nome]));
+  const nomeAreaPlano = new Map(plano.areas.map((a) => [a.id, a.nome]));
   const base = `/orcamento/previsao/despesas?ano=${prev.ano}${incluir ? '' : '&cedidos=0'}`;
   const nomeServico = new Map(prev.opcoes.servicos.map((x) => [x.codigo, x.nome]));
   const emEdicao = sp.editar && prev.podeEditar ? prev.despesas.find((d) => d.id === sp.editar) : undefined;
@@ -64,7 +68,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                 larga
                 titulo="Lançar despesa"
               >
-                <FormularioItem tipo="despesa" acao={acaoSalvarDespesa} ano={prev.ano} opcoes={prev.opcoes} cancelarHref={base} />
+                <FormularioItem tipo="despesa" acao={acaoSalvarDespesa} ano={prev.ano} opcoes={prev.opcoes} plano={plano} cancelarHref={base} />
               </JanelaFormulario>
             )}
           </>
@@ -73,7 +77,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
 
       {emEdicao && (
         <JanelaFormulario rotulo={null} abrirAoCarregar voltarPara={base} larga titulo={`Alterar “${emEdicao.descricao}”`}>
-          <FormularioItem tipo="despesa" acao={acaoSalvarDespesa} ano={prev.ano} opcoes={prev.opcoes} item={emEdicao} cancelarHref={base} />
+          <FormularioItem tipo="despesa" acao={acaoSalvarDespesa} ano={prev.ano} opcoes={prev.opcoes} plano={plano} item={emEdicao} cancelarHref={base} />
         </JanelaFormulario>
       )}
 
@@ -121,7 +125,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                 descricao: d.descricao,
                 area: d.areaNome,
                 servico: d.servicoNome,
-                grupo: d.grupoCodigo ? `${d.grupoNome} ${d.grupoCodigo}` : d.grupoNome,
+                grupo: [d.grupoCodigo ? `${d.grupoNome} ${d.grupoCodigo}` : d.grupoNome, d.item_id ? nomeItem.get(d.item_id) : null].filter(Boolean).join(' '),
                 fonte: d.fonte_id ? (d.fonteCodigo ? `${d.fonteNome} ${d.fonteCodigo}` : d.fonteNome) : 'A definir',
                 categoria: CATEGORIA[d.categoria],
                 prioridade: d.prioridade ? PRIORIDADE_CURTA[d.prioridade] : null,
@@ -148,6 +152,8 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                   <>
                     {d.grupoNome} {d.rh && <Etiqueta tipo="info">RH</Etiqueta>}
                     {d.grupoCodigo && <span className="block text-xs tabular-nums text-texto-suave">{d.grupoCodigo}</span>}
+                    {d.item_id && <span className="block text-xs text-texto-suave">Item: {nomeItem.get(d.item_id) ?? '?'}</span>}
+                    {d.area_plano_id && <span className="block text-xs text-texto-suave">Área do plano: {nomeAreaPlano.get(d.area_plano_id) ?? '?'}</span>}
                   </>
                 ),
                 fonte: d.fonte_id ? (

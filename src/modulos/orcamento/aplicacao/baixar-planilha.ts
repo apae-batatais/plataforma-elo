@@ -9,6 +9,7 @@ import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 import { montarCsv } from '../dominio/codigo-conta';
 import { lerPlano } from './plano-contas';
+import { opcoesDoPlano } from './plano-lancamento';
 import { ErroPrevisao, lerPrevisao, listarCadastros } from './previsao';
 
 export interface ArquivoCsv {
@@ -40,16 +41,20 @@ export async function baixarItensCsv(p: Planilhas, quem: Autorizador, tipo: 'des
   const prev = await lerPrevisao(p, quem, ano, { incluirCedidos: false });
   const meses = (l: number[]) => l.map((v) => v);
   if (tipo === 'despesa') {
+    const plano = await opcoesDoPlano(p, prev.ano);
+    const nomeItem = new Map(plano.itens.map((i) => [i.id, i.nome]));
+    const nomeArea = new Map(plano.areas.map((a) => [a.id, a.nome]));
     const linhas: (string | number | null)[][] = prev.despesas.map((d) => [
-      d.servicoNome, d.grupoNome, d.grupoCodigo, d.fonte_id ? d.fonteNome : 'A definir', d.fonteCodigo, d.descricao, d.valor, ...meses(d.meses),
+      d.servicoNome, d.grupoNome, d.grupoCodigo, d.item_id ? (nomeItem.get(d.item_id) ?? null) : null, d.area_plano_id ? (nomeArea.get(d.area_plano_id) ?? null) : null,
+      d.fonte_id ? d.fonteNome : 'A definir', d.fonteCodigo, d.descricao, d.valor, ...meses(d.meses),
     ]);
     for (const l of prev.folha?.linhas ?? []) {
-      if (l.anual > 0) linhas.push([l.nome, 'Recursos Humanos (folha)', null, l.fonte_id ? l.fonteNome : 'A definir', null, 'RH automático da folha', l.anual, ...meses(l.mensal)]);
+      if (l.anual > 0) linhas.push([l.nome, 'Recursos Humanos (folha)', null, null, null, l.fonte_id ? l.fonteNome : 'A definir', null, 'RH automático da folha', l.anual, ...meses(l.mensal)]);
     }
     if (linhas.length === 0) throw new ErroPrevisao('Nada para baixar ainda.');
     return {
       nome: `despesas-${prev.ano}.csv`,
-      conteudo: montarCsv(['Serviço', 'Grupo de gasto', 'Código da conta do grupo', 'Fonte', 'Código da conta da fonte', 'Descrição', 'Valor anual', ...MESES], linhas),
+      conteudo: montarCsv(['Serviço', 'Grupo de contas', 'Código da conta do grupo', 'Item contábil', 'Área do plano', 'Fonte', 'Código da conta da fonte', 'Descrição', 'Valor anual', ...MESES], linhas),
     };
   }
   if (prev.receitas.length === 0) throw new ErroPrevisao('Nada para baixar ainda.');

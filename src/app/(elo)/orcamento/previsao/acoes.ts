@@ -192,6 +192,8 @@ export async function acaoSalvarDespesa(_: EstadoItem, f: FormData): Promise<Est
         cotacao: (texto(f, 'cotacao') || null) as Cotacao | null,
         observacao: texto(f, 'observacao') || null,
         regra_rateio_id: f.has('regra_rateio_id') ? texto(f, 'regra_rateio_id') || null : undefined,
+        item_id: f.has('item_id') ? texto(f, 'item_id') || null : undefined,
+        area_plano_id: f.has('area_plano_id') ? texto(f, 'area_plano_id') || null : undefined,
         ...distribuicaoDe(f),
       },
       existente,

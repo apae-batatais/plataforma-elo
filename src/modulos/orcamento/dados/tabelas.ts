@@ -205,6 +205,9 @@ export const Despesas = definirTabela({
     observacao: textoOpcional(),
     /** Preenchido só nas linhas geradas por um Lançamento de rateio (#225, ADR-038): ficam travadas no cadastro comum. */
     lancamento_rateio_id: textoOpcional(),
+    /** Plano de contas (#221, ADR-036): item contábil e área do plano, opcionais; nunca preenchidos sozinhos. */
+    item_id: textoOpcional(),
+    area_plano_id: textoOpcional(),
   }),
 });
 
@@ -445,6 +448,9 @@ export const Realizado = definirTabela({
     observacao: textoOpcional(),
     /** Fonte restrita (termo) que o recurso livre adiantou; só em despesa "adiantamento a termo" (1C.2). */
     fonte_termo_id: textoOpcional(),
+    /** Plano de contas (#221): item contábil e área do plano da despesa, opcionais. */
+    item_id: textoOpcional(),
+    area_plano_id: textoOpcional(),
   }),
 });
 export type RegRealizado = Registro<typeof Realizado.esquema>;
