@@ -6,7 +6,7 @@ import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Usuarios } from '@/nucleo/estrutura/tabelas';
-import { MarcoLogico, ProjetoDocumentos, ProjetoEquipe, Projetos, Riscos, type RegDocumento, type RegEquipe, type RegMarco, type RegProjeto, type RegRisco } from '../dados/tabelas';
+import { Atividades, MarcoLogico, ProjetoDocumentos, ProjetoEquipe, ProjetoOrcamento, Projetos, Riscos, type RegAtividade, type RegDocumento, type RegEquipe, type RegLinhaOrcamento, type RegMarco, type RegProjeto, type RegRisco } from '../dados/tabelas';
 import {
   camposDe,
   ehDocumento,
@@ -28,7 +28,7 @@ import {
   type TipoDocumento,
   type Tolerancias,
 } from '../dominio/fases';
-import { ErroProjetos } from '../dominio/projeto';
+import { ErroProjetos, usaPortaDoPlano } from '../dominio/projeto';
 import { auditar, autoriaDe, equipesAtivas, lerConfig, podeVerProjeto, registrarHistorico, type Opcoes } from './comum';
 
 const ehEu = (quem: Autorizador, email: string | null) => !!email && email.toLowerCase() === quem.email.toLowerCase();
@@ -47,7 +47,7 @@ export async function projetoVisivel(p: Planilhas, quem: Autorizador, id: string
   return r;
 }
 
-async function projetoParaAlterar(p: Planilhas, quem: Autorizador, id: string, fases: NumeroFase[]): Promise<RegProjeto> {
+export async function projetoParaAlterar(p: Planilhas, quem: Autorizador, id: string, fases: NumeroFase[]): Promise<RegProjeto> {
   const r = await projetoVisivel(p, quem, id);
   if (!podeGerenciar(quem, r)) throw new ErroPermissao('Só quem gerencia o projeto altera esta parte.');
   const etapa = r.etapa;
@@ -263,7 +263,7 @@ export interface ItemSituacao {
 
 export interface Fase {
   projeto: RegProjeto;
-  /** Fase em andamento (1 ou 2), ou null quando o projeto está fora delas. */
+  /** Fase em andamento (1, 2 ou 3), ou null quando o projeto está fora delas. */
   fase: NumeroFase | null;
   itens: ItemSituacao[];
   documentos: Partial<Record<TipoDocumento, RegDocumento>>;
@@ -276,9 +276,22 @@ export interface Fase {
   podeAvancar: boolean;
   /** Pode abrir a porta 2 (fase 2 com tudo pronto). */
   podeAbrirPorta2: boolean;
+  /** Pode abrir a porta 3 (fase 3 com tudo pronto, porte que usa a porta do plano). */
+  podeAbrirPorta3: boolean;
+  /** Pode iniciar a implementação direto (fase 3 pronta, porte sem porta do plano). */
+  podeIniciarImplementacao: boolean;
 }
 
-export function situacaoDosItens(porte: RegProjeto['porte'], fase: NumeroFase, docs: readonly RegDocumento[], marco: readonly RegMarco[], riscos: readonly RegRisco[], tipoProjeto: RegProjeto['tipo'] = 'interno'): ItemSituacao[] {
+export function situacaoDosItens(
+  porte: RegProjeto['porte'],
+  fase: NumeroFase,
+  docs: readonly RegDocumento[],
+  marco: readonly RegMarco[],
+  riscos: readonly RegRisco[],
+  tipoProjeto: RegProjeto['tipo'] = 'interno',
+  atividades: readonly RegAtividade[] = [],
+  orcamento: readonly RegLinhaOrcamento[] = [],
+): ItemSituacao[] {
   return itensDaFase(porte, fase).map((item) => {
     if (item === 'marco_logico') {
       const falta = pendenciasDoMarco(marco.map((m) => ({ id: m.id, nivel: m.nivel, descricao: m.descricao, indicador: m.indicador, fonte_verificacao: m.fonte_verificacao, acima: m.acima })));
@@ -287,6 +300,14 @@ export function situacaoDosItens(porte: RegProjeto['porte'], fase: NumeroFase, d
     if (item === 'riscos') {
       const ok = riscos.length > 0;
       return { item, nome: NOME_ITEM[item], pronto: ok, falta: ok ? [] : ['Registre ao menos um risco.'] };
+    }
+    if (item === 'atividades') {
+      const ok = atividades.some((a) => a.situacao !== 'cancelada');
+      return { item, nome: NOME_ITEM[item], pronto: ok, falta: ok ? [] : ['Cadastre ao menos uma atividade, com prazos e responsável.'] };
+    }
+    if (item === 'orcamento') {
+      const ok = orcamento.length > 0;
+      return { item, nome: NOME_ITEM[item], pronto: ok, falta: ok ? [] : ['Inclua ao menos uma linha no orçamento.'] };
     }
     const d = ultimo(docs.filter((x) => x.tipo === item));
     const pronto = !!d && (d.pronto || d.situacao === 'aprovado');
@@ -308,12 +329,14 @@ export async function lerFase(p: Planilhas, quem: Autorizador, projetoId: string
     if (e instanceof ErroProjetos) return null;
     throw e;
   }
-  const [docs, marco, riscos, equipe] = await lerTabelas(p, [ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe] as const);
+  const [docs, marco, riscos, equipe, atividades, orcamento] = await lerTabelas(p, [ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento] as const);
   const meusDocs = docs.ativos().filter((d) => d.projeto_id === projetoId);
   const meuMarco = marco.ativos().filter((m) => m.projeto_id === projetoId).sort((a, b) => NIVEIS_MARCO.indexOf(a.nivel) - NIVEIS_MARCO.indexOf(b.nivel) || a.ordem - b.ordem);
   const meusRiscos = riscos.ativos().filter((x) => x.projeto_id === projetoId);
-  const fase: NumeroFase | null = r.etapa === 'fase_1' ? 1 : r.etapa === 'fase_2' ? 2 : null;
-  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos, r.tipo) : [];
+  const fase: NumeroFase | null = r.etapa === 'fase_1' ? 1 : r.etapa === 'fase_2' ? 2 : r.etapa === 'fase_3' ? 3 : null;
+  const minhasAtividades = atividades.ativos().filter((a) => a.projeto_id === projetoId);
+  const meuOrcamento = orcamento.ativos().filter((l) => l.projeto_id === projetoId);
+  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos, r.tipo, minhasAtividades, meuOrcamento) : [];
   const documentos: Fase['documentos'] = {};
   for (const t of new Set(meusDocs.map((d) => d.tipo))) if (ehDocumento(t as ItemDaFase)) documentos[t as TipoDocumento] = ultimo(meusDocs.filter((d) => d.tipo === t));
   const termo = documentos.termo_abertura;
@@ -331,6 +354,8 @@ export async function lerFase(p: Planilhas, quem: Autorizador, projetoId: string
     podeAlterar: alterar,
     podeAvancar: alterar && fase === 1 && tudo,
     podeAbrirPorta2: alterar && ehEu(quem, r.responsavel) && fase === 2 && tudo,
+    podeAbrirPorta3: alterar && ehEu(quem, r.responsavel) && fase === 3 && tudo && usaPortaDoPlano(r.porte),
+    podeIniciarImplementacao: alterar && ehEu(quem, r.responsavel) && fase === 3 && tudo && !usaPortaDoPlano(r.porte),
   };
 }
 
@@ -402,4 +427,25 @@ export async function aprovarTermo(p: Planilhas, quem: Autorizador, projetoId: s
   const projeto = projetos.porId(projetoId)!;
   const r = await atualizar(p, Projetos, projetoId, projeto.versao, { valor_aprovado: typeof total === 'number' ? total : null }, autoriaDe(quem, agora));
   await auditar(p, quem, 'alteracao', 'Projetos', projetoId, r.colunasAlteradas, agora);
+}
+
+// ---------- Início da implementação (regra 13) ----------
+
+/**
+ * Do fim da fase 3 para a implementação, nos portes sem porta do plano. Exige Termo de Abertura aprovado
+ * (regra 13) e todos os itens da fase 3 prontos. Nos portes com porta do plano, quem inicia é a decisão da porta 3.
+ */
+export async function iniciarImplementacao(p: Planilhas, quem: Autorizador, projetoId: string, versao: number, opcoes: Opcoes = {}): Promise<void> {
+  const agora = opcoes.agora ?? new Date();
+  const r = await projetoParaAlterar(p, quem, projetoId, [3]);
+  if (!ehEu(quem, r.responsavel)) throw new ErroPermissao('Só o responsável inicia a implementação.');
+  if (r.versao !== versao) throw new ErroConflito(projetoId);
+  if (usaPortaDoPlano(r.porte)) throw new ErroProjetos('Este porte passa pela porta 3 (plano): abra a porta para a Diretoria decidir.');
+  await exigirTermoAprovado(p, projetoId);
+  const f = await lerFase(p, quem, projetoId);
+  const falta = f?.itens.filter((i) => !i.pronto) ?? [];
+  if (falta.length > 0) throw new ErroProjetos(`Ainda falta na fase 3: ${falta.map((i) => i.nome.toLowerCase()).join(', ')}.`);
+  const { colunasAlteradas } = await atualizar(p, Projetos, r.id, r.versao, { etapa: 'implementacao' }, autoriaDe(quem, agora));
+  await auditar(p, quem, 'alteracao', 'Projetos', r.id, colunasAlteradas, agora);
+  await registrarHistorico(p, quem, r.id, 'Implementação iniciada', null, agora);
 }

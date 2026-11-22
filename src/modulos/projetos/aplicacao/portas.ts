@@ -22,9 +22,10 @@ import {
   type NivelDecisao,
   type ResultadoParecer,
   type TipoParecer,
+  usaPortaDoPlano,
   type TipoPorta,
 } from '../dominio/projeto';
-import { aprovarTermo, conteudoDe, lerFase } from './fases';
+import { aprovarTermo, conteudoDe, exigirTermoAprovado, lerFase } from './fases';
 import { pedirRascunhoNaDecisao, type CatalogoTermos, type ResultadoRascunho } from './termo';
 import { auditar, autoriaDe, designado, equipesAtivas, lerConfig, podeVerPareceres, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
 
@@ -40,21 +41,27 @@ export async function abrirPorta(p: Planilhas, quem: Autorizador, projetoId: str
   if (r.versao !== versao) throw new ErroConflito(projetoId);
   if (!r.responsavel) throw new ErroProjetos('Ideia sem responsável não abre porta.');
   if (r.responsavel.toLowerCase() !== quem.email.toLowerCase() || !quem.temPermissaoAlgumEscopo('projetos.gerenciar')) throw new ErroPermissao('Só o responsável abre a porta.');
-  if (r.etapa !== 'ideia' && r.etapa !== 'fase_2') throw new ErroProjetos('Só uma ideia com responsável, ou um projeto com a fase 2 pronta, abre porta de decisão.');
+  if (r.etapa !== 'ideia' && r.etapa !== 'fase_2' && r.etapa !== 'fase_3') throw new ErroProjetos('Só uma ideia com responsável, ou um projeto com a fase 2 ou 3 pronta, abre porta de decisão.');
   if (!r.titulo.trim() || !r.resumo.trim()) throw new ErroProjetos('Preencha o título e o resumo antes de abrir a porta.');
-  const tipoPorta: TipoPorta = r.etapa === 'ideia' ? 'ideia' : 'termo';
+  const tipoPorta: TipoPorta = r.etapa === 'ideia' ? 'ideia' : r.etapa === 'fase_2' ? 'termo' : 'plano';
+  if (tipoPorta === 'plano' && !usaPortaDoPlano(r.porte)) throw new ErroProjetos('O porte enxuto não passa pela porta 3: inicie a implementação.');
   let valor = r.valor_estimado ?? 0;
-  if (tipoPorta === 'termo') {
+  if (tipoPorta !== 'ideia') {
     // Regra 6: não se abre porta com documento exigido em branco.
     const fase = await lerFase(p, quem, r.id);
     const falta = fase?.itens.filter((i) => !i.pronto) ?? [];
     if (falta.length > 0) {
       const detalhe = falta.map((i) => (i.item === 'termo_abertura' && i.falta[0]?.startsWith('Informe') ? i.falta[0].replace(/\.$/, '').toLowerCase() : NOME_ITEM[i.item].toLowerCase()));
-      throw new ErroProjetos(`Antes de abrir a porta 2, complete: ${detalhe.join(', ')}.`);
+      throw new ErroProjetos(`Antes de abrir a porta ${tipoPorta === 'termo' ? 2 : 3}, complete: ${detalhe.join(', ')}.`);
     }
-    const termo = fase?.documentos.termo_abertura;
-    const total = termo ? conteudoDe(termo).valor_total : null;
-    valor = typeof total === 'number' ? total : valor;
+    if (tipoPorta === 'termo') {
+      const termo = fase?.documentos.termo_abertura;
+      const total = termo ? conteudoDe(termo).valor_total : null;
+      valor = typeof total === 'number' ? total : valor;
+    } else {
+      // Regra de borda 4: da porta 2 em diante a alçada usa o valor aprovado.
+      valor = r.valor_aprovado ?? valor;
+    }
   }
   const exigidos = pareceresExigidos(config, r.porte);
   const campos = {
@@ -72,7 +79,7 @@ export async function abrirPorta(p: Planilhas, quem: Autorizador, projetoId: str
   await auditar(p, quem, 'inclusao', 'Portas', porta.id, Object.keys(campos), agora);
   const { colunasAlteradas } = await atualizar(p, Projetos, r.id, r.versao, { etapa: 'em_porta' }, autoriaDe(quem, agora));
   await auditar(p, quem, 'alteracao', 'Projetos', r.id, colunasAlteradas, agora);
-  await registrarHistorico(p, quem, r.id, tipoPorta === 'ideia' ? 'Porta 1 aberta' : 'Porta 2 aberta (Termo de Abertura)', campos.exige_alcada ? 'O valor passa do limite: a decisão sobe para a Presidência ou o Conselho.' : null, agora);
+  await registrarHistorico(p, quem, r.id, tipoPorta === 'ideia' ? 'Porta 1 aberta' : tipoPorta === 'termo' ? 'Porta 2 aberta (Termo de Abertura)' : 'Porta 3 aberta (plano)', campos.exige_alcada ? 'O valor passa do limite: a decisão sobe para a Presidência ou o Conselho.' : null, agora);
   return { portaId: porta.id };
 }
 
@@ -129,6 +136,8 @@ export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: str
   if (!j) throw new ErroProjetos('Escreva a justificativa da decisão.');
 
   const destino = destinoDaDecisao(nivel, decisao, porta.exige_alcada, porta.tipo);
+  // Regra 13: sem Termo aprovado, nada entra em implementação.
+  if (porta.tipo === 'plano' && destino.etapa === 'implementacao') await exigirTermoAprovado(p, projeto.id);
   const campos = { porta_id: porta.id, projeto_id: projeto.id, nivel, decisor: quem.email, decisao, justificativa: j, em: agora.toISOString() };
   const nova = await inserir(p, Decisoes, campos, autoriaDe(quem, agora));
   await auditar(p, quem, 'inclusao', 'Decisoes', nova.id, Object.keys(campos), agora);
@@ -265,7 +274,7 @@ export async function lerFicha(p: Planilhas, quem: Autorizador, id: string): Pro
       enviar: ehProponente && projeto.etapa === 'rascunho',
       assumir: projeto.etapa === 'aguardando_responsavel' && quem.temPermissaoAlgumEscopo('projetos.gerenciar') && (projeto.servico ? quem.temPermissao('projetos.assumir', { tipo: 'servico', codigo: projeto.servico }) : quem.temPermissaoAlgumEscopo('projetos.assumir')),
       abrirPorta: ehResponsavel && projeto.etapa === 'ideia' && quem.temPermissaoAlgumEscopo('projetos.gerenciar'),
-      trocarResponsavel: veTodos(quem) && ['ideia', 'fase_1', 'fase_2', 'fase_3', 'parado'].includes(projeto.etapa),
+      trocarResponsavel: veTodos(quem) && ['ideia', 'fase_1', 'fase_2', 'fase_3', 'implementacao', 'parado'].includes(projeto.etapa),
       retomar: projeto.etapa === 'parado' && quem.temPermissao('projetos.decidir'),
       cancelar: projeto.etapa !== 'cancelado' && projeto.etapa !== 'em_porta' && ((ehProponente && (projeto.etapa === 'rascunho' || projeto.etapa === 'aguardando_responsavel')) || ehResponsavel || veTodos(quem)),
       parecerDos:
