@@ -25,6 +25,11 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 - Envios por e-mail (ADR-027): `aplicacao/envios.ts`. Release e artigo agendados com "Enviar pelo Elo" criam um `Envio`
   pendente; a tarefa `comunicacao.envios` da rotina (em `src/plataforma/rotina.ts`) envia, com 3 tentativas. O corpo da
   mensagem nunca é gravado e o erro gravado é resumido (sem endereço nem texto). Só `comunicacao.revisar` vê e tenta de novo.
+- Avisos por e-mail (ADR-027, entrega 3): `aplicacao/avisos.ts` e textos fixos em `dominio/aviso.ts` (só número do pedido, o que fazer e o
+  link; nunca título nem descrição). Devolvido, aguardando aprovação e publicado criam um `Envio` (tipo `aviso`, coluna `modelo`) na mesma ação
+  que muda o pedido, só com `avisos_por_email` ligado (aba `Parametros`) e `emailDisponivel`; falha na criação nunca desfaz a mudança. Resumo de
+  revisão, lembrete das 8h e aviso de falha de envio nascem na tarefa `comunicacao.avisos` (`src/plataforma/avisos-comunicacao.ts`). Falha de
+  aviso nunca altera a situação do pedido. Só `comunicacao.configurar` liga e desliga.
 - Resultado das postagens (Fase 4, #65): `aplicacao/resultados.ts` e colunas `alcance`, `curtidas`, `comentarios`, `salvamentos`,
   `metricas_em` e `metricas_aviso` em `Publicacoes`. A tarefa `comunicacao.metricas_instagram` (em `src/plataforma/publicacoes.ts`)
   só age às 3h de Brasília e busca publicadas há até 90 dias, pelo mesmo token da publicação. Só a rotina grava; a tela lê

@@ -643,6 +643,121 @@ encarregado/`, `src/app/(elo)/ajuda/page.tsx`, menu de Administração, manual.
 - **E-mail do encarregado visível a todos os logados** (a LGPD pede divulgação dos dados de contato).
 - **Demonstração sem encarregado**, para mostrar o estado vazio.
 
+## Ajuda em dia e manual em PDF gerado da Ajuda (proposta #232, ADR-040)
+
+### Objetivo e para quem
+A Ajuda (Suporte › Ajuda) é a **fonte única** do manual. Hoje faltam telas nela (Saúde, Educação,
+Comunicação com Instagram e Gmail, Projetos, Parcerias, Agenda, Pessoas, Indicadores, Fichas de
+serviço, Feriados e outras) e o PDF (`public/manual/manual-elo.pdf`, de 06/11/2026) é um arquivo
+editado à parte. Passa a existir: (1) Ajuda cobrindo toda tela do menu; (2) manual completo gerado
+da própria Ajuda, sem arquivo separado. Para todos os perfis (Ajuda) e para quem treina ou compartilha
+(manual).
+
+### Decisões da Diretoria
+- **Manual completo para todo mundo** (21/11/2026, comentário na issue): o PDF traz todos os
+  assuntos, cada um com "Para: <perfis>". A Ajuda na tela continua filtrada pelo perfil.
+- O documento "Manual do Elo" no Claude Docs deixa de ser mantido.
+
+### Usuários e permissões
+- Ajuda (`/ajuda`): qualquer pessoa logada; cada assunto aparece só para quem tem a permissão da
+  tela (como hoje).
+- Manual (`/ajuda/manual`): qualquer pessoa logada, **todos** os assuntos. Não há dado de atendido,
+  salário nem valor de instituição na Ajuda, só texto de instrução e o nome e e-mail público do
+  encarregado de dados. Quem não está logado é levado a `/entrar`.
+- Nenhuma permissão nova, nenhuma aba nova, nenhuma gravação nem auditoria.
+
+### Regras (cada uma com teste)
+1. **Fonte única de conteúdo**: os assuntos saem de `src/app/(elo)/ajuda/assuntos.tsx`
+   (`montarAssuntos`), usado pela Ajuda e pelo manual. Cada assunto declara `id`, `titulo`, `resumo`,
+   `conteudo`, `atalhos` e a(s) **permissão(ões)** que dão acesso à tela (`permissoes`).
+2. **"Para:" calculado**, nunca digitado: os perfis de cada assunto vêm das permissões dele cruzadas
+   com `PERMISSOES_INICIAIS`; assunto sem permissão (Primeiros passos, Dúvidas) diz "Para: todos os
+   perfis". Teste: mudar a permissão de um perfil muda o "Para:" do manual.
+3. **Ajuda filtrada ⊆ manual**: para qualquer perfil, os assuntos da Ajuda são um subconjunto do
+   manual, na mesma ordem e com o mesmo texto.
+4. **Cobertura**: todo item de menu que `navegacaoDoUsuario` produz para um usuário com todas as
+   permissões tem um assunto cujos `atalhos` (ou `cobre`, lista de rotas) o alcança. O teste falha
+   com o nome da tela sem assunto. Exceções (telas só de apoio) ficam numa lista no teste, com o
+   motivo escrito, para a Diretoria ver.
+5. **Sem nomes próprios** nos textos (teste `sem-nomes-proprios` já cobre `src/`).
+6. **PDF não é arquivo do repositório**: `public/manual/manual-elo.pdf` é removido; nenhum link
+   aponta para ele.
+7. O manual mostra o nome da versão publicada (`textoVersao()`) e a data da geração, para quem
+   imprime saber de que versão é.
+
+### Telas
+**Ajuda (`/ajuda`)** — quem quer saber como fazer algo numa tela. Caminho mais curto: Ajuda → chip do
+assunto → passo a passo → atalho para a tela (3 cliques). Primeira dobra: a faixa "Manual completo"
+e os chips de assuntos; ação principal: **"Baixar o manual (PDF)"** (botão secundário, como hoje).
+Componentes: `CabecalhoPagina`, `LinkBotao`, `Aviso`; nenhuma peça nova. Cada assunto passa a mostrar
+uma linha discreta "Para: Diretoria, Financeiro" (a lista inteira, mesmo quando a pessoa só vê o
+assunto por um deles). Estados: sem assuntos além de "Primeiros passos" não é vazio, é normal;
+sem permissão não se aplica (sempre há "Primeiros passos").
+
+**Manual (`/ajuda/manual`)** — página de leitura própria para impressão, em nova aba.
+- Primeira dobra: capa com nome da plataforma, instituição, versão, data; barra "Salvar como PDF"
+  (botão principal grafite, abre a janela de impressão do navegador) e a dica "Na janela que abrir,
+  escolha Salvar como PDF em Destino". Voltar à Ajuda: link na barra. A barra não sai no papel.
+- Depois: índice com todos os assuntos (âncoras, e números de página não, pois o navegador não os dá)
+  e cada assunto com título, "Para:", passo a passo e, no lugar dos botões de atalho, o caminho em
+  texto ("Menu › Orçamento › Previsão do ano").
+- Impressão: cada assunto começa em página nova; título nunca fica sozinho no fim da página; tema
+  claro sempre; tudo aberto (sem `<details>` fechado); links com o endereço escrito só na capa.
+- Celular: a página lê em coluna única; o botão "Salvar como PDF" fica em largura total.
+  Teclado: o botão é o primeiro foco; âncoras do índice funcionam por Tab e Enter.
+- Erro: se o navegador bloquear a abertura da aba, o link comum (`target="_blank"`) continua
+  funcionando; a página também abre com `Ctrl+P`.
+
+**Textos novos de assunto** (conteúdo faltante, a escrever pelo Desenvolvedor, no estilo dos
+existentes: passos curtos, do ponto de vista de quem usa): Agenda e busca; Pessoas (cadastro,
+vínculo com serviço, documento); Indicadores; Fichas de serviço; Saúde (painel, avaliação CER);
+Educação (painel, avaliação); Projetos; Parcerias; Comunicação (Instagram, Gmail, avisos por
+e-mail já publicados); Administração (Feriados, Encarregado de dados, Estrutura das planilhas).
+O Desenvolvedor lista as telas do menu no começo de cada entrega e cobre as que faltam.
+
+**Sugestões de experiência de uso** (a Diretoria decide; não entram sem aprovação):
+a) busca por palavra dentro da Ajuda; b) botão "Imprimir só este assunto" em cada assunto.
+
+### Fica de fora
+- PDF gerado no servidor ou no build (biblioteca de PDF) e numeração de páginas (ADR-040).
+- Telas de propostas ainda não entregues (#228 a #231 e outras especificações abertas): cada
+  entrega delas atualiza a Ajuda no próprio PR, como diz a metodologia.
+- Traduções, vídeos e capturas de tela.
+- Mudar o Núcleo, capacidades ou módulos: só a Ajuda (`src/app/(elo)/ajuda/`), um teste novo
+  em `tests/plataforma/` e `docs/manual/README.md`.
+
+### Frentes
+`telas` (Ajuda, página do manual, estilos de impressão) e `regras e dados` (teste de cobertura e
+"Para:" calculado). Sem infraestrutura.
+
+### Entregas
+1. **Estrutura**: extrair os assuntos atuais para `assuntos.tsx` com `permissoes`, "Para:", página
+   `/ajuda/manual`, botão trocado, PDF antigo removido, testes das regras 1 a 4 e 6 e 7.
+2. **Conteúdo, parte 1**: Agenda e busca, Pessoas, Indicadores, Fichas de serviço, Administração
+   (Feriados, Encarregado, Estrutura).
+3. **Conteúdo, parte 2**: Saúde, Educação, Projetos, Parcerias, Comunicação.
+(Cada entrega é conferível na prévia; sem sub-issues, para manter a ordem simples.)
+
+### Critérios de pronto (na prévia)
+1. Como Diretoria, em Suporte › Ajuda há um assunto para cada item do menu; com um perfil limitado
+   (ex.: Funcionário) só aparecem os assuntos dele.
+2. "Baixar o manual (PDF)" abre uma aba com capa, versão, índice e **todos** os assuntos, cada um
+   com "Para:"; "Salvar como PDF" abre a janela de impressão e o resultado tem um assunto por página.
+3. O manual aberto por um perfil limitado traz os mesmos assuntos que o da Diretoria.
+4. Não existe mais `manual-elo.pdf`; `npm run verificar` e `npm run build` verdes.
+
+### Decisões tomadas sozinho (e o custo se estiverem erradas)
+- **PDF pela impressão do navegador**, sem biblioteca de PDF (ADR-040). Custo: a pessoa dá um clique a
+  mais ("Salvar como PDF") e o arquivo não tem numeração de página; gerar PDF de verdade depois exige
+  biblioteca e reescrever o conteúdo em outro formato, cerca de uma entrega.
+- **Manual para qualquer pessoa logada**, não público: evita expor passo a passo na internet. Se a
+  Diretoria quiser mandar a novas instituições antes do acesso, é preciso uma cópia publicada.
+- **"Para:" calculado das permissões**: nunca desatualiza, mas lista perfis pelo nome interno
+  (Diretoria, Financeiro…); se algum nome ficar estranho no papel, ajusta-se um rótulo.
+- **Três entregas**, conteúdo em duas partes, para a Diretoria conferir textos em blocos menores.
+- **Teste de cobertura com lista de exceções**: se a lista crescer sem motivo, a Ajuda volta a ficar
+  para trás; o PR de cada entrega mostra a lista.
+
 ## Família "Avaliações" no menu e formulários uniformes (proposta #223)
 
 Especificada em 21/11/2026. Decisões da Diretoria de 20/11/2026 na issue; o que o Arquiteto decidiu sozinho está listado no PR.

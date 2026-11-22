@@ -189,6 +189,10 @@ export const EnviosComunicacao = definirTabela({
     enviado_em: textoOpcional(),
     /** Motivo resumido da última falha: nunca traz endereço nem texto da mensagem. */
     erro: textoOpcional(),
+    /** Só nos avisos e lembretes (tipos aviso e lembrete): qual modelo de texto fixo, ver `dominio/aviso.ts`. */
+    modelo: textoOpcional(),
+    /** Só no aviso de falha: o envio que falhou e a versão dele ("id:versão"), para não avisar duas vezes. */
+    origem: textoOpcional(),
   }),
   sigilo: { destinatarios: 'pessoal' },
 });

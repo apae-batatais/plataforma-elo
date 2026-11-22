@@ -42,6 +42,8 @@ const NOME_ACAO: Record<string, string> = {
   envio: 'Enviado pelo Elo',
   envio_falhou: 'Envio pelo Elo falhou',
   envio_de_novo: 'Nova tentativa de envio pedida',
+  aviso_enviado: 'Aviso por e-mail',
+  aviso_nao_enviado: 'Aviso por e-mail não enviado',
 };
 
 function Dado({ rotulo, children }: { rotulo: string; children: ReactNode }) {
