@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 import path from 'node:path';
 
 export default defineConfig({
+  // Permite testar módulos .tsx (ex.: assuntos da Ajuda) sem a transformação do Next.
+  oxc: { jsx: { runtime: 'automatic' } },
   resolve: {
     alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },
