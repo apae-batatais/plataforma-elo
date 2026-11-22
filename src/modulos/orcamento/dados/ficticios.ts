@@ -8,7 +8,7 @@ import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { anoAtualBrasilia } from '../dominio/historico';
 import { distribuir, valorDoItem } from '../dominio/previsao';
 import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
-import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, Realizado, UsosReserva } from './tabelas';
+import { Ajustes, CentrosCusto, Componentes, Contas, Despesas, Exercicios, Fontes, FontesFolha, GruposGasto, Postos, Rateios, Historico, HistoricoAnos, Receitas, Saldos, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, Realizado, UsosReserva, AreasPlano, ItensContabeis, PlanoContas } from './tabelas';
 
 /** Cargos fictícios e os serviços (do Núcleo, fictícios) em que costumam ser lotados. */
 const CARGOS_FICTICIOS = [
@@ -525,4 +525,57 @@ export async function popularRealizadoFicticio(p: Planilhas): Promise<void> {
     linhas.push(cru(2026, 5, { tipo: 'receita', servico: null, grupo_id: null, fonte_id: restritas[1]?.id ?? restritas[0].id, natureza: 'ressarcimento', valor: 5000 }));
   }
   await inserirRegistros(p, realizado, linhas as never, autor);
+}
+
+/**
+ * Plano de contas FICTÍCIO (#221): áreas e itens de exemplo e o plano de dois exercícios (o de 2027 parte do de 2026,
+ * com uma área, um grupo e um item a mais, e um item que saiu). Depende de `popularPrevisaoFicticia` (usa os grupos).
+ */
+export async function popularPlanoContasFicticio(p: Planilhas): Promise<void> {
+  const autor = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const [grupos, areas, itens, plano] = await lerTabelas(p, [GruposGasto, AreasPlano, ItensContabeis, PlanoContas] as const);
+  if (areas.todos().length > 0) return;
+  const grupo = (nome: string) => grupos.ativos().find((g) => g.nome === nome)?.id;
+  const material = grupo('Material de consumo (exemplo)');
+  const alimentacao = grupo('Alimentação (exemplo)');
+  const servicos = grupo('Serviços de terceiros (exemplo)');
+  const manutencao = grupo('Manutenção e conservação (exemplo)');
+  const transporte = grupo('Combustível e transporte (exemplo)');
+  if (!material || !alimentacao || !servicos || !manutencao || !transporte) return;
+
+  const a = await inserirRegistros(p, areas, [
+    { nome: 'Assistência social (exemplo)', codigo: 'A1' },
+    { nome: 'Educação (exemplo)', codigo: 'A2' },
+    { nome: 'Saúde (exemplo)', codigo: 'A3' },
+    { nome: 'Administração (exemplo)', codigo: 'A4' },
+  ], autor);
+  const i = await inserirRegistros(p, itens, [
+    { grupo_id: material, nome: 'Material de escritório (exemplo)', codigo: 'MC-01' },
+    { grupo_id: material, nome: 'Material de limpeza (exemplo)', codigo: 'MC-02' },
+    { grupo_id: material, nome: 'Material pedagógico (exemplo)', codigo: 'MC-03' },
+    { grupo_id: alimentacao, nome: 'Gêneros alimentícios (exemplo)', codigo: 'AL-01' },
+    { grupo_id: alimentacao, nome: 'Lanches e refeições (exemplo)', codigo: 'AL-02' },
+    { grupo_id: servicos, nome: 'Serviços contábeis (exemplo)', codigo: 'ST-01' },
+    { grupo_id: servicos, nome: 'Serviços de informática (exemplo)', codigo: 'ST-02' },
+    { grupo_id: manutencao, nome: 'Conserto de equipamentos (exemplo)', codigo: 'MA-01' },
+    { grupo_id: transporte, nome: 'Combustível (exemplo)', codigo: 'TR-01' },
+  ], autor);
+  const [social, educacao, saude, administracao] = a.map((x) => x.id);
+  const [escritorio, limpeza, pedagogico, generos, lanches, contabeis, informatica, conserto, combustivel] = i.map((x) => x.id);
+  const linhas = (lista: [string, string, string | null][]) => lista.map(([area_id, grupo_id, item_id]) => ({ area_id, grupo_id, item_id }));
+  const plano2026 = linhas([
+    [social, material, limpeza], [social, alimentacao, generos], [social, transporte, null],
+    [educacao, material, pedagogico], [educacao, material, escritorio], [educacao, alimentacao, lanches],
+    [saude, material, limpeza], [saude, manutencao, conserto],
+    [administracao, material, escritorio], [administracao, servicos, contabeis], [administracao, servicos, informatica],
+  ]);
+  // 2027: sai "Material de limpeza" da Saúde; entra "Combustível" na Assistência social e um grupo novo na Educação.
+  const plano2027 = linhas([
+    [social, material, limpeza], [social, alimentacao, generos], [social, transporte, combustivel],
+    [educacao, material, pedagogico], [educacao, material, escritorio], [educacao, alimentacao, lanches], [educacao, manutencao, null],
+    [saude, manutencao, conserto], [saude, material, null],
+    [administracao, material, escritorio], [administracao, servicos, contabeis], [administracao, servicos, informatica],
+  ]);
+  const lote = (exercicio: number, vigencia: string, l: typeof plano2026) => l.map((x) => ({ exercicio, lote: `demo-${exercicio}`, vigencia, ...x }));
+  await inserirRegistros(p, plano, [...lote(2026, '2026-01-01', plano2026), ...lote(2027, '2027-01-01', plano2027)], autor);
 }

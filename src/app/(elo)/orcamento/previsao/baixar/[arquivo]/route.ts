@@ -2,7 +2,7 @@
  * Entrega a planilha (CSV) dos cadastros e das despesas/receitas, só para quem já vê a lista.
  * Só lê: não grava nem audita.
  */
-import { baixarCadastrosCsv, baixarItensCsv } from '@/modulos/orcamento/aplicacao/baixar-planilha';
+import { baixarCadastrosCsv, baixarItensCsv, baixarPlanoCsv } from '@/modulos/orcamento/aplicacao/baixar-planilha';
 import { ErroPrevisao } from '@/modulos/orcamento/aplicacao/previsao';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -19,6 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ arquivo:
     const csv =
       arquivo === 'grupos' ? await baixarCadastrosCsv(app.planilhas, q, 'grupo')
       : arquivo === 'fontes' ? await baixarCadastrosCsv(app.planilhas, q, 'fonte')
+      : arquivo === 'plano' ? await baixarPlanoCsv(app.planilhas, q, ano)
       : arquivo === 'despesas' ? await baixarItensCsv(app.planilhas, q, 'despesa', ano)
       : arquivo === 'receitas' ? await baixarItensCsv(app.planilhas, q, 'receita', ano)
       : null;

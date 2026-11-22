@@ -77,6 +77,11 @@ export default async function Ajuda() {
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
+    equipeComunicacao: a.temPermissao('comunicacao.revisar'),
+    configurarComunicacao: a.temPermissao('comunicacao.configurar'),
+    resultadoInstagram: a.temPermissao('comunicacao.revisar'),
+    indicadoresComunicacao: a.temPermissao('comunicacao.indicadores'),
   };
 
   const assuntos: Assunto[] = [
@@ -131,6 +136,13 @@ export default async function Ajuda() {
               'Liste os itens. Se o tipo tem lista de itens, comece a digitar e escolha da lista: a unidade vem preenchida. Diga se é retirada ou entrega e, se for para um evento, marque "É para um evento" e preencha os dados.',
               'Clique em Enviar requisição. Acompanhe em Minhas requisições: clique no número para ver a ficha, o histórico e os prazos.',
               'Se a requisição for devolvida, a tela inicial avisa. Abra a ficha, clique em Ajustar e reenviar, faça o ajuste pedido e reenvie. Enquanto não for aprovada, dá para cancelar.',
+            ]}
+          />
+          <Sub>Resumo diário por e-mail</Sub>
+          <Passos
+            itens={[
+              'Se a instituição tem e-mail de envio cadastrado, você recebe de manhã (por volta das 7h, em dia útil) um resumo só seu: quantas requisições esperam a sua aprovação, quantas suas foram devolvidas e quantas estão atrasadas no seu setor ou escopo.',
+              'O e-mail só traz números e o link do Elo, sem dados dos pedidos. Se você não tem nada pendente, não recebe nada. Para agir, abra Requisições pelo link.',
             ]}
           />
           <Sub>Chamado de TI</Sub>
@@ -292,6 +304,30 @@ export default async function Ajuda() {
     });
   }
 
+  if (pode.resultadoInstagram || pode.indicadoresComunicacao) {
+    assuntos.push({
+      id: 'resultado-instagram',
+      titulo: 'Resultado das postagens do Instagram',
+      resumo: 'Alcance, curtidas, comentários e salvamentos das postagens publicadas pelo Elo.',
+      atalhos: [
+        ...(pode.resultadoInstagram ? [{ rotulo: 'Abrir Pedidos', href: '/comunicacao/pedidos' }] : []),
+        ...(pode.indicadoresComunicacao ? [{ rotulo: 'Abrir Indicadores', href: '/comunicacao/indicadores' }] : []),
+      ],
+      conteudo: (
+        <>
+          <p className="mb-2">O Elo busca sozinho os números, uma vez por dia, de madrugada, nas postagens publicadas por ele (até 90 dias depois de publicadas). Depois disso, ficam os últimos números.</p>
+          <Itens
+            itens={[
+              pode.resultadoInstagram && 'No pedido: abra um pedido já publicado. Na faixa Instagram aparecem alcance, curtidas, comentários e salvamentos, com a data da última atualização. Se ainda não há número, aparece "Resultado ainda não disponível".',
+              pode.resultadoInstagram && 'Se aparecer que não é possível buscar o resultado da conta, a coordenação precisa reconectar o Instagram em Configurações para liberar a leitura dos números.',
+              pode.indicadoresComunicacao && 'Nos Indicadores: escolha mês, trimestre ou ano. O gráfico mostra o alcance médio por tipo de peça e a tabela traz uma linha por postagem do período.',
+            ]}
+          />
+        </>
+      ),
+    });
+  }
+
   if (pode.propor) {
     assuntos.push({
       id: 'propor',
@@ -351,13 +387,22 @@ export default async function Ajuda() {
               <Sub>Lançar</Sub>
               <Itens
                 itens={[
-                  'Antes de tudo, confira em Cadastros os Grupos de gasto (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
+                  'Antes de tudo, confira em Cadastros os Grupos de contas (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
                   'Em Previsão do ano, use Abrir exercício para começar um ano novo.',
                   'Despesas › Lançar despesa: serviço, grupo, fonte (pode ficar "a definir" na elaboração), quantidade × vezes × valor unitário e os meses.',
                   'A folha de pagamento entra sozinha, por serviço. No fim da tela Despesas, escolha a fonte que paga a folha de cada serviço: ao escolher, já fica salvo.',
                   'Receitas › Lançar receita: fonte, área, valor, meses e a situação da captação (garantida, em negociação ou a captar).',
                   'Para trazer de uma planilha: Importar despesas e receitas. Escolha o arquivo, diga se são despesas ou receitas e qual coluna corresponde a cada campo (o Elo sugere), confira e diga a qual cadastro corresponde cada nome que ele não reconheceu.',
                   'Importar de novo o mesmo tipo substitui a importação anterior do ano: os itens importados antes vão para o histórico. O que foi lançado à mão e as propostas não mudam.',
+                ]}
+              />
+              <Sub>Plano de contas</Sub>
+              <Itens
+                itens={[
+                  'Em Cadastros, cadastre as Áreas do plano (as áreas da contabilidade, que podem ser diferentes das áreas dos serviços) e, em Grupos de contas, os itens contábeis de cada grupo (botão "Cadastrar itens").',
+                  'Planejamento › Plano de contas: escolha o exercício e use Montar plano. Em cada área, marque os grupos e os itens que ela usa e diga a partir de quando vale (dentro do ano). Salvar cria uma versão nova; as anteriores ficam em "Versões anteriores".',
+                  'Para um ano novo, use "Começar do plano de" o ano anterior: o plano vem preenchido, você ajusta e salva. Nada é gravado até salvar.',
+                  'O plano só orienta: nenhum lançamento é bloqueado por ele. "Baixar planilha" entrega o plano do exercício em CSV.',
                 ]}
               />
               <Sub>Decidir as propostas</Sub>
@@ -440,6 +485,46 @@ export default async function Ajuda() {
                   'Diga em qual aba estão os dados e qual coluna corresponde a cada campo (o sistema sugere). Faça o mesmo para a lotação.',
                   'Confira o resumo e confirme. Quem já está cadastrado não é duplicado nem tem os valores alterados: dá para importar de novo com segurança.',
                   'Se o arquivo trouxer lotação para quem já está cadastrado: quem não tem recebe a do arquivo; quem tem uma diferente é atualizado a partir da data que você escolher, se você deixar marcado. A lotação anterior fica no histórico.',
+                ]}
+              />
+            </>
+          )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.comunicacao) {
+    assuntos.push({
+      id: 'comunicacao-avisos',
+      titulo: 'Comunicação: avisos por e-mail',
+      resumo: pode.configurarComunicacao ? 'Quais e-mails o Elo manda e como ligar ou desligar.' : 'Quais e-mails o Elo manda sobre os pedidos.',
+      atalhos: [{ rotulo: 'Meus pedidos', href: '/comunicacao' }, ...(pode.configurarComunicacao ? [{ rotulo: 'Configurações da Comunicação', href: '/comunicacao/configuracoes' }] : [])],
+      conteudo: (
+        <>
+          <p className="mb-3">
+            Quando a instituição liga os avisos, o Elo manda um e-mail curto a quem precisa agir. O e-mail traz só o número do pedido, o que fazer e o link; nunca o
+            título nem a descrição. O aviso dentro do Elo continua igual, com ou sem e-mail.
+          </p>
+          <Itens
+            itens={[
+              'Seu pedido foi devolvido para ajuste: quem fez o pedido recebe o aviso para abrir o Elo e ajustar.',
+              'Seu pedido foi publicado: quem fez o pedido recebe o aviso.',
+              pode.equipeComunicacao && 'Pedidos aguardando revisão: a Comunicação recebe um resumo quando chega pedido novo, não um e-mail por pedido.',
+              pode.equipeComunicacao && 'Lembrete do dia: às 8h, a Comunicação recebe o resumo dos posts, reels e entrevistas marcados para hoje. Dia sem pedido não gera e-mail.',
+              pode.equipeComunicacao && 'Envio de release ou artigo que falhou: a Comunicação recebe um aviso, e o pedido continua Agendado. Abra o pedido para "Tentar de novo" ou "Enviar à mão".',
+              a.temPermissao('comunicacao.aprovar') && 'Pedido aguardando aprovação: a coordenação da Comunicação recebe o aviso para decidir.',
+              'Em cada pedido, o histórico mostra se o aviso foi enviado ou não (sem o endereço de e-mail).',
+            ]}
+          />
+          {pode.configurarComunicacao && (
+            <>
+              <Sub>Ligar ou desligar os avisos</Sub>
+              <Passos
+                itens={[
+                  'Abra Comunicação › Configurações e vá até "Avisos por e-mail".',
+                  'Confira o endereço em "Enviando por". Se aparecer "Falta informar o e-mail de envio", peça à Administração da rede para informá-lo; sem ele nenhum aviso sai.',
+                  'Marque "Avisar por e-mail" (ou desmarque para desligar) e clique em "Salvar avisos". Os avisos começam desligados.',
                 ]}
               />
             </>

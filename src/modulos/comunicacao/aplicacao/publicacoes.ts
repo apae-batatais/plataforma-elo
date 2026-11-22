@@ -26,6 +26,7 @@ import {
   type RegPublicacao,
 } from '../dados/tabelas';
 import { ErroComunicacao } from '../dominio/pedido';
+import { resultadoDaPublicacao, type ResultadoDaPublicacao } from './resultados';
 import {
   ATRASO_PARA_AVISAR_MIN,
   conferirLegenda,
@@ -130,7 +131,7 @@ export async function sincronizarPublicacao(
   const nova = await inserir(
     p,
     PublicacoesComunicacao,
-    { pedido_id: pedidoId, tipo, prevista_para: d.previstaPara, situacao: 'pendente', tentativas: 0, proxima_tentativa: null, container_id: null, post_id: null, link: null, erro: null, publicada_em: null, codigo_midia: null, midia_vence_em: null },
+    { pedido_id: pedidoId, tipo, prevista_para: d.previstaPara, situacao: 'pendente', tentativas: 0, proxima_tentativa: null, container_id: null, post_id: null, link: null, erro: null, publicada_em: null, codigo_midia: null, midia_vence_em: null, alcance: null, curtidas: null, comentarios: null, salvamentos: null, metricas_em: null, metricas_aviso: null },
     autoria,
   );
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'PublicacoesComunicacao', registroId: nova.id, detalhes: { colunas: ['pedido_id', 'tipo', 'prevista_para', 'situacao', 'tentativas'] } }, agora);
@@ -148,6 +149,8 @@ export interface VisaoDaPublicacao {
   /** Passou de 1 hora da hora marcada e ainda não saiu. */
   atrasada: boolean;
   versao: number;
+  /** Resultado no Instagram (Fase 4); só faz sentido com a publicação já publicada. */
+  resultado: ResultadoDaPublicacao | null;
 }
 
 export async function publicacaoDoPedido(p: Planilhas, quem: Autorizador, pedidoId: string, agora = new Date()): Promise<VisaoDaPublicacao | null> {
@@ -166,6 +169,7 @@ export async function publicacaoDoPedido(p: Planilhas, quem: Autorizador, pedido
     publicadaEm: x.publicada_em,
     atrasada: (x.situacao === 'pendente' || x.situacao === 'publicando') && new Date(x.prevista_para).getTime() + ATRASO_PARA_AVISAR_MIN * MIN < agora.getTime(),
     versao: x.versao,
+    resultado: x.situacao === 'publicada' ? resultadoDaPublicacao(x) : null,
   };
 }
 
