@@ -165,6 +165,15 @@ export default async function Portal() {
           acao: 'Decidir',
         });
       }
+      if (c.veiculosUsar > 0) {
+        pendencias.push({
+          app: 'requisicoes',
+          texto: n(c.veiculosUsar, 'veículo para confirmar o uso', 'veículos para confirmar o uso'),
+          detalhe: 'A saída já passou: diga como foi o uso e informe a quilometragem.',
+          href: '/requisicoes/veiculos/pedidos',
+          acao: 'Confirmar uso',
+        });
+      }
       if (c.espacosFechar > 0) {
         pendencias.push({
           app: 'requisicoes',

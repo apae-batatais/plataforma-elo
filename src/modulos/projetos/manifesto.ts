@@ -5,7 +5,7 @@ import { defineModulo } from '@/nucleo/modulos/manifesto';
 // ação e a designação é conferida no caso de uso. Por isso `parecer` e `decidir_alcada` vão para todos os perfis.
 const BASE = ['projetos.acessar', 'projetos.propor', 'projetos.parecer', 'projetos.decidir_alcada'];
 const COORDENACAO = [...BASE, 'projetos.assumir', 'projetos.gerenciar'];
-const DIRETORIA = [...COORDENACAO, 'projetos.ver_todos', 'projetos.decidir', 'projetos.configurar'];
+const DIRETORIA = [...COORDENACAO, 'projetos.ver_todos', 'projetos.decidir', 'projetos.configurar', 'projetos.carteira'];
 
 export const manifesto = defineModulo({
   id: 'projetos',
@@ -19,6 +19,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Meus projetos e ideias', caminho: '/', permissao: 'projetos.acessar', secao: 'Ideias e projetos' },
     { rotulo: 'Nova ideia', caminho: '/nova', permissao: 'projetos.propor', secao: 'Ideias e projetos' },
     { rotulo: 'Ideias à espera de responsável', caminho: '/ideias', permissao: 'projetos.assumir', secao: 'Ideias e projetos' },
+    { rotulo: 'Carteira', caminho: '/carteira', permissao: 'projetos.carteira', secao: 'Diretoria' },
     { rotulo: 'Todos os projetos', caminho: '/todos', permissao: 'projetos.ver_todos', secao: 'Diretoria' },
     { rotulo: 'Configurações', caminho: '/configuracoes', permissao: 'projetos.configurar', secao: 'Diretoria' },
   ],
@@ -31,6 +32,7 @@ export const manifesto = defineModulo({
     'projetos.ver_todos': 'Ver todos os projetos e os pareceres',
     'projetos.decidir': 'Decidir as portas (seguir, ajustar ou parar) e retomar projetos parados',
     'projetos.decidir_alcada': 'Decidir as portas acima do limite de alçada, se designado na configuração',
+    'projetos.carteira': 'Ver a carteira de projetos: números que pedem ação e a lista filtrada, sem os pareceres',
     'projetos.configurar': 'Configurar pareceres exigidos, limite de alçada e designados',
   },
   permissoesPorPerfil: {
@@ -39,7 +41,7 @@ export const manifesto = defineModulo({
     financeiro: [...BASE],
     coordenacao_servico: [...COORDENACAO],
     tecnico_avaliador: [...BASE],
-    leitura: ['projetos.acessar'],
+    leitura: ['projetos.acessar', 'projetos.carteira'],
     funcionario: [...BASE],
     departamento_pessoal: [...BASE],
     compras: [...BASE],
