@@ -231,6 +231,26 @@
   }
 }
 
+[data-app='conhecimento'] {
+  --destaque: #6b4a32;
+  --destaque-forte: #553a27;
+  --destaque-suave: #f7f3ef;
+}
+
+:root[data-tema='escuro'] [data-app='conhecimento'] {
+  --destaque: #d8b48f;
+  --destaque-forte: #e4c6a7;
+  --destaque-suave: #33291f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema='claro']) [data-app='conhecimento'] {
+    --destaque: #d8b48f;
+    --destaque-forte: #e4c6a7;
+    --destaque-suave: #33291f;
+  }
+}
+
 [data-app='parcerias'] {
   --destaque: #7e3f98;
   --destaque-forte: #673280;
