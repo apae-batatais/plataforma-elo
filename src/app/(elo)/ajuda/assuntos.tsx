@@ -68,6 +68,8 @@ export function calcularPode(v: Verificador, todos = false) {
     decidirEspacos: v.temPermissaoAlgumEscopo('requisicoes.espacos.decidir'),
     avaliar: v.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: v.temPermissaoAlgumEscopo('avaliacao.painel'),
+    avaliarEducacao: v.temPermissaoAlgumEscopo('educacao.avaliar'),
+    avaliarSaude: v.temPermissaoAlgumEscopo('saude.avaliar'),
     tiposRequisicao: v.temPermissao('requisicoes.tipos.gerenciar'),
     veiculos: v.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: v.temPermissao('core.dpo.gerenciar'),
@@ -380,6 +382,56 @@ export function montarAssuntos(ctx: {
     });
   }
 
+  if (pode.avaliarEducacao) {
+    assuntos.push({
+      id: 'educacao',
+      permissoes: ['educacao.avaliar'],
+      titulo: 'Educação',
+      resumo: 'Ver os instrumentos de avaliação de Educação e aplicar um a uma pessoa.',
+      atalhos: [
+        { rotulo: 'Instrumentos', href: '/educacao/instrumentos' },
+        { rotulo: 'Nova avaliação', href: '/educacao/nova' },
+      ],
+      conteudo: (
+        <>
+          <Sub>Instrumentos</Sub>
+          <Passos
+            itens={[
+              'Abra Avaliações › Educação › Instrumentos. A tela lista os três instrumentos, com a versão e o número de domínios e itens.',
+              'Clique em Aplicar a uma pessoa: a nova avaliação abre com o instrumento já escolhido. Depois escolha a pessoa, o serviço e o período.',
+              'Clique em Sobre o instrumento para ler como o total, os subtotais e as faixas são calculados.',
+            ]}
+          />
+        </>
+      ),
+    });
+  }
+
+  if (pode.avaliarSaude) {
+    assuntos.push({
+      id: 'saude',
+      permissoes: ['saude.avaliar'],
+      titulo: 'Saúde',
+      resumo: 'Ver o instrumento de avaliação de Saúde, na versão em uso, e aplicar a uma pessoa.',
+      atalhos: [
+        { rotulo: 'Instrumentos', href: '/saude/instrumentos' },
+        { rotulo: 'Nova avaliação', href: '/saude/nova' },
+      ],
+      conteudo: (
+        <>
+          <Sub>Instrumentos</Sub>
+          <Passos
+            itens={[
+              'Abra Avaliações › Saúde › Instrumentos. A tela mostra o instrumento do CER na versão em uso.',
+              'Clique em Aplicar a uma pessoa para abrir a nova avaliação, ou em Sobre o instrumento para ler como o total e as faixas são calculados.',
+            ]}
+          />
+        </>
+      ),
+    });
+  }
+
+
   if (pode.resultadoInstagram || pode.indicadoresComunicacao) {
     assuntos.push({
       id: 'resultado-instagram',
@@ -629,6 +681,64 @@ export function montarAssuntos(ctx: {
       ),
     });
   }
+
+  if (pode.verPlanejamento) {
+    assuntos.push({
+      id: 'projetos-implementacao',
+      permissoes: ['projetos.acessar'],
+      titulo: 'Projetos: problemas, mudanças e relatórios (implementação)',
+      resumo: 'Acompanhar o projeto depois do início: registrar o que deu errado, pedir mudança de prazo, custo ou escopo e enviar relatórios.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              'Estas abas só funcionam com o projeto em implementação, isto é, com o Termo de Abertura aprovado. Antes disso, aparecem em leitura.',
+              'Riscos e problemas: risco é o que pode dar errado; problema é o que já deu. Problema aberto continua na carteira até ter solução e data. Gravidade alta aparece em destaque.',
+              'Quem está só na equipe do projeto vê riscos e problemas, mas não vê pedidos de mudança, relatórios nem o orçamento.',
+              'A situação do relatório vem sempre com a palavra (Verde, Amarelo ou Vermelho), nunca só com a cor.',
+            ]}
+          />
+          {pode.planejarProjeto && (
+            <>
+              <Sub>Registrar um problema</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e a aba Riscos e problemas.',
+                  'Em Registrar problema, descreva o que aconteceu, escolha a gravidade e, se quiser, quem cuida da solução.',
+                  'Quando resolver, use Registrar solução: escreva como foi resolvido e a data. Nada é apagado.',
+                ]}
+              />
+              <Sub>Pedir uma mudança</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Mudanças e clique em Pedir mudança. Escolha prazo, custo ou escopo.',
+                  'Preencha o que muda e o motivo e clique em Conferir a tolerância. O Elo mostra em palavras a variação (por exemplo, “a linha sobe 5% de 10% permitidos”) e diz quem decide.',
+                  'Dentro da tolerância do Termo de Abertura, você aplica na hora e fica no histórico. Fora dela, o pedido vai para a Diretoria e nada muda até a decisão.',
+                  'A comparação é feita com a última versão aprovada do Termo: várias mudanças pequenas somam e podem passar do limite.',
+                  'Mudança de escopo sempre vai para a Diretoria, a não ser que o Termo tenha declarado um “escopo livre” e você marque que a mudança cabe nele.',
+                ]}
+              />
+              <Sub>Enviar um relatório</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Relatórios e preencha o período, o que aconteceu e, se quiser, quanto já foi gasto.',
+                  'O Elo compara planejado e realizado, conta atividades atrasadas e problemas abertos e calcula a situação geral. Você só pode escolher uma situação pior que a calculada, explicando o motivo.',
+                  'Se o projeto usa números do cadastro nos indicadores, o relatório também registra a medição do dia.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirProjeto && (
+            <p className="mt-3">
+              Pedido fora da tolerância aparece em “Espera uma ação sua”, na tela inicial de Projetos. A Diretoria aprova ou recusa, sempre com justificativa. Aprovado, o Elo aplica a mudança e gera uma nova versão do Termo de Abertura (a anterior fica guardada como substituída). Se o novo valor total passar do limite de alçada, a aprovação da Diretoria segue para a Presidência ou o Conselho. Quem fez o pedido não decide o próprio pedido.
+            </p>
+          )}
+        </>
+      ),
+    });
+  }
+
 
   if (pode.projetos) {
     assuntos.push({
