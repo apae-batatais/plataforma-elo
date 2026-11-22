@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { atualizarConflitos, candidatoAAtualizar, marcarFalha, motivoDoMergeRecusado, situacaoDoMerge } from '../../.github/scripts/agentes.mjs';
+import { atualizarConflitos, candidatoAAtualizar, etapaAoTerminar, marcarFalha, motivoDoMergeRecusado, situacaoDoMerge } from '../../.github/scripts/agentes.mjs';
 
 const REPO = 'org/elo';
 const contexto = { repo: { owner: 'org', repo: 'elo' }, serverUrl: 'https://github.com', runId: 42 };
@@ -87,5 +87,25 @@ describe('atualização dos PRs em conflito', () => {
     );
     expect(c.warning).toHaveBeenCalledWith(expect.stringContaining('#12'));
     expect(github.rest.pulls.get).not.toHaveBeenCalledWith(expect.objectContaining({ pull_number: 13 }));
+  });
+});
+
+describe('fim da construção', () => {
+  const EM = { name: 'etapa: em construção' };
+  const issue = (labels: { name: string }[], state = 'open') => ({ number: 247, state, labels });
+  const entrega = (n: number) => ({ title: 'Entrega: carteira', body: `Entrega #${n}\n\ntexto`, labels: [{ name: 'PR: entrega' }] });
+
+  it('com PR de entrega aberto, a issue vai para "Entrega em aprovação" (mesmo sem aviso do GitHub ao Fluxo)', () => {
+    expect(etapaAoTerminar({ issue: issue([EM]), prs: [entrega(247)] })).toBe('Entrega em aprovação');
+  });
+
+  it('sem PR (esperando outra entrega), volta para "Pronta para construir" e não segura vaga', () => {
+    expect(etapaAoTerminar({ issue: issue([EM]), prs: [entrega(999)] })).toBe('Pronta para construir');
+  });
+
+  it('não mexe com pergunta aberta, issue fechada ou fora de "Em construção"', () => {
+    expect(etapaAoTerminar({ issue: issue([EM, { name: 'pergunta aberta' }]), prs: [] })).toBeNull();
+    expect(etapaAoTerminar({ issue: issue([EM], 'closed'), prs: [] })).toBeNull();
+    expect(etapaAoTerminar({ issue: issue([{ name: 'etapa: entrega em aprovação' }]), prs: [] })).toBeNull();
   });
 });
