@@ -4,4 +4,4 @@
 - [x] 2 Página do manual
 - [x] 3 Botão trocado, PDF removido
 - [x] 4 Testes
-- [ ] 5 Verificar, build, usabilidade e PR
+- [x] 5 Verificar e build verdes; PR aberto

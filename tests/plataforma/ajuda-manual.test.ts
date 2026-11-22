@@ -20,7 +20,7 @@ const html = (s: Assunto) => renderToStaticMarkup(createElement('div', null, s.c
 
 /** Perfis que existem nas permissões iniciais e nas dos módulos. */
 const permissoesDoPerfil = (perfil: string) =>
-  [...PERMISSOES_INICIAIS, ...ESTRUTURA_DOS_MODULOS.permissoes].filter((x) => x.perfil === perfil).map((x) => x.permissao);
+  [...PERMISSOES_INICIAIS, ...(ESTRUTURA_DOS_MODULOS.permissoes ?? [])].filter((x) => x.perfil === perfil).map((x) => x.permissao);
 
 describe('Ajuda e manual: fonte única (ADR-040)', () => {
   it('regra 1: o manual traz todos os assuntos, sem repetir id', () => {

@@ -93,7 +93,7 @@ export function calcularPode(v: Verificador, todos = false) {
 }
 export type Pode = ReturnType<typeof calcularPode>;
 
-const todasAsPermissoes = () => new Set([...PERMISSOES_INICIAIS, ...ESTRUTURA_DOS_MODULOS.permissoes].map((x) => x.permissao));
+const todasAsPermissoes = () => new Set([...PERMISSOES_INICIAIS, ...(ESTRUTURA_DOS_MODULOS.permissoes ?? [])].map((x) => x.permissao));
 
 /** Quem tem tudo: monta o manual completo e o menu inteiro. */
 export function autorizadorTotal(): Autorizador {
@@ -105,8 +105,8 @@ export function autorizadorTotal(): Autorizador {
 export function perfisPara(permissoes: string[] | undefined): string[] {
   if (!permissoes?.length) return [];
   const retiradas = new Set(ESTRUTURA_DOS_MODULOS.permissoesRetiradas?.map((x) => `${x.perfil}|${x.permissao}`));
-  const pares = [...PERMISSOES_INICIAIS, ...ESTRUTURA_DOS_MODULOS.permissoes].filter((x) => !retiradas.has(`${x.perfil}|${x.permissao}`));
-  const nomes = new Map([...PERFIS_INICIAIS, ...ESTRUTURA_DOS_MODULOS.perfis].map((p) => [p.codigo, p.nome]));
+  const pares = [...PERMISSOES_INICIAIS, ...(ESTRUTURA_DOS_MODULOS.permissoes ?? [])].filter((x) => !retiradas.has(`${x.perfil}|${x.permissao}`));
+  const nomes = new Map([...PERFIS_INICIAIS, ...(ESTRUTURA_DOS_MODULOS.perfis ?? [])].map((p) => [p.codigo, p.nome]));
   const codigos = new Set(pares.filter((x) => permissoes.includes(x.permissao)).map((x) => x.perfil));
   return [...nomes].filter(([c]) => codigos.has(c)).map(([, n]) => n);
 }
