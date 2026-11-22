@@ -18,6 +18,8 @@ import {
   retirarItemMarco,
   salvarDocumento,
 } from '@/modulos/projetos/aplicacao/fases';
+import { decidirMudanca, enviarRelatorio, pedirMudanca, registrarProblema, resolverProblema } from '@/modulos/projetos/aplicacao/acompanhamento';
+import { SITUACOES_RELATORIO, TIPOS_MUDANCA, type SituacaoRelatorio, type TipoMudanca } from '@/modulos/projetos/dominio/acompanhamento';
 import {
   adicionarAtividade,
   adicionarLinhaOrcamento,
@@ -385,4 +387,72 @@ export async function acaoRetirarLinhaOrcamento(f: FormData) {
   const id = texto(f, 'id');
   const volta = fichaDe(id, '/orcamento');
   await executar(() => volta, volta, 'Linha retirada. Ela continua guardada.', ({ usuario, app }) => retirarLinhaOrcamento(app.planilhas, usuario.autorizador, id, texto(f, 'linha'), Number(texto(f, 'versao_linha'))));
+}
+
+// ---------- Fase 4: problemas, mudanças e relatórios (P4) ----------
+
+export async function acaoRegistrarProblema(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/riscos');
+  await executar(() => volta, volta, 'Problema registrado.', ({ usuario, app }) =>
+    registrarProblema(app.planilhas, usuario.autorizador, id, { descricao: texto(f, 'descricao'), gravidade: lista<Grau>(GRAUS, texto(f, 'gravidade')), dono: texto(f, 'dono') || null }),
+  );
+}
+
+export async function acaoResolverProblema(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/riscos');
+  await executar(() => volta, volta, 'Problema resolvido.', ({ usuario, app }) =>
+    resolverProblema(app.planilhas, usuario.autorizador, id, texto(f, 'problema'), Number(texto(f, 'versao_problema')), texto(f, 'solucao'), texto(f, 'data')),
+  );
+}
+
+/** Só volta para páginas do próprio projeto (a página guarda o que a pessoa digitou no endereço). */
+const voltaDoPedido = (f: FormData, id: string) => {
+  const v = texto(f, 'volta');
+  return v.startsWith(`/projetos/${id}/mudancas`) ? v : fichaDe(id, '/mudancas/novo');
+};
+
+export async function acaoPedirMudanca(f: FormData) {
+  const id = texto(f, 'id');
+  const tipo = lista<TipoMudanca>(TIPOS_MUDANCA, texto(f, 'tipo'));
+  const lista_ = fichaDe(id, '/mudancas');
+  await executar(
+    () => lista_,
+    voltaDoPedido(f, id),
+    (r) => ((r as { situacao: string }).situacao === 'aplicada' ? { chave: 'ok', mensagem: 'Mudança aplicada. Ela ficou dentro da tolerância e está no histórico.' } : { chave: 'ok', mensagem: 'Pedido enviado. Nada muda até a decisão.' }),
+    ({ usuario, app }) =>
+      pedirMudanca(app.planilhas, usuario.autorizador, id, { tipo, alvo: texto(f, 'alvo') || null, proposto: texto(f, 'proposto'), justificativa: texto(f, 'justificativa'), cabeNoEscopoLivre: texto(f, 'escopo_livre') === 'sim' }),
+  );
+}
+
+export async function acaoDecidirMudanca(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/mudancas');
+  const aprovar = texto(f, 'decisao') === 'aprovar';
+  await executar(() => volta, volta, aprovar ? 'Decisão registrada: pedido aprovado.' : 'Decisão registrada: pedido recusado.', ({ usuario, app }) =>
+    decidirMudanca(app.planilhas, usuario.autorizador, texto(f, 'pedido'), Number(texto(f, 'versao_pedido')), aprovar ? 'aprovar' : 'recusar', texto(f, 'justificativa')),
+  );
+}
+
+export async function acaoEnviarRelatorio(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/relatorios');
+  const situacao = texto(f, 'situacao');
+  await executar(() => volta, volta, 'Relatório enviado.', ({ usuario, app }) =>
+    enviarRelatorio(
+      app.planilhas,
+      usuario.autorizador,
+      id,
+      {
+        periodoInicio: texto(f, 'inicio'),
+        periodoFim: texto(f, 'fim'),
+        texto: texto(f, 'texto'),
+        gasto: texto(f, 'gasto') || null,
+        situacao: (SITUACOES_RELATORIO as readonly string[]).includes(situacao) ? (situacao as SituacaoRelatorio) : null,
+        justificativa: texto(f, 'justificativa') || null,
+      },
+      numerosDePessoas(app.planilhas),
+    ),
+  );
 }
