@@ -81,6 +81,7 @@ export function calcularPode(v: Verificador, todos = false) {
     verPlanejamento: v.temPermissaoAlgumEscopo('projetos.acessar'),
     planejarProjeto: v.temPermissaoAlgumEscopo('projetos.gerenciar'),
     decidirPlano: v.temPermissao('projetos.decidir'),
+    carteiraProjetos: v.temPermissaoAlgumEscopo('projetos.carteira'),
     ler: v.temPermissaoAlgumEscopo('conhecimento.ler'),
     publicar: v.temPermissao('conhecimento.publicar'),
     acompanharConhecimento: v.temPermissao('conhecimento.acompanhar'),
@@ -809,6 +810,33 @@ export function montarAssuntos(ctx: {
             </>
           )}
           {pode.decidirProjeto && <p className="mt-3">Na porta de encerramento, a Diretoria escolhe aceitar (o projeto encerra), ajustar (volta a ser editado na fase 5) ou parar (volta à implementação), sempre com justificativa. Essa porta não pede parecer.</p>}
+        </>
+      ),
+    });
+  }
+
+  if (pode.carteiraProjetos) {
+    assuntos.push({
+      id: 'projetos-carteira',
+      permissoes: ['projetos.carteira'],
+      titulo: 'Projetos: carteira',
+      resumo: 'Ver, de uma vez, o que pede ação nos projetos da instituição.',
+      atalhos: [{ rotulo: 'Carteira', href: '/projetos/carteira' }],
+      conteudo: (
+        <>
+          <Passos
+            itens={[
+              'No menu de Projetos, abra Carteira.',
+              'No alto estão cinco números: portas esperando decisão, projetos fora da tolerância, projetos com problema de gravidade alta ainda sem solução, encerramentos atrasados e projetos em andamento.',
+              'Clique em um número para ver abaixo a lista de projetos daquele grupo, com o motivo em palavras. Clique no código do projeto para abri-lo.',
+            ]}
+          />
+          <Itens
+            itens={[
+              'Encerramento atrasado: projeto em implementação com o fim previsto vencido, ou em encerramento há mais de 30 dias.',
+              'A carteira nunca mostra o texto dos pareceres. Quem tem o perfil de leitura vê a carteira, mas não os pareceres.',
+            ]}
+          />
         </>
       ),
     });

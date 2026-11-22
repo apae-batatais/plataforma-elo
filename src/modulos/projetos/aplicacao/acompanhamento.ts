@@ -381,6 +381,16 @@ async function panorama(p: Planilhas, r: RegProjeto, termo: { conteudo: string }
   return { atividades: doProjeto, abertos, tolerancias: tol, total, motivos, atrasadas: doProjeto.filter((a) => situacaoExibida(a, hoje) === 'atrasada').length };
 }
 
+/** Ponto de chamada da carteira (P6): motivos de estar fora da tolerância; vazio se dentro ou se não há Termo aprovado. */
+export async function motivosForaDaTolerancia(p: Planilhas, r: RegProjeto, hoje: string): Promise<string[]> {
+  if (r.etapa !== 'implementacao') return [];
+  const termo = await exigirTermoAprovado(p, r.id).catch(() => null);
+  if (!termo) return [];
+  const [relatorios] = await lerTabelas(p, [Relatorios] as const);
+  const gasto = relatorios.ativos().filter((x) => x.projeto_id === r.id).sort((a, b) => b.enviado_em.localeCompare(a.enviado_em))[0]?.gasto_realizado ?? null;
+  return (await panorama(p, r, termo, hoje, gasto)).motivos;
+}
+
 const gastoDe = (v: number | string | null): number | null => {
   if (v === null || String(v).trim() === '') return null;
   return lerValor(v);
