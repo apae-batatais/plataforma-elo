@@ -468,3 +468,123 @@ histórico do pedido, tela inicial). Sem infraestrutura nova (o `rotina.yml` e o
 - Com avisos desligados ou sem remetente, nada é criado.
 - A rotina rodando duas vezes no mesmo dia manda um só lembrete.
 - Um envio de release que falhou gera um aviso à Comunicação e o pedido continua Agendado.
+
+## Fase 4 · resultado das postagens (proposta #65)
+
+**Objetivo.** Para cada post, Reel ou carrossel publicado pelo Elo no Instagram (Fase 3, #64), o Elo busca
+sozinho, uma vez por dia, o alcance, as curtidas, os comentários e os salvamentos, e mostra esses números
+junto do pedido e num resumo no painel de Indicadores da própria Comunicação. Fica de fora a Capacidade de
+Indicadores da plataforma (#57): não é preciso esperar por ela.
+
+**Decisões da Diretoria (conversa de 20/11/2026).**
+1. Os números chegam buscados sozinhos pela conexão do Instagram já feita na Fase 3 (#64), uma vez por
+   dia — não são digitados à mão.
+2. Entram alcance, curtidas, comentários e salvamentos.
+3. Aparecem no painel de Indicadores da própria Comunicação, junto dos indicadores já existentes.
+
+### Permissões
+Reaproveita as permissões já existentes; nenhuma nova.
+
+| Perfil | Pode | Permissão |
+| --- | --- | --- |
+| Comunicação e coordenação | Ver os números de cada postagem, no pedido e no painel | `comunicacao.revisar` |
+| Coordenação e Diretoria | Ver o painel de Indicadores (já existia) | `comunicacao.indicadores` |
+
+### Entidades
+| Aba | O que muda | Sigilo |
+| --- | --- | --- |
+| Publicacoes (alterada) | Colunas novas: `alcance`, `curtidas`, `comentarios`, `salvamentos` (números, começam vazios), `metricas_em` (quando foi a última busca que funcionou) | interno |
+
+Sem aba nova: os números moram na mesma linha da publicação (ADR-028), já ligada ao pedido, ao tipo de
+peça e à data de publicação.
+
+### Regras de negócio (com teste)
+1. **O que entra na busca diária**: toda `Publicacao` com situação `publicada`, identificador do post
+   preenchido, e publicada há até 90 dias (regra 8, abaixo). O Elo busca pelo mesmo token e pela mesma
+   conta usados para publicar (ADR-028); se a conta estiver `expirada` ou `desconectada`, essa publicação
+   fica de fora da rodada (sem erro: ela volta a entrar quando a conta for reconectada).
+2. **Tarefa nova da rotina** `comunicacao.metricas_instagram` (em `TAREFAS_DA_ROTINA`), uma vez por dia, de
+   madrugada (horário de Brasília) — não precisa das rodadas de 15 minutos das demais tarefas da ADR-027,
+   porque o resultado de uma postagem não muda a cada poucos minutos.
+3. **Atualização**: a cada publicação buscada, o Elo grava os quatro números e `metricas_em` com a data e
+   hora de agora; um número que a Meta não devolver (por exemplo, Reel sem "salvamentos" medido daquele
+   jeito) fica vazio, não some o que já havia antes.
+4. **Falha só daquela publicação**: se a Meta recusar uma publicação específica (post apagado no
+   Instagram, por exemplo), o Elo pula para a próxima; não há "tentar de novo" nem aviso à Comunicação —
+   os números simplesmente não atualizam naquele dia e tentam de novo no dia seguinte.
+5. **Conta sem a permissão de ver resultados**: se a Meta recusar a busca de todas as publicações de uma
+   conta pelo mesmo motivo (permissão insuficiente), o Elo registra isso uma vez (não uma falha por
+   publicação) e a tela do pedido mostra "Ainda não é possível buscar o resultado desta conta; pode ser
+   preciso reconectar o Instagram" em vez do número. Decisão tomada sozinho, abaixo.
+6. **Nunca muda o pedido nem o histórico**: resultado é só leitura; não afeta situação, aviso nem
+   auditoria de dado pessoal (os números não são dado pessoal de ninguém, são da postagem).
+7. **Isolamento entre instituições**: a busca de uma instituição nunca mistura token nem publicação de
+   outra (mesmo teste de isolamento da regra 13 da Fase 3).
+8. **Depois de 90 dias publicada, o Elo para de atualizar** aquela publicação (os últimos números ficam
+   congelados). Decisão tomada sozinho, abaixo.
+9. **Quem vê e quem altera**: os números em `Publicacoes` são lidos por `comunicacao.revisar` e
+   `comunicacao.indicadores`, como hoje; só a rotina grava; a rota da rotina recusa chamada sem a chave
+   (igual às demais tarefas).
+
+### Telas
+Usa só componentes existentes de `src/ui/`; nenhuma peça nova.
+1. **Detalhe do pedido**: na faixa "Instagram" (já existe, Fase 3), depois do link do post, uma linha com
+   os quatro números ("Alcance: 1.240 · Curtidas: 86 · Comentários: 5 · Salvamentos: 12") e "Atualizado em
+   12/03 às 3h". Sem número ainda (publicação muito recente ou conta sem permissão): "Resultado ainda não
+   disponível" ou o texto da regra 5, nunca "0".
+2. **Indicadores** (tela já existente, item 7 da lista de Telas da fase 1): novo cartão "Resultado das
+   postagens do Instagram", com filtro de mês, trimestre ou ano (o mesmo filtro da tela):
+   - `TabelaDados` com uma linha por postagem publicada no período: data, tipo de peça, alcance,
+     curtidas, comentários, salvamentos — porque o que interessa aqui é comparar postagens específicas,
+     não só a média (mais de 7 linhas é normal; tabela, não gráfico, lida melhor com isso, seção 1 da
+     habilidade `graficos`).
+   - `BarrasHorizontais` com o alcance médio por tipo de peça (post, Reel, carrossel) no período, maior
+     primeiro — título em forma de conclusão ("Reel alcança mais que post, em média" ou o que os números
+     do período realmente mostrarem).
+   - Sem postagem no período, ou nenhuma com número ainda: `EstadoVazio` ("Nenhuma postagem com resultado
+     neste período.").
+3. Celular e teclado: a tabela rola na horizontal dentro do cartão (padrão já usado nas demais tabelas do
+   Elo); gráfico e tabela na mesma ordem de leitura de hoje.
+4. Sugestão de melhoria (para a Diretoria decidir): marcar na lista de pedidos (tela "Pedidos", fila
+   "Agendados"/"Todos") um selo pequeno com o alcance ao lado dos já publicados, para a equipe ver sem
+   abrir cada um.
+
+### Fica de fora
+Story, comentários e mensagens (Fase 3 já deixa de fora); métricas de contas (seguidores, visitas ao
+perfil); exportar os números; comparação com concorrentes; Capacidade de Indicadores da plataforma (#57) —
+quando ela existir, pode vir a consumir estes mesmos números, decisão de quando a #57 for especificada.
+
+### Frentes
+`regras e dados` (colunas novas em `Publicacoes`, tarefa da rotina, busca de métricas no adaptador do
+Instagram, testes de isolamento e de falha por conta) e `telas` (detalhe do pedido, painel de Indicadores).
+Sem infraestrutura nova (reaproveita o `rotina.yml` e o `ROTINA_TOKEN` da ADR-027). Núcleo não muda.
+
+### Entregas
+Entrega única: cabe numa prévia só (colunas, tarefa da rotina e as duas telas).
+
+### Decisões tomadas sozinho (custo se estiverem erradas)
+- **Buscar resultado só até 90 dias depois da publicação.** É prazo generoso para o que a Comunicação
+  acompanha (a maior parte do alcance acontece nos primeiros dias); depois disso os números raramente
+  mudam. Custo se errada: aumentar o prazo é mudar uma constante; publicações já "congeladas" não
+  perdem o número que tinham, só não atualizam mais até a constante subir.
+- **Permissão de leitura de resultado pode exigir reconectar o Instagram.** A Meta usa uma permissão
+  própria para ver alcance, curtidas, comentários e salvamentos (diferente da permissão de publicar, já
+  usada na Fase 3). Se a conta que cada OSC já conectou não tiver essa permissão, a primeira busca falha
+  com o aviso da regra 5 e quem conectou precisa reconectar (clicar "Reconectar" de novo, sem perder a
+  configuração) para autorizar também a leitura de resultado. Custo se errada: um clique extra por conta
+  já conectada, uma vez; não afeta publicações novas, que continuam saindo normalmente.
+- **Uma rodada por dia, de madrugada, não a cada 15 minutos.** Resultado de postagem não muda rápido o
+  bastante para justificar rodadas tão frequentes, e isso poupa chamadas à Meta. Custo se errada: trocar
+  a frequência é mudar quando a tarefa roda, sem mudar o resto.
+- **Tabela com uma linha por postagem, em vez de só médias.** A Comunicação costuma querer saber qual
+  postagem específica foi bem, não só a média do mês. Custo se errada: tirar a tabela e deixar só o
+  gráfico é mudança pequena na tela.
+
+### Critérios de pronto
+- [ ] Publicar uma postagem fictícia na demonstração e rodar a tarefa `comunicacao.metricas_instagram`
+      mostra os quatro números no pedido e na tabela de Indicadores.
+- [ ] Postagem com mais de 90 dias não é buscada de novo; os números antigos continuam na tela.
+- [ ] Conta sem a permissão de leitura de resultado mostra o aviso certo, sem quebrar a busca das outras
+      contas.
+- [ ] `npm run verificar` e `npm run build` verdes.
+- [ ] Conferido pela Diretoria na prévia com dados fictícios.

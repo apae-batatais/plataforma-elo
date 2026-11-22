@@ -665,8 +665,8 @@ Frentes: `telas`, `regras e dados`. **Fora do módulo:** `src/plataforma/catalog
 
 **Objetivo:** o Financeiro conferir um grupo de gasto ou uma fonte com a conta da contabilidade
 pelo código, sem tabela de correspondência à parte. O código vem do sistema contábil da OSC; o Elo
-**não mantém plano de contas** (decisão da Diretoria, 10/11/2026). Quem não preencher usa o
-Orçamento como hoje.
+**não mantém plano de contas** (decisão da Diretoria, 10/11/2026; **revertida em 20/11/2026**, ver
+"Plano de contas estruturado (proposta #221)" mais abaixo). Quem não preencher usa o Orçamento como hoje.
 
 **Decisões da Diretoria (comentário da issue):** o campo entra em **Grupos de gasto** e em **Fontes
 de recurso** (não entra nas Contas da Tesouraria nem nos Serviços); o código aparece nas listas e
@@ -788,3 +788,300 @@ Uma só (pequena): colunas e regras 1–6, telas dos cadastros, depois o botão 
 
 Especificado em `especificacao-sustentabilidade.md` (cobertura do déficit dos serviços, origem e dependência, fôlego, resultado e
 execução das parcerias). Acrescenta a coluna `origem` em `CentrosCusto`, `recorrencia` em `Fontes` e a aba `LimitesSustentabilidade`.
+
+## Plano de contas estruturado (proposta #221, 20/11/2026, ADR-036)
+
+**Substitui a decisão da #127** ("o Elo não mantém plano de contas"), por decisão da Diretoria em 20/11/2026.
+**Objetivo:** o Financeiro cadastra o plano de um exercício dentro do Elo; previsto e realizado do mesmo
+exercício usam o mesmo plano; comparar dois exercícios mostra o que entrou e o que saiu; e a divergência
+entre a área da contabilidade e a área do serviço aparece sem cruzar planilhas. Responde as perguntas P1
+(correspondência de centro de custo) e P2 (nível da conta que vira grupo) da #185; P3 a P6 continuam com a
+Diretoria e a contabilidade.
+
+### Decisões da Diretoria (20/11/2026, na proposta)
+
+1. O plano estruturado substitui o texto livre. 2. Grupo de Contas é um conceito único e incorpora o Grupo
+de gasto. 3. A Área do plano é independente da Área do Serviço. 4. Habilitar Itens por Área só orienta.
+5. Vigência por exercício, no padrão de Lotações e Rateios. 6. Uma proposta; o Arquiteto divide em entregas.
+
+### Usuários e permissões
+
+Sem permissão nova, igual aos cadastros de grupos de gasto: alterar Áreas, Grupos, Itens e o plano =
+Financeiro (`orcamento.previsao.editar`); ver = quem já vê os cadastros e a Previsão. Coordenação e Leitura
+só leem. Nada aqui é dado pessoal (sem `sigilo`). Toda gravação usa `inserir`/`atualizar` com a versão lida e
+`registrarAuditoria` com as colunas alteradas, nunca os valores.
+
+### Entidades (planilha `orcamento`, declaradas com `definirTabela`)
+
+- **`GruposGasto` = Grupo de Contas** (mesma aba e mesmos ids): `nome`, `rh`, `regra_rateio_id` e
+  `codigo_conta` ficam como estão. Na tela vira "Grupo de Contas". Sem migração de dados.
+- **`AreasPlano`** (nova): `nome`, `codigo` (`textoOpcional`, mesmas regras de `dominio/codigo-conta.ts`,
+  único entre ativos).
+- **`ItensContabeis`** (nova): `grupo_id`, `nome`, `codigo` (opcional, único dentro do grupo entre ativos).
+  Um item pertence a um só grupo.
+- **`PlanoContas`** (nova, só inclusões): `exercicio` (ano), `lote`, `vigencia` (data dentro do ano),
+  `area_id`, `grupo_id`, `item_id` (vazio = grupo presente na área sem itens habilitados). Um lote é o plano
+  completo daquele exercício naquela data.
+- **`Despesas` e `Realizado`**: colunas opcionais `item_id` e `area_plano_id` (linhas antigas ficam vazias;
+  "Preparar estrutura" acrescenta as colunas sem mexer nos dados).
+- **`Fontes.codigo_conta` continua** (decisão sozinho 1 abaixo).
+
+### Regras de negócio (com teste)
+
+1. **Cadastros**: Área, Grupo de Contas e Item têm nome obrigatório (único entre ativos no seu cadastro, sem
+   diferença de maiúscula ou espaço) e código opcional (regras da #127: até 30 caracteres, único entre ativos,
+   reativar recusa se o código foi tomado). Excluir encerra (`ativo = FALSE`); nada se apaga. Excluir Grupo ou
+   Item usado em despesa, realizado ou plano continua permitido, mas o confirmar diz quantos lançamentos usam.
+2. **Plano por exercício**: o Financeiro monta o plano marcando, por Área, os Grupos e, em cada Grupo, os
+   Itens habilitados. Salvar grava um lote novo com **todas** as linhas do plano (tudo ou nada, com a versão
+   lida); nunca altera nem apaga o lote anterior. Plano vazio não grava.
+3. **Vigência**: `vigencia` é uma data dentro do exercício (padrão: 1º de janeiro, ou hoje se o exercício já
+   começou); o plano que vale numa data é o lote mais recente com `vigencia` ≤ a data. Vigência fora do ano é
+   recusada. Plano de exercício `encerrado` não aceita lote novo.
+4. **Copiar de um exercício**: "Começar do plano de <ano anterior>" preenche o formulário com o plano que
+   valia no fim do outro exercício; nada é gravado até a pessoa salvar. Sem plano anterior, o botão não aparece.
+5. **Só entra o que está ativo**: Área, Grupo ou Item encerrado não pode entrar num plano novo; o que já
+   estava em plano antigo continua lido normalmente (aparece com a marca "encerrado").
+6. **Consistência**: todo Item do plano pertence ao Grupo da mesma linha; todo par (Área, Grupo) aparece uma só
+   vez por lote; Item sem o Grupo no mesmo lote é recusado.
+7. **Orienta, nunca bloqueia**: ao lançar despesa ou realizado com Grupo, Item ou Área fora do plano do
+   exercício (na data do lançamento), grava normalmente e mostra o aviso "Este item não está habilitado para
+   esta área em <ano>". Item de outro Grupo que o escolhido é recusado (erro de dado, não de plano).
+8. **Escolha na tela de lançamento**: ao escolher a Área e o Grupo, a lista de Itens mostra primeiro os
+   habilitados no plano e, abaixo, "Outros itens do grupo" (não habilitados). Sem plano no exercício, mostra
+   todos os itens do grupo.
+9. **Comparar exercícios** (leitura): entre dois exercícios, lista **o que entrou** e **o que saiu** de Áreas,
+   Grupos (por Área) e Itens, mais "mudou de grupo" quando o mesmo item mudou de grupo. A comparação usa o
+   plano vigente no fim de cada exercício. Sem plano em um dos lados: estado vazio explicando.
+10. **Divergência área do plano × área do serviço** (leitura): lista lançamentos de despesa e de realizado do
+    exercício em que `area_plano_id` está preenchida e difere da Área do Serviço (`CentrosCusto`/Núcleo, via o
+    caso de uso que o Orçamento já usa), com total por par (Área do plano, Área do serviço), em centavos. O
+    filtro de escopo vem **antes** de somar: Coordenação só vê o seu escopo; Leitura vê só totais. Lançamento
+    sem `area_plano_id` conta como "sem área do plano", nunca como divergência nem zero.
+11. **Código antigo**: o `codigo_conta` dos grupos passa a ser o código do Grupo de Contas, sem perder valor
+    nenhum; "Baixar planilha" e a importação por nome ou código seguem funcionando; o CSV ganha as colunas
+    **Item contábil** e **Área do plano** nas despesas, e a lista de itens e do plano (um arquivo por exercício).
+12. **Painéis e totais não mudam**: nenhum total, indicador ou painel é recalculado pelo plano (somar por Área
+    ou Grupo do plano é outra proposta). O total do orçamento nunca muda por causa do plano.
+13. **Demonstração**: `popularFicticio` ganha áreas, itens e planos de dois exercícios, sem nome de
+    instituição, e algumas despesas com área divergente, para a Diretoria conferir na prévia.
+
+### Telas
+
+Quem usa: o Financeiro monta e mantém; Diretoria e coordenações leem. Menu: Orçamento › Previsão › Plano de contas.
+
+1. **Plano de contas** (`/orcamento/previsao/plano`) — caminho mais curto: abrir › escolher o exercício ›
+   "Começar do plano de <ano anterior>" › ajustar › "Salvar plano" (4 cliques, nada se perde se cancelar).
+   - Primeira dobra: `SeletorAno`, uma frase de leitura ("Plano de 2027: 6 áreas, 14 grupos, 58 itens, vale
+     desde 01/01/2027") e a ação principal **Editar plano** (ou **Montar plano de <ano>** se não há). Abaixo,
+     uma seção por Área (`Secao`), com seus Grupos e os Itens habilitados em lista; busca por nome ou código.
+   - **Editar**: janela ampla (`Janela`) com a grade Área × Grupo e, ao abrir o grupo, caixas de seleção dos
+     Itens (rótulo sempre visível, "Marcar todos"). Campo "Vale a partir de" com a dica "Dentro do ano de
+     <ano>". Botão **Salvar plano** (`BotaoEnviar`, mostra "Gravando…").
+   - **Estados**: vazio (`EstadoVazio`: "Este exercício ainda não tem plano de contas." com **Montar plano** e,
+     se houver, **Começar do plano de <ano>**); gravou (`Notificacao` "Plano de 2027 salvo."); erro (janela
+     continua aberta com tudo o que foi marcado, mensagem diz o que corrigir); sem permissão (sem botões, a
+     leitura continua); encerrado (`Aviso`: "O exercício está encerrado; o plano não pode mudar.").
+   - **Ação sem volta:** não há; salvar cria uma versão nova e o histórico de vigências aparece em
+     "Versões anteriores" (`Excluidos`-like, só leitura).
+2. **Cadastros** (`/orcamento/previsao/areas` nova; `/grupos` e `/itens` na mesma tela de Grupo): Áreas e
+   Grupos de Contas no padrão dos cadastros atuais (`TabelaDados`, `Janela`, `Campo`, `Excluidos`);
+   Itens contábeis dentro da janela do Grupo (lista com **Adicionar item**). Texto de tela: "Grupo de Contas"
+   (antes "Grupo de gasto"); a dica do código continua "Como está no sistema da contabilidade". Cadastro em
+   lote de Áreas e de Itens no mesmo formato do lote atual (Nome; Código; no item, também o Grupo).
+3. **Comparar exercícios** (`/orcamento/previsao/plano/comparar`): dois `SeletorAno` ("Comparar 2027 com
+   2026"), três blocos "Entrou", "Saiu", "Mudou de grupo", em tabelas (`TabelaDados`) com contagem no título.
+   Sem gráfico: é lista de diferenças. Vazio: "Os dois planos são iguais."
+4. **Divergências de área** (aba "Divergências" na tela do Plano): título em forma de conclusão ("R$ 120 mil
+   foram lançados em área diferente da do serviço") e tabela Área do plano × Área do serviço com total e
+   número de lançamentos; clicar abre a lista dos lançamentos. Sem divergência: "Nenhuma divergência em
+   2027." e, se há lançamentos sem área, `Aviso` "N lançamentos ainda não têm área do plano".
+5. **Formulários de despesa e de realizado**: ganham, depois de Grupo, os campos opcionais **Item contábil** e
+   **Área do plano** (dica: "Só orienta: você pode escolher outro"); aviso amarelo do plano (regra 7) abaixo
+   do campo, nunca impede **Salvar**. Lista de despesas mostra o item sob o grupo em texto menor.
+6. **Celular e teclado:** listas viram cartões (padrão atual); a grade do plano vira uma Área por vez com
+   Grupos recolhíveis; ordem natural de teclado; caixas com área de 44 px.
+7. **Componentes de `src/ui/`:** `CabecalhoPagina`, `Secao`, `SeletorAno`, `TabelaDados`, `Janela`, `Campo`,
+   `BotaoEnviar`, `EstadoVazio`, `Aviso`, `Notificacao`, `Excluidos`, `FormularioConfirmado`. Nenhuma peça
+   nova no Núcleo.
+8. **Sugestões (não estão na proposta; a Diretoria decide):** (a) avisar nos Cadastros quantos grupos e itens
+   ainda estão fora do plano do exercício; (b) botão "Baixar planilha" do plano (já incluído como CSV na
+   regra 11, mas sem tela de importação); (c) preencher a Área do plano automaticamente com a do serviço
+   quando o lançamento não informar (hoje fica vazia, para a divergência ser real).
+
+### Entregas (cada uma conferível na prévia, nesta ordem)
+
+- **1 de 3 — Cadastros e plano por exercício:** abas novas, Áreas, Grupo de Contas (renome na tela) com Itens,
+  tela do Plano com copiar do ano anterior, versões, CSV e demonstração. Regras 1 a 6, 11 (CSV do plano), 13.
+- **2 de 3 — Lançamentos orientados pelo plano:** colunas `item_id` e `area_plano_id`, campos e avisos nos
+  formulários de despesa e realizado, importação de itens e CSV com as colunas novas. Regras 7, 8 e 11.
+- **3 de 3 — Comparar exercícios e divergências:** regras 9 e 10 e as duas telas. Fecha a proposta.
+
+### Fica de fora
+
+Responder P3, P5 e P6 da #185; agrupar ou somar painéis pelo plano; **importar o plano de uma planilha**
+(cadastro manual por ora); bloquear lançamento; Itens por Fonte; plano nas Contas da Tesouraria; Núcleo.
+
+### Frentes
+
+`telas` e `regras e dados` (sem infraestrutura). Fora do módulo: nenhuma mudança no Núcleo.
+Atualizar o `CLAUDE.md` do módulo (a linha "Sem plano de contas no Elo" deixa de valer) e o plano de
+execução da entrega.
+
+### Decisões tomadas sozinho
+
+1. **Fontes mantêm `codigo_conta`.** A proposta diz que o plano substitui o texto livre de Grupos e Fontes,
+   mas o plano só tem despesa (Área, Grupo, Itens). Tirar o código das Fontes perderia dado sem substituto e
+   quebraria o CSV e a importação por código. *Custo se errado:* retirar o campo das Fontes (pequeno).
+2. **Grupo de Contas = mesma aba `GruposGasto`**, sem migração de ids. *Custo:* migrar `grupo_id` se a
+   Diretoria quiser separar os dois conceitos (médio).
+3. **Plano em lotes completos por exercício**, não linha a linha, como `Lotacoes`. *Custo:* trocar o desenho
+   das abas antes de haver dado real (baixo).
+4. **Área do plano e Item ficam nos lançamentos (despesa e realizado) como colunas opcionais** e nunca são
+   preenchidos sozinhos, para a divergência ser real. *Custo:* preencher depois por regra (baixo).
+5. **Existência no exercício = estar no plano daquele ano**; Áreas, Grupos e Itens são cadastros únicos.
+   *Custo:* se a Diretoria quiser o mesmo nome com sentido diferente por ano, criar outro cadastro.
+6. **Quem edita = Financeiro** (`previsao.editar`), sem permissão nova. *Custo:* criar permissão (baixo).
+7. **ADR-036** registra a reversão da decisão da #127.
+
+### Critérios de pronto
+
+- [ ] Testes: cadastros (nome e código únicos, reativação), plano em lote (tudo ou nada, versão lida, só
+      inclusão, vigência fora do ano, exercício encerrado), vigência (qual lote vale), copiar do ano anterior,
+      item de outro grupo, orientação sem bloqueio, comparação entre exercícios, divergência (escopo antes de
+      somar, sem área do plano), acesso (Financeiro altera; coordenação, Leitura e Diretoria só leem)
+- [ ] Dados antigos sem plano funcionam como antes; "Preparar estrutura" acrescenta abas e colunas
+- [ ] Na prévia: montar o plano de 2027 a partir do de 2026, salvar, ver "Versões anteriores"; lançar uma
+      despesa fora do plano e ver o aviso sem bloqueio; comparar 2027 com 2026; ver a divergência de área
+- [ ] `npm run verificar` e `npm run build` verdes
+
+## Lançamento de despesas por rateio (proposta #225, 20/11/2026)
+
+### Objetivo
+
+Hoje a Entrega R1 (acima) só **mostra** o rateio calculado na Análise por área; a despesa continua
+sendo uma única linha, sem serviço, e nada é gravado por serviço. Esta entrega grava uma **despesa
+por serviço participante**, com o valor já rateado pela Regra de rateio escolhida, para quem precisa
+ver e exportar a despesa já dividida (não só o resultado no painel). Arquitetura: ADR-038.
+
+### Para quem
+
+Financeiro, ao cadastrar uma despesa prevista que precisa ser dividida entre vários serviços de
+forma proporcional (ex.: uma conta de alimentação rateada pelo nº de atendidos de cada serviço).
+
+### Usuários e permissões
+
+- `orcamento.previsao.editar` (Financeiro): cadastra, altera e encerra um Lançamento de rateio. Sem
+  permissão nova.
+- `orcamento.painel.ver`: vê os Lançamentos de rateio e as despesas que eles geram, junto com as
+  demais despesas.
+
+### Entidades
+
+- **Aba nova `LancamentosRateio`** (planilha `orcamento`, sem dados pessoais): `ano`, `grupo_id`,
+  `fonte_id`, `descricao`, `regra_rateio_id` (obrigatório, de `RegrasRateio`), `quantidade`,
+  `ocorrencias`, `valor_unitario`, `distribuicao`, `m1`..`m12`, `categoria`, `observacao`, `ativo`.
+  Mesmos campos de uma despesa (ver `Despesas`), mas sem `servico`: o lançamento não pertence a
+  nenhum serviço, a Regra de rateio é que decide quem recebe.
+- **Coluna nova opcional `lancamento_rateio_id` em `Despesas`**: presente só nas linhas geradas por
+  um Lançamento de rateio. Essas linhas ficam travadas no cadastro comum de Despesas (regra 4).
+
+### Regras de negócio (com teste)
+
+1. O Lançamento de rateio pede os mesmos campos de uma despesa (grupo, fonte, descrição,
+   quantidade, ocorrências, valor unitário, distribuição/meses, categoria, observação) mais a
+   **Regra de rateio**, que precisa já existir e estar ativa (Cadastros › Regras de rateio).
+2. **Cálculo:** o valor de cada mês do lançamento (igual à distribuição de uma despesa comum) é
+   dividido entre os serviços participantes da regra pelos mesmos pesos em todos os meses
+   (`ratearPelaRegra`, R1) — as bases (atendidos, m², profissionais…) não variam por mês.
+3. **Geração:** cada serviço participante com peso maior que zero recebe uma linha em `Despesas`
+   com `ano`, `servico` (o do participante), o mesmo `grupo_id`, `fonte_id`, `descricao` e
+   `categoria` do lançamento, `quantidade = 1`, `ocorrencias = 1`, `distribuicao = 'manual'`,
+   `m1`..`m12` com o valor já rateado daquele serviço, `situacao = 'aceito'` e
+   `lancamento_rateio_id` apontando para o lançamento. Sem `regra_rateio_id` próprio (já foi
+   aplicada; não entra de novo na Análise por área).
+4. **Travamento:** uma despesa com `lancamento_rateio_id` não tem botão de editar valor ou excluir
+   no cadastro comum de Despesas; aparece com a etiqueta "Gerada por rateio" e um atalho para o
+   Lançamento de origem. Qualquer mudança passa pelo Lançamento (regra 5).
+5. **Recálculo automático**, só enquanto o exercício do lançamento está em elaboração
+   (`Exercicios.situacao === 'elaboracao'`), nestes cinco pontos (lista fechada; ver ADR-038):
+   salvar o próprio lançamento; salvar a Regra de rateio usada; salvar os valores de uma Base
+   própria usada pela regra; alterar atendidos, m² ou vagas de um serviço participante; alterar a
+   lotação (profissionais) de um serviço participante. Em cada um, as despesas geradas antes são
+   encerradas (`ativo = FALSE`) e as novas, recalculadas, são gravadas. Fora desses cinco pontos
+   (ex.: um serviço encerrado), não recalcula sozinho — reabrir e salvar o lançamento de novo.
+6. **Depois do exercício aprovado**, as despesas geradas ficam congeladas como estão: nenhum dos
+   cinco pontos as altera mais (mesma regra de qualquer despesa aprovada: precisaria de
+   remanejamento ou suplementação).
+7. **Excluir o lançamento** (só com o exercício em elaboração) encerra o lançamento e todas as
+   despesas que ele gerou. Com o exercício aprovado, não há como excluir (regra 6).
+8. Regra sem nenhum serviço participante elegível (nenhum custo direto recebendo, como na regra 2
+   de R1): o lançamento grava normalmente, mas aparece um aviso "Nenhuma despesa gerada: ajuste a
+   Regra de rateio" — não bloqueia salvar.
+9. Alteração auditada: do Lançamento (colunas, nunca valores) e de cada despesa gerada ou encerrada
+   pelo recálculo (com o `lancamento_rateio_id` no detalhe).
+
+### Telas
+
+Orçamento › Despesas › **Lançamento de despesas por rateio** (lista e formulário).
+
+1. **Quem usa e o que quer fazer:** o Financeiro cadastra uma despesa que precisa dividir
+   proporcionalmente entre serviços, sem fazer a conta à mão. Caminho mais curto: abrir a tela,
+   preencher como uma despesa comum, escolher a Regra de rateio, ver a prévia e salvar.
+2. **Lista:** lançamentos do exercício, com descrição, grupo, regra usada, valor anual e quantos
+   serviços recebem. Ação principal: "Novo lançamento".
+3. **Formulário:** os mesmos campos de uma despesa (`Campo`, com dica e obrigatório) mais a Regra
+   de rateio (lista das regras ativas). Antes de salvar, mostra a **prévia** "como ficaria"
+   (reaproveita `previaDaRegra`, já existente nas Regras de rateio): quanto cada serviço
+   participante vai receber, em reais e percentual, com os valores atuais das bases.
+4. **Na lista comum de Despesas:** as linhas geradas mostram a `Etiqueta` "Gerada por rateio" (sem
+   botão de editar valor ou excluir) e um link "Ver lançamento de origem" que abre o Lançamento.
+5. **Estados:** vazio ("Nenhum lançamento de rateio ainda" + "Novo lançamento"); gravando
+   (`BotaoEnviar`); gravou (`?ok=`, com "X despesas geradas/atualizadas"); erro (`Aviso`, sem
+   perder o que foi digitado); sem permissão.
+6. **Ação sem volta:** excluir um lançamento (regra 7) pede confirmação (`FormularioConfirmado`)
+   explicando que todas as despesas geradas por ele serão encerradas.
+7. **Celular e teclado:** mesma lista e formulário em largura de celular; prévia em tabela rolável
+   na horizontal se precisar.
+8. **Sugestão (não está na proposta, a Diretoria decide):** mostrar, na tela do Lançamento, um
+   aviso quando a base cair para custo direto ou partes iguais em todos os participantes (regra 6
+   de R1), para o Financeiro notar antes de aprovar o exercício.
+
+### Fica de fora
+
+Pesos que variam mês a mês (hoje usa os mesmos pesos em todos os meses); recálculo fora dos cinco
+pontos listados (ex.: serviço encerrado); reabrir exercício aprovado para recalcular (segue a regra
+normal de remanejamento e suplementação).
+
+### Frentes
+
+`telas`, `regras e dados`. Sem infraestrutura, sem mudança no Núcleo.
+
+### Decisões tomadas sozinho
+
+- **Aba `LancamentosRateio` separada de `Despesas`**, em vez de reaproveitar `Despesas` para a
+  "mãe": mantém separado o que é configurado (o lançamento) do que é gerado (as despesas por
+  serviço). Se errado: dá para fundir depois (custo pequeno).
+- **Mesmos pesos em todos os meses** do lançamento (regra 2): bases como atendidos ou m² não variam
+  por mês hoje no Elo. Se a Diretoria quiser peso variável por mês, é entrega nova (custo médio).
+- **Lista fechada de cinco pontos de recálculo** (regra 5): cobre os pontos onde a base, a regra ou
+  o próprio lançamento mudam hoje no Orçamento. Se faltar um ponto (ex. serviço encerrado), o
+  recálculo não dispara sozinho; custo de ampliar a lista depois é pequeno a médio, por ponto.
+- **Aviso, não bloqueio, quando não há despesa gerada** (regra 8): evita impedir salvar o
+  lançamento enquanto a Diretoria ajusta o cadastro da regra. Custo se errado: pequeno.
+
+### Entrega
+
+Uma só: aba e coluna novas, cadastro e cálculo do Lançamento, geração e travamento das despesas,
+recálculo automático nos cinco pontos da regra 5.
+
+### Critérios de pronto
+
+- [ ] Testes: cálculo mês a mês com os pesos da regra; geração e travamento das despesas; cada um
+      dos cinco pontos de recálculo; nada muda com o exercício aprovado; excluir o lançamento
+      encerra as despesas geradas; auditoria sem valores; acesso (quem edita, quem só vê).
+- [ ] Na prévia (dados fictícios): cadastrar um Lançamento com uma Regra de dois níveis; ver a
+      prévia antes de salvar; confirmar as despesas geradas na lista comum, travadas, com a
+      etiqueta "Gerada por rateio"; mudar a base de um serviço participante e ver o recálculo
+      automático; excluir o lançamento e confirmar que as despesas geradas somem (encerradas).
+- [ ] `npm run verificar` e `npm run build` verdes.
