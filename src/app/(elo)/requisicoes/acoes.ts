@@ -32,6 +32,12 @@ import {
   type DadosRequisicao,
   type LinhaItemLote,
 } from '@/modulos/requisicoes/aplicacao/requisicoes';
+import {
+  definirManutencaoPrevista,
+  marcarManutencaoFeita,
+  mudarSituacaoVeiculo,
+  salvarVeiculo,
+} from '@/modulos/requisicoes/aplicacao/veiculos';
 import type { TipoAnexo } from '@/modulos/requisicoes/dominio/anexos';
 import type { Formulario } from '@/modulos/requisicoes/dominio/requisicao';
 import { ErroArquivo } from '@/nucleo/armazenamento/arquivos';
@@ -297,6 +303,42 @@ export async function acaoReativarTipo(f: FormData) {
 export async function acaoSalvarExpediente(f: FormData) {
   await executar('/requisicoes/tipos', 'Expediente salvo.', ({ usuario, app }) =>
     salvarExpediente(app.planilhas, usuario.autorizador, { inicio: numero(f, 'inicio'), fim: numero(f, 'fim') }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Veículos institucionais (proposta #229)
+// ---------------------------------------------------------------------------
+
+export async function acaoSalvarVeiculo(f: FormData) {
+  const id = texto(f, 'id');
+  await executar('/requisicoes/veiculos', id ? 'Veículo alterado.' : 'Veículo cadastrado.', async ({ usuario, app }) => {
+    const veiculoId = await salvarVeiculo(
+      app.planilhas,
+      usuario.autorizador,
+      { nome: texto(f, 'nome'), placa: texto(f, 'placa'), capacidade: numero(f, 'capacidade') },
+      id ? { id, versao: Number(texto(f, 'versao')) } : undefined,
+    );
+    // A data de manutenção só muda quando o campo veio no formulário.
+    if (f.has('manutencao')) await definirManutencaoPrevista(app.planilhas, usuario.autorizador, veiculoId, texto(f, 'manutencao') || null);
+  });
+}
+
+export async function acaoExcluirVeiculo(f: FormData) {
+  await executar('/requisicoes/veiculos', 'Veículo excluído. Ele fica em “Veículos excluídos” e pode ser reativado.', ({ usuario, app }) =>
+    mudarSituacaoVeiculo(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), false),
+  );
+}
+
+export async function acaoReativarVeiculo(f: FormData) {
+  await executar('/requisicoes/veiculos', 'Veículo reativado.', ({ usuario, app }) =>
+    mudarSituacaoVeiculo(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true),
+  );
+}
+
+export async function acaoMarcarManutencaoFeita(f: FormData) {
+  await executar('/requisicoes/veiculos', 'Manutenção marcada como feita.', ({ usuario, app }) =>
+    marcarManutencaoFeita(app.planilhas, usuario.autorizador, texto(f, 'id'), texto(f, 'proxima') || null),
   );
 }
 

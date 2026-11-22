@@ -45,6 +45,7 @@ export const USUARIOS_FICTICIOS = [
   { email: 'funcionario@exemplo.local', nome: 'Funcionário (fictício)', perfil: 'funcionario', escopo: null },
   { email: 'comunicacao@exemplo.local', nome: 'Comunicação (fictícia)', perfil: 'comunicacao', escopo: null },
   { email: 'coord.comunicacao@exemplo.local', nome: 'Coordenação da Comunicação (fictícia)', perfil: 'coordenacao_comunicacao', escopo: null },
+  { email: 'editor.conhecimento@exemplo.local', nome: 'Editor da Base de Conhecimento (fictício)', perfil: 'editor_conhecimento', escopo: null },
 ] as const;
 
 const PARENTESCOS = ['mãe', 'pai', 'avó', 'avô', 'tia', 'irmã'];

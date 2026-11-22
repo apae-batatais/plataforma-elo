@@ -13,6 +13,7 @@ import { validarRegistro } from '@/nucleo/modulos/registro';
 
 import type { EstruturaDosModulos } from '@/nucleo/estrutura/preparar';
 import { manifesto as orcamento, popularCedidosFicticia, popularFolhaFicticia, popularHistoricoFicticia, popularPlanoContasFicticio, popularPrevisaoFicticia, popularRealizadoFicticio, popularReservaFicticia, popularTesourariaFicticia, TABELAS_ORCAMENTO } from '@/modulos/orcamento';
+import { manifesto as conhecimento, popularConhecimentoFicticio, TABELAS_CONHECIMENTO } from '@/modulos/conhecimento';
 import { manifesto as comunicacao, popularComunicacaoFicticia, TABELAS_COMUNICACAO } from '@/modulos/comunicacao';
 import { manifesto as requisicoes, lerFeriadosAntigos, popularRequisicoesFicticias, TABELAS_REQUISICOES } from '@/modulos/requisicoes';
 import { manifesto as parcerias, popularParceriasFicticias, TABELAS_PARCERIAS } from '@/modulos/parcerias';
@@ -23,10 +24,10 @@ import { manifesto as saude, popularSaudeFicticia, TABELAS_SAUDE } from '@/modul
 import { FAMILIAS } from './familias';
 import type { Planilhas } from '@/nucleo/armazenamento/tabela';
 
-export const MODULOS: readonly Manifesto[] = [orcamento, parcerias, requisicoes, comunicacao, avaliacao, saude, educacao, projetos];
+export const MODULOS: readonly Manifesto[] = [orcamento, parcerias, requisicoes, comunicacao, avaliacao, saude, educacao, projetos, conhecimento];
 
 /** Tabelas (abas) de todos os módulos ativos, usadas por "Preparar estrutura". */
-export const TABELAS_DOS_MODULOS: readonly DefinicaoTabela<z.ZodObject>[] = [...TABELAS_ORCAMENTO, ...TABELAS_PARCERIAS, ...TABELAS_REQUISICOES, ...TABELAS_COMUNICACAO, ...TABELAS_AVALIACAO, ...TABELAS_SAUDE, ...TABELAS_EDUCACAO, ...TABELAS_PROJETOS] as DefinicaoTabela<z.ZodObject>[];
+export const TABELAS_DOS_MODULOS: readonly DefinicaoTabela<z.ZodObject>[] = [...TABELAS_ORCAMENTO, ...TABELAS_PARCERIAS, ...TABELAS_REQUISICOES, ...TABELAS_COMUNICACAO, ...TABELAS_AVALIACAO, ...TABELAS_SAUDE, ...TABELAS_EDUCACAO, ...TABELAS_PROJETOS, ...TABELAS_CONHECIMENTO] as DefinicaoTabela<z.ZodObject>[];
 
 /** Abas, perfis e permissões que os módulos acrescentam em "Preparar estrutura". */
 export const ESTRUTURA_DOS_MODULOS: EstruturaDosModulos = {
@@ -58,6 +59,7 @@ export async function popularDemonstracaoDosModulos(p: Planilhas): Promise<void>
   await popularSaudeFicticia(p);
   await popularEducacaoFicticia(p);
   await popularProjetosFicticios(p);
+  await popularConhecimentoFicticio(p);
 }
 
 validarRegistro(MODULOS, Object.keys(FAMILIAS));

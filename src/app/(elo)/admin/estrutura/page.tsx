@@ -20,6 +20,7 @@ const NOME_PLANILHA: Record<string, string> = {
   parcerias: 'Parcerias',
   requisicoes: 'Requisições',
   comunicacao: 'Comunicação',
+  conhecimento: 'Base de Conhecimento',
 };
 
 export default async function Estrutura({ searchParams }: { searchParams: Promise<{ resultado?: string }> }) {

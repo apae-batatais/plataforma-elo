@@ -8,7 +8,7 @@ import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenam
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { incluirFeriadosNacionais } from '@/nucleo/feriados/feriados';
 import { concluirRequisicao, decidirRequisicao, enviarRequisicao, receberRequisicao } from '../aplicacao/requisicoes';
-import { CatalogoItens, EspacoIndisponibilidades, Espacos, Requisicoes, TiposRequisicao } from './tabelas';
+import { CatalogoItens, EspacoIndisponibilidades, Espacos, Requisicoes, TiposRequisicao, VeiculoManutencoes, Veiculos } from './tabelas';
 
 const TIPOS = [
   { nome: 'Higiene e limpeza', descricao: 'Produtos de limpeza e de higiene pessoal.' },
@@ -394,6 +394,19 @@ export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
     agora: dia('2026-10-23', 10),
     resultado: 'resolvido',
   });
+  // Veículos (proposta #229): dois fictícios, um deles com manutenção prevista.
+  const [veiculosLidos, manutencoesLidas] = await lerTabelas(p, [Veiculos, VeiculoManutencoes] as const);
+  const autoria = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const veiculos = await inserirRegistros(
+    p,
+    veiculosLidos,
+    [
+      { nome: 'Van 1', placa: 'AAA0A00', capacidade: 12 },
+      { nome: 'Carro 1', placa: 'BBB1B11', capacidade: 5 },
+    ],
+    autoria,
+  );
+  await inserirRegistros(p, manutencoesLidas, [{ veiculo_id: veiculos[1].id, data_prevista: '2026-12-15', feita_em: null, feita_por: null }], autoria);
 
   // 8. Reserva de espaço: dois espaços, um período de reforma, uma reserva aprovada e outra que cruza com ela.
   const [espacosLidos, periodosLidos] = await lerTabelas(p, [Espacos, EspacoIndisponibilidades] as const);
