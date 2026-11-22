@@ -180,6 +180,27 @@ export default async function FichaPedido({ params }: { params: Promise<{ id: st
                 </a>
               </p>
             )}
+            {publicacao.resultado && (
+              <p className="text-sm" data-testid="resultado-instagram">
+                {publicacao.resultado.numeros && publicacao.resultado.atualizadoEm ? (
+                  <>
+                    <span className="font-semibold">
+                      {[
+                        ['Alcance', publicacao.resultado.numeros.alcance],
+                        ['Curtidas', publicacao.resultado.numeros.curtidas],
+                        ['Comentários', publicacao.resultado.numeros.comentarios],
+                        ['Salvamentos', publicacao.resultado.numeros.salvamentos],
+                      ]
+                        .map(([nome, v]) => `${nome}: ${typeof v === 'number' ? v.toLocaleString('pt-BR') : '—'}`)
+                        .join(' · ')}
+                    </span>
+                    <span className="block text-texto-suave">Atualizado em {dataHoraBR(publicacao.resultado.atualizadoEm)}</span>
+                  </>
+                ) : (
+                  <span className="text-texto-suave">{publicacao.resultado.aviso}</span>
+                )}
+              </p>
+            )}
             {publicacao.situacao === 'falhou' && r.situacao === 'agendado' && (
               <FormularioConfirmado
                 acao={acaoTentarDeNovoPublicacao}

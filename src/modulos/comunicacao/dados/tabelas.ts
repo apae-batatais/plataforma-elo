@@ -11,7 +11,7 @@
  * - Parametros: ajustes da Comunicação (ex.: antecedência mínima, em dias úteis).
  */
 import { z } from 'zod';
-import { booleano, definirTabela, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
+import { booleano, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import type { TipoData } from '../dominio/calendario';
 import { SITUACOES_ENVIO, TIPOS_ENVIO } from '../dominio/envio';
 import { SITUACOES, TIPOS_PECA } from '../dominio/pedido';
@@ -117,6 +117,15 @@ export const PublicacoesComunicacao = definirTabela({
     /** Resumo (SHA-256) do código da mídia temporária; vazio quando não há código vivo. */
     codigo_midia: textoOpcional(),
     midia_vence_em: textoOpcional(),
+    /** Resultado da postagem no Instagram (Fase 4, #65): vazio até a primeira busca que funcionou. */
+    alcance: numeroOpcional(),
+    curtidas: numeroOpcional(),
+    comentarios: numeroOpcional(),
+    salvamentos: numeroOpcional(),
+    /** Quando foi a última busca que funcionou (ISO). */
+    metricas_em: textoOpcional(),
+    /** `sem_permissao` quando a Meta recusou a leitura de resultado de toda a conta; vazio no resto. */
+    metricas_aviso: textoOpcional(),
   }),
 });
 
