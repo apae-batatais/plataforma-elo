@@ -392,6 +392,7 @@ const NOME_DA_PLANILHA: Record<string, string> = {
   avaliacao_saude: 'Avaliação de Saúde',
   avaliacao_educacao: 'Educação (avaliações)',
   comunicacao: 'Comunicação',
+  conhecimento: 'Base de Conhecimento',
   projetos: 'Projetos',
   anexos: 'Pasta de anexos',
 };

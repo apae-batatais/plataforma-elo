@@ -13,6 +13,7 @@ export const ICONE_DO_APP: Record<string, NomeIcone> = {
   parcerias: 'parcerias',
   projetos: 'projetos',
   educacao: 'educacao',
+  conhecimento: 'conhecimento',
 };
 
 export function iconeDoApp(id: string): NomeIcone {

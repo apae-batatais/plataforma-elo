@@ -1,6 +1,6 @@
 # Especificação — Módulo Base de Conhecimento
 
-- Situação: rascunho, aguardando aprovação da Diretoria (proposta #231)
+- Situação: aprovada (proposta #231); entrega 1 de 4 construída (publicação e ciência). Na planilha, a "versão" do conteúdo chama-se `edicao` (a coluna `versao` das abas é o controle de gravação)
 - Dono do produto: Diretoria
 - Decisão de arquitetura: ADR-039
 - Id do módulo: `conhecimento` · planilha `conhecimento` · rota `/conhecimento` (nome na tela: Base de Conhecimento)

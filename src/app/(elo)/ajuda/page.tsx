@@ -75,7 +75,12 @@ export default async function Ajuda() {
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
+    veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    ler: a.temPermissaoAlgumEscopo('conhecimento.ler'),
+    publicar: a.temPermissao('conhecimento.publicar'),
+    acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
+    categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
     equipeComunicacao: a.temPermissao('comunicacao.revisar'),
     configurarComunicacao: a.temPermissao('comunicacao.configurar'),
@@ -237,6 +242,17 @@ export default async function Ajuda() {
                 nos tipos em que uma foto ajuda (manutenção, TI, mobiliário). No fim da tela fica o horário do expediente. Os feriados, que valem para todos os apps,
                 ficam em Administração › Feriados: o botão &ldquo;Incluir feriados nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo);
                 os municipais e os pontos facultativos você inclui um a um.
+              </p>
+            </>
+          )}
+          {pode.veiculos && (
+            <>
+              <Sub>Veículos</Sub>
+              <p>
+                Em Requisições › Veículos (só a Administração da plataforma), cadastre cada veículo da instituição com nome, placa e capacidade de passageiros.
+                Ao alterar um veículo, informe a data da próxima manutenção: a partir desse dia ele deixa de aparecer para pedido novo, até você clicar em
+                &ldquo;Marcar feita&rdquo; (e, se já souber, informar a data da seguinte). Veículo excluído some da lista de pedido, mas pode ser reativado
+                em &ldquo;Veículos excluídos&rdquo;. Nada é apagado.
               </p>
             </>
           )}
@@ -477,6 +493,68 @@ export default async function Ajuda() {
                   'Se o arquivo trouxer lotação para quem já está cadastrado: quem não tem recebe a do arquivo; quem tem uma diferente é atualizado a partir da data que você escolher, se você deixar marcado. A lotação anterior fica no histórico.',
                 ]}
               />
+            </>
+          )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.ler) {
+    assuntos.push({
+      id: 'conhecimento',
+      titulo: 'Base de Conhecimento',
+      resumo: 'Ler comunicados e normas, dar ciência e ver o que falta; para quem publica, criar publicações e acompanhar quem está em dia.',
+      atalhos: [
+        { rotulo: 'Biblioteca', href: '/conhecimento' },
+        { rotulo: 'Meus documentos', href: '/conhecimento/meus-documentos' },
+        ...(pode.publicar ? [{ rotulo: 'Nova publicação', href: '/conhecimento/publicacoes/nova' }] : []),
+        ...(pode.acompanharConhecimento ? [{ rotulo: 'Acompanhamento', href: '/conhecimento/acompanhamento' }] : []),
+        ...(pode.categoriasConhecimento ? [{ rotulo: 'Categorias', href: '/conhecimento/categorias' }] : []),
+      ],
+      conteudo: (
+        <>
+          <Sub>Ler e dar ciência</Sub>
+          <Passos
+            itens={[
+              'Abra Base de Conhecimento. No alto, "Falta você" lista os documentos que pedem a sua ciência; a tela inicial também avisa.',
+              'Clique em Abrir. Leia o texto e, se houver, abra o PDF ou a imagem anexada.',
+              'No cartão "O que falta", clique em "Li e estou de acordo" e confirme. Isso registra o seu nome, a data e a hora e não dá para desfazer.',
+              'Se o conteúdo mudar numa versão nova, o documento volta a ficar pendente e você dá ciência de novo.',
+              'Em Meus documentos, veja o que já está em dia (com a data da ciência) e o que falta. Pendência com mais de 15 dias fica marcada como vencida.',
+            ]}
+          />
+          <p className="mt-2">Você só vê as publicações do seu público (todos, um perfil ou uma área). Ninguém vê a ciência de outra pessoa, só quem acompanha.</p>
+          {pode.publicar && (
+            <>
+              <Sub>Publicar</Sub>
+              <Passos
+                itens={[
+                  'Abra Publicações › Nova publicação (se faltar categoria, cadastre em Categorias).',
+                  'Preencha título, categoria e resumo; escreva o texto, envie um anexo (PDF até 10 MB ou imagem), ou os dois.',
+                  'Em "Quem deve ler", escolha Todos, Um perfil ou Uma área. Marque "Exige ciência" se a pessoa precisa confirmar que leu.',
+                  'Salve como rascunho para revisar (ninguém recebe pendência) ou clique em Publicar.',
+                  'Ao editar o texto de uma publicação que já tem ciências, escolha "Correção pequena" (as ciências continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
+                  'Arquivar tira a publicação das listas e das pendências, mas guarda o registro de quem deu ciência; dá para reativar.',
+                ]}
+              />
+            </>
+          )}
+          {pode.acompanharConhecimento && (
+            <>
+              <Sub>Acompanhar quem está em dia</Sub>
+              <Itens
+                itens={[
+                  'Acompanhamento lista as publicações que exigem ciência com "X de Y em dia". Clique em "Ver as pessoas" para ver quem deu ciência, quem precisa renovar e quem está pendente; os filtros separam cada grupo.',
+                  'Abrir a lista de pessoas fica registrado na auditoria.',
+                ]}
+              />
+            </>
+          )}
+          {pode.categoriasConhecimento && (
+            <>
+              <Sub>Categorias</Sub>
+              <p>Em Categorias, adicione e desative categorias. Não dá para desativar uma categoria que ainda tem publicação (que não esteja arquivada); desativadas podem ser reativadas.</p>
             </>
           )}
         </>
