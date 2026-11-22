@@ -465,4 +465,47 @@ export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
     { espacoId: salao.id, data: '2026-11-12', inicio: '16:00', fim: '18:00', finalidade: 'Reunião de pais', pessoas: 150, usoExterno: false },
     dia('2026-10-30', 15),
   );
+
+  // 9. Pedido de veículo: um aprovado na Van 1 e outro que cruza com ele (o Transporte vê o conflito).
+  const [tipoVeiculo] = await inserirRegistros(
+    p,
+    tiposLidos,
+    [
+      {
+        nome: 'Uso de veículo',
+        categoria: 'servico' as const,
+        formulario: 'veiculo' as const,
+        perfil_responsavel: 'transporte',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 8,
+        descricao: 'Reserva de veículo da instituição: escolha o veículo, a saída e a volta.',
+        anexos: 'nao',
+      },
+    ],
+    autoria,
+  );
+  const pedidoVeiculo = (email: string, nome: string, area: string, servico: string, detalhes: object, quando: Date) =>
+    enviarRequisicao(
+      p,
+      como(email),
+      { nomeRequisitante: nome, tipoId: tipoVeiculo.id, area, centros: [{ servico, percentual: 100 }], itens: [], detalhes },
+      { agora: quando },
+    );
+  const van = await pedidoVeiculo(
+    'dp@exemplo.local',
+    'Departamento Pessoal (fictício)',
+    'assistencia_social',
+    'ur',
+    { veiculoId: veiculos[0].id, saida: '2026-12-02T08:00', volta: '2026-12-02T12:00', destino: 'Unidade de saúde do bairro', finalidade: 'Levar um grupo de famílias à consulta', condutor: 'Condutor (fictício)' },
+    dia('2026-11-25', 10),
+  );
+  await decidirRequisicao(p, como('transporte@exemplo.local'), van.id, await versao(van.id), 'aprovar', null, { agora: dia('2026-11-25', 14) });
+  await pedidoVeiculo(
+    'financeiro@exemplo.local',
+    'Financeiro (fictício)',
+    'educacao',
+    'escola',
+    { veiculoId: veiculos[0].id, saida: '2026-12-02T10:00', volta: '2026-12-02T14:00', destino: 'Escola parceira', finalidade: 'Entregar material didático', condutor: 'Financeiro (fictício)' },
+    dia('2026-11-25', 15),
+  );
 }

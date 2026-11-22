@@ -20,6 +20,7 @@ export default async function NovaRequisicao() {
   // Projetos em implementação que a pessoa vê; sem lista (app desligado ou nenhum projeto), o campo não aparece.
   const projetos = await projetosParaRequisicao(app.planilhas, usuario.autorizador);
   if (projetos?.length) opcoes.projetos = projetos;
+  opcoes.nomeDoUsuario = usuario.nome;
   return (
     <div className="max-w-4xl">
       <CabecalhoPagina

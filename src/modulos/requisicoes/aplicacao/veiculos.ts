@@ -20,6 +20,11 @@ function exigirPermissao(quem: Autorizador) {
   if (!quem.temPermissao(PERMISSAO)) throw new ErroPermissao();
 }
 
+/** Marcar a manutenção como feita é da Administração e do Transporte (regra 8). */
+function exigirPermissaoDeManutencao(quem: Autorizador) {
+  if (!quem.temPermissao(PERMISSAO) && !quem.temPermissaoAlgumEscopo('requisicoes.veiculos.operar')) throw new ErroPermissao();
+}
+
 /** A manutenção pendente de cada veículo (linha ativa sem `feita_em`). */
 function pendentes(manutencoes: RegManutencao[]) {
   return new Map(manutencoes.filter((m) => m.ativo && !m.feita_em).map((m) => [m.veiculo_id, m]));
@@ -117,7 +122,7 @@ export async function marcarManutencaoFeita(
   proxima: string | null,
   opcoes: { agora?: Date } = {},
 ) {
-  exigirPermissao(quem);
+  exigirPermissaoDeManutencao(quem);
   const agora = opcoes.agora ?? new Date();
   const hoje = dia(agora);
   const [veiculos, manutencoes] = await lerTabelas(p, [Veiculos, VeiculoManutencoes] as const);

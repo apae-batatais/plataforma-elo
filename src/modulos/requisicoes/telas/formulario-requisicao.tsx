@@ -22,6 +22,7 @@ import { FichaManutencao } from './ficha-manutencao';
 import { FichaMateriais } from './ficha-materiais';
 import { FichaMobiliario } from './ficha-mobiliario';
 import { FichaTi } from './ficha-ti';
+import { FichaVeiculo } from './ficha-veiculo';
 
 type Estado = { erro?: string };
 
@@ -265,6 +266,8 @@ export function FormularioRequisicao({
           {/* Reserva: os centros vêm depois de "cessão para fora"; cedida para fora, não há centros. */}
           {!saida.semCentros && blocoCentros}
         </>
+      ) : tipo?.formulario === 'veiculo' ? (
+        <FichaVeiculo key="veiculo" inicial={inicial} tipo={tipo} veiculos={opcoes.veiculos} nomeDoUsuario={opcoes.nomeDoUsuario} aoMudar={setSaida} />
       ) : tipo?.formulario === 'ti' ? (
         <FichaTi key="ti" inicial={inicial} tipo={tipo} aoMudar={setSaida} />
       ) : tipo?.formulario === 'mobiliario' ? (
