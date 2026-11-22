@@ -86,3 +86,20 @@ describe('família no manifesto', () => {
     expect(g[0].tipo === 'familia' && g[0].apps.map((a) => a.id)).toEqual(['avaliacao', 'saude']);
   });
 });
+
+describe('tela Instrumentos em Educação e Saúde', () => {
+  const filhos = (app: string, ...p: string[]) =>
+    apps(com(...p)).find((i) => i.rotulo === 'Avaliações')?.apps?.find((a) => a.rotulo === app)?.filhos?.map((f) => f.rotulo) ?? [];
+
+  it('quem avalia vê "Instrumentos" no menu, depois de "Nova avaliação"', () => {
+    const e = filhos('Educação', 'educacao.acessar', 'educacao.avaliar');
+    expect(e.indexOf('Instrumentos')).toBe(e.indexOf('Nova avaliação') + 1);
+    const s = filhos('Saúde', 'saude.acessar', 'saude.avaliar');
+    expect(s.indexOf('Instrumentos')).toBe(s.indexOf('Nova avaliação') + 1);
+  });
+
+  it('quem só tem acesso de leitura não vê "Instrumentos"', () => {
+    expect(filhos('Educação', 'educacao.acessar', 'educacao.painel')).not.toContain('Instrumentos');
+    expect(filhos('Saúde', 'saude.acessar', 'saude.painel')).not.toContain('Instrumentos');
+  });
+});
