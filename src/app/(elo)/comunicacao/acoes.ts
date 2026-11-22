@@ -10,7 +10,7 @@ import { iniciarEnvioAnexoComunicacao, type AnexoPedido } from '@/modulos/comuni
 import { mudarSituacaoItemCalendario, salvarItemCalendario } from '@/modulos/comunicacao/aplicacao/calendario';
 import { mudarSituacaoContato, mudarSituacaoGrupo, salvarContato, salvarGrupo } from '@/modulos/comunicacao/aplicacao/contatos';
 import { tentarEnvioDeNovo } from '@/modulos/comunicacao/aplicacao/envios';
-import { salvarAntecedencia } from '@/modulos/comunicacao/aplicacao/configuracoes';
+import { salvarAntecedencia, salvarAvisosPorEmail } from '@/modulos/comunicacao/aplicacao/configuracoes';
 import { tentarDeNovo } from '@/modulos/comunicacao/aplicacao/publicacoes';
 import { desconectarInstagram, iniciarConexaoInstagram } from '@/modulos/comunicacao/aplicacao/instagram';
 import {
@@ -131,6 +131,17 @@ export async function acaoSalvarAntecedencia(f: FormData) {
     '/comunicacao/configuracoes',
     'Antecedência mínima salva.',
     ({ usuario, app }) => salvarAntecedencia(app.planilhas, usuario.autorizador, t === '' ? Number.NaN : Number(t), { versao: v === '' ? null : Number(v) }),
+  );
+}
+
+export async function acaoSalvarAvisosPorEmail(f: FormData) {
+  const v = texto(f, 'versao');
+  const ligado = texto(f, 'avisos') === 'ligado';
+  await executar(
+    () => '/comunicacao/configuracoes',
+    '/comunicacao/configuracoes',
+    'Salvo.',
+    ({ usuario, app }) => salvarAvisosPorEmail(app.planilhas, usuario.autorizador, ligado, { versao: v === '' ? null : Number(v) }),
   );
 }
 
@@ -280,6 +291,7 @@ export async function acaoRevisarPedido(f: FormData) {
         Number(texto(f, 'versao')),
         acao as (typeof ACOES_DA_REVISAO)[number],
         texto(f, 'comentario') || null,
+        { emailDisponivel: app.email !== null },
       ),
   );
 }
@@ -300,6 +312,7 @@ export async function acaoDecidirPedido(f: FormData) {
         Number(texto(f, 'versao')),
         decisao as (typeof ACOES_DA_DECISAO)[number],
         texto(f, 'comentario') || null,
+        { emailDisponivel: app.email !== null },
       ),
   );
 }
@@ -482,6 +495,6 @@ export async function acaoPublicarPedido(f: FormData) {
     `/comunicacao/${id}`,
     'Publicação registrada.',
     ({ usuario, app }) =>
-      publicarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), { link: texto(f, 'link') || null, comentario: texto(f, 'comentario') || null }),
+      publicarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), { link: texto(f, 'link') || null, comentario: texto(f, 'comentario') || null }, { emailDisponivel: app.email !== null }),
   );
 }

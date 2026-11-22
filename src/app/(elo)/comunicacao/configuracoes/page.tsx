@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { lerAntecedenciaComVersao } from '@/modulos/comunicacao/aplicacao/configuracoes';
+import { lerAntecedenciaComVersao, lerAvisosPorEmail } from '@/modulos/comunicacao/aplicacao/configuracoes';
 import { situacaoDoInstagram } from '@/modulos/comunicacao/aplicacao/instagram';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { configGeral } from '@/plataforma/instituicao';
@@ -12,7 +12,7 @@ import { BotaoEnviar } from '@/ui/botao-enviar';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
-import { acaoConectarInstagram, acaoDesconectarInstagram, acaoSalvarAntecedencia } from '../acoes';
+import { acaoConectarInstagram, acaoDesconectarInstagram, acaoSalvarAntecedencia, acaoSalvarAvisosPorEmail } from '../acoes';
 
 const dataBR = (iso: string) => diaEmBrasilia(new Date(iso)).split('-').reverse().join('/');
 
@@ -24,7 +24,8 @@ export default async function Configuracoes() {
   if (!usuario.autorizador.temPermissao('comunicacao.configurar')) redirect('/comunicacao');
   const { planilhas } = await obterAplicacao();
   const { dias, versao } = await lerAntecedenciaComVersao(planilhas);
-  const { instituicao } = await obterAplicacao();
+  const { instituicao, email: enviador } = await obterAplicacao();
+  const avisos = await lerAvisosPorEmail(planilhas);
   const instagram = await situacaoDoInstagram(planilhas, usuario.autorizador, instituicao.codigo);
   const configurado = provedorDeInstagram(configGeral()) !== null;
   const conectada = instagram.situacao !== 'nenhuma';
@@ -57,6 +58,26 @@ export default async function Configuracoes() {
             />
           </Campo>
           <BotaoEnviar enviando="Salvando…">Salvar antecedência</BotaoEnviar>
+        </form>
+      </Secao>
+      <Secao
+        id="t-avisos"
+        titulo="Avisos por e-mail"
+        descricao="Quando ligado, o Elo manda e-mail a quem precisa agir, sem título nem descrição do pedido."
+        className="max-w-2xl"
+      >
+        <form action={acaoSalvarAvisosPorEmail} className="space-y-4">
+          <input type="hidden" name="versao" value={avisos.versao ?? ''} />
+          {enviador ? (
+            <p className="text-sm text-texto">Enviando por: <strong>{enviador.remetente}</strong></p>
+          ) : (
+            <Aviso tipo="atencao">Falta informar o e-mail de envio na administração da instituição.</Aviso>
+          )}
+          <label className="flex items-center gap-2 text-sm text-texto">
+            <input type="checkbox" name="avisos" value="ligado" defaultChecked={avisos.ligado} disabled={!enviador} className="h-5 w-5" />
+            Avisar por e-mail
+          </label>
+          <BotaoEnviar enviando="Salvando…" disabled={!enviador}>Salvar avisos</BotaoEnviar>
         </form>
       </Secao>
       <Secao
