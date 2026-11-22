@@ -137,6 +137,13 @@ export default async function Ajuda() {
               'Se a requisição for devolvida, a tela inicial avisa. Abra a ficha, clique em Ajustar e reenviar, faça o ajuste pedido e reenvie. Enquanto não for aprovada, dá para cancelar.',
             ]}
           />
+          <Sub>Resumo diário por e-mail</Sub>
+          <Passos
+            itens={[
+              'Se a instituição tem e-mail de envio cadastrado, você recebe de manhã (por volta das 7h, em dia útil) um resumo só seu: quantas requisições esperam a sua aprovação, quantas suas foram devolvidas e quantas estão atrasadas no seu setor ou escopo.',
+              'O e-mail só traz números e o link do Elo, sem dados dos pedidos. Se você não tem nada pendente, não recebe nada. Para agir, abra Requisições pelo link.',
+            ]}
+          />
           <Sub>Chamado de TI</Sub>
           <Passos
             itens={[
