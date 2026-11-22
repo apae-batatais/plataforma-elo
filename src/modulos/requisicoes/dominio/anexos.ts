@@ -59,6 +59,7 @@ export function conferirQuantidade(anexos: { tipo: TipoAnexo }[]): string[] {
  * (tipos cadastrados antes), as fichas de serviço aceitam e as de materiais não.
  */
 export function aceitaAnexos(tipo: { anexos: string | null; formulario: Formulario }): boolean {
+  if (tipo.formulario === 'veiculo') return false; // pedido de veículo não tem foto nem vídeo
   if (tipo.anexos === 'sim') return true;
   if (tipo.anexos === 'nao') return false;
   return FICHA_DE_SERVICO[tipo.formulario];
