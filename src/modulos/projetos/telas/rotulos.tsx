@@ -9,6 +9,7 @@ const TIPO: Record<Etapa, 'neutro' | 'sucesso' | 'atencao' | 'erro' | 'info'> = 
   fase_1: 'sucesso',
   fase_2: 'sucesso',
   fase_3: 'sucesso',
+  implementacao: 'sucesso',
   parado: 'erro',
   cancelado: 'neutro',
 };

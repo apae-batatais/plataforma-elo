@@ -18,16 +18,20 @@ export const Termos = definirTabela({
   aba: 'Termos',
   esquema: z.object({
     parceiro: texto(),
-    numero: texto(),
+    /** Opcionais só enquanto `rascunho` (vindo de um projeto, ADR-023): o Financeiro completa. */
+    numero: textoOpcional(),
     objeto: textoOpcional(),
-    tipo: z.enum(TIPOS_INSTRUMENTO),
+    tipo: z.preprocess((v) => (vazio(v) ? null : v), z.enum(TIPOS_INSTRUMENTO).nullable()),
     tipo_descricao: textoOpcional(),
-    inicio: data(),
-    fim: data(),
-    situacao: z.enum(['em_vigor', 'encerrado']),
-    unidade_meta: texto(),
+    inicio: z.preprocess((v) => (vazio(v) ? null : v), data().nullable()),
+    fim: z.preprocess((v) => (vazio(v) ? null : v), data().nullable()),
+    situacao: z.enum(['em_vigor', 'encerrado', 'rascunho']),
+    unidade_meta: textoOpcional(),
     recursos_proprios: numeroOpcional(),
     limite_ocupacao: numeroOpcional(),
+    /** Projeto que originou o rascunho (cópia do id e do código; só leitura). */
+    projeto_origem_id: textoOpcional(),
+    projeto_origem_codigo: textoOpcional(),
   }),
 });
 

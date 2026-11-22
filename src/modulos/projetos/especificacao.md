@@ -1,6 +1,6 @@
 # Especificação — Módulo Projetos
 
-- Situação: aprovada pela Diretoria; entregas P1 e P2 construídas, P3 a P7 pendentes (issue #143: seção "Construção de P2 a P7" no fim deste arquivo)
+- Situação: aprovada pela Diretoria; entregas P1, P2 e P3 construídas, P4 a P7 pendentes (issue #143: seção "Construção de P2 a P7" no fim deste arquivo)
 - Dono do produto: Diretoria
 - Proposta de origem: issue #107; ligações da onda 2: issue #116. Arquitetura: ADR-011, ADR-013, ADR-021, ADR-022 e ADR-023.
 - Referência do método: Guia Project DPro (PMD Pro), 2ª edição, PM4NGOs, 2020 (licença Creative
@@ -259,7 +259,7 @@ ligada à #107, nesta ordem.
 
 ## Ligações, onda 2 (issue #116): termo de parceria, indicadores vindos de pessoas e evento de captação
 
-- Situação: especificação aprovada. **L1 construída** (14/11/2026: `numeroAgregado` no Núcleo, `indicadoresDoServico` na Avaliação, meta com fonte automática em Parcerias). **L4 construída** (21/11/2026; falta ligar a fotografia `relatorio` ao relatório de monitoramento da P4 e `encerramento` ao encerramento da P5). L2, L3 e L5 aguardam. Arquitetura: ADR-023 e ADR-013.
+- Situação: especificação aprovada. **L1 construída** (14/11/2026: `numeroAgregado` no Núcleo, `indicadoresDoServico` na Avaliação, meta com fonte automática em Parcerias). **L2 construída** (21/11/2026, #241: regras L7 a L11 e L14, aba Ligações com o termo e o botão "Criar rascunho do termo"; falta em Parcerias a ficha para completar, concluir e encerrar o rascunho, no roadmap). **L4 construída** (21/11/2026; falta ligar a fotografia `relatorio` ao relatório de monitoramento da P4 e `encerramento` ao encerramento da P5). L3 e L5 aguardam. Arquitetura: ADR-023 e ADR-013.
 - Respostas da Diretoria (comentário de 13/11/2026): contagem do cadastro só de **pessoas com vínculo ativo no
   serviço**; da Avaliação só o **índice médio de necessidade de cuidado** e a **% de pessoas com reavaliação em
   dia**; **mínimo de 5 pessoas** para um número aparecer ("poucos casos para divulgar"); evento de captação com
