@@ -14,7 +14,8 @@ import type { Categoria } from '../dominio/previsao';
 import { CentrosCusto, Despesas, GruposGasto, RegrasRateio, RegrasRateioParticipantes } from '../dados/tabelas';
 import { aplicarRegras, conferirRegra, ErroRegra, type CentroRateio, type CustoRateado } from '../dominio/rateio-custos';
 import { ErroValidacaoFolha, profissionaisPorServico } from './folha';
-import { regrasParaCalculo } from './regras-rateio';
+import { regrasParaCalculo } from './regras-calculo';
+import { recalcularLancamentosAfetados } from './recalculo-rateio';
 import { lerPrevisao, NOME_GRUPO_CEDIDOS } from './previsao';
 
 const ErroCentro = ErroValidacaoFolha;
@@ -101,6 +102,10 @@ export async function salvarCentro(
   const { colunasAlteradas } = await atualizar(p, CentrosCusto, existente.id, existente.versao, campos, { email: quem.email });
   if (colunasAlteradas.length) {
     await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'CentrosCusto', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
+    // Atendidos, m² e vagas mudam a divisão das despesas geradas por rateio (ADR-038).
+    if (colunasAlteradas.some((c) => ['atendidos', 'area_m2', 'vagas'].includes(c))) {
+      await recalcularLancamentosAfetados(p, quem, { servico: dados.servico }, () => profissionaisPorServico(p));
+    }
   }
 }
 

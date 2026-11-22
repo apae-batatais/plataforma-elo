@@ -35,8 +35,8 @@ export default async function Aplicacao({ params }: { params: Promise<{ id: stri
     throw erro;
   }
   const trilha = [
-    { rotulo: 'Início', href: '/' },
-    { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' },
+    { rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' },
+    { rotulo: 'Assistência Social', href: '/avaliacao' },
     { rotulo: 'Instrumentos', href: '/avaliacao/instrumentos' },
     { rotulo: `${a.iniciais} · ${a.instrumento.nome}` },
   ];

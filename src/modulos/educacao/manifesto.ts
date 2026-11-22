@@ -11,6 +11,7 @@ export const manifesto = defineModulo({
   nome: 'Educação',
   descricao: 'Avaliação de evolução dos atendidos de Educação, por período, com total e subtotais por dimensão.',
   icone: 'educacao',
+  familia: 'avaliacoes',
   schema: 'educacao',
   rota: '/educacao',
   permissaoAcesso: 'educacao.acessar',

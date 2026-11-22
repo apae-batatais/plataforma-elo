@@ -28,7 +28,7 @@ export default async function PainelDeSaude({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-5">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: 'Painel' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: 'Painel' }]}
         titulo="Painel de Saúde"
         descricao={
           p.todos

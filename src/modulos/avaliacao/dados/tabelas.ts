@@ -1,5 +1,5 @@
 /**
- * Abas do módulo Avaliação de Serviços Sociais, na planilha própria "avaliacao_assistencia"
+ * Abas do módulo Assistência Social, na planilha própria "avaliacao_assistencia"
  * (dados sensíveis de atendidos ficam separados das demais planilhas — ADR-011).
  *
  * - Instrumentos, Aplicacoes e Respostas: motor de avaliação (issue #62, ADR-026). Instrumento é cadastrado

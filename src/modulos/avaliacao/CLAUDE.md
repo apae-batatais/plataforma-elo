@@ -1,4 +1,4 @@
-# Módulo Avaliação de Serviços Sociais — regras para o agente
+# Módulo Assistência Social — regras para o agente
 
 Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
 
