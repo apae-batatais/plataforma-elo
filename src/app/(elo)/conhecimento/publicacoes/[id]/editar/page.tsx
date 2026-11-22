@@ -33,7 +33,7 @@ export default async function EditarPublicacao({ params }: { params: Promise<{ i
       <CabecalhoPagina
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Base de Conhecimento', href: '/conhecimento' }, { rotulo: 'Publicações', href: '/conhecimento/publicacoes' }, { rotulo: 'Editar' }]}
         titulo={`Editar “${valor.titulo}”`}
-        descricao="Mudar título, resumo, categoria, público ou anexo não pede nova ciência. Mudar o texto pede que você escolha."
+        descricao="Mudar título, resumo, categoria, público ou anexo não pede nova ciência. Mudar o texto ou o teste de uma publicação que já tem registros pede que você escolha."
       />
       <FormularioPublicacao acao={acaoSalvarPublicacao} iniciarEnvio={acaoIniciarEnvioAnexo} categorias={categorias} perfis={perfis} areas={areas} valor={valor} />
     </div>

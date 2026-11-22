@@ -4,7 +4,7 @@
  * Tudo inventado; nenhum nome de instituição.
  */
 import { inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { CategoriasConhecimento, CienciasConhecimento, PublicacoesConhecimento } from './tabelas';
+import { CategoriasConhecimento, CienciasConhecimento, PerguntasConhecimento, PublicacoesConhecimento, TentativasTeste } from './tabelas';
 
 const EDITOR = { email: 'editor.conhecimento@exemplo.local', nome: 'Editor da Base de Conhecimento (fictício)' };
 const dias = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
@@ -72,6 +72,18 @@ const PUBLICACOES = [
     publicadaHa: 40,
   },
   {
+    chave: 'higiene',
+    titulo: 'Higiene das mãos e prevenção de contágio',
+    categoria: 'seguranca',
+    resumo: 'Quando e como lavar as mãos. Tem um teste curto de compreensão.',
+    corpo: 'Lave as mãos com água e sabão ao chegar, antes de comer, depois de usar o banheiro e ao trocar de atividade. A higienização leva pelo menos 20 segundos.\n\nO álcool em gel complementa a lavagem, mas não a substitui quando há sujeira visível.',
+    publico: ['todos', null],
+    exige: true,
+    temTeste: true,
+    situacao: 'publicada',
+    publicadaHa: 5,
+  },
+  {
     chave: 'rascunho',
     titulo: 'Nova política de uso de celulares (rascunho)',
     categoria: 'normas',
@@ -95,6 +107,11 @@ const PUBLICACOES = [
   },
 ] as const;
 
+const PERGUNTAS_HIGIENE = [
+  { texto: 'Por quanto tempo, no mínimo, se deve esfregar as mãos com água e sabão?', opcoes: ['5 segundos', '10 segundos', '20 segundos'], correta: 2 },
+  { texto: 'O álcool em gel substitui a lavagem quando há sujeira visível?', opcoes: ['Sim, sempre', 'Não, é preciso lavar com água e sabão'], correta: 1 },
+];
+
 /** Quem já deu ciência em cada publicação (e há quantos dias). */
 const CIENCIAS: Record<string, { email: string; ha: number }[]> = {
   conduta: [
@@ -105,6 +122,10 @@ const CIENCIAS: Record<string, { email: string; ha: number }[]> = {
   ],
   recesso: [{ email: 'diretoria@exemplo.local', ha: 2 }],
   epi: [{ email: 'cozinha@exemplo.local', ha: 6 }],
+  higiene: [
+    { email: 'diretoria@exemplo.local', ha: 4 },
+    { email: 'funcionario@exemplo.local', ha: 4 },
+  ],
   antigo: [{ email: 'funcionario@exemplo.local', ha: 250 }],
 };
 
@@ -126,6 +147,7 @@ export async function popularConhecimentoFicticio(p: Planilhas): Promise<void> {
         publico_tipo: x.publico[0],
         publico_valor: x.publico[1],
         exige_ciencia: x.exige,
+        tem_teste: 'temTeste' in x && x.temTeste === true,
         edicao: 1,
         edicao_em: quando ?? dias(1),
         situacao: x.situacao,
@@ -135,6 +157,14 @@ export async function popularConhecimentoFicticio(p: Planilhas): Promise<void> {
       },
       autor,
     );
+    if (x.chave === 'higiene') {
+      for (const [i, q] of PERGUNTAS_HIGIENE.entries())
+        await inserir(p, PerguntasConhecimento, { publicacao_id: pub.id, edicao: 1, ordem: i + 1, texto: q.texto, opcoes: JSON.stringify(q.opcoes), correta: q.correta }, autor);
+      // Quem já passou no teste e deu ciência, e uma pessoa que errou e ainda não passou.
+      for (const email of ['diretoria@exemplo.local', 'funcionario@exemplo.local'])
+        await inserir(p, TentativasTeste, { publicacao_id: pub.id, edicao: 1, usuario: email, feita_em: dias(4), acertos: 2, total: 2, aprovada: true }, autor);
+      await inserir(p, TentativasTeste, { publicacao_id: pub.id, edicao: 1, usuario: 'cozinha@exemplo.local', feita_em: dias(3), acertos: 1, total: 2, aprovada: false }, autor);
+    }
     for (const c of CIENCIAS[x.chave] ?? []) {
       await inserir(p, CienciasConhecimento, { publicacao_id: pub.id, edicao: 1, usuario: c.email, registrada_em: dias(c.ha) }, autor);
     }

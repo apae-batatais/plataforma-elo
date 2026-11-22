@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { listarBiblioteca, type ResumoPublicacao } from '@/modulos/conhecimento/aplicacao/publicacoes';
-import { EtiquetaDaPessoa, FALTA, formatarData } from '@/modulos/conhecimento/telas/rotulos';
+import { EtiquetaDaPessoa, faltaDe, formatarData } from '@/modulos/conhecimento/telas/rotulos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { LinkBotao } from '@/ui/botao';
@@ -42,14 +42,14 @@ export default async function Biblioteca({ searchParams }: { searchParams: Promi
       />
 
       {pendentes.length > 0 && (
-        <Secao titulo="Falta você" id="t-falta" descricao="Documentos que pedem a sua ciência.">
+        <Secao titulo="Falta você" id="t-falta" descricao="Documentos que pedem a sua ciência ou um teste.">
           <ul className="divide-y divide-borda">
             {pendentes.map((x) => (
               <li key={x.id} className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                 <span className="min-w-0">
                   <span className="block font-semibold">{x.titulo}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-2 text-sm text-texto-suave">
-                    {FALTA[x.minhaSituacao]}
+                    {faltaDe(x)}
                     <EtiquetaDaPessoa situacao={x.minhaSituacao} vencida={x.vencida} />
                   </span>
                 </span>
