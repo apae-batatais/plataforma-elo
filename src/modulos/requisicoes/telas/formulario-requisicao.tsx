@@ -17,6 +17,7 @@ import type { TipoAnexo } from '../dominio/anexos';
 import { AnexosDaRequisicao, type AnexoNaFicha } from './anexos';
 import type { ProjetoEscolhivel } from '../dominio/requisicao';
 import type { OpcoesFicha, SaidaFicha } from './ficha';
+import { FichaEspaco } from './ficha-espaco';
 import { FichaManutencao } from './ficha-manutencao';
 import { FichaMateriais } from './ficha-materiais';
 import { FichaMobiliario } from './ficha-mobiliario';
@@ -103,7 +104,7 @@ export function FormularioRequisicao({
   const dados: DadosRequisicao = {
     tipoId,
     area,
-    centros: centros.map((c) => ({ servico: c.servico, percentual: paraNumero(c.percentual) })),
+    centros: saida.semCentros ? [] : centros.map((c) => ({ servico: c.servico, percentual: paraNumero(c.percentual) })),
     projetoId: projetoId || null,
     atividadeId: projetoId ? atividadeId || null : null,
     itens: saida.itens,
@@ -125,68 +126,8 @@ export function FormularioRequisicao({
     startTransition(() => enviar(f));
   };
 
-  return (
-    <form onSubmit={enviarSemLimpar} className="space-y-6">
-      {oculto && Object.entries(oculto).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-      <input type="hidden" name="dados" value={JSON.stringify(dados)} />
-
-      <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-        <h2 className="text-lg font-bold">Pedido</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo rotulo="Tipo de requisição" obrigatorio dica={tipo?.descricao ?? undefined}>
-            <select value={tipoId} onChange={(e) => mudarTipo(e.target.value)} disabled={Boolean(inicial)} required className={estiloEntrada}>
-              <option value="">Escolha…</option>
-              {opcoes.tipos.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo="Área" obrigatorio>
-            <select value={area} onChange={(e) => setArea(e.target.value)} required className={estiloEntrada}>
-              <option value="">Escolha…</option>
-              {areasDoTipo.map((a) => (
-                <option key={a.codigo} value={a.codigo}>
-                  {a.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-        </div>
-      </section>
-
-      {opcoes.projetos && opcoes.projetos.length > 0 && (
-        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-          <h2 className="text-lg font-bold">Projeto</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Esta compra é de um projeto?" dica="Opcional. Só aparecem projetos em implementação que você pode ver.">
-              <select value={projetoId} onChange={(e) => escolherProjeto(e.target.value)} className={estiloEntrada}>
-                <option value="">Não é de um projeto</option>
-                {opcoes.projetos.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.codigo} · {x.titulo}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-            {projeto && (
-              <Campo rotulo="Atividade" dica="A atividade é opcional; informe se quiser ver o gasto por atividade no projeto.">
-                <select value={atividadeId} onChange={(e) => setAtividadeId(e.target.value)} className={estiloEntrada}>
-                  <option value="">Sem atividade</option>
-                  {projeto.atividades.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.descricao}
-                    </option>
-                  ))}
-                </select>
-              </Campo>
-            )}
-          </div>
-        </section>
-      )}
-
-      <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
+  const blocoCentros = (
+    <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-bold">Centros de custo</h2>
           <span className={`text-sm font-semibold tabular-nums ${soma === 100 ? 'text-sucesso' : 'text-aviso'}`}>Soma: {soma.toLocaleString('pt-BR')}%</span>
@@ -252,9 +193,79 @@ export function FormularioRequisicao({
           )}
         </div>
       </section>
+  );
+
+  return (
+    <form onSubmit={enviarSemLimpar} className="space-y-6">
+      {oculto && Object.entries(oculto).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+      <input type="hidden" name="dados" value={JSON.stringify(dados)} />
+
+      <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
+        <h2 className="text-lg font-bold">Pedido</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo rotulo="Tipo de requisição" obrigatorio dica={tipo?.descricao ?? undefined}>
+            <select value={tipoId} onChange={(e) => mudarTipo(e.target.value)} disabled={Boolean(inicial)} required className={estiloEntrada}>
+              <option value="">Escolha…</option>
+              {opcoes.tipos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+          <Campo rotulo="Área" obrigatorio>
+            <select value={area} onChange={(e) => setArea(e.target.value)} required className={estiloEntrada}>
+              <option value="">Escolha…</option>
+              {areasDoTipo.map((a) => (
+                <option key={a.codigo} value={a.codigo}>
+                  {a.nome}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        </div>
+      </section>
+
+      {opcoes.projetos && opcoes.projetos.length > 0 && (
+        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
+          <h2 className="text-lg font-bold">Projeto</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Campo rotulo="Esta compra é de um projeto?" dica="Opcional. Só aparecem projetos em implementação que você pode ver.">
+              <select value={projetoId} onChange={(e) => escolherProjeto(e.target.value)} className={estiloEntrada}>
+                <option value="">Não é de um projeto</option>
+                {opcoes.projetos.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.codigo} · {x.titulo}
+                  </option>
+                ))}
+              </select>
+            </Campo>
+            {projeto && (
+              <Campo rotulo="Atividade" dica="A atividade é opcional; informe se quiser ver o gasto por atividade no projeto.">
+                <select value={atividadeId} onChange={(e) => setAtividadeId(e.target.value)} className={estiloEntrada}>
+                  <option value="">Sem atividade</option>
+                  {projeto.atividades.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.descricao}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            )}
+          </div>
+        </section>
+      )}
+
+      {tipo?.formulario !== 'espaco' && blocoCentros}
 
       {/* Ficha própria do tipo: cada uma só conhece os campos do seu tipo. */}
-      {tipo?.formulario === 'ti' ? (
+      {tipo?.formulario === 'espaco' ? (
+        <>
+          <FichaEspaco key="espaco" inicial={inicial} tipo={tipo} espacos={opcoes.espacos} aoMudar={setSaida} />
+          {/* Reserva: os centros vêm depois de "cessão para fora"; cedida para fora, não há centros. */}
+          {!saida.semCentros && blocoCentros}
+        </>
+      ) : tipo?.formulario === 'ti' ? (
         <FichaTi key="ti" inicial={inicial} tipo={tipo} aoMudar={setSaida} />
       ) : tipo?.formulario === 'mobiliario' ? (
         <FichaMobiliario key="mobiliario" inicial={inicial} tipo={tipo} aoMudar={setSaida} />

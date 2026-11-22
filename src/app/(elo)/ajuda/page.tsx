@@ -72,11 +72,16 @@ export default async function Ajuda() {
     aprovarRequisicao: a.temPermissaoAlgumEscopo('requisicoes.aprovar'),
     atenderRequisicao: a.temPermissaoAlgumEscopo('requisicoes.atender'),
     painelRequisicoes: a.temPermissaoAlgumEscopo('requisicoes.painel'),
+    decidirEspacos: a.temPermissaoAlgumEscopo('requisicoes.espacos.decidir'),
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
+    decidirProjeto: a.temPermissao('projetos.decidir') || a.temPermissaoAlgumEscopo('projetos.decidir_alcada'),
+    gerenciarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
+    termos: a.temPermissaoAlgumEscopo('parcerias.termos.ver'),
     verPlanejamento: a.temPermissaoAlgumEscopo('projetos.acessar'),
     planejarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     decidirPlano: a.temPermissao('projetos.decidir'),
@@ -84,6 +89,7 @@ export default async function Ajuda() {
     publicar: a.temPermissao('conhecimento.publicar'),
     acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
     categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
+    gerenciarProjetos: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
     equipeComunicacao: a.temPermissao('comunicacao.revisar'),
     configurarComunicacao: a.temPermissao('comunicacao.configurar'),
@@ -130,6 +136,7 @@ export default async function Ajuda() {
         { rotulo: 'Nova requisição', href: '/requisicoes/nova' },
         ...(pode.aprovarRequisicao ? [{ rotulo: 'Para aprovar', href: '/requisicoes/aprovar' }] : []),
         ...(pode.atenderRequisicao ? [{ rotulo: 'Para atender', href: '/requisicoes/atender' }] : []),
+        ...(pode.decidirEspacos ? [{ rotulo: 'Reservas de espaço', href: '/requisicoes/espacos' }] : []),
         ...(pode.painelRequisicoes ? [{ rotulo: 'Painel de prazos', href: '/requisicoes/painel' }] : []),
       ],
       conteudo: (
@@ -184,11 +191,22 @@ export default async function Ajuda() {
               'Mostre o problema e evite o rosto de atendidos. Só quem vê a requisição vê as fotos e o vídeo, e cada abertura fica registrada.',
             ]}
           />
+          <Sub>Reservar um espaço</Sub>
+          <Passos
+            itens={[
+              'Abra Requisições › Nova requisição e escolha o tipo "Reserva de espaço".',
+              'Preencha a data e as horas de início e de fim. A lista de espaços mostra só os que estão livres naquela data, com a capacidade ao lado.',
+              'Informe quantas pessoas são esperadas e a finalidade. Se passar da capacidade, aparece um aviso, mas dá para enviar.',
+              'Marque se é uma cessão para fora da instituição. Se não for, escolha os centros de custo (somando 100%); se for, informe a organização ou pessoa e não há centro de custo.',
+              'Clique em Enviar pedido. O setor Espaços aprova, devolve para ajuste ou recusa; você acompanha em Minhas requisições. Enquanto não for aprovada, dá para cancelar. O pedido não é barrado por outro no mesmo horário: quem decide vê o conflito.',
+            ]}
+          />
           <Sub>Quem aprova</Sub>
           <Itens
             itens={[
               'A coordenação dos centros de custo. Uma requisição não pode misturar serviços de coordenações diferentes: abra uma para cada.',
               'Pedido feito pela própria coordenação, ou de serviço sem coordenação cadastrada, é aprovado pela Diretoria.',
+              'Reserva de espaço é sempre decidida pelo setor Espaços, de qualquer coordenação. Se quem pede é do próprio setor Espaços, a Diretoria decide.',
             ]}
           />
           {pode.aprovarRequisicao && (
@@ -198,6 +216,19 @@ export default async function Ajuda() {
                 itens={[
                   'Abra Requisições › Para aprovar (a tela inicial e o número no menu mostram quantas esperam por você).',
                   'Abra a ficha e clique em Aprovar. Para devolver ou recusar, escreva o motivo e clique no botão: quem pediu vê no histórico.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirEspacos && (
+            <>
+              <Sub>Decidir reservas de espaço</Sub>
+              <Passos
+                itens={[
+                  'Abra Requisições › Reservas de espaço: "Para aprovar" lista os pedidos novos e "Para fechar" as reservas aprovadas cuja hora de fim já passou.',
+                  'Na ficha, o bloco "Conflitos neste horário" mostra quem pediu o mesmo espaço em horário que se cruza (encostar, como 10h–11h e 11h–12h, não conta). Clique em Aprovar reserva, Devolver para ajuste ou Recusar (os dois últimos pedem o motivo).',
+                  'Se o horário já está aprovado para outro pedido, o sistema pede confirmação antes de aprovar. A decisão não tem volta.',
+                  'Depois do uso, abra a ficha e clique em Registrar uso: "Usado sem problema" ou "Usado com problema" (este pede o texto). O botão só libera depois da hora de fim.',
                 ]}
               />
             </>
@@ -232,6 +263,17 @@ export default async function Ajuda() {
                   'A Diretoria vê todas as requisições; a coordenação, as do seu escopo; cada setor, as dos seus tipos.',
                 ]}
               />
+            </>
+          )}
+          {pode.tiposRequisicao && (
+            <>
+              <Sub>Espaços para reservar</Sub>
+              <p>
+                Em Requisições › Espaços (só a Administração da plataforma), cadastre cada espaço com nome, local e capacidade. Em cada espaço, &ldquo;Adicionar
+                período&rdquo; marca as datas em que ele não pode ser reservado (reforma, obra): nessas datas ele some da lista de quem pede. Encerrar um espaço ou um
+                período não apaga nada. Para liberar os pedidos, cadastre também o tipo &ldquo;Reserva de espaço&rdquo; em Tipos de requisição, com a ficha de reserva
+                e o setor Espaços; atribua o perfil Setor de Espaços às pessoas do setor em Acessos.
+              </p>
             </>
           )}
           {pode.tiposRequisicao && (
@@ -554,6 +596,43 @@ export default async function Ajuda() {
     });
   }
 
+  if (pode.projetos) {
+    assuntos.push({
+      id: 'projetos-termo',
+      titulo: 'Projeto financiado: termo de parceria',
+      resumo: 'O que informar no Termo de Abertura e o que acontece quando a porta 2 aprova.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }, ...(pode.termos ? [{ rotulo: 'Termos de parceria', href: '/parcerias' }] : [])],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              pode.gerenciarProjeto && 'No Termo de Abertura de um projeto com financiamento externo, informe quem financia e o que o financiamento cobre (objeto). Sem os dois, a porta 2 não abre; a tela diz o que falta.',
+              pode.decidirProjeto && 'Ao seguir na porta 2 de um projeto financiado, o Elo cria sozinho o rascunho do termo em Parcerias, uma vez só, com financiador, objeto, serviço, vigência prevista e o valor aprovado.',
+              'O número do termo, o tipo de instrumento e o cronograma ficam para o Financeiro completar; ninguém digita de novo o que já está no projeto.',
+              'Se o rascunho não puder ser criado, a decisão da porta continua valendo.',
+              'O rascunho não entra no orçamento, na ocupação nem nos alertas de Parcerias até o Financeiro concluir o termo.',
+              pode.termos && 'Em Termos de parceria, o quadro "Rascunhos para completar" lista o que veio de projetos.',
+            ]}
+          />
+          {pode.gerenciarProjeto && (
+            <>
+              <Sub>Refazer o rascunho do termo</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e entre na aba Ligações.',
+                  'Se aparecer "Este projeto ainda não tem termo", clique em Criar rascunho do termo.',
+                  'Clicar de novo não duplica: o Elo reaproveita o rascunho que já existe.',
+                ]}
+              />
+            </>
+          )}
+          <Sub>Valores diferentes</Sub>
+          <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
+        </>
+      ),
+    });
+  }
+
   if (pode.ler) {
     assuntos.push({
       id: 'conhecimento',
@@ -611,6 +690,34 @@ export default async function Ajuda() {
               <p>Em Categorias, adicione e desative categorias. Não dá para desativar uma categoria que ainda tem publicação (que não esteja arquivada); desativadas podem ser reativadas.</p>
             </>
           )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.projetos) {
+    assuntos.push({
+      id: 'projetos',
+      titulo: 'Projetos',
+      resumo: 'Ideias e projetos da instituição, do marco lógico aos indicadores que vêm do cadastro.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Sub>Indicadores do marco lógico</Sub>
+          <Passos
+            itens={[
+              'Abra o projeto e a aba Marco lógico. No alto aparece o bloco Indicadores: cada indicador mostra a meta, o número de hoje e se está dentro ou abaixo da meta.',
+              ...(pode.gerenciarProjetos
+                ? [
+                    'Em um item que já tem indicador, escolha De onde vem o número: pessoas com vínculo ativo no serviço, índice médio de necessidade de cuidado ou % de pessoas com reavaliação em dia. Depois escolha o serviço; cada escolha salva sozinha. Se preferir informar você mesmo, escolha Digitado à mão.',
+                    'Para marcar a meta, digite o número (ex.: 80) e clique em Salvar meta.',
+                    'Clique em Registrar medição para guardar os números de hoje no histórico do projeto. Cada medição é uma linha nova; as anteriores não mudam.',
+                  ]
+                : []),
+              'Números sobre pessoas só aparecem quando há 5 pessoas ou mais. Com menos, o Elo mostra "Poucos casos para divulgar" e nunca o valor, para ninguém ser identificado. Nenhum nome ou dado individual vai para o projeto.',
+              'Se o app Avaliação estiver desligado, o indicador mostra "Ligação indisponível" e vale o número digitado à mão, se houver.',
+            ]}
+          />
         </>
       ),
     });

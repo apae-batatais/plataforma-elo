@@ -116,6 +116,7 @@ function BlocoPorta({ d, f, pode }: { d: PortaDetalhe; f: NonNullable<Awaited<Re
             <input type="hidden" name="versao_porta" value={porta.versao} />
             <h3 className="font-semibold">{f.pode.decidirAlcada ? 'Decidir pela Presidência ou pelo Conselho' : 'Decidir'}</h3>
             {f.pode.decidir && porta.exige_alcada && <Aviso tipo="info">Se você escolher “seguir”, esta decisão sobe para a Presidência ou o Conselho.</Aviso>}
+            {porta.tipo === 'termo' && f.projeto.tipo === 'financiado' && <Aviso tipo="info">Ao seguir, o Elo cria o rascunho do termo em Parcerias para o Financeiro completar.</Aviso>}
             <Campo rotulo="Decisão" obrigatorio>
               <select name="decisao" required className={estiloEntrada} defaultValue="">
                 <option value="" disabled>Escolha</option>

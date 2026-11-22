@@ -107,6 +107,32 @@ export interface DadosAporte {
 }
 
 // --- leitura e cálculo -----------------------------------------------------------
+/** Termo que não é rascunho: os campos que o rascunho pode deixar vazios sempre existem (regra 24). */
+export type TermoCompleto = Omit<RegTermo, 'numero' | 'tipo' | 'inicio' | 'fim' | 'unidade_meta' | 'situacao'> & {
+  numero: string;
+  tipo: TipoInstrumento;
+  inicio: string;
+  fim: string;
+  unidade_meta: string;
+  situacao: 'em_vigor' | 'encerrado';
+};
+
+/**
+ * Regra 24: o rascunho vindo de um projeto fica fora de tudo (lista, ficha, ocupação, per capita, alertas, busca,
+ * agenda e catálogo do Orçamento). Todo cálculo lê os termos por esta visão, que nunca traz rascunho.
+ */
+function visaoSemRascunhos(tabela: { todos(): RegTermo[]; ativos(): RegTermo[]; porId(id: string): RegTermo | undefined }) {
+  const completo = (t: RegTermo): t is RegTermo & TermoCompleto => t.situacao !== 'rascunho';
+  return {
+    todos: (): TermoCompleto[] => tabela.todos().filter(completo),
+    ativos: (): TermoCompleto[] => tabela.ativos().filter(completo),
+    porId: (id: string): TermoCompleto | undefined => {
+      const t = tabela.porId(id);
+      return t && completo(t) ? t : undefined;
+    },
+  };
+}
+
 async function ler(p: Planilhas) {
   const [termos, servicos, fontes, parcelas, categorias, aportes, aporteParcelas, equipe, metas, nucleoServicos] = await lerTabelas(p, [
     Termos,
@@ -120,7 +146,7 @@ async function ler(p: Planilhas) {
     Metas,
     Servicos,
   ] as const);
-  return { termos, servicos, fontes, parcelas, categorias, aportes, aporteParcelas, equipe, metas, nomeServico: new Map(nucleoServicos.todos().map((s) => [s.codigo, s.nome])) };
+  return { termos: visaoSemRascunhos(termos), rascunhos: termos.ativos().filter((t) => t.situacao === 'rascunho'), servicos, fontes, parcelas, categorias, aportes, aporteParcelas, equipe, metas, nomeServico: new Map(nucleoServicos.todos().map((s) => [s.codigo, s.nome])) };
 }
 type Lido = Awaited<ReturnType<typeof ler>>;
 
@@ -191,7 +217,7 @@ export interface FichaTermo {
   terminaEmAte90Dias: boolean;
 }
 
-function fichaDe(l: Lido, t: RegTermo, agora: Date): FichaTermo {
+function fichaDe(l: Lido, t: TermoCompleto, agora: Date): FichaTermo {
   const servs = l.servicos.ativos().filter((s) => s.termo_id === t.id);
   const qtd = totalCusteadas(servs);
   const cobertura = mesesDeCobertura(t.inicio, t.fim);
@@ -716,6 +742,127 @@ export interface TermoParaOrcamento {
     permiteRemanejar: boolean;
     categorias: { categoria: string; valor: number }[];
   }[];
+}
+
+// --- rascunho vindo de um projeto (ADR-023, regras 22, 25 e 26) ------------------------------
+export interface PedidoRascunho {
+  projetoId: string;
+  projetoCodigo: string;
+  /** Nome do financiador: vira o parceiro do termo. */
+  financiador: string;
+  objeto: string;
+  /** Serviço do projeto (código), se houver. */
+  servico: string | null;
+  inicioPrevisto: string | null;
+  fimPrevisto: string | null;
+  valorAprovado: number;
+}
+
+/**
+ * Regra 22: cria o rascunho do termo a pedido da plataforma (decisão da porta 2 do projeto). Única porta de
+ * criação de rascunho; não exige `parcerias.termos.editar`, porque quem decide a porta não é do Financeiro.
+ * Idempotente por projeto: se já houve rascunho (mesmo encerrado), devolve o mesmo, sem duplicar.
+ */
+export async function criarRascunhoDeTermo(p: Planilhas, quem: { email: string }, d: PedidoRascunho, agora = new Date()): Promise<{ termoId: string; criado: boolean }> {
+  const autoria = { email: quem.email, agora: () => agora };
+  const [todos] = await lerTabelas(p, [Termos] as const);
+  const existente = todos.todos().find((t) => t.projeto_origem_id === d.projetoId);
+  if (existente) return { termoId: existente.id, criado: false };
+  const l = await ler(p);
+  if (!d.financiador.trim()) throw new ErroTermo('O rascunho precisa do nome do financiador.');
+  if (!(d.valorAprovado >= 0)) throw new ErroTermo('Valor aprovado inválido.');
+  if (d.servico && !l.nomeServico.has(d.servico)) throw new ErroTermo(`Serviço desconhecido: ${d.servico}.`);
+  if (d.inicioPrevisto && d.fimPrevisto && d.fimPrevisto <= d.inicioPrevisto) throw new ErroTermo('A vigência prevista precisa terminar depois de começar.');
+  const campos = {
+    parceiro: d.financiador.trim(),
+    numero: null,
+    objeto: d.objeto.trim() || null,
+    tipo: null,
+    tipo_descricao: null,
+    inicio: d.inicioPrevisto,
+    fim: d.fimPrevisto,
+    situacao: 'rascunho' as const,
+    unidade_meta: null,
+    recursos_proprios: null,
+    limite_ocupacao: null,
+    projeto_origem_id: d.projetoId,
+    projeto_origem_codigo: d.projetoCodigo,
+  };
+  const termo = await inserir(p, Termos, campos, autoria);
+  if (d.servico) await inserir(p, TermoServicos, { termo_id: termo.id, servico: d.servico, inicio: null, fim: null, vagas_oferecidas: null, vagas_custeadas: null }, autoria);
+  await inserir(
+    p,
+    TermoFontes,
+    { termo_id: termo.id, nome: `Projeto ${d.projetoCodigo}`, forma: 'global', valor_inicial: arredondar(d.valorAprovado), per_capita: null, periodicidade: null, cronograma: 'iguais', recursos_proprios: null, permite_remanejar: false },
+    autoria,
+  );
+  // Auditoria: só as colunas e a origem, nunca os valores (regra 7 do projeto).
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Termos', registroId: termo.id, detalhes: { colunas: Object.keys(campos), origem: d.projetoCodigo } }, agora);
+  return { termoId: termo.id, criado: true };
+}
+
+export interface RascunhoDeTermo {
+  id: string;
+  versao: number;
+  parceiro: string;
+  objeto: string | null;
+  projetoCodigo: string | null;
+  valor: number;
+  /** O projeto de origem foi cancelado ou parado (informado pela plataforma; só leitura). */
+  origemParadaOuCancelada: boolean;
+  /** O que o Financeiro ainda precisa informar. */
+  falta: string[];
+}
+
+/** Rascunhos que a pessoa vê (mesma permissão dos termos). Só o Financeiro (`editar`) os completa. */
+export async function listarRascunhos(p: Planilhas, quem: Autorizador, origensComProblema: ReadonlySet<string> = new Set()): Promise<RascunhoDeTermo[]> {
+  if (!quem.temPermissaoAlgumEscopo(PERM.ver)) throw new ErroPermissao();
+  const l = await ler(p);
+  return l.rascunhos
+    .filter((t) => podeVer(quem, l.servicos.ativos().filter((s) => s.termo_id === t.id).map((s) => s.servico)))
+    .map((t) => {
+      const fontes = l.fontes.ativos().filter((f) => f.termo_id === t.id);
+      const falta = ['número do termo', 'tipo de instrumento', 'cronograma de desembolso'];
+      if (!t.inicio || !t.fim) falta.push('vigência');
+      return {
+        id: t.id,
+        versao: t.versao,
+        parceiro: t.parceiro,
+        objeto: t.objeto,
+        projetoCodigo: t.projeto_origem_codigo,
+        valor: emReais(fontes.reduce((s, f) => s + emCentavos(f.valor_inicial ?? 0), 0)),
+        origemParadaOuCancelada: !!t.projeto_origem_id && origensComProblema.has(t.projeto_origem_id),
+        falta,
+      };
+    })
+    .sort((a, b) => a.parceiro.localeCompare(b.parceiro, 'pt-BR'));
+}
+
+export interface TermoParaProjeto {
+  termoId: string;
+  parceiro: string;
+  situacao: 'rascunho' | 'em_vigor' | 'encerrado';
+  /** Valor atual do termo (fontes + aportes). */
+  valor: number;
+}
+
+/**
+ * Regras 25 e 28 (parte usada pelo ponto de atenção L10): resumo do termo ligado a um projeto. Passa pelo
+ * `Autorizador`: sem `parcerias.termos.ver` para o termo, devolve `null` e o projeto mostra só o vínculo.
+ */
+export async function termoParaProjeto(p: Planilhas, quem: Autorizador, termoId: string, agora = new Date()): Promise<TermoParaProjeto | null> {
+  if (!quem.temPermissaoAlgumEscopo(PERM.ver)) return null;
+  const l = await ler(p);
+  const t = l.termos.porId(termoId);
+  const servicosDe = (id: string) => l.servicos.ativos().filter((s) => s.termo_id === id).map((s) => s.servico);
+  if (t && t.ativo) {
+    const f = fichaDe(l, t, agora);
+    return podeVer(quem, f.servicos.map((s) => s.servico)) ? { termoId, parceiro: f.parceiro, situacao: f.situacao, valor: f.valorGlobal } : null;
+  }
+  const r = l.rascunhos.find((x) => x.id === termoId);
+  if (!r || !podeVer(quem, servicosDe(r.id))) return null;
+  const valor = emReais(l.fontes.ativos().filter((f) => f.termo_id === r.id).reduce((s, f) => s + emCentavos(f.valor_inicial ?? 0), 0));
+  return { termoId, parceiro: r.parceiro, situacao: 'rascunho', valor };
 }
 
 export async function termosParaOrcamento(p: Planilhas, agora = new Date()): Promise<TermoParaOrcamento[]> {
