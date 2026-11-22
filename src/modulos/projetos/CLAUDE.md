@@ -12,7 +12,7 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
   ação e o caso de uso confere a designação.
 - Permissões: `projetos.<ação>`, no manifesto.
 - Situação: entregas **P1 (base)**, **P2 (fases 1 e 2)** **P3 (fase 3: atividades e orçamento do projeto, porta 3 e início da implementação)** e
-  **P4 (problemas, pedidos de mudança e relatórios)** prontas. Faltam P5 a P7 (encerramento, carteira, ligações). `projetos.carteira` entra com a P6.
+  **P4 (problemas, pedidos de mudança e relatórios)** e **P5 (encerramento e lições)** prontas. Faltam P6 e P7 (carteira, ligações). `projetos.carteira` entra com a P6.
 - Fase 3 (`aplicacao/planejamento.ts`, `dominio/planejamento.ts`): `Atividades` (atrasada é calculada, nunca gravada) e `ProjetoOrcamento`
   (só o plano do projeto; nada vai ao Orçamento da instituição). Atividades mudam na fase 3 e na implementação; o orçamento só na fase 3.
   A equipe vê as atividades, não o orçamento. Porta 3 (`plano`) só no porte completo; o enxuto usa `iniciarImplementacao`. A etapa
@@ -28,6 +28,9 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
 - Ligação com o termo (L2): `aplicacao/termo.ts`. Parcerias chega pela interface `CatalogoTermos` (`catalogo-parcerias.ts`),
   entregue por `src/plataforma/ligacoes.ts`; nunca importe Parcerias. A decisão da porta 2 nunca falha por causa do rascunho.
   `financiador` e `objeto` só existem no Termo de Abertura de projeto `financiado` (`camposDe`).
+- Ligações com outros apps (**P7 pronta**): `aplicacao/ligacoes.ts`, aba `LigacoesProjeto` (identificador e cópia do nome; encerrada com `ativo = FALSE`).
+  O Projetos define `CatalogoLeitura` (`catalogo-leitura.ts`); a plataforma entrega (`catalogoDeLeitura`). Hoje só `compras` (Requisições) está ligado;
+  as entregas L2 a L5 de cada onda acrescentam um leitor em `leitores` e chamam `registrarLigacao`. Leitor ausente = "Ligação indisponível".
 - Fase 4 (`aplicacao/acompanhamento.ts`, `dominio/acompanhamento.ts`): `Problemas`, `PedidosMudanca`, `Relatorios`. Tudo só com o projeto em `implementacao`
   e Termo aprovado (`exigirTermoAprovado`). Pedido dentro da tolerância é aplicado na hora (`aplicada`); fora dela fica `pendente`, passa por
   `aguardando_alcada` se o novo total passa do limite e, aprovado, gera nova versão do Termo (`novaVersaoDoTermo`). A base da variação é a última
@@ -35,3 +38,9 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
   Atividade e fim do projeto mudam por pedido de prazo (tolerância de fim ou de marco = atividade); o orçamento, por pedido de custo. O relatório calcula
   a situação (`situacaoCalculada`) e só pode piorar; chama `fotografarIndicadores` com origem `relatorio` sem perder o relatório se falhar. Equipe vê
   problemas e riscos, não pedidos nem relatórios. `foraDaTolerancia` é o ponto de chamada da carteira (P6). Riscos também mudam na implementação.
+- Fase 5 (`aplicacao/encerramento.ts`, `dominio/encerramento.ts`): `Licoes` e `Encerramento` (uma linha por item: check-list contratual, financeiro e administrativo;
+  textos `relatorio_final`, `transicao`, `sustentabilidade`). Etapas `encerramento` e `encerrado` (esta só leitura, em `ETAPAS_ENCERRADAS`). A porta de encerramento
+  (`tipo: 'encerramento'`) abre só com atividades concluídas ou canceladas, problemas resolvidos (ainda se resolvem na fase 5), check-list, relatório final e uma lição;
+  não pede parecer; seguir encerra, ajustar mantém a fase 5, parar volta à implementação. Ao abrir a porta, chama `fotografarIndicadores` com origem `encerramento`.
+  Lição também em projeto parado ou cancelado, com relatório resumido (item `relatorio_final`). `consultarLicoes` mostra a lição a quem tem `projetos.acessar`, sem
+  identificar o projeto a quem não o vê. `encerramentoAtrasado` (padrão 30 dias, `DIAS_ENCERRAMENTO_PADRAO`) é o ponto de chamada da carteira (P6). Textos nunca na auditoria.

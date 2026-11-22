@@ -5,3 +5,4 @@ export { popularProjetosFicticios } from './dados/ficticios';
 export { projetosDoServico, projetosParaCompra, type ProjetoParaCompra, type ProjetosDoServico } from './aplicacao/ligacao';
 export { itensDaAgenda, buscar } from './aplicacao/agenda-busca';
 export { projetosComTermoParadosOuCancelados, type CatalogoTermos, type TermoLigado, type PedidoRascunhoDeTermo } from './aplicacao/termo';
+export type { CatalogoLeitura, CompraLigada, ItemLigado, LeitorLigacao } from './aplicacao/catalogo-leitura';

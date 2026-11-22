@@ -7,6 +7,7 @@ import { atualizar, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/ta
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { salvarConfig } from '../aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
+import { registrarLicao } from '../aplicacao/encerramento';
 import { enviarRelatorio, pedirMudanca, registrarProblema } from '../aplicacao/acompanhamento';
 import { adicionarItemMarco, adicionarMembro, avancarFase, iniciarImplementacao, salvarDocumento } from '../aplicacao/fases';
 import { definirFonteDoItem } from '../aplicacao/indicadores';
@@ -126,6 +127,7 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   await pedirMudanca(p, coord, oito.id, { tipo: 'custo', alvo: pessoal.id, proposto: '5000', justificativa: 'Texto fictício: mais encontros com o instrutor.' }, { agora: dia(29) });
   await registrarProblema(p, coord, oito.id, { descricao: 'Texto fictício: o terreno alaga com a chuva.', gravidade: 'alto', dono: COORDENACAO }, { agora: dia(29) });
   await enviarRelatorio(p, coord, oito.id, { periodoInicio: '2026-10-26', periodoFim: '2026-10-30', texto: 'Texto fictício: início dos canteiros, sem intercorrências além do terreno.', gasto: null }, undefined, { agora: dia(30) });
+  await registrarLicao(p, coord, oito.id, { categoria: 'planejamento', oQueAconteceu: 'Texto fictício: o terreno escolhido alaga com a chuva.', fazerDiferente: 'Texto fictício: visitar o local na época das chuvas antes de planejar.' }, { agora: dia(30) });
 
   // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
   const datas: [string, string, string][] = [
