@@ -363,6 +363,11 @@ entrega 2 cria `FichaVeiculo` já como componente próprio.
 - Telas do Transporte: **Pedidos de veículo** (`/requisicoes/veiculos/pedidos`, lista para decidir, ordenada pela saída, com os selos Conflito e Manutenção) e **Agenda dos veículos** (`/requisicoes/veiculos/agenda`, com o botão de marcar manutenção feita). O Transporte não tem a permissão `requisicoes.aprovar`, por isso não usa "Para aprovar".
 - "Para atender" (Confirmar uso) fica na entrega 3.
 
+### Como a entrega 3 ficou (22/11/2026)
+
+- "Confirmar uso" fica na ficha do pedido e na seção **Para confirmar o uso** de Pedidos de veículo (o Transporte não tem a permissão de atender, então não usa "Para atender"); a tela inicial também avisa. A confirmação abre uma janela que explica que o pedido é encerrado e não reabre.
+- O pedido fechado fica com a situação "Atendida" (não há situações novas); o resultado (sem ou com problema) e a quilometragem ficam em `VeiculoUsos` e aparecem na ficha. Histórico traz o resultado e os km rodados.
+
 ### Critérios de pronto
 
 - [ ] Prévia: Administração cadastra dois veículos e uma data de manutenção; o veículo some da

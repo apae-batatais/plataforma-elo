@@ -34,6 +34,7 @@ import {
   Requisicoes,
   TiposRequisicao,
   VeiculoManutencoes,
+  VeiculoUsos,
   Veiculos,
   type RegCentro,
   type RegEspaco,
@@ -87,9 +88,12 @@ import {
   type ReservaParaConflito,
 } from '../dominio/espaco';
 import {
+  conferirUsoVeiculo,
   dataDoMomento,
   emManutencaoNoPeriodo,
   instante,
+  jaPodeConfirmarUso,
+  RESULTADOS_USO_VEICULO,
   pedidosEmConflito,
   PERFIL_TRANSPORTE,
   type DetalhesVeiculo,
@@ -121,7 +125,7 @@ const vigente = (r: { ativo: boolean; inicio: string | null; fim: string | null 
 // ---------------------------------------------------------------------------
 
 async function ler(p: Planilhas, agora: Date) {
-  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, feriados, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis, espacos, periodos, veiculos, manutencoes] =
+  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, feriados, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis, espacos, periodos, veiculos, manutencoes, usos] =
     await lerTabelas(p, [
       TiposRequisicao,
       CatalogoItens,
@@ -140,6 +144,7 @@ async function ler(p: Planilhas, agora: Date) {
       EspacoIndisponibilidades,
       Veiculos,
       VeiculoManutencoes,
+      VeiculoUsos,
     ] as const);
   const dia = hoje(agora);
   const ativos = new Set(usuarios.ativos().map((u) => u.email));
@@ -186,6 +191,7 @@ async function ler(p: Planilhas, agora: Date) {
     espacos,
     periodos,
     veiculos,
+    usos,
     /** Data prevista da manutenção pendente de cada veículo. */
     manutencaoPrevista: new Map(manutencoes.ativos().filter((m) => !m.feita_em).map((m) => [m.veiculo_id, m.data_prevista])),
     perfilPermissoes,
@@ -339,6 +345,7 @@ function acoesPossiveis(quem: Autorizador, d: Dados, r: RegRequisicao): Acao[] {
   if (s === 'aprovada' && podeAtender(quem, d, r)) a.push('receber');
   if (s === 'em_atendimento' && podeAtender(quem, d, r)) a.push('concluir');
   if (s === 'aprovada' && ehEspaco(d, r) && doSetorEspacos(quem, d)) a.push('fechar');
+  if (s === 'aprovada' && ehVeiculo(d, r) && doSetorTransporte(quem, d)) a.push('fechar');
   // Reserva de veículo aprovada: só o Transporte cancela (resolve conflito e aviso de manutenção na mão).
   if (s === 'aprovada' && ehVeiculo(d, r) && doSetorTransporte(quem, d)) a.push('cancelar');
   return a;
@@ -940,6 +947,54 @@ export async function fecharReserva(
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
 }
 
+/** O Transporte confirma o uso do veículo depois da saída: encerra o pedido e grava a quilometragem (regra 10). */
+export async function fecharVeiculo(
+  p: Planilhas,
+  quem: Autorizador,
+  id: string,
+  versao: number,
+  fechamento: { resultado?: string | null; problema?: string | null; kmSaida?: number | null; kmVolta?: number | null },
+  opcoes: { agora?: Date } = {},
+) {
+  const agora = opcoes.agora ?? new Date();
+  const d = await ler(p, agora);
+  const r = acharComVersao(d, id, versao);
+  if (!ehVeiculo(d, r)) throw new ErroRequisicao('Só pedidos de veículo têm o uso confirmado.');
+  if (!doSetorTransporte(quem, d)) throw new ErroPermissao('Só o Transporte confirma o uso do veículo.');
+  conferirTransicao('fechar', r.situacao);
+  const x = detalhesDeVeiculo(r)!;
+  const c = conferirUsoVeiculo(x, fechamento, agora);
+  if ('erro' in c) throw new ErroRequisicao(c.erro);
+  const autoria = { email: quem.email, agora: () => agora };
+  const { colunasAlteradas } = await atualizar(p, Requisicoes, id, versao, { situacao: 'atendida', concluida_em: agora.toISOString(), executada_por: quem.email }, autoria);
+  const uso = await inserir(
+    p,
+    VeiculoUsos,
+    {
+      requisicao_id: id,
+      resultado: c.resultado,
+      problema: c.problema,
+      km_saida: c.kmSaida,
+      km_volta: c.kmVolta,
+      registrado_por: quem.email,
+      registrado_em: agora.toISOString(),
+    },
+    autoria,
+  );
+  await gravarHistorico(
+    p,
+    id,
+    quem.email,
+    'fechar',
+    'aprovada',
+    'atendida',
+    agora,
+    `${RESULTADOS_USO_VEICULO[c.resultado]} (${c.kmVolta - c.kmSaida} km)${c.problema ? `: ${c.problema}` : ''}`,
+  );
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
+  await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'VeiculoUsos', registroId: uso.id });
+}
+
 function conferirValorGasto(v: number | null | undefined): number | null {
   if (v == null) return null;
   const erro = conferirValor(v, 'Valor gasto');
@@ -992,7 +1047,7 @@ async function concluirServico(
 // Listas, detalhe e contadores
 // ---------------------------------------------------------------------------
 
-export type Visao = 'minhas' | 'aprovar' | 'atender' | 'todas' | 'espacos' | 'fechar' | 'veiculos';
+export type Visao = 'minhas' | 'aprovar' | 'atender' | 'todas' | 'espacos' | 'fechar' | 'veiculos' | 'usar';
 
 export interface LinhaRequisicao {
   id: string;
@@ -1016,7 +1071,7 @@ export interface LinhaRequisicao {
 
 export async function listarRequisicoes(p: Planilhas, quem: Autorizador, visao: Visao, opcoes: { agora?: Date } = {}): Promise<LinhaRequisicao[]> {
   const agora = opcoes.agora ?? new Date();
-  const exigido = { minhas: PERM.solicitar, aprovar: PERM.aprovar, atender: PERM.atender, todas: PERM.verTodas, espacos: PERM.espacos, fechar: PERM.espacos, veiculos: PERM.veiculos }[visao];
+  const exigido = { minhas: PERM.solicitar, aprovar: PERM.aprovar, atender: PERM.atender, todas: PERM.verTodas, espacos: PERM.espacos, fechar: PERM.espacos, veiculos: PERM.veiculos, usar: PERM.veiculos }[visao];
   if (visao === 'todas' ? !quem.temPermissao(exigido) : !quem.temPermissaoAlgumEscopo(exigido)) throw new ErroPermissao();
   const d = await ler(p, agora);
   const filtro: Record<Visao, (r: RegRequisicao) => boolean> = {
@@ -1026,6 +1081,10 @@ export async function listarRequisicoes(p: Planilhas, quem: Autorizador, visao: 
     todas: () => true,
     espacos: (r) => ehEspaco(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r),
     veiculos: (r) => ehVeiculo(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r),
+    usar: (r) => {
+      const x = ehVeiculo(d, r) ? detalhesDeVeiculo(r) : null;
+      return Boolean(x) && r.situacao === 'aprovada' && doSetorTransporte(quem, d) && jaPodeConfirmarUso(x!.saida, agora);
+    },
     fechar: (r) => {
       const x = ehEspaco(d, r) ? detalhesDeEspaco(r) : null;
       return Boolean(x) && r.situacao === 'aprovada' && doSetorEspacos(quem, d) && agora >= fimDaReserva(x!.data, x!.fim);
@@ -1107,7 +1166,7 @@ function dadosDaReserva(d: Dados, r: RegRequisicao, agora: Date) {
   };
 }
 
-function detalheDoVeiculo(d: Dados, r: RegRequisicao, quem: Autorizador) {
+function detalheDoVeiculo(d: Dados, r: RegRequisicao, quem: Autorizador, agora: Date) {
   const x = ehVeiculo(d, r) ? detalhesDeVeiculo(r) : null;
   if (!x) return null;
   const v = d.veiculos.porId(x.veiculoId);
@@ -1125,6 +1184,13 @@ function detalheDoVeiculo(d: Dados, r: RegRequisicao, quem: Autorizador) {
     destino: x.destino,
     finalidade: x.finalidade,
     condutor: x.condutor,
+    jaPodeConfirmarUso: jaPodeConfirmarUso(x.saida, agora),
+    uso: (() => {
+      const u = d.usos.ativos().find((y) => y.requisicao_id === r.id);
+      return u
+        ? { resultado: u.resultado, resultadoNome: RESULTADOS_USO_VEICULO[u.resultado], problema: u.problema, kmSaida: u.km_saida, kmVolta: u.km_volta, registradoEm: u.registrado_em }
+        : null;
+    })(),
     haConflito: ativo && conflitos.length > 0,
     avisoManutencao: ativo && prevista ? `Veículo em manutenção a partir de ${prevista.split('-').reverse().join('/')}. Resolva na mão (cancele a reserva ou devolva o pedido).` : null,
     conflitos: decide
@@ -1192,7 +1258,7 @@ export async function detalharRequisicao(p: Planilhas, quem: Autorizador, id: st
           }))
         : null,
     },
-    veiculo: detalheDoVeiculo(d, r, quem),
+    veiculo: detalheDoVeiculo(d, r, quem, agora),
     podeCorrigirValorGasto: (r.situacao === 'atendida' || r.situacao === 'atendida_parcial') && podeAtender(quem, d, r),
     sla: sla(d, r, agora),
     expediente: d.expediente,
@@ -1215,6 +1281,12 @@ export async function contadoresRequisicoes(p: Planilhas, quem: Autorizador, opc
       ? ativas.filter((r) => {
           const x = ehEspaco(d, r) ? detalhesDeEspaco(r) : null;
           return Boolean(x) && r.situacao === 'aprovada' && agora >= fimDaReserva(x!.data, x!.fim);
+        }).length
+      : 0,
+    veiculosUsar: doSetorTransporte(quem, d)
+      ? ativas.filter((r) => {
+          const x = ehVeiculo(d, r) ? detalhesDeVeiculo(r) : null;
+          return Boolean(x) && r.situacao === 'aprovada' && jaPodeConfirmarUso(x!.saida, agora);
         }).length
       : 0,
     veiculosDecidir: quem.temPermissaoAlgumEscopo(PERM.veiculos) ? ativas.filter((r) => ehVeiculo(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r)).length : 0,

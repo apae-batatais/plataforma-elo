@@ -15,6 +15,7 @@ import {
   detalharRequisicao,
   encerrarPeriodoDeEspaco,
   fecharReserva,
+  fecharVeiculo,
   mudarSituacaoEspaco,
   salvarEspaco,
   type ConferenciaDaAprovacao,
@@ -189,6 +190,18 @@ export async function acaoFecharReserva(f: FormData) {
   const id = texto(f, 'id');
   await executar(`/requisicoes/${id}`, 'Uso da reserva registrado.', ({ usuario, app }) =>
     fecharReserva(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), { resultado: texto(f, 'resultado'), texto: texto(f, 'texto') || null }),
+  );
+}
+
+export async function acaoFecharVeiculo(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(`/requisicoes/${id}`, 'Uso do veículo confirmado. O pedido foi encerrado.', ({ usuario, app }) =>
+    fecharVeiculo(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), {
+      resultado: texto(f, 'resultado'),
+      problema: texto(f, 'problema') || null,
+      kmSaida: numero(f, 'km_saida'),
+      kmVolta: numero(f, 'km_volta'),
+    }),
   );
 }
 

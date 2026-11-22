@@ -201,6 +201,25 @@ export const VeiculoManutencoes = definirTabela({
   sigilo: { feita_por: 'pessoal' },
 });
 
+/**
+ * Fechamento do pedido de veículo (entrega 3 da #229): como foi o uso e a quilometragem.
+ * Uma linha por pedido; nunca é alterada nem apagada (o pedido encerrado não reabre).
+ */
+export const VeiculoUsos = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'VeiculoUsos',
+  esquema: z.object({
+    requisicao_id: texto(),
+    resultado: z.enum(['sem_problema', 'com_problema']),
+    problema: textoOpcional(),
+    km_saida: numero(),
+    km_volta: numero(),
+    registrado_por: texto(),
+    registrado_em: texto(),
+  }),
+  sigilo: { registrado_por: 'pessoal' },
+});
+
 /** Um dia (AAAA-MM-DD, Brasília) em que o resumo diário por e-mail já foi feito, e para quantas pessoas. */
 export const ResumosEnviados = definirTabela({
   planilha: PLANILHA_REQUISICOES,
@@ -222,6 +241,7 @@ export const TABELAS_REQUISICOES = [
   EspacoIndisponibilidades,
   Veiculos,
   VeiculoManutencoes,
+  VeiculoUsos,
   ResumosEnviados,
 ] as const;
 

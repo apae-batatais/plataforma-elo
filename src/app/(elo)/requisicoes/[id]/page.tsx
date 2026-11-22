@@ -19,7 +19,7 @@ import {
   type Situacao,
 } from '@/modulos/requisicoes/dominio/requisicao';
 import { RESULTADOS_USO } from '@/modulos/requisicoes/dominio/espaco';
-import { momentoBR } from '@/modulos/requisicoes/dominio/veiculo';
+import { momentoBR, RESULTADOS_USO_VEICULO } from '@/modulos/requisicoes/dominio/veiculo';
 import { textoHoras } from '@/modulos/requisicoes/dominio/sla';
 import { dataHora, EtiquetaSituacao } from '@/modulos/requisicoes/telas/lista-requisicoes';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
@@ -34,7 +34,7 @@ import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
-import { acaoCancelar, acaoConcluir, acaoDecidir, acaoFecharReserva, acaoReceber } from '../acoes';
+import { acaoCancelar, acaoConcluir, acaoDecidir, acaoFecharReserva, acaoFecharVeiculo, acaoReceber } from '../acoes';
 import { BotaoImprimir } from './imprimir';
 import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
@@ -277,6 +277,45 @@ export default async function FichaRequisicao({
                 )}
               </div>
             )}
+            {pode('fechar') && veiculo && (
+              <div className="space-y-3">
+                {!veiculo.jaPodeConfirmarUso ? (
+                  <p className="text-sm text-texto-suave">Confirmar uso: disponível depois da saída ({momentoBR(veiculo.saida)}).</p>
+                ) : (
+                  <FormularioConfirmado
+                    acao={acaoFecharVeiculo}
+                    campos={{ id: r.id, versao: r.versao }}
+                    rotulo="Confirmar uso"
+                    variante="primario"
+                    perigoso={false}
+                    titulo="Confirmar o uso do veículo?"
+                    mensagem="Ao confirmar, o pedido é encerrado e não pode ser reaberto. Confira a quilometragem antes."
+                    confirmar="Confirmar uso"
+                  >
+                    <fieldset className="text-sm">
+                      <legend className="font-semibold">Como foi o uso</legend>
+                      <label className="mt-2 flex items-center gap-2">
+                        <input type="radio" name="resultado" value="sem_problema" required /> {RESULTADOS_USO_VEICULO.sem_problema}
+                      </label>
+                      <label className="mt-1 flex items-center gap-2">
+                        <input type="radio" name="resultado" value="com_problema" /> {RESULTADOS_USO_VEICULO.com_problema}
+                      </label>
+                    </fieldset>
+                    <Campo rotulo="O que aconteceu" dica="Obrigatório se foi usado com problema (mínimo de 10 letras). Fica no histórico.">
+                      <textarea name="problema" rows={3} className={estiloEntrada} />
+                    </Campo>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Campo rotulo="Quilometragem de saída" obrigatorio dica="Número inteiro, como está no painel.">
+                        <input name="km_saida" inputMode="numeric" required className={estiloEntrada} />
+                      </Campo>
+                      <Campo rotulo="Quilometragem de volta" obrigatorio dica="Não pode ser menor que a de saída.">
+                        <input name="km_volta" inputMode="numeric" required className={estiloEntrada} />
+                      </Campo>
+                    </div>
+                  </FormularioConfirmado>
+                )}
+              </div>
+            )}
             {pode('reenviar') && (
               <div className="flex flex-wrap items-center gap-3">
                 <LinkBotao href={`/requisicoes/${r.id}/editar`}>Ajustar e reenviar</LinkBotao>
@@ -507,6 +546,17 @@ export default async function FichaRequisicao({
               <dt className="text-sm text-texto-suave">Finalidade</dt>
               <dd className="whitespace-pre-line font-medium">{veiculo.finalidade}</dd>
             </div>
+            {veiculo.uso && (
+              <>
+                <Dado rotulo="Uso confirmado">
+                  {veiculo.uso.resultadoNome}
+                  {veiculo.uso.problema ? `: ${veiculo.uso.problema}` : ''}
+                </Dado>
+                <Dado rotulo="Quilometragem">
+                  {numeroBR(veiculo.uso.kmSaida)} → {numeroBR(veiculo.uso.kmVolta)} ({numeroBR(veiculo.uso.kmVolta - veiculo.uso.kmSaida)} km)
+                </Dado>
+              </>
+            )}
           </dl>
         )}
 
