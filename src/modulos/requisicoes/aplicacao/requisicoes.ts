@@ -33,6 +33,8 @@ import {
   RequisicaoItens,
   Requisicoes,
   TiposRequisicao,
+  VeiculoManutencoes,
+  Veiculos,
   type RegCentro,
   type RegEspaco,
   type RegItem,
@@ -84,6 +86,15 @@ import {
   type DetalhesEspaco,
   type ReservaParaConflito,
 } from '../dominio/espaco';
+import {
+  dataDoMomento,
+  emManutencaoNoPeriodo,
+  instante,
+  pedidosEmConflito,
+  PERFIL_TRANSPORTE,
+  type DetalhesVeiculo,
+  type PedidoParaConflito,
+} from '../dominio/veiculo';
 import { aceitaAnexos, conferirArquivo, conferirQuantidade, type TipoAnexo } from '../dominio/anexos';
 import { mesDe, montarPainel } from '../dominio/painel';
 import { diaLimite, EXPEDIENTE_PADRAO, prazoDaEtapa, type Expediente, type SituacaoPrazo } from '../dominio/sla';
@@ -98,6 +109,7 @@ const PERM = {
   tipos: 'requisicoes.tipos.gerenciar',
   painel: 'requisicoes.painel',
   espacos: 'requisicoes.espacos.decidir',
+  veiculos: 'requisicoes.veiculos.operar',
 } as const;
 
 const hoje = (agora: Date) => agora.toISOString().slice(0, 10);
@@ -109,7 +121,7 @@ const vigente = (r: { ativo: boolean; inicio: string | null; fim: string | null 
 // ---------------------------------------------------------------------------
 
 async function ler(p: Planilhas, agora: Date) {
-  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, feriados, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis, espacos, periodos] =
+  const [tipos, catalogoItens, requisicoes, centros, itens, parametros, feriados, usuarios, atribuicoes, perfilPermissoes, servicos, areas, perfis, espacos, periodos, veiculos, manutencoes] =
     await lerTabelas(p, [
       TiposRequisicao,
       CatalogoItens,
@@ -126,6 +138,8 @@ async function ler(p: Planilhas, agora: Date) {
       Perfis,
       Espacos,
       EspacoIndisponibilidades,
+      Veiculos,
+      VeiculoManutencoes,
     ] as const);
   const dia = hoje(agora);
   const ativos = new Set(usuarios.ativos().map((u) => u.email));
@@ -171,6 +185,9 @@ async function ler(p: Planilhas, agora: Date) {
     perfis,
     espacos,
     periodos,
+    veiculos,
+    /** Data prevista da manutenção pendente de cada veículo. */
+    manutencaoPrevista: new Map(manutencoes.ativos().filter((m) => !m.feita_em).map((m) => [m.veiculo_id, m.data_prevista])),
     perfilPermissoes,
     tipoPorId: new Map(tipos.todos().map((t) => [t.id, t])),
     servicoPorCodigo,
@@ -241,15 +258,65 @@ function conflitosDe(d: Dados, r: RegRequisicao): { reserva: ReservaParaConflito
   return reservasEmConflito(alvo, todas).map((c) => ({ reserva: c, r: porId.get(c.id)! }));
 }
 
+// --- Pedido de veículo: decidido sempre pelo Transporte (a Diretoria, se quem pede é do Transporte) ---
+
+const ehVeiculo = (d: Dados, r: RegRequisicao) => d.tipoPorId.get(r.tipo_id)?.formulario === 'veiculo';
+const doSetorTransporte = (quem: Autorizador, d: Dados) => quem.temPermissaoAlgumEscopo(PERM.veiculos) && d.perfisDe(quem.email).has(PERFIL_TRANSPORTE);
+/** Reserva (espaço ou veículo): tem só o prazo de aprovação e não passa por "receber". */
+const ehReserva = (d: Dados, r: RegRequisicao) => ehEspaco(d, r) || ehVeiculo(d, r);
+
+/** O Transporte decide os pedidos de todos; o pedido de quem é do Transporte é decidido pela Diretoria. Ninguém decide o próprio. */
+function podeDecidirVeiculo(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
+  if (r.requisitante === quem.email) return false;
+  return d.perfisDe(r.requisitante).has(PERFIL_TRANSPORTE) ? quem.temPermissao(PERM.aprovar) : doSetorTransporte(quem, d);
+}
+
+function detalhesDeVeiculo(r: RegRequisicao): DetalhesVeiculo | null {
+  try {
+    return r.detalhes ? (JSON.parse(r.detalhes) as DetalhesVeiculo) : null;
+  } catch {
+    return null;
+  }
+}
+
+const paraConflitoVeiculo = (r: RegRequisicao): PedidoParaConflito | null => {
+  const x = detalhesDeVeiculo(r);
+  return x ? { id: r.id, veiculoId: x.veiculoId, saida: x.saida, volta: x.volta, situacao: r.situacao } : null;
+};
+
+/** Outros pedidos do mesmo veículo que cruzam com este. */
+function conflitosDeVeiculo(d: Dados, r: RegRequisicao): { pedido: PedidoParaConflito; r: RegRequisicao }[] {
+  const alvo = paraConflitoVeiculo(r);
+  if (!alvo) return [];
+  const porId = new Map<string, RegRequisicao>();
+  const todos = d.requisicoes
+    .ativos()
+    .filter((x) => ehVeiculo(d, x))
+    .flatMap((x) => {
+      const c = paraConflitoVeiculo(x);
+      if (!c) return [];
+      porId.set(x.id, x);
+      return [c];
+    });
+  return pedidosEmConflito(alvo, todos).map((c) => ({ pedido: c, r: porId.get(c.id)! }));
+}
+
+/** Manutenção prevista que atinge o período do pedido (a partir do dia da data prevista), se houver. */
+const manutencaoQueAtinge = (d: Dados, x: DetalhesVeiculo): string | null => {
+  const prevista = d.manutencaoPrevista.get(x.veiculoId) ?? null;
+  return emManutencaoNoPeriodo(prevista, dataDoMomento(x.volta)) ? prevista : null;
+};
+
 function podeAprovar(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
   if (ehEspaco(d, r)) return podeDecidirEspaco(quem, d, r);
+  if (ehVeiculo(d, r)) return podeDecidirVeiculo(quem, d, r);
   if (quem.temPermissao(PERM.aprovar)) return true; // Diretoria (global)
   if (r.aprovacao !== 'coordenacao' || !quem.temPermissaoAlgumEscopo(PERM.aprovar)) return false;
   return coordenacaoAtual(d, r).has(quem.email) && r.requisitante !== quem.email;
 }
 
 function podeAtender(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
-  if (ehEspaco(d, r)) return false; // reserva não tem "receber" nem "atender": só "registrar o uso"
+  if (ehReserva(d, r)) return false; // reserva não tem "receber" nem "atender": só "registrar o uso"
   const tipo = d.tipoPorId.get(r.tipo_id);
   return Boolean(tipo && quem.temPermissaoAlgumEscopo(PERM.atender) && d.perfisDe(quem.email).has(tipo.perfil_responsavel));
 }
@@ -257,6 +324,7 @@ function podeAtender(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
 function podeVer(quem: Autorizador, d: Dados, r: RegRequisicao): boolean {
   if (r.requisitante === quem.email || quem.temPermissao(PERM.verTodas)) return true;
   if (ehEspaco(d, r)) return doSetorEspacos(quem, d);
+  if (ehVeiculo(d, r)) return doSetorTransporte(quem, d);
   if (quem.temPermissaoAlgumEscopo(PERM.aprovar) && (r.aprovacao === 'coordenacao' ? coordenacaoAtual(d, r).has(quem.email) : quem.temPermissao(PERM.aprovar)))
     return true;
   return podeAtender(quem, d, r) && !['enviada', 'devolvida', 'recusada', 'cancelada'].includes(r.situacao);
@@ -271,6 +339,8 @@ function acoesPossiveis(quem: Autorizador, d: Dados, r: RegRequisicao): Acao[] {
   if (s === 'aprovada' && podeAtender(quem, d, r)) a.push('receber');
   if (s === 'em_atendimento' && podeAtender(quem, d, r)) a.push('concluir');
   if (s === 'aprovada' && ehEspaco(d, r) && doSetorEspacos(quem, d)) a.push('fechar');
+  // Reserva de veículo aprovada: só o Transporte cancela (resolve conflito e aviso de manutenção na mão).
+  if (s === 'aprovada' && ehVeiculo(d, r) && doSetorTransporte(quem, d)) a.push('cancelar');
   return a;
 }
 
@@ -281,7 +351,7 @@ function sla(d: Dados, r: RegRequisicao, agora: Date) {
   const agoraISO = agora.toISOString();
   const aprovacao = prazoDaEtapa(r.enviada_em, r.decidida_em, tipo.prazo_aprovacao, agoraISO, d.expediente);
   const atendimento =
-    ehEspaco(d, r) ? null : r.situacao === 'aprovada' || r.situacao === 'em_atendimento' || r.situacao === 'atendida' || r.situacao === 'atendida_parcial'
+    ehReserva(d, r) ? null : r.situacao === 'aprovada' || r.situacao === 'em_atendimento' || r.situacao === 'atendida' || r.situacao === 'atendida_parcial'
       ? prazoDaEtapa(r.decidida_em!, r.concluida_em, tipo.prazo_atendimento, agoraISO, d.expediente)
       : null;
   return {
@@ -362,9 +432,32 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, opcoes
           .map((x) => ({ inicio: x.inicio, fim: x.fim })),
       }))
       .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+    /**
+     * Veículos ativos com a data prevista da manutenção e os períodos já pedidos (só veículo e horário, nunca quem pediu):
+     * a ficha avisa conflito e esconde o veículo em manutenção.
+     */
+    veiculos: d.veiculos
+      .ativos()
+      .map((v) => ({
+        id: v.id,
+        nome: v.nome,
+        placa: v.placa,
+        capacidade: v.capacidade,
+        manutencaoPrevista: d.manutencaoPrevista.get(v.id) ?? null,
+        ocupado: d.requisicoes
+          .ativos()
+          .filter((r) => ehVeiculo(d, r))
+          .flatMap((r) => {
+            const c = paraConflitoVeiculo(r);
+            return c && c.veiculoId === v.id && (c.situacao === 'enviada' || c.situacao === 'aprovada') ? [{ id: r.id, saida: c.saida, volta: c.volta }] : [];
+          }),
+      }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
     anexosAtivos: Boolean(opcoes.anexosAtivos),
     /** A plataforma preenche com os projetos que a pessoa vê e que aceitam compra (ADR-022). */
     projetos: undefined as ProjetoEscolhivel[] | undefined,
+    /** A plataforma preenche com o nome de quem pede (vem como condutor no pedido de veículo). */
+    nomeDoUsuario: undefined as string | undefined,
   };
 }
 
@@ -383,6 +476,7 @@ function conferirFicha(
   if (!area) erros.push('Escolha a área.');
   else if (tipo && !permitido(lerLista(tipo.areas), area.codigo)) erros.push(`O tipo "${tipo.nome}" não pode ser usado pela área ${area.nome}.`);
   const espaco = tipo?.formulario === 'espaco';
+  const veiculo = tipo?.formulario === 'veiculo';
   // Reserva cedida para fora da instituição não tem centro de custo (decisão da Diretoria, 21/11/2026).
   const semCentros = espaco && (dados.detalhes as { usoExterno?: unknown } | null)?.usoExterno === true;
   if (!semCentros) erros.push(...conferirCentros(dados.centros));
@@ -400,22 +494,24 @@ function conferirFicha(
     else {
       detalhes = r.data;
       if (espaco) erros.push(...conferirReserva(d, r.data as DetalhesEspaco, agora));
+      if (veiculo) erros.push(...conferirPedidoDeVeiculo(d, r.data as DetalhesVeiculo, agora));
     }
   }
-  const ligacao = conferirProjeto(espaco ? null : dados.projetoId, espaco ? null : dados.atividadeId, semCentros ? [] : dados.centros, espaco ? null : projetos);
+  const ligacao = conferirProjeto(espaco || veiculo ? null : dados.projetoId, espaco || veiculo ? null : dados.atividadeId, semCentros ? [] : dados.centros, espaco || veiculo ? null : projetos);
   erros.push(...ligacao.erros);
   if (erros.length) throw new ErroRequisicao([...new Set(erros)].join(' '));
   if (espaco && detalhes) (detalhes as DetalhesEspaco).fechamento = null;
   // Espaço: quem decide é o setor Espaços (a Diretoria, se quem pede é do setor); nunca a coordenação dos centros.
-  const rota: RotaAprovacao = espaco
-    ? d.perfisDe(requisitante).has(PERFIL_ESPACOS)
+  // Veículo: igual, com o setor Transporte (a aprovação nunca é da coordenação dos centros).
+  const rota: RotaAprovacao = espaco || veiculo
+    ? d.perfisDe(requisitante).has(espaco ? PERFIL_ESPACOS : PERFIL_TRANSPORTE)
       ? { tipo: 'diretoria', motivo: 'propria_coordenacao' }
       : { tipo: 'coordenacao', coordenadores: [] }
     : rotaDeAprovacao(
         requisitante,
         dados.centros.map((c) => d.coordenacao(c.servico)),
       );
-  return { tipo: tipo!, detalhes, rota, itens, projeto: ligacao.projeto, atividade: ligacao.atividade, espaco, semCentros };
+  return { tipo: tipo!, detalhes, rota, itens, projeto: ligacao.projeto, atividade: ligacao.atividade, espaco, veiculo, semCentros };
 }
 
 /** Espaço ativo, livre na data (sem período de indisponibilidade) e data de hoje em diante (Brasília). */
@@ -427,6 +523,19 @@ function conferirReserva(d: Dados, x: DetalhesEspaco, agora: Date): string[] {
   else {
     const per = periodoQueCobre(e.id, x.data, d.periodos.ativos().map((y) => ({ espacoId: y.espaco_id, inicio: y.inicio, fim: y.fim, motivo: y.motivo })));
     if (per) erros.push(`O espaço "${e.nome}" está indisponível em ${dataBR(x.data)} (${per.motivo}). Escolha outra data ou outro espaço.`);
+  }
+  return erros;
+}
+
+/** Veículo ativo, fora de manutenção no período, saída de agora em diante (Brasília). O conflito de horário nunca bloqueia. */
+function conferirPedidoDeVeiculo(d: Dados, x: DetalhesVeiculo, agora: Date): string[] {
+  const erros: string[] = [];
+  if (instante(x.saida) < agora) erros.push('A saída não pode estar no passado.');
+  const v = d.veiculos.ativos().find((y) => y.id === x.veiculoId);
+  if (!v) erros.push('Este veículo não está disponível. Escolha outro.');
+  else {
+    const prevista = manutencaoQueAtinge(d, x);
+    if (prevista) erros.push(`O veículo "${v.nome}" está em manutenção a partir de ${prevista.split('-').reverse().join('/')} e não pode ser pedido para este período.`);
   }
   return erros;
 }
@@ -465,18 +574,21 @@ const textoRota = (rota: RotaAprovacao) =>
       : 'Serviço sem coordenação cadastrada: aprovação da Diretoria.';
 
 const textoRotaEspaco = (rota: RotaAprovacao) => (rota.tipo === 'diretoria' ? 'Pedido de quem é do setor Espaços: aprovação da Diretoria.' : null);
+const textoRotaVeiculo = (rota: RotaAprovacao) => (rota.tipo === 'diretoria' ? 'Pedido de quem é do Transporte: aprovação da Diretoria.' : null);
+const textoDaRota = (rota: RotaAprovacao, c: { espaco: boolean; veiculo: boolean }) =>
+  c.espaco ? textoRotaEspaco(rota) : c.veiculo ? textoRotaVeiculo(rota) : textoRota(rota);
 
 export async function enviarRequisicao(
   p: Planilhas,
   quem: Autorizador,
   dados: DadosRequisicao & { nomeRequisitante: string },
   opcoes: { agora?: Date; arquivos?: ArmazenamentoArquivos | null } & OpcoesProjetos = {},
-): Promise<{ id: string; numero: string; rota: RotaAprovacao; espaco: boolean }> {
+): Promise<{ id: string; numero: string; rota: RotaAprovacao; espaco: boolean; veiculo: boolean }> {
   if (!quem.temPermissaoAlgumEscopo(PERM.solicitar)) throw new ErroPermissao();
   conferirTransicao('enviar', null);
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
-  const { tipo, detalhes, rota, itens, projeto, atividade, espaco, semCentros } = conferirFicha(d, quem.email, dados, opcoes.projetos ?? null, agora);
+  const { tipo, detalhes, rota, itens, projeto, atividade, espaco, veiculo, semCentros } = conferirFicha(d, quem.email, dados, opcoes.projetos ?? null, agora);
   const anexos = await conferirAnexosDaFicha(p, opcoes.arquivos ?? null, tipo, dados.anexos ?? [], null);
   const numero = proximoNumero(
     agora.getUTCFullYear(),
@@ -512,9 +624,9 @@ export async function enviarRequisicao(
       anexos.linhas.map((l) => ({ ...l, requisicao_id: r.id })),
       autoria,
     );
-  await gravarHistorico(p, r.id, quem.email, 'enviar', null, 'enviada', agora, espaco ? textoRotaEspaco(rota) : textoRota(rota));
+  await gravarHistorico(p, r.id, quem.email, 'enviar', null, 'enviada', agora, textoDaRota(rota, { espaco, veiculo }));
   await registrarAuditoria(p, { usuario: quem.email, acao: 'inclusao', entidade: 'Requisicoes', registroId: r.id });
-  return { id: r.id, numero, rota, espaco };
+  return { id: r.id, numero, rota, espaco, veiculo };
 }
 
 async function gravarFilhos(p: Planilhas, d: Dados, id: string, dados: DadosRequisicao, autoria: { email: string; agora: () => Date }) {
@@ -568,7 +680,7 @@ export async function reenviarRequisicao(
   if (dados.tipoId !== r.tipo_id) throw new ErroRequisicao('O tipo da requisição não pode mudar. Cancele e abra outra.');
   // O projeto já gravado continua valendo se a pessoa não o mudou (ele pode ter saído da lista de compras depois).
   const mantem = Boolean(dados.projetoId) && dados.projetoId === r.projeto_id && (dados.atividadeId ?? null) === (r.atividade_id ?? null);
-  const { tipo, detalhes, rota, itens, projeto, atividade, espaco, semCentros } = conferirFicha(
+  const { tipo, detalhes, rota, itens, projeto, atividade, espaco, veiculo, semCentros } = conferirFicha(
     d,
     quem.email,
     mantem ? { ...dados, projetoId: null, atividadeId: null } : dados,
@@ -618,7 +730,7 @@ export async function reenviarRequisicao(
         autoria,
       );
   }
-  await gravarHistorico(p, id, quem.email, 'reenviar', 'devolvida', 'enviada', agora, [opcoes.comentario, espaco ? textoRotaEspaco(rota) : textoRota(rota)].filter(Boolean).join(' ') || null);
+  await gravarHistorico(p, id, quem.email, 'reenviar', 'devolvida', 'enviada', agora, [opcoes.comentario, textoDaRota(rota, { espaco, veiculo })].filter(Boolean).join(' ') || null);
   await registrarAuditoria(p, {
     usuario: quem.email,
     acao: 'alteracao',
@@ -655,7 +767,9 @@ export async function decidirRequisicao(
         ? 'Você não pode aprovar a própria requisição.'
         : ehEspaco(d, r)
           ? 'Esta reserva é decidida pelo setor Espaços (ou pela Diretoria, se o pedido for de alguém do setor).'
-          : r.aprovacao === 'diretoria'
+          : ehVeiculo(d, r)
+            ? 'Este pedido de veículo é decidido pelo Transporte (ou pela Diretoria, se o pedido for de alguém do Transporte).'
+            : r.aprovacao === 'diretoria'
           ? 'Esta requisição é aprovada pela Diretoria.'
           : 'Só a coordenação destes centros de custo pode decidir.',
     );
@@ -665,6 +779,8 @@ export async function decidirRequisicao(
   // Aprovar sobre um horário já aprovado pede confirmação; contra pedido só enviado, não (regra 5).
   if (acao === 'aprovar' && ehEspaco(d, r) && !opcoes.confirmarConflito && conflitosDe(d, r).some((c) => c.r.situacao === 'aprovada'))
     throw new ErroRequisicao('Este horário já está aprovado para outro pedido. Confirme para aprovar mesmo assim.');
+  if (acao === 'aprovar' && ehVeiculo(d, r) && !opcoes.confirmarConflito && conflitosDeVeiculo(d, r).some((c) => c.r.situacao === 'aprovada'))
+    throw new ErroRequisicao('Este veículo já está aprovado para outro pedido nesse horário. Confirme para aprovar mesmo assim.');
   const para: Situacao = acao === 'aprovar' ? 'aprovada' : acao === 'devolver' ? 'devolvida' : 'recusada';
   // Só a aprovação grava a conferência; nunca é obrigatória nem bloqueia (R5).
   const conferencia: Record<string, unknown> = {};
@@ -686,7 +802,11 @@ export async function decidirRequisicao(
     { situacao: para, decidida_em: agora.toISOString(), decidida_por: quem.email, ...conferencia },
     autoria,
   );
-  await gravarHistorico(p, id, quem.email, acao, r.situacao, para, agora, comentario);
+  const confirmou =
+    acao === 'aprovar' && opcoes.confirmarConflito && ehVeiculo(d, r) && conflitosDeVeiculo(d, r).some((c) => c.r.situacao === 'aprovada')
+      ? 'Aprovado mesmo com outro pedido aprovado no mesmo horário (confirmado pelo Transporte).'
+      : null;
+  await gravarHistorico(p, id, quem.email, acao, r.situacao, para, agora, [comentario?.trim(), confirmou].filter(Boolean).join(' ') || null);
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
 }
 
@@ -701,8 +821,13 @@ export async function cancelarRequisicao(
   const agora = opcoes.agora ?? new Date();
   const d = await ler(p, agora);
   const r = acharComVersao(d, id, versao);
-  if (r.requisitante !== quem.email) throw new ErroPermissao('Só quem fez a requisição pode cancelá-la.');
   conferirTransicao('cancelar', r.situacao);
+  if (r.situacao === 'aprovada') {
+    // Só a reserva de veículo aprovada se cancela, e só pelo Transporte, com comentário (regra 6).
+    if (!ehVeiculo(d, r)) throw new ErroRequisicao('Só dá para cancelar uma requisição que ainda não foi aprovada.');
+    if (!doSetorTransporte(quem, d)) throw new ErroPermissao('Só o Transporte cancela uma reserva de veículo já aprovada.');
+    if (!comentario?.trim()) throw new ErroRequisicao('Explique por que a reserva foi cancelada.');
+  } else if (r.requisitante !== quem.email) throw new ErroPermissao('Só quem fez a requisição pode cancelá-la.');
   const { colunasAlteradas } = await atualizar(p, Requisicoes, id, versao, { situacao: 'cancelada' }, { email: quem.email, agora: () => agora });
   await gravarHistorico(p, id, quem.email, 'cancelar', r.situacao, 'cancelada', agora, comentario);
   await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Requisicoes', registroId: id, detalhes: { colunas: colunasAlteradas } });
@@ -867,7 +992,7 @@ async function concluirServico(
 // Listas, detalhe e contadores
 // ---------------------------------------------------------------------------
 
-export type Visao = 'minhas' | 'aprovar' | 'atender' | 'todas' | 'espacos' | 'fechar';
+export type Visao = 'minhas' | 'aprovar' | 'atender' | 'todas' | 'espacos' | 'fechar' | 'veiculos';
 
 export interface LinhaRequisicao {
   id: string;
@@ -885,11 +1010,13 @@ export interface LinhaRequisicao {
   prazo: { etapa: 'aprovação' | 'atendimento'; situacao: SituacaoPrazo; horas: number; limite: number } | null;
   /** Reserva de espaço: o que, quando e onde. */
   reserva: { espaco: string; data: string; inicio: string; fim: string } | null;
+  /** Pedido de veículo: o que e quando; os selos de conflito e manutenção só aparecem para quem decide. */
+  veiculo: { nome: string; saida: string; volta: string; conflito: boolean; manutencao: boolean } | null;
 }
 
 export async function listarRequisicoes(p: Planilhas, quem: Autorizador, visao: Visao, opcoes: { agora?: Date } = {}): Promise<LinhaRequisicao[]> {
   const agora = opcoes.agora ?? new Date();
-  const exigido = { minhas: PERM.solicitar, aprovar: PERM.aprovar, atender: PERM.atender, todas: PERM.verTodas, espacos: PERM.espacos, fechar: PERM.espacos }[visao];
+  const exigido = { minhas: PERM.solicitar, aprovar: PERM.aprovar, atender: PERM.atender, todas: PERM.verTodas, espacos: PERM.espacos, fechar: PERM.espacos, veiculos: PERM.veiculos }[visao];
   if (visao === 'todas' ? !quem.temPermissao(exigido) : !quem.temPermissaoAlgumEscopo(exigido)) throw new ErroPermissao();
   const d = await ler(p, agora);
   const filtro: Record<Visao, (r: RegRequisicao) => boolean> = {
@@ -898,6 +1025,7 @@ export async function listarRequisicoes(p: Planilhas, quem: Autorizador, visao: 
     atender: (r) => podeAtender(quem, d, r) && !['enviada', 'devolvida', 'recusada', 'cancelada'].includes(r.situacao),
     todas: () => true,
     espacos: (r) => ehEspaco(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r),
+    veiculos: (r) => ehVeiculo(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r),
     fechar: (r) => {
       const x = ehEspaco(d, r) ? detalhesDeEspaco(r) : null;
       return Boolean(x) && r.situacao === 'aprovada' && doSetorEspacos(quem, d) && agora >= fimDaReserva(x!.data, x!.fim);
@@ -907,7 +1035,7 @@ export async function listarRequisicoes(p: Planilhas, quem: Autorizador, visao: 
     .ativos()
     .filter(filtro[visao])
     .sort((a, b) => b.enviada_em.localeCompare(a.enviada_em))
-    .map((r) => linha(d, r, agora));
+    .map((r) => linha(d, r, agora, quem));
 }
 
 function reservaDe(d: Dados, r: RegRequisicao) {
@@ -915,7 +1043,21 @@ function reservaDe(d: Dados, r: RegRequisicao) {
   return x ? { espaco: d.espacos.porId(x.espacoId)?.nome ?? '—', data: x.data, inicio: x.inicio, fim: x.fim } : null;
 }
 
-function linha(d: Dados, r: RegRequisicao, agora: Date): LinhaRequisicao {
+function veiculoDe(d: Dados, r: RegRequisicao, quem?: Autorizador) {
+  const x = ehVeiculo(d, r) ? detalhesDeVeiculo(r) : null;
+  if (!x) return null;
+  const vê = Boolean(quem && (doSetorTransporte(quem, d) || podeAprovar(quem, d, r)));
+  const ativo = r.situacao === 'enviada' || r.situacao === 'aprovada';
+  return {
+    nome: d.veiculos.porId(x.veiculoId)?.nome ?? '—',
+    saida: x.saida,
+    volta: x.volta,
+    conflito: vê && ativo && conflitosDeVeiculo(d, r).length > 0,
+    manutencao: vê && ativo && manutencaoQueAtinge(d, x) !== null,
+  };
+}
+
+function linha(d: Dados, r: RegRequisicao, agora: Date, quem?: Autorizador): LinhaRequisicao {
   const s = sla(d, r, agora);
   const emAprovacao = r.situacao === 'enviada';
   const emAtendimento = r.situacao === 'aprovada' || r.situacao === 'em_atendimento';
@@ -938,6 +1080,7 @@ function linha(d: Dados, r: RegRequisicao, agora: Date): LinhaRequisicao {
     aprovacao: r.aprovacao,
     urgencia: urgenciaDe(r.detalhes),
     reserva: reservaDe(d, r),
+    veiculo: veiculoDe(d, r, quem),
     prazo: etapa ? { etapa: etapa.etapa, situacao: etapa.situacao, horas: etapa.horas, limite: etapa.prazo } : null,
   };
 }
@@ -961,6 +1104,41 @@ function dadosDaReserva(d: Dados, r: RegRequisicao, agora: Date) {
       r.situacao === 'aprovada' && periodoQueCobre(x.espacoId, x.data, periodos)
         ? 'O espaço ganhou um período de indisponibilidade que cobre esta data. Resolva com quem pediu.'
         : null,
+  };
+}
+
+function detalheDoVeiculo(d: Dados, r: RegRequisicao, quem: Autorizador) {
+  const x = ehVeiculo(d, r) ? detalhesDeVeiculo(r) : null;
+  if (!x) return null;
+  const v = d.veiculos.porId(x.veiculoId);
+  // Conflito e aviso de manutenção só para quem decide (regras 4 e 9); quem pede vê só o aviso curto.
+  const decide = doSetorTransporte(quem, d) || podeAprovar(quem, d, r);
+  const conflitos = conflitosDeVeiculo(d, r);
+  const ativo = r.situacao === 'enviada' || r.situacao === 'aprovada';
+  const prevista = manutencaoQueAtinge(d, x);
+  return {
+    nome: v?.nome ?? '—',
+    placa: v?.placa ?? '—',
+    capacidade: v?.capacidade ?? null,
+    saida: x.saida,
+    volta: x.volta,
+    destino: x.destino,
+    finalidade: x.finalidade,
+    condutor: x.condutor,
+    haConflito: ativo && conflitos.length > 0,
+    avisoManutencao: ativo && prevista ? `Veículo em manutenção a partir de ${prevista.split('-').reverse().join('/')}. Resolva na mão (cancele a reserva ou devolva o pedido).` : null,
+    conflitos: decide
+      ? conflitos.map((c) => ({
+          id: c.r.id,
+          numero: c.r.numero,
+          quem: c.r.requisitante_nome,
+          saida: c.pedido.saida,
+          volta: c.pedido.volta,
+          destino: detalhesDeVeiculo(c.r)?.destino ?? '',
+          situacao: c.r.situacao,
+          situacaoNome: NOME_SITUACAO[c.r.situacao],
+        }))
+      : null,
   };
 }
 
@@ -1014,6 +1192,7 @@ export async function detalharRequisicao(p: Planilhas, quem: Autorizador, id: st
           }))
         : null,
     },
+    veiculo: detalheDoVeiculo(d, r, quem),
     podeCorrigirValorGasto: (r.situacao === 'atendida' || r.situacao === 'atendida_parcial') && podeAtender(quem, d, r),
     sla: sla(d, r, agora),
     expediente: d.expediente,
@@ -1038,6 +1217,7 @@ export async function contadoresRequisicoes(p: Planilhas, quem: Autorizador, opc
           return Boolean(x) && r.situacao === 'aprovada' && agora >= fimDaReserva(x!.data, x!.fim);
         }).length
       : 0,
+    veiculosDecidir: quem.temPermissaoAlgumEscopo(PERM.veiculos) ? ativas.filter((r) => ehVeiculo(d, r) && r.situacao === 'enviada' && podeAprovar(quem, d, r)).length : 0,
     devolvidas: ativas.filter((r) => r.requisitante === quem.email && r.situacao === 'devolvida').length,
   };
 }
@@ -1108,7 +1288,7 @@ export async function listarTipos(p: Planilhas, quem: Autorizador) {
   if (!quem.temPermissao(PERM.tipos)) throw new ErroPermissao();
   const d = await ler(p, new Date());
   const nomeArea = new Map(d.areas.todos().map((a) => [a.codigo, a.nome]));
-  const elegiveis = new Set([...d.perfisCom(PERM.atender), PERFIL_ESPACOS]);
+  const elegiveis = new Set([...d.perfisCom(PERM.atender), PERFIL_ESPACOS, PERFIL_TRANSPORTE]);
   const nomePerfil = new Map(d.perfis.todos().map((x) => [x.codigo, x.nome]));
   const uso = agrupar(d.requisicoes.ativos(), (r) => r.tipo_id);
   const ordem = (l: RegTipo[]) => l.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
@@ -1148,6 +1328,8 @@ export async function salvarTipo(p: Planilhas, quem: Autorizador, dados: DadosTi
   if (!FORMULARIOS.includes(dados.formulario)) erros.push('Escolha a ficha.');
   if (dados.formulario === 'espaco') {
     if (dados.perfilResponsavel !== PERFIL_ESPACOS) erros.push('A reserva de espaço é decidida pelo setor Espaços: escolha este setor.');
+  } else if (dados.formulario === 'veiculo') {
+    if (dados.perfilResponsavel !== PERFIL_TRANSPORTE) erros.push('O pedido de veículo é decidido pelo Transporte: escolha este setor.');
   } else if (!d.perfisCom(PERM.atender).has(dados.perfilResponsavel)) erros.push('Escolha o setor (perfil) que atende.');
   if ((dados.areas ?? []).some((a) => !areasValidas.has(a))) erros.push('Há área marcada que não existe mais.');
   for (const [v, rotulo] of [
@@ -1369,9 +1551,9 @@ export async function painelDePrazos(p: Planilhas, quem: Autorizador, periodo: {
           enviadaEm: r.enviada_em,
           decididaEm: r.decidida_em,
           // Reserva de espaço só tem prazo de aprovação (regra 9).
-          concluidaEm: t.formulario === 'espaco' ? null : r.concluida_em,
+          concluidaEm: t.formulario === 'espaco' || t.formulario === 'veiculo' ? null : r.concluida_em,
           prazoAprovacao: t.prazo_aprovacao,
-          prazoAtendimento: t.formulario === 'espaco' ? Number.POSITIVE_INFINITY : t.prazo_atendimento,
+          prazoAtendimento: t.formulario === 'espaco' || t.formulario === 'veiculo' ? Number.POSITIVE_INFINITY : t.prazo_atendimento,
         },
       ];
     });
@@ -1592,7 +1774,7 @@ export async function itensDaAgenda(p: Planilhas, quem: Autorizador, opcoes: { a
     const tipo = d.tipoPorId.get(r.tipo_id);
     if (!tipo) continue;
     const aprovando = r.situacao === 'enviada';
-    const atendendo = (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && r.decidida_em && tipo.formulario !== 'espaco';
+    const atendendo = (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') && r.decidida_em && tipo.formulario !== 'espaco' && tipo.formulario !== 'veiculo';
     if (!aprovando && !atendendo) continue;
     const data = aprovando ? diaLimite(r.enviada_em, tipo.prazo_aprovacao, d.expediente) : diaLimite(r.decidida_em!, tipo.prazo_atendimento, d.expediente);
     itens.push({
@@ -1738,4 +1920,46 @@ export async function encerrarPeriodoDeEspaco(p: Planilhas, quem: Autorizador, i
   if (!x || !x.ativo) throw new ErroRequisicao('Período não encontrado.');
   await atualizar(p, EspacoIndisponibilidades, id, versao, { ativo: false }, { email: quem.email });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: 'EspacoIndisponibilidades', registroId: id, detalhes: { colunas: ['ativo'] } });
+}
+
+// ---------------------------------------------------------------------------
+// Agenda dos veículos (Transporte): leitura apenas
+// ---------------------------------------------------------------------------
+
+export interface PedidoNaAgenda {
+  id: string;
+  numero: string;
+  quem: string;
+  destino: string;
+  saida: string;
+  volta: string;
+  situacao: Situacao;
+  situacaoNome: string;
+}
+
+/** Por veículo ativo, os pedidos aprovados e aguardando dos próximos 30 dias e a manutenção prevista. */
+export async function agendaDeVeiculos(p: Planilhas, quem: Autorizador, opcoes: { agora?: Date } = {}) {
+  if (!quem.temPermissaoAlgumEscopo(PERM.veiculos)) throw new ErroPermissao();
+  const agora = opcoes.agora ?? new Date();
+  const d = await ler(p, agora);
+  const de = new Date(agora.getTime() - 3 * 3600_000).toISOString().slice(0, 16);
+  const ate = new Date(agora.getTime() - 3 * 3600_000 + 30 * 86_400_000).toISOString().slice(0, 16);
+  const pedidos = d.requisicoes.ativos().filter((r) => ehVeiculo(d, r) && (r.situacao === 'enviada' || r.situacao === 'aprovada'));
+  return d.veiculos
+    .ativos()
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((v) => ({
+      id: v.id,
+      nome: v.nome,
+      placa: v.placa,
+      capacidade: v.capacidade,
+      manutencaoPrevista: d.manutencaoPrevista.get(v.id) ?? null,
+      pedidos: pedidos
+        .flatMap((r): PedidoNaAgenda[] => {
+          const x = detalhesDeVeiculo(r);
+          if (!x || x.veiculoId !== v.id || x.volta < de || x.saida > ate) return [];
+          return [{ id: r.id, numero: r.numero, quem: r.requisitante_nome, destino: x.destino, saida: x.saida, volta: x.volta, situacao: r.situacao, situacaoNome: NOME_SITUACAO[r.situacao] }];
+        })
+        .sort((a, b) => a.saida.localeCompare(b.saida)),
+    }));
 }

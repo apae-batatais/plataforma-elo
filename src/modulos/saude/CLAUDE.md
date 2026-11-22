@@ -17,3 +17,7 @@ Leia antes `especificacao.md` desta pasta, a ADR-030 e o `CLAUDE.md` da raiz.
 - Comparativo (`aplicacao/comparativo.ts`): só fechadas não corrigidas; registra `leitura`. A ficha registra `exportacao`.
 - Reavaliação: 12 meses após a última assinatura; "vence em breve" 30 dias antes (`situacaoDaReavaliacao`).
 - Painel (`aplicacao/painel.ts`): só agregados, todo número por `numeroAgregado` (mínimo de 5); cada pessoa uma vez, pela fechada não corrigida mais recente do período; acesso por `saude.painel` no serviço.
+
+## Tela Instrumentos (proposta #223)
+
+`/saude/instrumentos` mostra uma linha, o CER na versão em uso (`instrumentosDoCer().atual`). Exige `saude.avaliar`; sem ela vai para "Sobre o instrumento".

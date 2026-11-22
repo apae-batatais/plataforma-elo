@@ -156,6 +156,15 @@ export default async function Portal() {
           acao: 'Decidir',
         });
       }
+      if (c.veiculosDecidir > 0) {
+        pendencias.push({
+          app: 'requisicoes',
+          texto: n(c.veiculosDecidir, 'pedido de veículo espera a sua decisão', 'pedidos de veículo esperam a sua decisão'),
+          detalhe: 'Veja o conflito de horário e aprove, devolva ou recuse.',
+          href: '/requisicoes/veiculos/pedidos',
+          acao: 'Decidir',
+        });
+      }
       if (c.espacosFechar > 0) {
         pendencias.push({
           app: 'requisicoes',
