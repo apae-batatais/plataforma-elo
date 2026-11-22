@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import { FONTES_NUMERO, MOTIVOS_SEM_NUMERO, ORIGENS_MEDICAO } from '../dominio/indicadores';
+import { APPS_LIGACAO } from '../dominio/ligacoes';
 import { GRAUS, NIVEIS_MARCO, SITUACOES_RISCO } from '../dominio/fases';
 import { SITUACOES_ATIVIDADE } from '../dominio/planejamento';
 import { DECISOES, ETAPAS, NIVEIS_DECISAO, PORTES, RESULTADOS_PARECER, SITUACOES_PORTA, TIPOS_PARECER, TIPOS_PORTA, TIPOS_PROJETO } from '../dominio/projeto';
@@ -226,10 +227,26 @@ export const ProjetoOrcamento = definirTabela({
   }),
 });
 
-export const TABELAS_PROJETOS = [Projetos, ProjetoDocumentos, MarcoLogico, IndicadoresMedidos, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
+/** Projeto × app ligado (regras 26 e 27): identificador e cópia do nome. Encerrada com `ativo = FALSE`, nunca apagada. */
+export const LigacoesProjeto = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'LigacoesProjeto',
+  esquema: z.object({
+    projeto_id: texto(),
+    app: z.enum(APPS_LIGACAO),
+    /** Identificador do dado no app de origem. */
+    referencia_id: texto(),
+    /** Cópia do nome, para mostrar mesmo sem acesso ao app. */
+    nome: texto(),
+    ligado_em: texto(),
+  }),
+});
+
+export const TABELAS_PROJETOS = [Projetos, LigacoesProjeto, ProjetoDocumentos, MarcoLogico, IndicadoresMedidos, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
 
 export type RegProjeto = Registro<typeof Projetos.esquema>;
 export type RegDocumento = Registro<typeof ProjetoDocumentos.esquema>;
+export type RegLigacao = Registro<typeof LigacoesProjeto.esquema>;
 export type RegMarco = Registro<typeof MarcoLogico.esquema>;
 export type RegMedicao = Registro<typeof IndicadoresMedidos.esquema>;
 export type RegRisco = Registro<typeof Riscos.esquema>;

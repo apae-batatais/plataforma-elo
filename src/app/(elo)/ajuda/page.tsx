@@ -626,6 +626,11 @@ export default async function Ajuda() {
               />
             </>
           )}
+          <Sub>Outras ligações e compras</Sub>
+          <p>
+            Na aba Ligações, &quot;Outras ligações&quot; lista o que o projeto tem em comum com outros apps (o nome é uma cópia guardada no projeto) e &quot;Compras do projeto&quot; mostra as requisições ligadas a ele. Se o app não
+            estiver ativo, aparece &quot;Ligação indisponível&quot; e o resto da tela continua funcionando. Os detalhes só aparecem para quem tem acesso ao app onde o dado fica.
+          </p>
           <Sub>Valores diferentes</Sub>
           <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
         </>
