@@ -187,7 +187,7 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
         }
       />
 
-      {['fase_1', 'fase_2', 'fase_3', 'implementacao', 'em_porta'].includes(r.etapa) && <AbasProjeto id={r.id} atual="resumo" />}
+      {['fase_1', 'fase_2', 'fase_3', 'implementacao', 'encerramento', 'encerrado', 'parado', 'cancelado', 'em_porta'].includes(r.etapa) && <AbasProjeto id={r.id} atual="resumo" />}
 
       <Secao id="t-resumo" titulo="Resumo">
         <p className="whitespace-pre-line">{r.resumo}</p>

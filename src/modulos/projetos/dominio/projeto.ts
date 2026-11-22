@@ -14,7 +14,7 @@ export type Porte = (typeof PORTES)[number];
 export const NOME_PORTE: Record<Porte, string> = { enxuto: 'Enxuto', completo: 'Completo' };
 
 /** Etapa do projeto. Até a entrega P3 o ciclo vai da ideia à implementação (fase 4); mudanças, encerramento e carteira vêm nas próximas entregas. */
-export const ETAPAS = ['rascunho', 'aguardando_responsavel', 'ideia', 'em_porta', 'fase_1', 'fase_2', 'fase_3', 'implementacao', 'parado', 'cancelado'] as const;
+export const ETAPAS = ['rascunho', 'aguardando_responsavel', 'ideia', 'em_porta', 'fase_1', 'fase_2', 'fase_3', 'implementacao', 'encerramento', 'encerrado', 'parado', 'cancelado'] as const;
 export type Etapa = (typeof ETAPAS)[number];
 export const NOME_ETAPA: Record<Etapa, string> = {
   rascunho: 'Rascunho',
@@ -25,11 +25,13 @@ export const NOME_ETAPA: Record<Etapa, string> = {
   fase_2: 'Fase 2 · Configuração',
   fase_3: 'Fase 3 · Planejamento',
   implementacao: 'Fase 4 · Implementação',
+  encerramento: 'Fase 5 · Encerramento',
+  encerrado: 'Encerrado',
   parado: 'Parado',
   cancelado: 'Cancelado',
 };
 /** Etapas em que o projeto não anda mais sem uma decisão especial. */
-export const ETAPAS_ENCERRADAS: ReadonlySet<Etapa> = new Set<Etapa>(['cancelado']);
+export const ETAPAS_ENCERRADAS: ReadonlySet<Etapa> = new Set<Etapa>(['cancelado', 'encerrado']);
 
 export const TIPOS_PARECER = ['tecnico', 'financeiro', 'juridico'] as const;
 export type TipoParecer = (typeof TIPOS_PARECER)[number];
@@ -59,9 +61,9 @@ export const NOME_SITUACAO_PORTA: Record<SituacaoPorta, string> = {
 };
 
 /** Portas 1 (ideia), 2 (Termo de Abertura) e 3 (plano); a de encerramento chega com a P5. */
-export const TIPOS_PORTA = ['ideia', 'termo', 'plano'] as const;
+export const TIPOS_PORTA = ['ideia', 'termo', 'plano', 'encerramento'] as const;
 export type TipoPorta = (typeof TIPOS_PORTA)[number];
-export const NOME_PORTA: Record<TipoPorta, string> = { ideia: 'Porta 1 · Ideia', termo: 'Porta 2 · Termo de Abertura', plano: 'Porta 3 · Plano' };
+export const NOME_PORTA: Record<TipoPorta, string> = { ideia: 'Porta 1 · Ideia', termo: 'Porta 2 · Termo de Abertura', plano: 'Porta 3 · Plano', encerramento: 'Porta de encerramento' };
 
 export const PAPEIS_DESIGNADOS = ['tecnico', 'financeiro', 'juridico', 'alcada'] as const;
 export type PapelDesignado = (typeof PAPEIS_DESIGNADOS)[number];
@@ -130,6 +132,10 @@ export interface DestinoDaDecisao {
  */
 export function destinoDaDecisao(nivel: NivelDecisao, decisao: Decisao, exigeAlcadaNaPorta: boolean, porta: TipoPorta = 'ideia'): DestinoDaDecisao {
   if (nivel === 'diretoria' && decisao === 'seguir' && exigeAlcadaNaPorta) return { situacaoPorta: 'aguardando_alcada', etapa: null };
+  if (porta === 'encerramento') {
+    // Aceitar encerra; ajustar mantém o projeto em encerramento; parar volta o projeto à implementação.
+    return { situacaoPorta: 'decidida', etapa: decisao === 'seguir' ? 'encerrado' : decisao === 'ajustar' ? 'encerramento' : 'implementacao' };
+  }
   const [seguir, ajustar]: [Etapa, Etapa] = porta === 'ideia' ? ['fase_1', 'ideia'] : porta === 'termo' ? ['fase_3', 'fase_2'] : ['implementacao', 'fase_3'];
   return { situacaoPorta: 'decidida', etapa: decisao === 'seguir' ? seguir : decisao === 'ajustar' ? ajustar : 'parado' };
 }

@@ -35,10 +35,10 @@ import { fotografarIndicadores } from './indicadores';
 import type { NumerosDePessoas } from './indicadores';
 
 /** Só quem gerencia o projeto, com o projeto em implementação e Termo aprovado (regra 13). */
-async function projetoEmImplementacao(p: Planilhas, quem: Autorizador, id: string) {
+async function projetoEmImplementacao(p: Planilhas, quem: Autorizador, id: string, tambemEncerramento = false) {
   const r = await projetoVisivel(p, quem, id);
   if (!podeGerenciar(quem, r)) throw new ErroPermissao('Só quem gerencia o projeto altera esta parte.');
-  if (r.etapa !== 'implementacao') throw new ErroProjetos('Esta parte só funciona com o projeto em implementação.');
+  if (r.etapa !== 'implementacao' && !(tambemEncerramento && r.etapa === 'encerramento')) throw new ErroProjetos('Esta parte só funciona com o projeto em implementação.');
   const termo = await exigirTermoAprovado(p, id);
   return { r, termo };
 }
@@ -74,7 +74,8 @@ export async function registrarProblema(p: Planilhas, quem: Autorizador, projeto
 /** Regra 21: o problema só sai da carteira com solução e data. */
 export async function resolverProblema(p: Planilhas, quem: Autorizador, projetoId: string, problemaId: string, versao: number, solucao: string, data: string, opcoes: Opcoes = {}): Promise<void> {
   const agora = opcoes.agora ?? new Date();
-  await projetoEmImplementacao(p, quem, projetoId);
+  // Na fase 5 ainda se resolve o que ficou aberto: a porta de encerramento exige problemas tratados (regra 23).
+  await projetoEmImplementacao(p, quem, projetoId, true);
   const [problemas] = await lerTabelas(p, [Problemas] as const);
   const x = problemas.porId(problemaId);
   if (!x || !x.ativo || x.projeto_id !== projetoId) throw new ErroProjetos('Problema não encontrado.');

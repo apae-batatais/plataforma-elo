@@ -522,6 +522,8 @@ o realizado com o campo Projeto". Sem permissão do Orçamento → "O Financeiro
 
 ## Construção de P2 a P7 (issue #143)
 
+- **P5 construída (22/11/2026, #246):** decisões da construção no PR de entrega (porta de encerramento sem parecer; 30 dias fixos; fotografia dos indicadores ao abrir a porta).
+
 - Situação: **detalhamento para construir; não muda nenhuma decisão aprovada** (seções acima e "Ligações, onda 2").
   Sem dúvida pendente para a Diretoria. Cada entrega abaixo é um PR de entrega; a Diretoria pode pedir uma issue
   por entrega, mas a #143 já autoriza construí-las **na ordem P2, P3, P4, P5, P6, P7**.

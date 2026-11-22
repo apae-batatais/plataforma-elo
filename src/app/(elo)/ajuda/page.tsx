@@ -652,6 +652,43 @@ export default async function Ajuda() {
     });
   }
 
+  if (pode.verPlanejamento) {
+    assuntos.push({
+      id: 'projetos-encerramento',
+      titulo: 'Projetos: encerramento e lições aprendidas',
+      resumo: 'Fechar o projeto com check-list, relatório final e lições, e consultar o que outros projetos ensinaram.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }, { rotulo: 'Lições aprendidas', href: '/projetos/licoes' }],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              'O projeto só encerra com todas as atividades concluídas ou canceladas, os problemas resolvidos, o check-list completo, o relatório final e ao menos uma lição aprendida. A tela “O que falta” diz o que ainda não está pronto.',
+              'Depois que a Diretoria aceita o encerramento, o projeto passa a somente leitura.',
+              'Projeto parado ou cancelado também registra um relatório resumido e lições.',
+              'Quem aparece como atrasado: projeto em implementação com o fim previsto vencido, ou em encerramento há mais de 30 dias.',
+              'A consulta de lições (botão “Lições aprendidas”, na tela inicial de Projetos) é aberta a todos que acessam o app. Quem não acompanha o projeto vê a lição, sem o nome do projeto.',
+            ]}
+          />
+          {pode.planejarProjeto && (
+            <>
+              <Sub>Encerrar um projeto</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto, a aba Encerramento e lições e clique em Iniciar o encerramento.',
+                  'Marque cada item do check-list (contratual, financeiro e administrativo) quando estiver feito.',
+                  'Escreva o relatório final. Transição e sustentabilidade são opcionais.',
+                  'Registre pelo menos uma lição: categoria, o que aconteceu e o que fazer diferente.',
+                  'Com tudo pronto, clique em Abrir porta de encerramento. Depois de aberta, o check-list e o relatório ficam travados até a decisão.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirProjeto && <p className="mt-3">Na porta de encerramento, a Diretoria escolhe aceitar (o projeto encerra), ajustar (volta a ser editado na fase 5) ou parar (volta à implementação), sempre com justificativa. Essa porta não pede parecer.</p>}
+        </>
+      ),
+    });
+  }
+
   if (pode.projetos) {
     assuntos.push({
       id: 'projetos-termo',

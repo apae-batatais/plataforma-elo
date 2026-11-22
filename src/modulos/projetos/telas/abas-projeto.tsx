@@ -8,6 +8,7 @@ const ABAS = [
   { chave: 'orcamento', rotulo: 'Orçamento', parte: '/orcamento' },
   { chave: 'mudancas', rotulo: 'Mudanças', parte: '/mudancas' },
   { chave: 'relatorios', rotulo: 'Relatórios', parte: '/relatorios' },
+  { chave: 'encerramento', rotulo: 'Encerramento e lições', parte: '/encerramento' },
   { chave: 'equipe', rotulo: 'Equipe', parte: '/equipe' },
   { chave: 'ligacoes', rotulo: 'Ligações', parte: '/ligacoes' },
 ] as const;
