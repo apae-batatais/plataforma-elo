@@ -4,4 +4,4 @@
 - [x] 2. Tabelas
 - [x] 3. Casos de uso e testes
 - [x] 4. Telas, Ajuda e demonstração
-- [ ] 5. Verificar, build e PR
+- [x] 5. Verificar, build e PR
