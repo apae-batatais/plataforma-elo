@@ -456,6 +456,8 @@ export async function opcoesDoFormulario(p: Planilhas, quem: Autorizador, opcoes
     anexosAtivos: Boolean(opcoes.anexosAtivos),
     /** A plataforma preenche com os projetos que a pessoa vê e que aceitam compra (ADR-022). */
     projetos: undefined as ProjetoEscolhivel[] | undefined,
+    /** A plataforma preenche com o nome de quem pede (vem como condutor no pedido de veículo). */
+    nomeDoUsuario: undefined as string | undefined,
   };
 }
 

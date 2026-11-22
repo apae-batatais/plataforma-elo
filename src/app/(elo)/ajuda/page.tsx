@@ -73,6 +73,7 @@ export default async function Ajuda() {
     atenderRequisicao: a.temPermissaoAlgumEscopo('requisicoes.atender'),
     painelRequisicoes: a.temPermissaoAlgumEscopo('requisicoes.painel'),
     decidirEspacos: a.temPermissaoAlgumEscopo('requisicoes.espacos.decidir'),
+    operarVeiculos: a.temPermissaoAlgumEscopo('requisicoes.veiculos.operar'),
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
@@ -137,6 +138,12 @@ export default async function Ajuda() {
         ...(pode.aprovarRequisicao ? [{ rotulo: 'Para aprovar', href: '/requisicoes/aprovar' }] : []),
         ...(pode.atenderRequisicao ? [{ rotulo: 'Para atender', href: '/requisicoes/atender' }] : []),
         ...(pode.decidirEspacos ? [{ rotulo: 'Reservas de espaço', href: '/requisicoes/espacos' }] : []),
+        ...(pode.operarVeiculos
+          ? [
+              { rotulo: 'Pedidos de veículo', href: '/requisicoes/veiculos/pedidos' },
+              { rotulo: 'Agenda dos veículos', href: '/requisicoes/veiculos/agenda' },
+            ]
+          : []),
         ...(pode.painelRequisicoes ? [{ rotulo: 'Painel de prazos', href: '/requisicoes/painel' }] : []),
       ],
       conteudo: (
@@ -201,12 +208,23 @@ export default async function Ajuda() {
               'Clique em Enviar pedido. O setor Espaços aprova, devolve para ajuste ou recusa; você acompanha em Minhas requisições. Enquanto não for aprovada, dá para cancelar. O pedido não é barrado por outro no mesmo horário: quem decide vê o conflito.',
             ]}
           />
+          <Sub>Pedir um veículo</Sub>
+          <Passos
+            itens={[
+              'Abra Requisições › Nova requisição e escolha o tipo "Uso de veículo".',
+              'Escolha a área e os centros de custo (um ou mais serviços, somando 100%). Eles servem só para saber depois quais serviços mais usam os veículos: não geram despesa.',
+              'Informe a saída e a volta prevista (dia/mês/ano e hora; a volta pode ser em outro dia) e depois escolha o veículo. Veículos em manutenção nessas datas não aparecem na lista.',
+              'Preencha destino, finalidade (para que será usado) e condutor, que já vem com o seu nome: troque se outra pessoa for dirigir.',
+              'Clique em Enviar pedido. Se já houver pedido no mesmo horário, aparece um aviso, mas dá para enviar: o Transporte decide. Enquanto não for aprovado, você pode ajustar (se devolvido) ou cancelar em Minhas requisições.',
+            ]}
+          />
           <Sub>Quem aprova</Sub>
           <Itens
             itens={[
               'A coordenação dos centros de custo. Uma requisição não pode misturar serviços de coordenações diferentes: abra uma para cada.',
               'Pedido feito pela própria coordenação, ou de serviço sem coordenação cadastrada, é aprovado pela Diretoria.',
               'Reserva de espaço é sempre decidida pelo setor Espaços, de qualquer coordenação. Se quem pede é do próprio setor Espaços, a Diretoria decide.',
+              'Pedido de veículo é sempre decidido pelo Transporte, de qualquer coordenação. Se quem pede é do Transporte, a Diretoria decide.',
             ]}
           />
           {pode.aprovarRequisicao && (
@@ -229,6 +247,20 @@ export default async function Ajuda() {
                   'Na ficha, o bloco "Conflitos neste horário" mostra quem pediu o mesmo espaço em horário que se cruza (encostar, como 10h–11h e 11h–12h, não conta). Clique em Aprovar reserva, Devolver para ajuste ou Recusar (os dois últimos pedem o motivo).',
                   'Se o horário já está aprovado para outro pedido, o sistema pede confirmação antes de aprovar. A decisão não tem volta.',
                   'Depois do uso, abra a ficha e clique em Registrar uso: "Usado sem problema" ou "Usado com problema" (este pede o texto). O botão só libera depois da hora de fim.',
+                ]}
+              />
+            </>
+          )}
+          {pode.operarVeiculos && (
+            <>
+              <Sub>Decidir pedidos de veículo</Sub>
+              <Passos
+                itens={[
+                  'Abra Requisições › Pedidos de veículo: a lista traz os pedidos novos pela ordem de saída, com os selos "Conflito" (outro pedido no mesmo veículo e horário) e "Manutenção" (a manutenção prevista atinge o período).',
+                  'Na ficha, o quadro "Pedidos neste horário" mostra quem pediu, o destino e a situação de cada pedido que cruza (encostar, como a volta às 12h e a saída às 12h, não conta). Clique em Aprovar pedido, Devolver para ajuste ou Recusar (os dois últimos pedem o motivo).',
+                  'Se já existe um pedido aprovado no mesmo horário, o sistema pede confirmação antes de aprovar; a confirmação fica no histórico. Se o outro ainda está aguardando, aprova direto.',
+                  'Para resolver um conflito ou o aviso de manutenção de um pedido já aprovado, abra a ficha e clique em Cancelar reserva (o motivo é obrigatório e quem pediu vê no histórico). Nada é cancelado sozinho.',
+                  'Em Agenda dos veículos, veja por veículo os pedidos dos próximos 30 dias e a manutenção prevista; ali também dá para marcar a manutenção como feita.',
                 ]}
               />
             </>
@@ -298,6 +330,8 @@ export default async function Ajuda() {
                 Ao alterar um veículo, informe a data da próxima manutenção: a partir desse dia ele deixa de aparecer para pedido novo, até você clicar em
                 &ldquo;Marcar feita&rdquo; (e, se já souber, informar a data da seguinte). Veículo excluído some da lista de pedido, mas pode ser reativado
                 em &ldquo;Veículos excluídos&rdquo;. Nada é apagado.
+                Para liberar os pedidos, cadastre o tipo &ldquo;Uso de veículo&rdquo; em Tipos de requisição, com a ficha de veículo e o setor Transporte, e atribua o
+                perfil Transporte às pessoas do setor em Acessos. O tipo de veículo não aceita foto nem vídeo.
               </p>
             </>
           )}

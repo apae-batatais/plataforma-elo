@@ -4,5 +4,5 @@
 - [x] 2. Perfil, permissão e menu
 - [x] 3. Casos de uso
 - [x] 4. Testes
-- [ ] 5. Telas, Ajuda, fictícios
-- [ ] 6. Verificar, build e PR
+- [x] 5. Telas, Ajuda, fictícios
+- [x] 6. Verificar, build e PR
