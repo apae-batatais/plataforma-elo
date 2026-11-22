@@ -108,7 +108,7 @@ export async function assumirIdeia(p: Planilhas, quem: Autorizador, id: string, 
 export async function trocarResponsavel(p: Planilhas, quem: Autorizador, id: string, versao: number, novo: string, opcoes: Opcoes = {}): Promise<void> {
   if (!veTodos(quem)) throw new ErroPermissao();
   const r = await acharComVersao(p, id, versao);
-  if (r.etapa === 'rascunho' || r.etapa === 'aguardando_responsavel' || r.etapa === 'cancelado') throw new ErroProjetos('Só dá para trocar o responsável de um projeto que já tem responsável.');
+  if (r.etapa === 'rascunho' || r.etapa === 'aguardando_responsavel' || r.etapa === 'cancelado' || r.etapa === 'encerrado') throw new ErroProjetos('Só dá para trocar o responsável de um projeto que já tem responsável.');
   if (r.etapa === 'em_porta') throw new ErroProjetos('Espere a decisão da porta para trocar o responsável.');
   const email = novo.trim().toLowerCase();
   const usuarios = await lerTabela(p, Usuarios);
@@ -129,6 +129,7 @@ export async function retomarProjeto(p: Planilhas, quem: Autorizador, id: string
 export async function cancelarProjeto(p: Planilhas, quem: Autorizador, id: string, versao: number, motivo: string, opcoes: Opcoes = {}): Promise<void> {
   const r = await acharComVersao(p, id, versao);
   if (r.etapa === 'cancelado') throw new ErroProjetos('Este projeto já está cancelado.');
+  if (r.etapa === 'encerrado') throw new ErroProjetos('Projeto encerrado: fica só para leitura.');
   if (r.etapa === 'em_porta') throw new ErroProjetos('Espere a decisão da porta para cancelar.');
   const proponente = ehEu(quem, r.proponente) && (r.etapa === 'rascunho' || r.etapa === 'aguardando_responsavel');
   if (!proponente && !ehEu(quem, r.responsavel) && !veTodos(quem)) throw new ErroPermissao('Você não pode cancelar este projeto.');

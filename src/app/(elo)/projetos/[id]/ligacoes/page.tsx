@@ -1,12 +1,14 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
+import { lerLigacoesDoProjeto } from '@/modulos/projetos/aplicacao/ligacoes';
 import { lerLigacaoTermo } from '@/modulos/projetos/aplicacao/termo';
 import { AbasProjeto } from '@/modulos/projetos/telas/abas-projeto';
 import { moeda } from '@/modulos/projetos/telas/rotulos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
-import { catalogoDeTermos } from '@/plataforma/ligacoes';
+import { catalogoDeLeitura, catalogoDeTermos } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
+import { TabelaDados } from '@/ui/tabela-dados';
 import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { CabecalhoPagina, Etiqueta, EstadoVazio, Secao } from '@/ui/pagina';
@@ -22,7 +24,8 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
   const { id } = await params;
   const { planilhas } = await obterAplicacao();
   const l = await lerLigacaoTermo(planilhas, usuario.autorizador, id, catalogoDeTermos(planilhas));
-  if (!l) notFound();
+  const outras = await lerLigacoesDoProjeto(planilhas, usuario.autorizador, id, catalogoDeLeitura(planilhas));
+  if (!l || !outras) notFound();
   const podeAbrirTermo = l.termo.estado === 'ok' && usuario.autorizador.temPermissaoAlgumEscopo('parcerias.termos.ver');
   return (
     <div className="space-y-6">
@@ -71,6 +74,44 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
             </dl>
             {podeAbrirTermo && <LinkBotao href="/parcerias">Abrir termo em Parcerias</LinkBotao>}
           </div>
+        )}
+      </Secao>
+      <Secao id="t-outras" titulo="Outras ligações" descricao="O nome vem da cópia guardada no projeto. A situação aparece só para quem tem acesso ao app onde o dado fica.">
+        {outras.ligacoes.length === 0 ? (
+          <EstadoVazio titulo="Nada aqui ainda.">Quando uma ligação com outro app for criada, ela aparece nesta lista.</EstadoVazio>
+        ) : (
+          <ul className="space-y-2">
+            {outras.ligacoes.map((x) => (
+              <li key={x.id} className="rounded border border-borda p-3 text-sm">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold">{x.nomeAtual ?? x.nome}</span>
+                  <Etiqueta tipo="neutro">{x.appNome}</Etiqueta>
+                  {x.estado === 'ok' && x.situacao && <Etiqueta tipo="sucesso">{x.situacao}</Etiqueta>}
+                </p>
+                {x.estado === 'indisponivel' && <p className="mt-1 text-texto-suave">Ligação indisponível: {x.appNome} não está ativo ou não respondeu.</p>}
+                {x.estado === 'sem_permissao' && <p className="mt-1 text-texto-suave">Os detalhes aparecem para quem acessa {x.appNome}.</p>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Secao>
+      <Secao id="t-compras" titulo="Compras do projeto" descricao="Requisições feitas com este projeto. Valores e detalhes ficam em Requisições.">
+        {outras.compras.estado === 'indisponivel' || outras.compras.estado === 'erro' ? (
+          <Aviso tipo="info">Ligação indisponível: Requisições não está ativo ou não respondeu.</Aviso>
+        ) : outras.compras.estado === 'sem_permissao' ? (
+          <Aviso tipo="info">As compras aparecem para quem acessa Requisições.</Aviso>
+        ) : outras.compras.dados.length === 0 ? (
+          <EstadoVazio titulo="Nada aqui ainda.">Nenhuma requisição foi ligada a este projeto.</EstadoVazio>
+        ) : (
+          <TabelaDados
+            legenda="Compras ligadas ao projeto"
+            colunas={[
+              { chave: 'numero', rotulo: 'Número' },
+              { chave: 'tipo', rotulo: 'Tipo' },
+              { chave: 'situacao', rotulo: 'Situação' },
+            ]}
+            linhas={outras.compras.dados.map((c) => ({ id: c.id, valores: { numero: c.numero, tipo: c.tipo, situacao: c.situacaoNome } }))}
+          />
         )}
       </Secao>
     </div>

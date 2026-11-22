@@ -11,8 +11,10 @@
 import { z } from 'zod';
 import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import { FONTES_NUMERO, MOTIVOS_SEM_NUMERO, ORIGENS_MEDICAO } from '../dominio/indicadores';
+import { APPS_LIGACAO } from '../dominio/ligacoes';
 import { GRAUS, NIVEIS_MARCO, SITUACOES_RISCO } from '../dominio/fases';
 import { SITUACOES_PEDIDO, SITUACOES_RELATORIO, TIPOS_MUDANCA } from '../dominio/acompanhamento';
+import { CATEGORIAS_LICAO, ITENS_ENCERRAMENTO } from '../dominio/encerramento';
 import { SITUACOES_ATIVIDADE } from '../dominio/planejamento';
 import { DECISOES, ETAPAS, NIVEIS_DECISAO, PORTES, RESULTADOS_PARECER, SITUACOES_PORTA, TIPOS_PARECER, TIPOS_PORTA, TIPOS_PROJETO } from '../dominio/projeto';
 
@@ -41,6 +43,8 @@ export const Projetos = definirTabela({
     /** Termo de Parcerias criado como rascunho na porta 2 (regra L8): id e nome copiado. */
     termo_id: textoOpcional(),
     termo_nome: textoOpcional(),
+    /** Dia (AAAA-MM-DD) em que o projeto entrou na fase 5; conta o atraso do encerramento (regra 25). */
+    encerramento_iniciado_em: dataOpcional(),
   }),
 });
 
@@ -227,6 +231,22 @@ export const ProjetoOrcamento = definirTabela({
   }),
 });
 
+/** Projeto × app ligado (regras 26 e 27): identificador e cópia do nome. Encerrada com `ativo = FALSE`, nunca apagada. */
+export const LigacoesProjeto = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'LigacoesProjeto',
+  esquema: z.object({
+    projeto_id: texto(),
+    app: z.enum(APPS_LIGACAO),
+    /** Identificador do dado no app de origem. */
+    referencia_id: texto(),
+    /** Cópia do nome, para mostrar mesmo sem acesso ao app. */
+    nome: texto(),
+    ligado_em: texto(),
+  }),
+});
+
+
 export const Problemas = definirTabela({
   planilha: PLANILHA_PROJETOS,
   aba: 'Problemas',
@@ -302,10 +322,40 @@ export const Relatorios = definirTabela({
   }),
 });
 
-export const TABELAS_PROJETOS = [Projetos, ProjetoDocumentos, MarcoLogico, IndicadoresMedidos, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento, Problemas, PedidosMudanca, Relatorios, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
+/** Lição aprendida (regra 24): nunca apagada nem trocada. */
+export const Licoes = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'Licoes',
+  esquema: z.object({
+    projeto_id: texto(),
+    categoria: z.enum(CATEGORIAS_LICAO),
+    o_que_aconteceu: texto(),
+    fazer_diferente: texto(),
+    registrado_por: texto(),
+    registrado_em: texto(),
+  }),
+});
+
+/** Um item do check-list de encerramento ou um texto do relatório final (regra 23). Uma linha por item. */
+export const Encerramento = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'Encerramento',
+  esquema: z.object({
+    projeto_id: texto(),
+    item: z.enum(ITENS_ENCERRAMENTO),
+    feito: booleano(),
+    data: dataOpcional(),
+    feito_por: textoOpcional(),
+    /** Texto do item (relatório final, transição, sustentabilidade, ou observação do check-list). Nunca vai para a auditoria. */
+    texto: textoOpcional(),
+  }),
+});
+
+export const TABELAS_PROJETOS = [Projetos, LigacoesProjeto, ProjetoDocumentos, MarcoLogico, IndicadoresMedidos, Riscos, ProjetoEquipe, Atividades, ProjetoOrcamento, Problemas, PedidosMudanca, Relatorios, Licoes, Encerramento, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
 
 export type RegProjeto = Registro<typeof Projetos.esquema>;
 export type RegDocumento = Registro<typeof ProjetoDocumentos.esquema>;
+export type RegLigacao = Registro<typeof LigacoesProjeto.esquema>;
 export type RegMarco = Registro<typeof MarcoLogico.esquema>;
 export type RegMedicao = Registro<typeof IndicadoresMedidos.esquema>;
 export type RegRisco = Registro<typeof Riscos.esquema>;
@@ -320,3 +370,5 @@ export type RegParecer = Registro<typeof Pareceres.esquema>;
 export type RegDecisao = Registro<typeof Decisoes.esquema>;
 export type RegConfig = Registro<typeof ConfigProjetos.esquema>;
 export type RegHistorico = z.infer<typeof HistoricoProjetos.esquema>;
+export type RegLicao = Registro<typeof Licoes.esquema>;
+export type RegEncerramento = Registro<typeof Encerramento.esquema>;
