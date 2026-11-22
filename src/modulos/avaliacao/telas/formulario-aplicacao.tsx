@@ -85,38 +85,32 @@ export function FormularioAplicacao({
         </Aviso>
       )}
 
-      <section aria-labelledby="titulo-pessoa" className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-        <h2 id="titulo-pessoa" className="text-lg font-bold">
-          Pessoa e ciclo
+      <section aria-labelledby="titulo-pessoa" className="rounded-cartao border border-borda bg-superficie p-5">
+        <h2 id="titulo-pessoa" className="mb-3 text-sm font-bold text-destaque">
+          Quem e quando
         </h2>
-        {continuando ? (
-          <p>
-            Pessoa avaliada: <b>{pessoa?.iniciais ?? '—'}</b>
-          </p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Buscar pessoa pelo nome" dica="Só aparecem as pessoas dos serviços em que você avalia.">
-              <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} className={estiloEntrada} autoComplete="off" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {continuando ? (
+            <Campo rotulo="Pessoa" obrigatorio dica="Iniciais da pessoa avaliada; o nome não é mostrado.">
+              <input value={pessoa?.iniciais ?? '—'} disabled readOnly className={estiloEntrada} />
             </Campo>
-            <Campo rotulo="Pessoa" obrigatorio>
-              <select value={valores.pessoaId} onChange={(e) => escolher(e.target.value)} className={estiloEntrada}>
-                <option value="">Escolha uma pessoa</option>
-                {filtradas.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-            {filtradas.length === 0 && <p className="text-sm text-texto-suave sm:col-span-2">Nenhuma pessoa com esse nome nos seus serviços.</p>}
-          </div>
-        )}
-        {pessoa && !continuando && (
-          <p className="text-sm">
-            Iniciais que aparecem na avaliação: <b>{pessoa.iniciais}</b>. O nome não é mostrado nas telas da avaliação.
-          </p>
-        )}
-        <div className="grid gap-4 sm:grid-cols-3">
+          ) : (
+            <>
+              <Campo rotulo="Buscar pessoa pelo nome" dica="Só aparecem as pessoas dos serviços em que você avalia.">
+                <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} className={estiloEntrada} autoComplete="off" />
+              </Campo>
+              <Campo rotulo="Pessoa" obrigatorio dica={pessoa ? `Iniciais que aparecem na avaliação: ${pessoa.iniciais}. O nome não é mostrado nas telas da avaliação.` : undefined}>
+                <select value={valores.pessoaId} onChange={(e) => escolher(e.target.value)} className={estiloEntrada}>
+                  <option value="">Escolha uma pessoa</option>
+                  {filtradas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </Campo>
+            </>
+          )}
           <Campo rotulo="Serviço" obrigatorio>
             <select value={valores.servico} onChange={(e) => muda('servico', e.target.value)} className={estiloEntrada} disabled={continuando || !pessoa}>
               {!pessoa && <option value="">Escolha a pessoa primeiro</option>}
@@ -140,6 +134,7 @@ export function FormularioAplicacao({
             <input type="date" max={hoje} value={valores.data} onChange={(e) => muda('data', e.target.value)} className={estiloEntrada} />
           </Campo>
         </div>
+        {!continuando && filtradas.length === 0 && <p className="mt-3 text-sm text-texto-suave">Nenhuma pessoa com esse nome nos seus serviços.</p>}
       </section>
 
       {instrumento.dominios.map((d) => (

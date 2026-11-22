@@ -387,7 +387,7 @@ export function montarAssuntos(ctx: {
               <Passos
                 itens={[
                   'Abra Avaliações › Assistência Social › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
-                  'Identifique a pessoa só pelas iniciais, data de nascimento e sexo. O prontuário é opcional e o nome completo não é pedido.',
+                  'Na seção Quem e quando, identifique a pessoa só pelas iniciais, data de nascimento e sexo. O prontuário é opcional e o nome completo não é pedido.',
                   'Escolha o serviço atual (aparecem os serviços do seu escopo) e responda todas as perguntas. O que faltar fica em vermelho ao salvar.',
                   'O índice de necessidade de cuidado (0 a 12) é calculado enquanto você responde. Em suspeita de violação de direitos, siga o fluxo de notificação e o encaminhamento ao CREAS.',
                   'Clique em Salvar avaliação. Para corrigir, abra a avaliação na lista. Lançou por engano? Use Retirar avaliação e escreva o motivo: ela sai da lista e do painel, mas fica guardada.',
@@ -432,7 +432,7 @@ export function montarAssuntos(ctx: {
           <Passos
             itens={[
               'Abra Avaliações › Educação › Instrumentos. A tela lista os três instrumentos, com a versão e o número de domínios e itens.',
-              'Clique em Aplicar a uma pessoa: a nova avaliação abre com o instrumento já escolhido. Depois escolha a pessoa, o serviço e o período.',
+              'Clique em Aplicar a uma pessoa: a nova avaliação abre com o instrumento já escolhido. Na seção Quem e quando, escolha a pessoa (a busca filtra pelo nome), o serviço e o período.',
               'Clique em Sobre o instrumento para ler como o total, os subtotais e as faixas são calculados.',
             ]}
           />
