@@ -80,6 +80,11 @@ export default async function Ajuda() {
     decidirProjeto: a.temPermissao('projetos.decidir') || a.temPermissaoAlgumEscopo('projetos.decidir_alcada'),
     gerenciarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     termos: a.temPermissaoAlgumEscopo('parcerias.termos.ver'),
+    comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
+    equipeComunicacao: a.temPermissao('comunicacao.revisar'),
+    configurarComunicacao: a.temPermissao('comunicacao.configurar'),
+    resultadoInstagram: a.temPermissao('comunicacao.revisar'),
+    indicadoresComunicacao: a.temPermissao('comunicacao.indicadores'),
   };
 
   const assuntos: Assunto[] = [
@@ -284,6 +289,30 @@ export default async function Ajuda() {
     });
   }
 
+  if (pode.resultadoInstagram || pode.indicadoresComunicacao) {
+    assuntos.push({
+      id: 'resultado-instagram',
+      titulo: 'Resultado das postagens do Instagram',
+      resumo: 'Alcance, curtidas, comentários e salvamentos das postagens publicadas pelo Elo.',
+      atalhos: [
+        ...(pode.resultadoInstagram ? [{ rotulo: 'Abrir Pedidos', href: '/comunicacao/pedidos' }] : []),
+        ...(pode.indicadoresComunicacao ? [{ rotulo: 'Abrir Indicadores', href: '/comunicacao/indicadores' }] : []),
+      ],
+      conteudo: (
+        <>
+          <p className="mb-2">O Elo busca sozinho os números, uma vez por dia, de madrugada, nas postagens publicadas por ele (até 90 dias depois de publicadas). Depois disso, ficam os últimos números.</p>
+          <Itens
+            itens={[
+              pode.resultadoInstagram && 'No pedido: abra um pedido já publicado. Na faixa Instagram aparecem alcance, curtidas, comentários e salvamentos, com a data da última atualização. Se ainda não há número, aparece "Resultado ainda não disponível".',
+              pode.resultadoInstagram && 'Se aparecer que não é possível buscar o resultado da conta, a coordenação precisa reconectar o Instagram em Configurações para liberar a leitura dos números.',
+              pode.indicadoresComunicacao && 'Nos Indicadores: escolha mês, trimestre ou ano. O gráfico mostra o alcance médio por tipo de peça e a tabela traz uma linha por postagem do período.',
+            ]}
+          />
+        </>
+      ),
+    });
+  }
+
   if (pode.propor) {
     assuntos.push({
       id: 'propor',
@@ -473,6 +502,46 @@ export default async function Ajuda() {
           )}
           <Sub>Valores diferentes</Sub>
           <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
+        </>
+      ),
+    });
+  }
+
+  if (pode.comunicacao) {
+    assuntos.push({
+      id: 'comunicacao-avisos',
+      titulo: 'Comunicação: avisos por e-mail',
+      resumo: pode.configurarComunicacao ? 'Quais e-mails o Elo manda e como ligar ou desligar.' : 'Quais e-mails o Elo manda sobre os pedidos.',
+      atalhos: [{ rotulo: 'Meus pedidos', href: '/comunicacao' }, ...(pode.configurarComunicacao ? [{ rotulo: 'Configurações da Comunicação', href: '/comunicacao/configuracoes' }] : [])],
+      conteudo: (
+        <>
+          <p className="mb-3">
+            Quando a instituição liga os avisos, o Elo manda um e-mail curto a quem precisa agir. O e-mail traz só o número do pedido, o que fazer e o link; nunca o
+            título nem a descrição. O aviso dentro do Elo continua igual, com ou sem e-mail.
+          </p>
+          <Itens
+            itens={[
+              'Seu pedido foi devolvido para ajuste: quem fez o pedido recebe o aviso para abrir o Elo e ajustar.',
+              'Seu pedido foi publicado: quem fez o pedido recebe o aviso.',
+              pode.equipeComunicacao && 'Pedidos aguardando revisão: a Comunicação recebe um resumo quando chega pedido novo, não um e-mail por pedido.',
+              pode.equipeComunicacao && 'Lembrete do dia: às 8h, a Comunicação recebe o resumo dos posts, reels e entrevistas marcados para hoje. Dia sem pedido não gera e-mail.',
+              pode.equipeComunicacao && 'Envio de release ou artigo que falhou: a Comunicação recebe um aviso, e o pedido continua Agendado. Abra o pedido para "Tentar de novo" ou "Enviar à mão".',
+              a.temPermissao('comunicacao.aprovar') && 'Pedido aguardando aprovação: a coordenação da Comunicação recebe o aviso para decidir.',
+              'Em cada pedido, o histórico mostra se o aviso foi enviado ou não (sem o endereço de e-mail).',
+            ]}
+          />
+          {pode.configurarComunicacao && (
+            <>
+              <Sub>Ligar ou desligar os avisos</Sub>
+              <Passos
+                itens={[
+                  'Abra Comunicação › Configurações e vá até "Avisos por e-mail".',
+                  'Confira o endereço em "Enviando por". Se aparecer "Falta informar o e-mail de envio", peça à Administração da rede para informá-lo; sem ele nenhum aviso sai.',
+                  'Marque "Avisar por e-mail" (ou desmarque para desligar) e clique em "Salvar avisos". Os avisos começam desligados.',
+                ]}
+              />
+            </>
+          )}
         </>
       ),
     });

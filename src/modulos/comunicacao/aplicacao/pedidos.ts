@@ -44,6 +44,8 @@ import { lerDestinatarios as lerDestinatariosDoJson } from '../dominio/envio';
 import { montarEmailPronto } from '../dominio/email-pronto';
 import { feriadosAtivos } from '@/nucleo/feriados/feriados';
 import { dataHoraEmBrasilia, diaEmBrasilia, ehUrgente } from '../dominio/prazos';
+import { contarAvisosFalhos, criarAvisoDoPedido } from './avisos';
+import { modeloDaMudanca } from '../dominio/aviso';
 import { cancelarEnviosPendentes, contarEnviosFalhos, sincronizarEnvioDoAgendamento } from './envios';
 import { conferirAnexosDoPedido, gravarAnexos, type AnexoPedido } from './anexos';
 import { dataValida, itensParaPedido, salvarItemCalendario, type DadosItemCalendario } from './calendario';
@@ -64,6 +66,8 @@ interface Opcoes {
   arquivos?: ArmazenamentoArquivos | null;
   /** Código da instituição (só para "Publicar pelo Elo", que procura a conta do Instagram dela). */
   instituicao?: string;
+  /** A instituição tem e-mail de envio? Sem ele, nenhum aviso por e-mail é criado. */
+  emailDisponivel?: boolean;
 }
 
 export interface DadosPedido {
@@ -291,12 +295,14 @@ async function mover(
   agora: Date,
   permitidas: readonly string[],
   situacoes: Situacao[],
+  opcoes: Opcoes,
 ): Promise<void> {
   const r = await acharComVersao(p, id, versao);
   exigirAcaoValida(r, acao, permitidas, situacoes);
   const { para, motivo } = conferirAcao(quem, r, acao, comentario);
   const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { situacao: para }, autoriaDe(quem, agora));
   await registrarMudanca(p, quem, r, acao, para, motivo, agora, colunasAlteradas);
+  await criarAvisoDoPedido(p, quem, r, modeloDaMudanca(para), opcoes.emailDisponivel, agora);
 }
 
 /** Passos da Comunicação: começar a revisão, enviar para aprovação, devolver ou recusar. */
@@ -310,7 +316,7 @@ export async function revisarPedido(
   opcoes: Opcoes = {},
 ): Promise<void> {
   exigirPermissao(quem, PERM.revisar);
-  await mover(p, quem, id, versao, acao, comentario, opcoes.agora ?? new Date(), ACOES_DA_REVISAO, SITUACOES_DA_REVISAO);
+  await mover(p, quem, id, versao, acao, comentario, opcoes.agora ?? new Date(), ACOES_DA_REVISAO, SITUACOES_DA_REVISAO, opcoes);
 }
 
 /** Decisão da coordenação da Comunicação (inclusive sobre os próprios pedidos). */
@@ -324,7 +330,7 @@ export async function decidirPedido(
   opcoes: Opcoes = {},
 ): Promise<void> {
   exigirPermissao(quem, PERM.aprovar);
-  await mover(p, quem, id, versao, decisao, comentario, opcoes.agora ?? new Date(), ACOES_DA_DECISAO, ['aguardando_aprovacao']);
+  await mover(p, quem, id, versao, decisao, comentario, opcoes.agora ?? new Date(), ACOES_DA_DECISAO, ['aguardando_aprovacao'], opcoes);
 }
 
 /** Junta o pedido a outro em andamento; o destino recebe a referência no histórico. */
@@ -531,6 +537,7 @@ export async function publicarPedido(
   );
   await cancelarEnviosPendentes(p, quem.email, id, agora);
   await registrarMudanca(p, quem, r, 'publicar', para, motivo, agora, colunasAlteradas);
+  await criarAvisoDoPedido(p, quem, r, modeloDaMudanca(para), opcoes.emailDisponivel, agora);
 }
 
 // ---------------------------------------------------------------------------
@@ -668,7 +675,7 @@ export async function contadoresComunicacao(p: Planilhas, quem: Autorizador, opc
       ? ativos.filter((r) => r.situacao === 'agendado' && r.agendado_para !== null && diaEmBrasilia(new Date(r.agendado_para)) === hoje).length
       : 0,
     aprovar: quem.temPermissao(PERM.aprovar) ? ativos.filter((r) => r.situacao === 'aguardando_aprovacao').length : 0,
-    enviosFalharam: await contarEnviosFalhos(p, quem),
+    enviosFalharam: (await contarEnviosFalhos(p, quem)) + (await contarAvisosFalhos(p, quem, opcoes.agora)),
   };
 }
 

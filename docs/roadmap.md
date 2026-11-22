@@ -284,6 +284,12 @@ Especificada em 18/11/2026. Ficou para depois:
 - [ ] Publicar os eventos `PessoaVinculadaAServico` e `PessoaDesligadaDeServico` em fila quando houver consumidor.
 - [ ] Sugestões: "Cadastrar outra pessoa no mesmo serviço"; link "Cadastrar pessoa" nas telas de avaliação sem pessoas.
 
+
+## Ajuda e manual em PDF (issue #232, especificação em `docs/especificacao-plataforma.md`, ADR-040)
+- Busca por palavra dentro da Ajuda e "Imprimir só este assunto": sugestões, aguardam decisão da Diretoria.
+- PDF gerado de verdade (biblioteca) com numeração de página: só se houver necessidade de arquivo
+  sem navegador.
+
 ## Orçamento: plano de contas estruturado (issue #221, especificação em `src/modulos/orcamento/especificacao.md`, ADR-036)
 
 Três entregas (1 de 3 a 3 de 3).
