@@ -67,7 +67,7 @@ describe('Ajuda e manual: fonte única (ADR-040)', () => {
     const ids = daAjuda(com(...permissoesDoPerfil('funcionario'))).map((s) => s.id);
     expect(ids).not.toContain('orcamento');
     expect(ids).not.toContain('administracao');
-    expect(daAjuda(com()).map((s) => s.id)).toEqual(['primeiros-passos', 'duvidas']);
+    expect(daAjuda(com()).map((s) => s.id)).toEqual(['primeiros-passos', 'agenda-busca', 'duvidas']);
   });
 
   it('regra 3: o texto de um assunto é o mesmo na Ajuda e no manual quando a pessoa pode tudo daquele assunto', () => {
@@ -78,15 +78,8 @@ describe('Ajuda e manual: fonte única (ADR-040)', () => {
   });
 
   it('regra 4: toda tela do menu (app ou item de primeiro nível) tem um assunto cujos atalhos a alcançam', () => {
-    // Pendentes: ganham assunto nas entregas 2 e 3 da proposta #232. A lista só pode encolher.
+    // Pendentes: ganham assunto na entrega 3 da proposta #232. A lista só pode encolher.
     const pendentes: Record<string, string> = {
-      '/agenda': 'entrega 2 (Agenda e busca)',
-      '/nucleo/pessoas': 'entrega 2 (Pessoas)',
-      '/indicadores': 'entrega 2 (Indicadores)',
-      '/servicos': 'entrega 2 (Fichas de serviço)',
-      '/admin/feriados': 'entrega 2 (Administração: Feriados)',
-      '/admin/encarregado': 'entrega 2 (Administração: Encarregado de dados)',
-      '/admin/estrutura': 'entrega 2 (Administração: Estrutura das planilhas)',
     };
     // Telas só de apoio, sem passo a passo próprio (motivo ao lado).
     const apoio: Record<string, string> = { '/ajuda': 'A própria Ajuda.' };
@@ -97,6 +90,22 @@ describe('Ajuda e manual: fonte única (ADR-040)', () => {
       .filter((t) => !atalhos.some((h) => t.href === h || h.startsWith(`${t.href}/`) || t.href.startsWith(`${h}/`)))
       .map((t) => t.href);
     expect(semAssunto.sort()).toEqual(Object.keys(pendentes).sort());
+  });
+
+  it('entrega 2: os assuntos de Agenda, Pessoas, Indicadores, Fichas e Administração existem e dizem para quem são', () => {
+    const todos = manual();
+    for (const id of ['agenda-busca', 'pessoas', 'indicadores', 'fichas-de-servico', 'administracao']) expect(todos.map((s) => s.id)).toContain(id);
+    expect(textoPara(todos.find((s) => s.id === 'agenda-busca')!)).toBe('todos os perfis');
+    expect(textoPara(todos.find((s) => s.id === 'indicadores')!)).toContain('Diretoria');
+    expect(textoPara(todos.find((s) => s.id === 'indicadores')!)).not.toContain('Funcionário');
+    const adm = todos.find((s) => s.id === 'administracao')!;
+    expect(adm.atalhos?.map((a) => a.href)).toEqual(expect.arrayContaining(['/admin/feriados', '/admin/encarregado', '/admin/estrutura']));
+  });
+
+  it('entrega 2: perfil limitado vê Agenda e busca, mas não Pessoas, Indicadores nem Administração', () => {
+    const ids = daAjuda(com(...permissoesDoPerfil('funcionario'))).map((s) => s.id);
+    expect(ids).toContain('agenda-busca');
+    for (const id of ['pessoas', 'indicadores', 'administracao']) expect(ids).not.toContain(id);
   });
 
   it('regra 6: nenhum PDF do manual fica no repositório e nada aponta para ele', () => {
