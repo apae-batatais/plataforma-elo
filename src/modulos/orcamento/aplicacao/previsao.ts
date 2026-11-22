@@ -27,6 +27,7 @@ import {
 } from '../dados/tabelas';
 import { parametrosCom } from '../dominio/folha';
 import { ErroValidacaoFolha, resumoFolha } from './folha';
+import { errosDoItemEDaArea } from './plano-lancamento';
 import { cedidosDoAno, type CedidosDoAno } from './cedidos-custo';
 import { contaComoPublico } from '../dominio/cedidos-custo';
 
@@ -241,6 +242,9 @@ export interface DadosDespesa extends DadosDistribuicao {
   valor_unitario: number;
   /** Regra de rateio do item (vazio = a do grupo). undefined mantém a atual. */
   regra_rateio_id?: string | null;
+  /** Item contábil e área do plano (#221), opcionais. undefined mantém o atual; null limpa. */
+  item_id?: string | null;
+  area_plano_id?: string | null;
   categoria?: Categoria;
   prioridade?: Prioridade | null;
   cotacao?: Cotacao | null;
@@ -274,10 +278,17 @@ export async function salvarDespesa(p: Planilhas, quem: Autorizador, dados: Dado
   if (!Number.isFinite(dados.valor_unitario) || dados.valor_unitario < 0) throw new ErroPrevisao('Valor unitário inválido.');
   const valor = valorDoItem(dados.quantidade, dados.ocorrencias, dados.valor_unitario);
   const meses = mesesDaDistribuicao(valor, dados);
+  const anterior = existente ? despesas.porId(existente.id) : undefined;
+  const itemId = dados.item_id === undefined ? (anterior?.item_id ?? null) : dados.item_id || null;
+  const areaPlanoId = dados.area_plano_id === undefined ? (anterior?.area_plano_id ?? null) : dados.area_plano_id || null;
+  const errosPlano = await errosDoItemEDaArea(p, { grupo_id: dados.grupo_id, item_id: itemId, area_plano_id: areaPlanoId }, anterior ? { item_id: anterior.item_id ?? null, area_plano_id: anterior.area_plano_id ?? null } : undefined);
+  if (errosPlano.length) throw new ErroPrevisao(errosPlano.join(' '));
   const campos = {
     ano: dados.ano,
     servico: dados.servico,
     grupo_id: dados.grupo_id,
+    item_id: itemId,
+    area_plano_id: areaPlanoId,
     fonte_id: dados.fonte_id || null,
     descricao,
     regra_rateio_id: dados.regra_rateio_id === undefined ? (existente ? (despesas.porId(existente.id)?.regra_rateio_id ?? null) : null) : dados.regra_rateio_id || null,
@@ -408,6 +419,9 @@ export interface LinhaDespesa {
   regra_rateio_id?: string | null;
   /** Lançamento de rateio que gerou a linha (travada no cadastro comum). */
   lancamento_rateio_id?: string | null;
+  /** Plano de contas (#221): item contábil e área do plano, só rótulos (vazio = não informado). */
+  item_id?: string | null;
+  area_plano_id?: string | null;
   rh: boolean;
   fonte_id: string | null;
   fonteNome: string;
@@ -565,6 +579,8 @@ export async function lerPrevisao(p: Planilhas, quem: Autorizador, anoEscolhido?
         grupoCodigo: g?.codigo_conta ?? null,
         regra_rateio_id: d.regra_rateio_id ?? null,
         lancamento_rateio_id: d.lancamento_rateio_id ?? null,
+        item_id: d.item_id ?? null,
+        area_plano_id: d.area_plano_id ?? null,
         rh: g?.rh ?? false,
         fonte_id: d.fonte_id,
         fonteNome: nomeFonte(d.fonte_id),

@@ -30,7 +30,7 @@ export default async function MeusProjetos() {
         acoes={linhas.length > 0 ? nova : undefined}
       />
       {pendencias.length > 0 && (
-        <Secao id="t-espera" titulo="Espera uma ação sua" descricao="Pareceres e decisões que dependem de você.">
+        <Secao id="t-espera" titulo="Espera uma ação sua" descricao="Pareceres, decisões e pedidos de mudança que dependem de você.">
           <ul className="divide-y divide-borda">
             {pendencias.map((x) => (
               <li key={`${x.portaId}-${x.detalhe}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -38,7 +38,7 @@ export default async function MeusProjetos() {
                   <span className="font-semibold">{x.codigo}</span> · {x.titulo}
                   <span className="block text-sm text-texto-suave">{x.detalhe}</span>
                 </span>
-                <Link href={`/projetos/${x.projetoId}`} className="font-semibold text-destaque hover:underline">
+                <Link href={x.acao === 'mudanca' || x.acao === 'mudanca_alcada' ? `/projetos/${x.projetoId}/mudancas` : `/projetos/${x.projetoId}`} className="font-semibold text-destaque hover:underline">
                   Abrir
                 </Link>
               </li>

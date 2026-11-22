@@ -200,9 +200,19 @@ function conferirRisco(d: DadosRisco) {
   return { descricao: d.descricao.trim(), probabilidade: d.probabilidade, impacto: d.impacto, resposta: d.resposta?.trim() || null, dono: d.dono?.trim().toLowerCase() || null };
 }
 
+/** Riscos mudam nas fases 1 e 2 e também na implementação (P4). */
+async function projetoParaRiscos(p: Planilhas, quem: Autorizador, projetoId: string): Promise<RegProjeto> {
+  const r = await projetoVisivel(p, quem, projetoId);
+  if (r.etapa === 'implementacao') {
+    if (!podeGerenciar(quem, r)) throw new ErroPermissao('Só quem gerencia o projeto altera esta parte.');
+    return r;
+  }
+  return projetoParaAlterar(p, quem, projetoId, [1, 2]);
+}
+
 export async function registrarRisco(p: Planilhas, quem: Autorizador, projetoId: string, d: DadosRisco, opcoes: Opcoes = {}): Promise<void> {
   const agora = opcoes.agora ?? new Date();
-  await projetoParaAlterar(p, quem, projetoId, [1, 2]);
+  await projetoParaRiscos(p, quem, projetoId);
   const campos = { projeto_id: projetoId, ...conferirRisco(d), situacao: 'aberto' as const };
   const novo = await inserir(p, Riscos, campos, autoriaDe(quem, agora));
   await auditar(p, quem, 'inclusao', 'Riscos', novo.id, Object.keys(campos), agora);
@@ -211,7 +221,7 @@ export async function registrarRisco(p: Planilhas, quem: Autorizador, projetoId:
 
 export async function encerrarRisco(p: Planilhas, quem: Autorizador, projetoId: string, riscoId: string, versao: number, opcoes: Opcoes = {}): Promise<void> {
   const agora = opcoes.agora ?? new Date();
-  await projetoParaAlterar(p, quem, projetoId, [1, 2]);
+  await projetoParaRiscos(p, quem, projetoId);
   const [riscos] = await lerTabelas(p, [Riscos] as const);
   const r = riscos.porId(riscoId);
   if (!r || !r.ativo || r.projeto_id !== projetoId) throw new ErroProjetos('Risco não encontrado.');

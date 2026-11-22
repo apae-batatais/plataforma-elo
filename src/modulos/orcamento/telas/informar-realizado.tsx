@@ -6,13 +6,15 @@
  * só para acompanhar; o total oficial é o que o servidor calcula depois de salvar).
  * O que foi digitado e não salvo volta depois de um erro (guardado só neste navegador).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { estiloBotao } from '@/ui/botao';
 import { estiloEntrada } from '@/ui/campo';
 import { IconeMais } from '@/ui/icones';
 import { tabela } from '@/ui/pagina';
 import { diferencaPercentual, naturezasDo, naturezaSugerida, ROTULO_NATUREZA, type Natureza, type TipoRealizado } from '../dominio/realizado';
 import { lerValorEmReais } from '../dominio/tesouraria';
+import type { OpcoesPlano } from '../aplicacao/plano-lancamento';
+import { CamposPlano } from './campos-plano';
 import { percentual, reais } from './formato';
 
 export interface LinhaGradeTela {
@@ -32,12 +34,15 @@ export interface LinhaGradeTela {
   motivo: string | null;
   observacao: string | null;
   termoId: string | null;
+  itemId: string | null;
+  areaPlanoId: string | null;
 }
 
 export interface OpcoesTela {
   servicos: { codigo: string; nome: string }[];
   grupos: { id: string; nome: string; rh: boolean }[];
   fontes: { id: string; nome: string; restrita: boolean }[];
+  plano: OpcoesPlano;
 }
 
 type Acao = (f: FormData) => void | Promise<void>;
@@ -54,8 +59,9 @@ const numero = (t: string) => {
 };
 
 export function InformarRealizado({
-  mes, rotuloMes, linhas, opcoes, previsaoAprovada, podeEditar, salvouAgora, salvar,
+  ano, mes, rotuloMes, linhas, opcoes, previsaoAprovada, podeEditar, salvouAgora, salvar,
 }: {
+  ano: number;
   mes: string;
   rotuloMes: string;
   linhas: LinhaGradeTela[];
@@ -152,7 +158,7 @@ export function InformarRealizado({
   let indice = -1;
   const campo = (i: number, nome: string) => `l${i}_${nome}`;
 
-  const celulaValor = (i: number, id: string, rotulo: string, e: Estado, aoMudar: (p: Partial<Estado>) => void, previsto: number, natureza: Natureza, tipo: TipoRealizado) => {
+  const celulaValor = (i: number, id: string, rotulo: string, e: Estado, aoMudar: (p: Partial<Estado>) => void, previsto: number, natureza: Natureza, tipo: TipoRealizado, plano?: ReactNode) => {
     const invalido = lerValorEmReais(e.valor) === 'invalido';
     const dif = e.valor.trim() && !invalido ? diferencaPercentual(numero(e.valor), previsto) : null;
     return (
@@ -196,6 +202,7 @@ export function InformarRealizado({
               </select>
             </>
           )}
+          {plano}
           <label htmlFor={`obs-${id}`} className="sr-only">
             Observação de {rotulo}
           </label>
@@ -258,7 +265,8 @@ export function InformarRealizado({
                       {podeEditar ? (
                         <>
                           {oculto(i, { tipo: l.tipo, servico: l.servico, grupo: l.grupoId, fonte: l.fonteId, natureza: l.natureza, versao: l.versao })}
-                          {celulaValor(i, l.chave, rotulo, estados[l.chave] ?? inicial(l), (p) => mudar(l.chave, p), l.previsto, l.natureza, l.tipo)}
+                          {celulaValor(i, l.chave, rotulo, estados[l.chave] ?? inicial(l), (p) => mudar(l.chave, p), l.previsto, l.natureza, l.tipo,
+                            l.tipo === 'despesa' && l.grupoId ? <CamposPlano compacto formId={ID_FORM} sufixoId={`-${i}`} plano={opcoes.plano} ano={ano} grupoId={l.grupoId} itemInicial={l.itemId} areaInicial={l.areaPlanoId} nomeItem={campo(i, 'item')} nomeArea={campo(i, 'areaplano')} /> : null)}
                         </>
                       ) : (
                         <>
@@ -344,7 +352,8 @@ export function InformarRealizado({
                           Tirar linha
                         </button>
                       </td>
-                      {celulaValor(i, `extra-${x.id}`, 'linha adicionada', x, (p) => mudarExtra(x.id, p), 0, x.natureza, x.tipo)}
+                      {celulaValor(i, `extra-${x.id}`, 'linha adicionada', x, (p) => mudarExtra(x.id, p), 0, x.natureza, x.tipo,
+                        x.tipo === 'despesa' ? <CamposPlano compacto formId={ID_FORM} sufixoId={`-${i}`} plano={opcoes.plano} ano={ano} grupoId={x.grupoId} itemInicial={null} areaInicial={null} nomeItem={campo(i, 'item')} nomeArea={campo(i, 'areaplano')} /> : null)}
                     </tr>
                   );
                 })}
