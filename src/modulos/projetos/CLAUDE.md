@@ -11,8 +11,12 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
 - Pareceristas e decisores de alçada são **designados por e-mail** em `ConfigProjetos` (ADR-021); a permissão abre a
   ação e o caso de uso confere a designação.
 - Permissões: `projetos.<ação>`, no manifesto.
-- Situação: entregas **P1 (base)** e **P2 (fases 1 e 2: documentos, marco lógico, riscos, equipe, Termo de Abertura e porta 2)**
-  prontas. Faltam P3 a P7 (atividades e orçamento, mudanças, encerramento, carteira, ligações). `projetos.carteira` entra com a P6.
+- Situação: entregas **P1 (base)**, **P2 (fases 1 e 2)** e **P3 (fase 3: atividades e orçamento do projeto, porta 3 e início da implementação)**
+  prontas. Faltam P4 a P7 (mudanças e relatórios, encerramento, carteira, ligações). `projetos.carteira` entra com a P6.
+- Fase 3 (`aplicacao/planejamento.ts`, `dominio/planejamento.ts`): `Atividades` (atrasada é calculada, nunca gravada) e `ProjetoOrcamento`
+  (só o plano do projeto; nada vai ao Orçamento da instituição). Atividades mudam na fase 3 e na implementação; o orçamento só na fase 3.
+  A equipe vê as atividades, não o orçamento. Porta 3 (`plano`) só no porte completo; o enxuto usa `iniciarImplementacao`. A etapa
+  `implementacao` existe; P4 constrói sobre ela e deve chamar `exigirTermoAprovado`.
 - Documentos das fases: conteúdo em JSON na aba `ProjetoDocumentos`, campos definidos em `dominio/fases.ts`. Conteúdo nunca vai
   para auditoria nem histórico. Documento aprovado fica travado. `exigirTermoAprovado` (aplicacao/fases.ts) é a trava da regra 13:
   as entregas de implementação (P4) devem chamá-la.
@@ -21,3 +25,6 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
   (`vinculosAtivosProtegido`) ou da Avaliação, esta entregue pela plataforma (`NumerosDePessoas`, como em Parcerias): Projetos não importa a
   Avaliação. Só `valor`, `base` e `motivo` atravessam; o mínimo de 5 pessoas é da origem. `fotografarIndicadores` (L12) é o ponto de chamada para
   o relatório de monitoramento (origem `relatorio`, P4) e o encerramento (origem `encerramento`, P5): ao construí-los, chame-a.
+- Ligação com o termo (L2): `aplicacao/termo.ts`. Parcerias chega pela interface `CatalogoTermos` (`catalogo-parcerias.ts`),
+  entregue por `src/plataforma/ligacoes.ts`; nunca importe Parcerias. A decisão da porta 2 nunca falha por causa do rascunho.
+  `financiador` e `objeto` só existem no Termo de Abertura de projeto `financiado` (`camposDe`).

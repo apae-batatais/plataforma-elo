@@ -5,3 +5,4 @@ export { popularParceriasFicticias } from './dados/ficticios';
 export { termosParaOrcamento, type TermoParaOrcamento } from './aplicacao/parcerias';
 export { itensDaAgenda, buscar } from './aplicacao/parcerias';
 export { definirFonteDaMeta, type HojeDaMeta, type NumerosDePessoas } from './aplicacao/parcerias';
+export { criarRascunhoDeTermo, listarRascunhos, termoParaProjeto, type PedidoRascunho, type RascunhoDeTermo, type TermoParaProjeto } from './aplicacao/parcerias';

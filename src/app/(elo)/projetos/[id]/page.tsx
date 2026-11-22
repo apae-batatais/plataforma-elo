@@ -34,12 +34,16 @@ import {
   acaoDarParecer,
   acaoDecidirPorta,
   acaoEnviarIdeia,
+  acaoIniciarImplementacao,
   acaoRetomarProjeto,
   acaoSalvarIdeia,
   acaoTrocarResponsavel,
 } from '../acoes';
 
 export const metadata: Metadata = { title: 'Projeto' };
+
+/** Itens da fase que têm tela própria (os demais são formulários em /fase/<item>). */
+const ROTA_ITEM: Partial<Record<string, string>> = { marco_logico: '/marco-logico', riscos: '/riscos', atividades: '/atividades', orcamento: '/orcamento' };
 
 const dataHora = (iso: string) => new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' });
 
@@ -112,6 +116,7 @@ function BlocoPorta({ d, f, pode }: { d: PortaDetalhe; f: NonNullable<Awaited<Re
             <input type="hidden" name="versao_porta" value={porta.versao} />
             <h3 className="font-semibold">{f.pode.decidirAlcada ? 'Decidir pela Presidência ou pelo Conselho' : 'Decidir'}</h3>
             {f.pode.decidir && porta.exige_alcada && <Aviso tipo="info">Se você escolher “seguir”, esta decisão sobe para a Presidência ou o Conselho.</Aviso>}
+            {porta.tipo === 'termo' && f.projeto.tipo === 'financiado' && <Aviso tipo="info">Ao seguir, o Elo cria o rascunho do termo em Parcerias para o Financeiro completar.</Aviso>}
             <Campo rotulo="Decisão" obrigatorio>
               <select name="decisao" required className={estiloEntrada} defaultValue="">
                 <option value="" disabled>Escolha</option>
@@ -182,7 +187,7 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
         }
       />
 
-      {['fase_1', 'fase_2', 'fase_3', 'em_porta'].includes(r.etapa) && <AbasProjeto id={r.id} atual="resumo" />}
+      {['fase_1', 'fase_2', 'fase_3', 'implementacao', 'em_porta'].includes(r.etapa) && <AbasProjeto id={r.id} atual="resumo" />}
 
       <Secao id="t-resumo" titulo="Resumo">
         <p className="whitespace-pre-line">{r.resumo}</p>
@@ -194,11 +199,11 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
           <div><dt className="text-texto-suave">Responsável</dt><dd className="font-medium">{r.responsavel ?? 'Ainda sem responsável'}</dd></div>
           <div><dt className="text-texto-suave">Serviço</dt><dd className="font-medium">{r.servico ?? '—'}</dd></div>
         </dl>
-        {(r.etapa === 'fase_3') && <div className="mt-4"><Aviso tipo="sucesso">O Termo de Abertura foi aprovado (valor aprovado {moeda(r.valor_aprovado)}). O planejamento da fase 3 chega na próxima entrega do app.</Aviso></div>}
+        {(r.etapa === 'fase_3' || r.etapa === 'implementacao') && <div className="mt-4"><Aviso tipo="sucesso">O Termo de Abertura foi aprovado (valor aprovado {moeda(r.valor_aprovado)}).</Aviso></div>}
       </Secao>
 
       {fase && fase.fase && (
-        <Secao id="t-fase" titulo={`Fase ${fase.fase} · O que falta para a próxima porta`} descricao={fase.fase === 1 ? 'Conclua os itens abaixo e passe para a fase 2.' : 'Conclua os itens abaixo para abrir a porta 2 (Termo de Abertura).'}>
+        <Secao id="t-fase" titulo={`Fase ${fase.fase} · O que falta para a próxima porta`} descricao={fase.fase === 1 ? 'Conclua os itens abaixo e passe para a fase 2.' : fase.fase === 2 ? 'Conclua os itens abaixo para abrir a porta 2 (Termo de Abertura).' : fase.projeto.porte === 'completo' ? 'Conclua os itens abaixo para abrir a porta 3 (plano).' : 'Conclua os itens abaixo e inicie a implementação.'}>
           <ul className="divide-y divide-borda">
             {fase.itens.map((i) => (
               <li key={i.item} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
@@ -207,7 +212,7 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
                   {i.pronto ? <Etiqueta tipo="sucesso">Pronto</Etiqueta> : <Etiqueta tipo="atencao">{i.falta[0] ?? 'Falta'}</Etiqueta>}
                 </span>
                 <Link
-                  href={i.item === 'marco_logico' ? `/projetos/${r.id}/marco-logico` : i.item === 'riscos' ? `/projetos/${r.id}/riscos` : `/projetos/${r.id}/fase/${i.item}`}
+                  href={ROTA_ITEM[i.item] ? `/projetos/${r.id}${ROTA_ITEM[i.item]}` : `/projetos/${r.id}/fase/${i.item}`}
                   className="inline-flex min-h-10 items-center rounded-md border border-borda px-3 font-semibold hover:bg-superficie-2"
                 >
                   {fase.podeAlterar ? (i.pronto ? 'Ver ou alterar' : `Preencher ${NOME_ITEM[i.item].toLowerCase()}`) : 'Ver'}
@@ -236,6 +241,30 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
                 titulo="Abrir a porta 2?"
                 mensagem="Depois de aberta, os documentos da fase ficam travados até a decisão."
                 confirmar="Abrir a porta 2"
+                variante="primario"
+                perigoso={false}
+              />
+            )}
+            {fase.podeAbrirPorta3 && (
+              <FormularioConfirmado
+                acao={acaoAbrirPorta}
+                campos={{ id: r.id, versao: r.versao }}
+                rotulo="Abrir porta de decisão"
+                titulo="Abrir a porta 3?"
+                mensagem="Depois de aberta, os documentos da fase ficam travados até a decisão."
+                confirmar="Abrir a porta 3"
+                variante="primario"
+                perigoso={false}
+              />
+            )}
+            {fase.podeIniciarImplementacao && (
+              <FormularioConfirmado
+                acao={acaoIniciarImplementacao}
+                campos={{ id: r.id, versao: r.versao }}
+                rotulo="Iniciar a implementação"
+                titulo="Iniciar a implementação?"
+                mensagem="O projeto passa para a fase 4. O orçamento deixa de ser alterado diretamente; as atividades continuam."
+                confirmar="Iniciar a implementação"
                 variante="primario"
                 perigoso={false}
               />

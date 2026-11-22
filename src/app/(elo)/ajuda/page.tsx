@@ -78,11 +78,17 @@ export default async function Ajuda() {
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
     veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
+    decidirProjeto: a.temPermissao('projetos.decidir') || a.temPermissaoAlgumEscopo('projetos.decidir_alcada'),
+    gerenciarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
+    termos: a.temPermissaoAlgumEscopo('parcerias.termos.ver'),
+    verPlanejamento: a.temPermissaoAlgumEscopo('projetos.acessar'),
+    planejarProjeto: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
+    decidirPlano: a.temPermissao('projetos.decidir'),
     ler: a.temPermissaoAlgumEscopo('conhecimento.ler'),
     publicar: a.temPermissao('conhecimento.publicar'),
     acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
     categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
-    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
     gerenciarProjetos: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
     equipeComunicacao: a.temPermissao('comunicacao.revisar'),
@@ -534,6 +540,94 @@ export default async function Ajuda() {
               />
             </>
           )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.verPlanejamento) {
+    assuntos.push({
+      id: 'projetos-planejamento',
+      titulo: 'Projetos: atividades e orçamento (fase 3)',
+      resumo: 'Planejar o que será feito, por quem e até quando, e quanto vai custar, antes de iniciar a implementação.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              'Depois que a Diretoria aprova o Termo de Abertura, o projeto entra na fase 3. A ficha do projeto mostra "O que falta para a próxima porta".',
+              'As abas Atividades e Orçamento mostram o plano em leitura para quem vê o projeto. Quem está só na equipe vê as atividades, mas não o orçamento.',
+              'Atividade que passou do fim previsto sem ser concluída aparece como "Atrasada" (a palavra vem junto da cor).',
+              'O orçamento do projeto é só o plano do projeto: ele não é enviado ao Orçamento da instituição.',
+            ]}
+          />
+          {pode.planejarProjeto && (
+            <>
+              <Sub>Cadastrar as atividades</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e a aba Atividades.',
+                  'Em Adicionar atividade, escreva o que será feito, o e-mail de quem é responsável (a pessoa precisa ter acesso ao Elo) e as datas previstas de início e fim. O peso é opcional.',
+                  'Para acompanhar, escolha a situação na própria linha. Para concluir, informe a data em que a atividade terminou.',
+                  'Retirar não apaga: a atividade sai da lista e fica guardada.',
+                ]}
+              />
+              <Sub>Montar o orçamento do projeto</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Orçamento e use Adicionar linha: categoria, descrição, valor planejado e, se quiser, de onde vem o dinheiro.',
+                  'O total aparece no alto, com o valor aprovado no Termo ao lado para comparar. Se forem diferentes, a tela só avisa; nada é bloqueado.',
+                  'O orçamento só muda na fase 3. Depois, mudanças passam por pedido de mudança.',
+                ]}
+              />
+              <Sub>Seguir para a implementação</Sub>
+              <Passos
+                itens={[
+                  'Com atividades e orçamento prontos (e, no porte completo, os demais documentos da fase), a ficha mostra o botão da próxima etapa.',
+                  'Porte completo: Abrir porta de decisão (porta 3, do plano). Porte enxuto: Iniciar a implementação, sem porta.',
+                  'Sem Termo de Abertura aprovado, o projeto não entra em implementação.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirPlano && <p className="mt-3">Na porta 3, a Diretoria decide seguir, ajustar ou parar, com justificativa, depois dos pareceres, como nas portas anteriores.</p>}
+        </>
+      ),
+    });
+  }
+
+  if (pode.projetos) {
+    assuntos.push({
+      id: 'projetos-termo',
+      titulo: 'Projeto financiado: termo de parceria',
+      resumo: 'O que informar no Termo de Abertura e o que acontece quando a porta 2 aprova.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }, ...(pode.termos ? [{ rotulo: 'Termos de parceria', href: '/parcerias' }] : [])],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              pode.gerenciarProjeto && 'No Termo de Abertura de um projeto com financiamento externo, informe quem financia e o que o financiamento cobre (objeto). Sem os dois, a porta 2 não abre; a tela diz o que falta.',
+              pode.decidirProjeto && 'Ao seguir na porta 2 de um projeto financiado, o Elo cria sozinho o rascunho do termo em Parcerias, uma vez só, com financiador, objeto, serviço, vigência prevista e o valor aprovado.',
+              'O número do termo, o tipo de instrumento e o cronograma ficam para o Financeiro completar; ninguém digita de novo o que já está no projeto.',
+              'Se o rascunho não puder ser criado, a decisão da porta continua valendo.',
+              'O rascunho não entra no orçamento, na ocupação nem nos alertas de Parcerias até o Financeiro concluir o termo.',
+              pode.termos && 'Em Termos de parceria, o quadro "Rascunhos para completar" lista o que veio de projetos.',
+            ]}
+          />
+          {pode.gerenciarProjeto && (
+            <>
+              <Sub>Refazer o rascunho do termo</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e entre na aba Ligações.',
+                  'Se aparecer "Este projeto ainda não tem termo", clique em Criar rascunho do termo.',
+                  'Clicar de novo não duplica: o Elo reaproveita o rascunho que já existe.',
+                ]}
+              />
+            </>
+          )}
+          <Sub>Valores diferentes</Sub>
+          <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
         </>
       ),
     });

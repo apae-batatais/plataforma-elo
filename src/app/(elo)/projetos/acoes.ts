@@ -13,13 +13,25 @@ import {
   avancarFase,
   encerrarMembro,
   encerrarRisco,
+  iniciarImplementacao,
   registrarRisco,
   retirarItemMarco,
   salvarDocumento,
 } from '@/modulos/projetos/aplicacao/fases';
+import {
+  adicionarAtividade,
+  adicionarLinhaOrcamento,
+  alterarAtividade,
+  alterarLinhaOrcamento,
+  mudarSituacaoAtividade,
+  retirarAtividade,
+  retirarLinhaOrcamento,
+} from '@/modulos/projetos/aplicacao/planejamento';
+import { SITUACOES_ATIVIDADE, type SituacaoAtividade } from '@/modulos/projetos/dominio/planejamento';
 import { definirFonteDoItem, registrarMedicao } from '@/modulos/projetos/aplicacao/indicadores';
 import { FONTES_NUMERO, type FonteNumero } from '@/modulos/projetos/dominio/indicadores';
 import { abrirPorta, darParecer, decidirPorta } from '@/modulos/projetos/aplicacao/portas';
+import { criarRascunhoDoProjeto, type ResultadoRascunho } from '@/modulos/projetos/aplicacao/termo';
 import { GRAUS, NIVEIS_MARCO, TIPOS_DOCUMENTO, type Grau, type NivelMarco, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
 import {
   DECISOES,
@@ -37,6 +49,7 @@ import {
   type TipoProjeto,
 } from '@/modulos/projetos/dominio/projeto';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { catalogoDeTermos } from '@/plataforma/ligacoes';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { numerosDePessoas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -52,11 +65,13 @@ const texto = (f: FormData, campo: string) => String(f.get(campo) ?? '').trim();
 const comMensagem = (pagina: string, chave: 'ok' | 'erro', mensagem: string) => `${pagina}${pagina.includes('?') ? '&' : '?'}${chave}=${encodeURIComponent(mensagem)}`;
 
 /** Executa e volta para a página com a mensagem no endereço (a notificação lê ?ok= e ?erro=). */
-async function executar(pagina: (resultado: unknown) => string, erroEm: string, sucesso: string, acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>) {
+async function executar(pagina: (resultado: unknown) => string, erroEm: string, sucesso: string | ((resultado: unknown) => { chave: 'ok' | 'erro'; mensagem: string }), acao: (ctx: Awaited<ReturnType<typeof contexto>>) => Promise<unknown>) {
   const ctx = await contexto();
   let destino: string;
   try {
-    destino = comMensagem(pagina(await acao(ctx)), 'ok', sucesso);
+    const resultado = await acao(ctx);
+    const aviso = typeof sucesso === 'string' ? { chave: 'ok' as const, mensagem: sucesso } : sucesso(resultado);
+    destino = comMensagem(pagina(resultado), aviso.chave, aviso.mensagem);
   } catch (erro) {
     if (!conhecido(erro)) throw erro;
     destino = comMensagem(erroEm, 'erro', (erro as Error).message);
@@ -155,8 +170,27 @@ export async function acaoDecidirPorta(f: FormData) {
   await executar(
     () => ficha(id),
     ficha(id),
-    'Decisão registrada.',
-    ({ usuario, app }) => decidirPorta(app.planilhas, usuario.autorizador, texto(f, 'porta'), Number(texto(f, 'versao_porta')), (DECISOES as readonly string[]).includes(decisao) ? (decisao as Decisao) : ('' as Decisao), texto(f, 'justificativa')),
+    (r) => {
+      const rascunho = (r as { rascunho: ResultadoRascunho }).rascunho;
+      if (rascunho.estado === 'criado') return { chave: 'ok', mensagem: 'Decisão registrada e rascunho do termo criado.' };
+      if (rascunho.estado === 'falhou') return { chave: 'erro', mensagem: `A decisão foi registrada, mas o rascunho do termo não foi criado (${rascunho.motivo}). Use "Criar rascunho do termo" na aba Ligações.` };
+      return { chave: 'ok', mensagem: 'Decisão registrada.' };
+    },
+    ({ usuario, app }) =>
+      decidirPorta(app.planilhas, usuario.autorizador, texto(f, 'porta'), Number(texto(f, 'versao_porta')), (DECISOES as readonly string[]).includes(decisao) ? (decisao as Decisao) : ('' as Decisao), texto(f, 'justificativa'), {
+        parcerias: catalogoDeTermos(app.planilhas),
+      }),
+  );
+}
+
+export async function acaoCriarRascunhoDoTermo(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = `${ficha(id)}/ligacoes`;
+  await executar(
+    () => volta,
+    volta,
+    (r) => ({ chave: 'ok', mensagem: (r as { criado: boolean }).criado ? 'Rascunho do termo criado em Parcerias.' : 'O rascunho do termo já existia; nada foi duplicado.' }),
+    ({ usuario, app }) => criarRascunhoDoProjeto(app.planilhas, usuario.autorizador, id, catalogoDeTermos(app.planilhas)),
   );
 }
 
@@ -289,4 +323,66 @@ export async function acaoEncerrarMembro(f: FormData) {
   const id = texto(f, 'id');
   const volta = fichaDe(id, '/equipe');
   await executar(() => volta, volta, 'Participação encerrada.', ({ usuario, app }) => encerrarMembro(app.planilhas, usuario.autorizador, id, texto(f, 'membro'), Number(texto(f, 'versao_membro'))));
+}
+
+export async function acaoIniciarImplementacao(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(() => fichaDe(id), fichaDe(id), 'Implementação iniciada.', ({ usuario, app }) => iniciarImplementacao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))));
+}
+
+function lerAtividade(f: FormData) {
+  return {
+    descricao: texto(f, 'descricao'),
+    responsavel: texto(f, 'responsavel'),
+    inicioPrevisto: texto(f, 'inicio'),
+    fimPrevisto: texto(f, 'fim'),
+    peso: texto(f, 'peso') || null,
+  };
+}
+
+export async function acaoSalvarAtividade(f: FormData) {
+  const id = texto(f, 'id');
+  const item = texto(f, 'atividade');
+  const volta = fichaDe(id, '/atividades');
+  if (item) {
+    await executar(() => volta, volta, 'Atividade alterada.', ({ usuario, app }) => alterarAtividade(app.planilhas, usuario.autorizador, id, item, Number(texto(f, 'versao_atividade')), lerAtividade(f)));
+    return;
+  }
+  await executar(() => volta, volta, 'Atividade incluída.', ({ usuario, app }) => adicionarAtividade(app.planilhas, usuario.autorizador, id, lerAtividade(f)));
+}
+
+export async function acaoMudarSituacaoAtividade(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/atividades');
+  const situacao = lista<SituacaoAtividade>(SITUACOES_ATIVIDADE, texto(f, 'situacao'));
+  await executar(() => volta, volta, 'Situação da atividade atualizada.', ({ usuario, app }) =>
+    mudarSituacaoAtividade(app.planilhas, usuario.autorizador, id, texto(f, 'atividade'), Number(texto(f, 'versao_atividade')), { situacao, inicioReal: texto(f, 'inicio_real') || null, fimReal: texto(f, 'fim_real') || null }),
+  );
+}
+
+export async function acaoRetirarAtividade(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/atividades');
+  await executar(() => volta, volta, 'Atividade retirada. Ela continua guardada.', ({ usuario, app }) => retirarAtividade(app.planilhas, usuario.autorizador, id, texto(f, 'atividade'), Number(texto(f, 'versao_atividade'))));
+}
+
+function lerLinha(f: FormData) {
+  return { categoria: texto(f, 'categoria'), descricao: texto(f, 'descricao'), valor: texto(f, 'valor'), fonte: texto(f, 'fonte') || null };
+}
+
+export async function acaoSalvarLinhaOrcamento(f: FormData) {
+  const id = texto(f, 'id');
+  const item = texto(f, 'linha');
+  const volta = fichaDe(id, '/orcamento');
+  if (item) {
+    await executar(() => volta, volta, 'Linha alterada.', ({ usuario, app }) => alterarLinhaOrcamento(app.planilhas, usuario.autorizador, id, item, Number(texto(f, 'versao_linha')), lerLinha(f)));
+    return;
+  }
+  await executar(() => volta, volta, 'Linha incluída.', ({ usuario, app }) => adicionarLinhaOrcamento(app.planilhas, usuario.autorizador, id, lerLinha(f)));
+}
+
+export async function acaoRetirarLinhaOrcamento(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/orcamento');
+  await executar(() => volta, volta, 'Linha retirada. Ela continua guardada.', ({ usuario, app }) => retirarLinhaOrcamento(app.planilhas, usuario.autorizador, id, texto(f, 'linha'), Number(texto(f, 'versao_linha'))));
 }
