@@ -12,8 +12,7 @@
  *
  * Cada mudança de etapa grava uma linha no histórico e a auditoria (só colunas).
  */
-import type { Autorizador } from '@/nucleo/acesso/autorizador';
-import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import { Autorizador, ErroPermissao } from '@/nucleo/acesso/autorizador';
 import type { ArmazenamentoArquivos } from '@/nucleo/armazenamento/arquivos';
 import { lerTrechoDeAnexo, TRECHO_MAXIMO } from '@/nucleo/armazenamento/leitura-de-anexo';
 import { ErroEstruturaAusente } from '@/nucleo/armazenamento/armazenamento';
@@ -827,6 +826,50 @@ export async function contadoresRequisicoes(p: Planilhas, quem: Autorizador, opc
       : 0,
     devolvidas: ativas.filter((r) => r.requisitante === quem.email && r.situacao === 'devolvida').length,
   };
+}
+
+/** As três contagens do resumo diário por e-mail (entrega 7). Mesmos critérios das telas de aprovação, "Minhas" e do painel. */
+export interface ContagensDoResumo {
+  aprovar: number;
+  devolvidas: number;
+  atrasadas: number;
+}
+
+/**
+ * Para cada pessoa ativa com e-mail, quantas requisições esperam por ela (aprovar), voltaram para ela ajustar
+ * (devolvidas) e estão atrasadas no escopo dela (aprovação ou atendimento). Lê as planilhas uma vez só.
+ * Devolve só as pessoas com ao menos uma contagem maior que zero; nada de dado da requisição sai daqui.
+ */
+export async function contagensDoResumo(p: Planilhas, agora: Date): Promise<Map<string, ContagensDoResumo>> {
+  const d = await ler(p, agora);
+  const [usuarios, atribuicoes, perfilPermissoes, servicos] = await lerTabelas(p, [Usuarios, Atribuicoes, PerfilPermissoes, Servicos] as const);
+  const acesso = { usuarios: usuarios.ativos(), atribuicoes: atribuicoes.ativos(), perfilPermissoes: perfilPermissoes.ativos(), servicos: servicos.todos() };
+  const hojeBr = new Date(agora.getTime() - 3 * 3600_000).toISOString().slice(0, 10);
+  const ativas = d.requisicoes.ativos();
+  const saida = new Map<string, ContagensDoResumo>();
+  for (const u of usuarios.ativos()) {
+    const quem = new Autorizador(u.email, acesso, { hoje: hojeBr });
+    const aprovar = quem.temPermissaoAlgumEscopo(PERM.aprovar) ? ativas.filter((r) => r.situacao === 'enviada' && r.requisitante !== quem.email && podeAprovar(quem, d, r)).length : 0;
+    const devolvidas = ativas.filter((r) => r.requisitante === quem.email && r.situacao === 'devolvida').length;
+    const atrasadas = ativas.filter((r) => {
+      const s = sla(d, r, agora);
+      if (!s) return false;
+      if (r.situacao === 'enviada') return podeAprovar(quem, d, r) && s.aprovacao.situacao === 'atrasada';
+      if (r.situacao === 'aprovada' || r.situacao === 'em_atendimento') return podeAtender(quem, d, r) && s.atendimento?.situacao === 'atrasada';
+      return false;
+    }).length;
+    if (aprovar + devolvidas + atrasadas > 0) saida.set(u.email, { aprovar, devolvidas, atrasadas });
+  }
+  return saida;
+}
+
+/** O dia (AAAA-MM-DD, Brasília) é feriado do Núcleo ou fim de semana? */
+export async function diaSemExpediente(p: Planilhas, agora: Date): Promise<boolean> {
+  const dia = new Date(agora.getTime() - 3 * 3600_000);
+  const semana = dia.getUTCDay();
+  if (semana === 0 || semana === 6) return true;
+  const [feriados] = await lerTabelas(p, [Feriados] as const);
+  return feriados.ativos().some((f) => f.data === dia.toISOString().slice(0, 10));
 }
 
 // ---------------------------------------------------------------------------

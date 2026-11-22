@@ -11,6 +11,7 @@ import {
   GruposComunicacao,
   HistoricoComunicacao,
   PedidosComunicacao,
+  PublicacoesComunicacao,
 } from './tabelas';
 import { ANTECEDENCIA_PADRAO } from '../aplicacao/configuracoes';
 import { feriadosAtivos } from '@/nucleo/feriados/feriados';
@@ -57,13 +58,14 @@ const PEDIDOS: Roteiro[] = [
 
 export async function popularComunicacaoFicticia(p: Planilhas): Promise<void> {
   const feriados = await feriadosAtivos(p);
-  const [cal, grupos, contatos, ligacoes, pedidos, historico] = await lerTabelas(p, [
+  const [cal, grupos, contatos, ligacoes, pedidos, historico, publicacoes] = await lerTabelas(p, [
     CalendarioComunicacao,
     GruposComunicacao,
     ContatosComunicacao,
     ContatoGruposComunicacao,
     PedidosComunicacao,
     HistoricoComunicacao,
+    PublicacoesComunicacao,
   ] as const);
 
   const itens = await inserirRegistros(p, cal, CALENDARIO.map((i) => ({ ...i, tipos: i.tipos.join(','), observacao: null })), AUTOR);
@@ -153,6 +155,39 @@ export async function popularComunicacaoFicticia(p: Planilhas): Promise<void> {
     p,
     historico,
     linhas.flatMap(({ hist }, i) => hist.map((h) => ({ pedido_id: regs[i].id, ...h }))),
+    AUTOR,
+  );
+
+  // Postagens de Instagram já publicadas ganham a publicação e um resultado fictício, para a demonstração
+  // mostrar os números no pedido e nos Indicadores (nada é buscado de verdade).
+  const publicadas = linhas.flatMap((l, i) => (l.situacao === 'publicado' && (l.r.tipo === 'post_instagram' || l.r.tipo === 'reel_instagram') ? [{ l, reg: regs[i] }] : []));
+  await inserirRegistros(
+    p,
+    publicacoes,
+    publicadas.map(({ l, reg }, n) => {
+      const em = l.hist[l.hist.length - 1].em;
+      return {
+        pedido_id: reg.id,
+        tipo: l.r.tipo === 'reel_instagram' ? ('reel' as const) : ('post' as const),
+        prevista_para: em,
+        situacao: 'publicada' as const,
+        tentativas: 1,
+        proxima_tentativa: null,
+        container_id: null,
+        post_id: `post-ficticio-${n + 1}`,
+        link: 'https://exemplo.local/publicacao-ficticia',
+        erro: null,
+        publicada_em: em,
+        codigo_midia: null,
+        midia_vence_em: null,
+        alcance: 900 + n * 340,
+        curtidas: 60 + n * 18,
+        comentarios: 4 + n,
+        salvamentos: 9 + n * 3,
+        metricas_em: em,
+        metricas_aviso: null,
+      };
+    }),
     AUTOR,
   );
 }
