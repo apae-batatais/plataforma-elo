@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Regras puras dos veículos institucionais (proposta #229): conferência do cadastro e
  * disponibilidade por manutenção preventiva. Sem acesso a dados.
@@ -41,4 +43,50 @@ export function dataValida(d: string): boolean {
  */
 export function emManutencaoNoPeriodo(dataPrevista: string | null, ate: string): boolean {
   return dataPrevista !== null && ate >= dataPrevista;
+}
+
+// ---------------------------------------------------------------------------
+// Pedido de veículo (entrega 2)
+// ---------------------------------------------------------------------------
+/** Perfil do setor que decide os pedidos de veículo. */
+export const PERFIL_TRANSPORTE = 'transporte';
+
+const MOMENTO = /^\d{4}-\d{2}-\d{2}T([01]\d|2[0-3]):[0-5]\d$/;
+
+export const esquemaDetalhesVeiculo = z
+  .object({
+    veiculoId: z.string({ message: 'Escolha o veículo.' }).trim().min(1, 'Escolha o veículo.'),
+    saida: z.string({ message: 'Informe a saída.' }).regex(MOMENTO, 'Informe a data e a hora de saída.'),
+    volta: z.string({ message: 'Informe a volta prevista.' }).regex(MOMENTO, 'Informe a data e a hora da volta prevista.'),
+    destino: z.string({ message: 'Informe o destino.' }).trim().min(1, 'Informe o destino.'),
+    finalidade: z.string({ message: 'Informe a finalidade.' }).trim().min(10, 'Explique para que o veículo será usado (mínimo de 10 letras).'),
+    condutor: z.string({ message: 'Informe o condutor.' }).trim().min(1, 'Informe quem vai dirigir (condutor).'),
+  })
+  .superRefine((d, ctx) => {
+    if (MOMENTO.test(d.saida) && MOMENTO.test(d.volta) && d.volta <= d.saida) ctx.addIssue({ code: 'custom', message: 'A volta prevista precisa ser depois da saída.' });
+  });
+export type DetalhesVeiculo = z.infer<typeof esquemaDetalhesVeiculo>;
+
+/** Instante (UTC) de um horário de Brasília (UTC-3) no formato AAAA-MM-DDTHH:mm. */
+export const instante = (momento: string) => new Date(`${momento}:00-03:00`);
+
+export const dataDoMomento = (momento: string) => momento.slice(0, 10);
+
+/** dd/mm/aaaa, hh:mm */
+export const momentoBR = (momento: string) => `${dataDoMomento(momento).split('-').reverse().join('/')}, ${momento.slice(11)}`;
+
+/** Dois períodos se cruzam quando um começa antes de o outro acabar; encostar (volta = saída) não cruza. */
+export const periodosSeCruzam = (a: { saida: string; volta: string }, b: { saida: string; volta: string }) => a.saida < b.volta && b.saida < a.volta;
+
+export interface PedidoParaConflito {
+  id: string;
+  veiculoId: string;
+  saida: string;
+  volta: string;
+  situacao: string;
+}
+
+/** Outros pedidos "aguardando aprovação" ou "aprovada" do mesmo veículo cujo período cruza com o alvo. */
+export function pedidosEmConflito(alvo: PedidoParaConflito, todos: readonly PedidoParaConflito[]): PedidoParaConflito[] {
+  return todos.filter((o) => o.id !== alvo.id && o.veiculoId === alvo.veiculoId && (o.situacao === 'enviada' || o.situacao === 'aprovada') && periodosSeCruzam(alvo, o));
 }

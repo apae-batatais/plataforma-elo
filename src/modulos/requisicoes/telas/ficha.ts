@@ -19,6 +19,10 @@ export interface OpcoesFicha {
   anexosAtivos: boolean;
   /** Espaços ativos para reservar, com os períodos em que estão indisponíveis (ficha de espaço). */
   espacos?: { id: string; nome: string; local: string | null; capacidade: number; indisponiveis: { inicio: string; fim: string }[] }[];
+  /** Veículos ativos, com a manutenção prevista e os períodos já pedidos (sem dizer de quem). */
+  veiculos?: { id: string; nome: string; placa: string; capacidade: number; manutencaoPrevista: string | null; ocupado: { id: string; saida: string; volta: string }[] }[];
+  /** Nome de quem pede: já vem como condutor no pedido de veículo. */
+  nomeDoUsuario?: string;
   /** Projetos que a pessoa vê e que aceitam compra, entregues pela plataforma. Sem lista, o campo não aparece. */
   projetos?: ProjetoEscolhivel[];
 }
@@ -34,5 +38,7 @@ export interface PropsFicha {
   inicial?: DadosRequisicao;
   tipo?: OpcoesFicha['tipos'][number];
   espacos?: OpcoesFicha['espacos'];
+  veiculos?: OpcoesFicha['veiculos'];
+  nomeDoUsuario?: string;
   aoMudar: (saida: SaidaFicha) => void;
 }
