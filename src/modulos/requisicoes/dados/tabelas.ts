@@ -11,10 +11,11 @@
  * - ParametrosRequisicoes: expediente usado no cálculo do SLA.
  * - FeriadosRequisicoes: aba antiga de feriados; só leitura, para copiar ao Núcleo (a lista vive no Núcleo).
  * - RequisicaoAnexos: fotos e vídeo da requisição (referência ao arquivo na pasta de anexos).
+ * - Veiculos e VeiculoManutencoes: veículos institucionais e a manutenção preventiva (#229).
  * - ResumosEnviados: um dia por linha, para o resumo diário por e-mail nunca sair duas vezes (entrega 7).
  */
 import { z } from 'zod';
-import { definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
+import { dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
 import { CATEGORIAS, FORMULARIOS, SITUACOES } from '../dominio/requisicao';
 
 const vazio = (v: unknown) => v === undefined || v === null || v === '';
@@ -152,10 +153,52 @@ export const RequisicaoAnexos = definirTabela({
   sigilo: { arquivo_id: 'sensivel', nome: 'pessoal' },
 });
 
+/** Espaços que a instituição deixa reservar (cadastrados pela Administração da plataforma). */
+export const Espacos = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'Espacos',
+  esquema: z.object({ nome: texto(), local: textoOpcional(), capacidade: numero() }),
+});
+
+/** Períodos em que um espaço não pode ser reservado (reforma, obra…). Um espaço pode ter vários. */
+export const EspacoIndisponibilidades = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'EspacoIndisponibilidades',
+  esquema: z.object({
+    espaco_id: texto(),
+    inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    motivo: texto(),
+  }),
+});
+
 export const FeriadosRequisicoes = definirTabela({
   planilha: PLANILHA_REQUISICOES,
   aba: 'Feriados',
   esquema: z.object({ data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), nome: texto() }),
+});
+
+/** Veículos institucionais que podem ser pedidos (proposta #229). */
+export const Veiculos = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'Veiculos',
+  esquema: z.object({ nome: texto(), placa: texto(), capacidade: numero() }),
+});
+
+/**
+ * Manutenção preventiva de cada veículo. A linha sem `feita_em` é a pendente (no máximo uma por
+ * veículo); marcar como feita preenche `feita_em` e `feita_por`, e a próxima data vira nova linha.
+ */
+export const VeiculoManutencoes = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'VeiculoManutencoes',
+  esquema: z.object({
+    veiculo_id: texto(),
+    data_prevista: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    feita_em: dataOpcional(),
+    feita_por: textoOpcional(),
+  }),
+  sigilo: { feita_por: 'pessoal' },
 });
 
 /** Um dia (AAAA-MM-DD, Brasília) em que o resumo diário por e-mail já foi feito, e para quantas pessoas. */
@@ -175,11 +218,18 @@ export const TABELAS_REQUISICOES = [
   ParametrosRequisicoes,
   FeriadosRequisicoes,
   RequisicaoAnexos,
+  Espacos,
+  EspacoIndisponibilidades,
+  Veiculos,
+  VeiculoManutencoes,
   ResumosEnviados,
 ] as const;
 
 export type RegTipo = Registro<typeof TiposRequisicao.esquema>;
 export type RegRequisicao = Registro<typeof Requisicoes.esquema>;
+export type RegEspaco = Registro<typeof Espacos.esquema>;
 export type RegCentro = Registro<typeof RequisicaoCentros.esquema>;
 export type RegItemCatalogo = Registro<typeof CatalogoItens.esquema>;
+export type RegVeiculo = Registro<typeof Veiculos.esquema>;
+export type RegManutencao = Registro<typeof VeiculoManutencoes.esquema>;
 export type RegItem = Registro<typeof RequisicaoItens.esquema>;

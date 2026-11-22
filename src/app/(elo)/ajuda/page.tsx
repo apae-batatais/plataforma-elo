@@ -72,10 +72,16 @@ export default async function Ajuda() {
     aprovarRequisicao: a.temPermissaoAlgumEscopo('requisicoes.aprovar'),
     atenderRequisicao: a.temPermissaoAlgumEscopo('requisicoes.atender'),
     painelRequisicoes: a.temPermissaoAlgumEscopo('requisicoes.painel'),
+    decidirEspacos: a.temPermissaoAlgumEscopo('requisicoes.espacos.decidir'),
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
+    veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
+    ler: a.temPermissaoAlgumEscopo('conhecimento.ler'),
+    publicar: a.temPermissao('conhecimento.publicar'),
+    acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
+    categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
     projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
     gerenciarProjetos: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
@@ -124,6 +130,7 @@ export default async function Ajuda() {
         { rotulo: 'Nova requisição', href: '/requisicoes/nova' },
         ...(pode.aprovarRequisicao ? [{ rotulo: 'Para aprovar', href: '/requisicoes/aprovar' }] : []),
         ...(pode.atenderRequisicao ? [{ rotulo: 'Para atender', href: '/requisicoes/atender' }] : []),
+        ...(pode.decidirEspacos ? [{ rotulo: 'Reservas de espaço', href: '/requisicoes/espacos' }] : []),
         ...(pode.painelRequisicoes ? [{ rotulo: 'Painel de prazos', href: '/requisicoes/painel' }] : []),
       ],
       conteudo: (
@@ -178,11 +185,22 @@ export default async function Ajuda() {
               'Mostre o problema e evite o rosto de atendidos. Só quem vê a requisição vê as fotos e o vídeo, e cada abertura fica registrada.',
             ]}
           />
+          <Sub>Reservar um espaço</Sub>
+          <Passos
+            itens={[
+              'Abra Requisições › Nova requisição e escolha o tipo "Reserva de espaço".',
+              'Preencha a data e as horas de início e de fim. A lista de espaços mostra só os que estão livres naquela data, com a capacidade ao lado.',
+              'Informe quantas pessoas são esperadas e a finalidade. Se passar da capacidade, aparece um aviso, mas dá para enviar.',
+              'Marque se é uma cessão para fora da instituição. Se não for, escolha os centros de custo (somando 100%); se for, informe a organização ou pessoa e não há centro de custo.',
+              'Clique em Enviar pedido. O setor Espaços aprova, devolve para ajuste ou recusa; você acompanha em Minhas requisições. Enquanto não for aprovada, dá para cancelar. O pedido não é barrado por outro no mesmo horário: quem decide vê o conflito.',
+            ]}
+          />
           <Sub>Quem aprova</Sub>
           <Itens
             itens={[
               'A coordenação dos centros de custo. Uma requisição não pode misturar serviços de coordenações diferentes: abra uma para cada.',
               'Pedido feito pela própria coordenação, ou de serviço sem coordenação cadastrada, é aprovado pela Diretoria.',
+              'Reserva de espaço é sempre decidida pelo setor Espaços, de qualquer coordenação. Se quem pede é do próprio setor Espaços, a Diretoria decide.',
             ]}
           />
           {pode.aprovarRequisicao && (
@@ -192,6 +210,19 @@ export default async function Ajuda() {
                 itens={[
                   'Abra Requisições › Para aprovar (a tela inicial e o número no menu mostram quantas esperam por você).',
                   'Abra a ficha e clique em Aprovar. Para devolver ou recusar, escreva o motivo e clique no botão: quem pediu vê no histórico.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirEspacos && (
+            <>
+              <Sub>Decidir reservas de espaço</Sub>
+              <Passos
+                itens={[
+                  'Abra Requisições › Reservas de espaço: "Para aprovar" lista os pedidos novos e "Para fechar" as reservas aprovadas cuja hora de fim já passou.',
+                  'Na ficha, o bloco "Conflitos neste horário" mostra quem pediu o mesmo espaço em horário que se cruza (encostar, como 10h–11h e 11h–12h, não conta). Clique em Aprovar reserva, Devolver para ajuste ou Recusar (os dois últimos pedem o motivo).',
+                  'Se o horário já está aprovado para outro pedido, o sistema pede confirmação antes de aprovar. A decisão não tem volta.',
+                  'Depois do uso, abra a ficha e clique em Registrar uso: "Usado sem problema" ou "Usado com problema" (este pede o texto). O botão só libera depois da hora de fim.',
                 ]}
               />
             </>
@@ -230,6 +261,17 @@ export default async function Ajuda() {
           )}
           {pode.tiposRequisicao && (
             <>
+              <Sub>Espaços para reservar</Sub>
+              <p>
+                Em Requisições › Espaços (só a Administração da plataforma), cadastre cada espaço com nome, local e capacidade. Em cada espaço, &ldquo;Adicionar
+                período&rdquo; marca as datas em que ele não pode ser reservado (reforma, obra): nessas datas ele some da lista de quem pede. Encerrar um espaço ou um
+                período não apaga nada. Para liberar os pedidos, cadastre também o tipo &ldquo;Reserva de espaço&rdquo; em Tipos de requisição, com a ficha de reserva
+                e o setor Espaços; atribua o perfil Setor de Espaços às pessoas do setor em Acessos.
+              </p>
+            </>
+          )}
+          {pode.tiposRequisicao && (
+            <>
               <Sub>Tipos de requisição</Sub>
               <p>
                 Em Requisições › Tipos de requisição (só a Administração da plataforma), cadastre os tipos, o setor que atende (perfis Almoxarifado, Setor de
@@ -239,6 +281,17 @@ export default async function Ajuda() {
                 nos tipos em que uma foto ajuda (manutenção, TI, mobiliário). No fim da tela fica o horário do expediente. Os feriados, que valem para todos os apps,
                 ficam em Administração › Feriados: o botão &ldquo;Incluir feriados nacionais&rdquo; cadastra de uma vez os do ano (com o 9 de julho, de São Paulo);
                 os municipais e os pontos facultativos você inclui um a um.
+              </p>
+            </>
+          )}
+          {pode.veiculos && (
+            <>
+              <Sub>Veículos</Sub>
+              <p>
+                Em Requisições › Veículos (só a Administração da plataforma), cadastre cada veículo da instituição com nome, placa e capacidade de passageiros.
+                Ao alterar um veículo, informe a data da próxima manutenção: a partir desse dia ele deixa de aparecer para pedido novo, até você clicar em
+                &ldquo;Marcar feita&rdquo; (e, se já souber, informar a data da seguinte). Veículo excluído some da lista de pedido, mas pode ser reativado
+                em &ldquo;Veículos excluídos&rdquo;. Nada é apagado.
               </p>
             </>
           )}
@@ -380,6 +433,8 @@ export default async function Ajuda() {
                   'Antes de tudo, confira em Cadastros os Grupos de contas (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
                   'Em Previsão do ano, use Abrir exercício para começar um ano novo.',
                   'Despesas › Lançar despesa: serviço, grupo, fonte (pode ficar "a definir" na elaboração), quantidade × vezes × valor unitário e os meses.',
+                  'Despesa dividida entre vários serviços: Despesas › Despesas por rateio › Novo lançamento. Preencha como uma despesa comum, escolha a Regra de rateio e use "Ver como ficaria" para conferir quanto cada serviço recebe. Ao salvar, o Elo gera uma despesa por serviço.',
+                  'As despesas geradas aparecem na lista de Despesas com a etiqueta "Gerada por rateio" e não podem ser alteradas ali: use "Ver lançamento de origem". Enquanto o exercício está em elaboração, elas se recalculam sozinhas quando muda o lançamento, a regra, uma base própria, os números de um serviço (atendidos, m², vagas) ou a lotação. Depois de aprovado, ficam como estão. Excluir o lançamento encerra todas as despesas geradas.',
                   'A folha de pagamento entra sozinha, por serviço. No fim da tela Despesas, escolha a fonte que paga a folha de cada serviço: ao escolher, já fica salvo.',
                   'Receitas › Lançar receita: fonte, área, valor, meses e a situação da captação (garantida, em negociação ou a captar).',
                   'Para trazer de uma planilha: Importar despesas e receitas. Escolha o arquivo, diga se são despesas ou receitas e qual coluna corresponde a cada campo (o Elo sugere), confira e diga a qual cadastro corresponde cada nome que ele não reconheceu.',
@@ -477,6 +532,68 @@ export default async function Ajuda() {
                   'Se o arquivo trouxer lotação para quem já está cadastrado: quem não tem recebe a do arquivo; quem tem uma diferente é atualizado a partir da data que você escolher, se você deixar marcado. A lotação anterior fica no histórico.',
                 ]}
               />
+            </>
+          )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.ler) {
+    assuntos.push({
+      id: 'conhecimento',
+      titulo: 'Base de Conhecimento',
+      resumo: 'Ler comunicados e normas, dar ciência e ver o que falta; para quem publica, criar publicações e acompanhar quem está em dia.',
+      atalhos: [
+        { rotulo: 'Biblioteca', href: '/conhecimento' },
+        { rotulo: 'Meus documentos', href: '/conhecimento/meus-documentos' },
+        ...(pode.publicar ? [{ rotulo: 'Nova publicação', href: '/conhecimento/publicacoes/nova' }] : []),
+        ...(pode.acompanharConhecimento ? [{ rotulo: 'Acompanhamento', href: '/conhecimento/acompanhamento' }] : []),
+        ...(pode.categoriasConhecimento ? [{ rotulo: 'Categorias', href: '/conhecimento/categorias' }] : []),
+      ],
+      conteudo: (
+        <>
+          <Sub>Ler e dar ciência</Sub>
+          <Passos
+            itens={[
+              'Abra Base de Conhecimento. No alto, "Falta você" lista os documentos que pedem a sua ciência; a tela inicial também avisa.',
+              'Clique em Abrir. Leia o texto e, se houver, abra o PDF ou a imagem anexada.',
+              'No cartão "O que falta", clique em "Li e estou de acordo" e confirme. Isso registra o seu nome, a data e a hora e não dá para desfazer.',
+              'Se o conteúdo mudar numa versão nova, o documento volta a ficar pendente e você dá ciência de novo.',
+              'Em Meus documentos, veja o que já está em dia (com a data da ciência) e o que falta. Pendência com mais de 15 dias fica marcada como vencida.',
+            ]}
+          />
+          <p className="mt-2">Você só vê as publicações do seu público (todos, um perfil ou uma área). Ninguém vê a ciência de outra pessoa, só quem acompanha.</p>
+          {pode.publicar && (
+            <>
+              <Sub>Publicar</Sub>
+              <Passos
+                itens={[
+                  'Abra Publicações › Nova publicação (se faltar categoria, cadastre em Categorias).',
+                  'Preencha título, categoria e resumo; escreva o texto, envie um anexo (PDF até 10 MB ou imagem), ou os dois.',
+                  'Em "Quem deve ler", escolha Todos, Um perfil ou Uma área. Marque "Exige ciência" se a pessoa precisa confirmar que leu.',
+                  'Salve como rascunho para revisar (ninguém recebe pendência) ou clique em Publicar.',
+                  'Ao editar o texto de uma publicação que já tem ciências, escolha "Correção pequena" (as ciências continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
+                  'Arquivar tira a publicação das listas e das pendências, mas guarda o registro de quem deu ciência; dá para reativar.',
+                ]}
+              />
+            </>
+          )}
+          {pode.acompanharConhecimento && (
+            <>
+              <Sub>Acompanhar quem está em dia</Sub>
+              <Itens
+                itens={[
+                  'Acompanhamento lista as publicações que exigem ciência com "X de Y em dia". Clique em "Ver as pessoas" para ver quem deu ciência, quem precisa renovar e quem está pendente; os filtros separam cada grupo.',
+                  'Abrir a lista de pessoas fica registrado na auditoria.',
+                ]}
+              />
+            </>
+          )}
+          {pode.categoriasConhecimento && (
+            <>
+              <Sub>Categorias</Sub>
+              <p>Em Categorias, adicione e desative categorias. Não dá para desativar uma categoria que ainda tem publicação (que não esteja arquivada); desativadas podem ser reativadas.</p>
             </>
           )}
         </>

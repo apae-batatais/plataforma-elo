@@ -8,7 +8,7 @@ import { inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenam
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { incluirFeriadosNacionais } from '@/nucleo/feriados/feriados';
 import { concluirRequisicao, decidirRequisicao, enviarRequisicao, receberRequisicao } from '../aplicacao/requisicoes';
-import { CatalogoItens, Requisicoes, TiposRequisicao } from './tabelas';
+import { CatalogoItens, EspacoIndisponibilidades, Espacos, Requisicoes, TiposRequisicao, VeiculoManutencoes, Veiculos } from './tabelas';
 
 const TIPOS = [
   { nome: 'Higiene e limpeza', descricao: 'Produtos de limpeza e de higiene pessoal.' },
@@ -394,4 +394,75 @@ export async function popularRequisicoesFicticias(p: Planilhas): Promise<void> {
     agora: dia('2026-10-23', 10),
     resultado: 'resolvido',
   });
+  // Veículos (proposta #229): dois fictícios, um deles com manutenção prevista.
+  const [veiculosLidos, manutencoesLidas] = await lerTabelas(p, [Veiculos, VeiculoManutencoes] as const);
+  const autoria = { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') };
+  const veiculos = await inserirRegistros(
+    p,
+    veiculosLidos,
+    [
+      { nome: 'Van 1', placa: 'AAA0A00', capacidade: 12 },
+      { nome: 'Carro 1', placa: 'BBB1B11', capacidade: 5 },
+    ],
+    autoria,
+  );
+  await inserirRegistros(p, manutencoesLidas, [{ veiculo_id: veiculos[1].id, data_prevista: '2026-12-15', feita_em: null, feita_por: null }], autoria);
+
+  // 8. Reserva de espaço: dois espaços, um período de reforma, uma reserva aprovada e outra que cruza com ela.
+  const [espacosLidos, periodosLidos] = await lerTabelas(p, [Espacos, EspacoIndisponibilidades] as const);
+  const [salao, salaReunioes] = await inserirRegistros(
+    p,
+    espacosLidos,
+    [
+      { nome: 'Salão de eventos', local: 'Sede', capacidade: 120 },
+      { nome: 'Sala de reuniões', local: 'Sede', capacidade: 12 },
+    ],
+    { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
+  );
+  await inserirRegistros(
+    p,
+    periodosLidos,
+    [{ espaco_id: salaReunioes.id, inicio: '2026-12-15', fim: '2026-12-20', motivo: 'Reforma do piso' }],
+    { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
+  );
+  const [tipoEspaco] = await inserirRegistros(
+    p,
+    tiposLidos,
+    [
+      {
+        nome: 'Reserva de espaço',
+        categoria: 'servico' as const,
+        formulario: 'espaco' as const,
+        perfil_responsavel: 'espacos',
+        prazo_aprovacao: 8,
+        prazo_atendimento: 8,
+        descricao: 'Salão ou sala para reunião ou evento: escolha o espaço, o dia e o horário.',
+      },
+    ],
+    { email: 'demonstracao', agora: () => new Date('2026-10-01T12:00:00Z') },
+  );
+  const reserva = (email: string, nome: string, area: string, servico: string, detalhes: object, quando: Date) =>
+    enviarRequisicao(
+      p,
+      como(email),
+      { nomeRequisitante: nome, tipoId: tipoEspaco.id, area, centros: [{ servico, percentual: 100 }], itens: [], detalhes },
+      { agora: quando },
+    );
+  const aprovada = await reserva(
+    'dp@exemplo.local',
+    'Departamento Pessoal (fictício)',
+    'assistencia_social',
+    'ur',
+    { espacoId: salao.id, data: '2026-11-12', inicio: '14:00', fim: '17:00', finalidade: 'Encontro de famílias', pessoas: 80, usoExterno: false },
+    dia('2026-10-30', 10),
+  );
+  await decidirRequisicao(p, como('espacos@exemplo.local'), aprovada.id, await versao(aprovada.id), 'aprovar', null, { agora: dia('2026-10-30', 14) });
+  await reserva(
+    'financeiro@exemplo.local',
+    'Financeiro (fictício)',
+    'educacao',
+    'escola',
+    { espacoId: salao.id, data: '2026-11-12', inicio: '16:00', fim: '18:00', finalidade: 'Reunião de pais', pessoas: 150, usoExterno: false },
+    dia('2026-10-30', 15),
+  );
 }

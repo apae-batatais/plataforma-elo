@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { resumoFolha } from '@/modulos/orcamento/aplicacao/folha';
 import { contadoresComunicacao } from '@/modulos/comunicacao/aplicacao/pedidos';
+import { pendenciasDaPessoa as pendenciasConhecimento } from '@/modulos/conhecimento/aplicacao/publicacoes';
 import { contadoresRequisicoes } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import { painelDeAcessos } from '@/nucleo/acesso/gestao';
 import { menuDoUsuario } from '@/nucleo/modulos/registro';
@@ -146,6 +147,24 @@ export default async function Portal() {
           acao: 'Ver requisições',
         });
       }
+      if (c.espacosDecidir > 0) {
+        pendencias.push({
+          app: 'requisicoes',
+          texto: n(c.espacosDecidir, 'reserva de espaço espera a sua decisão', 'reservas de espaço esperam a sua decisão'),
+          detalhe: 'Veja o conflito de horário e aprove, devolva ou recuse.',
+          href: '/requisicoes/espacos',
+          acao: 'Decidir',
+        });
+      }
+      if (c.espacosFechar > 0) {
+        pendencias.push({
+          app: 'requisicoes',
+          texto: n(c.espacosFechar, 'reserva para registrar o uso', 'reservas para registrar o uso'),
+          detalhe: 'A hora de fim já passou: diga se o espaço foi usado sem ou com problema.',
+          href: '/requisicoes/espacos',
+          acao: 'Registrar uso',
+        });
+      }
       if (c.atender > 0) {
         pendencias.push({
           app: 'requisicoes',
@@ -228,6 +247,22 @@ export default async function Portal() {
       }
     } catch {
       // Planilha da Comunicação ainda não configurada: a página do app explica.
+    }
+  }
+  if (a.temPermissaoAlgumEscopo('conhecimento.ler')) {
+    try {
+      const c = await pendenciasConhecimento(app.planilhas, a);
+      if (c.total > 0) {
+        pendencias.push({
+          app: 'conhecimento',
+          texto: `${c.total} ${c.total === 1 ? 'documento aguarda' : 'documentos aguardam'} a sua ciência`,
+          detalhe: c.vencidas > 0 ? `${c.vencidas} ${c.vencidas === 1 ? 'está vencido' : 'estão vencidos'}, com mais de 15 dias sem ciência.` : 'Leia e confirme que está de acordo.',
+          href: c.total === 1 ? `/conhecimento/${c.itens[0].id}` : '/conhecimento/meus-documentos',
+          acao: 'Ler e dar ciência',
+        });
+      }
+    } catch {
+      // Planilha da Base de Conhecimento ainda não configurada: a página do app explica.
     }
   }
   if (a.temPermissao('core.organizacao.gerenciar')) {

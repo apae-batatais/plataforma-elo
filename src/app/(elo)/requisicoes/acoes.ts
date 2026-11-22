@@ -6,12 +6,17 @@ import { redirect } from 'next/navigation';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import {
+  adicionarPeriodoDeEspaco,
   analisarItensEmLote,
   cadastrarItensEmLote,
   cancelarRequisicao,
   concluirRequisicao,
   decidirRequisicao,
   detalharRequisicao,
+  encerrarPeriodoDeEspaco,
+  fecharReserva,
+  mudarSituacaoEspaco,
+  salvarEspaco,
   type ConferenciaDaAprovacao,
   corrigirValorGasto,
   enviarRequisicao,
@@ -27,6 +32,12 @@ import {
   type DadosRequisicao,
   type LinhaItemLote,
 } from '@/modulos/requisicoes/aplicacao/requisicoes';
+import {
+  definirManutencaoPrevista,
+  marcarManutencaoFeita,
+  mudarSituacaoVeiculo,
+  salvarVeiculo,
+} from '@/modulos/requisicoes/aplicacao/veiculos';
 import type { TipoAnexo } from '@/modulos/requisicoes/dominio/anexos';
 import type { Formulario } from '@/modulos/requisicoes/dominio/requisicao';
 import { ErroArquivo } from '@/nucleo/armazenamento/arquivos';
@@ -79,7 +90,7 @@ function lerFicha(f: FormData): DadosRequisicao {
 
 export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise<EstadoFicha> {
   const { usuario, app } = await contexto();
-  let r: { id: string; numero: string; rota: { tipo: string } };
+  let r: { id: string; numero: string; rota: { tipo: string }; espaco: boolean };
   try {
     r = await enviarRequisicao(app.planilhas, usuario.autorizador, { ...lerFicha(f), nomeRequisitante: usuario.nome }, {
       arquivos: app.arquivos,
@@ -94,7 +105,12 @@ export async function acaoEnviarRequisicao(_: EstadoFicha, f: FormData): Promise
   esquecerAlertas();
   revalidatePath('/', 'layout');
   const quem = r.rota.tipo === 'diretoria' ? 'a Diretoria' : 'a coordenação';
-  redirect(`/requisicoes/${r.id}?ok=${encodeURIComponent(`Requisição ${r.numero} enviada. Agora aguarda ${quem}.`)}`);
+  const aviso = r.espaco
+    ? r.rota.tipo === 'diretoria'
+      ? `Pedido ${r.numero} enviado. A Diretoria vai responder.`
+      : 'Pedido enviado. O setor de Espaços vai responder.'
+    : `Requisição ${r.numero} enviada. Agora aguarda ${quem}.`;
+  redirect(`/requisicoes/${r.id}?ok=${encodeURIComponent(aviso)}`);
 }
 
 /** Abre o envio de uma foto ou vídeo: o navegador manda o arquivo direto para a pasta de anexos. */
@@ -158,8 +174,58 @@ export async function acaoDecidir(f: FormData) {
       const grupo = grupoId ? await grupoDeGastoConferido(app.planilhas, usuario.autorizador, d.centros.map((c) => c.servico), grupoId) : null;
       conferencia = { valorEstimado: Number.isFinite(valor) ? valor : null, grupo };
     }
-    await decidirRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), acao, texto(f, 'comentario') || null, { conferencia });
+    await decidirRequisicao(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), acao, texto(f, 'comentario') || null, {
+      conferencia,
+      confirmarConflito: texto(f, 'confirmar_conflito') === 'sim',
+    });
   });
+}
+
+export async function acaoFecharReserva(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(`/requisicoes/${id}`, 'Uso da reserva registrado.', ({ usuario, app }) =>
+    fecharReserva(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), { resultado: texto(f, 'resultado'), texto: texto(f, 'texto') || null }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Espaços e períodos de indisponibilidade
+// ---------------------------------------------------------------------------
+
+export async function acaoSalvarEspaco(f: FormData) {
+  const id = texto(f, 'id');
+  await executar('/requisicoes/espacos/cadastro', id ? 'Espaço alterado.' : 'Espaço cadastrado.', ({ usuario, app }) =>
+    salvarEspaco(
+      app.planilhas,
+      usuario.autorizador,
+      { nome: texto(f, 'nome'), local: texto(f, 'local') || null, capacidade: numero(f, 'capacidade') },
+      id ? { id, versao: Number(texto(f, 'versao')) } : undefined,
+    ),
+  );
+}
+
+export async function acaoEncerrarEspaco(f: FormData) {
+  await executar('/requisicoes/espacos/cadastro', 'Espaço encerrado. Ele fica em “Espaços encerrados” e pode ser reativado.', ({ usuario, app }) =>
+    mudarSituacaoEspaco(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), false),
+  );
+}
+
+export async function acaoReativarEspaco(f: FormData) {
+  await executar('/requisicoes/espacos/cadastro', 'Espaço reativado.', ({ usuario, app }) =>
+    mudarSituacaoEspaco(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true),
+  );
+}
+
+export async function acaoAdicionarPeriodo(f: FormData) {
+  await executar('/requisicoes/espacos/cadastro', 'Período de indisponibilidade cadastrado.', ({ usuario, app }) =>
+    adicionarPeriodoDeEspaco(app.planilhas, usuario.autorizador, texto(f, 'espaco'), { inicio: texto(f, 'inicio'), fim: texto(f, 'fim'), motivo: texto(f, 'motivo') }),
+  );
+}
+
+export async function acaoEncerrarPeriodo(f: FormData) {
+  await executar('/requisicoes/espacos/cadastro', 'Período encerrado.', ({ usuario, app }) =>
+    encerrarPeriodoDeEspaco(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao'))),
+  );
 }
 
 export async function acaoCancelar(f: FormData) {
@@ -237,6 +303,42 @@ export async function acaoReativarTipo(f: FormData) {
 export async function acaoSalvarExpediente(f: FormData) {
   await executar('/requisicoes/tipos', 'Expediente salvo.', ({ usuario, app }) =>
     salvarExpediente(app.planilhas, usuario.autorizador, { inicio: numero(f, 'inicio'), fim: numero(f, 'fim') }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Veículos institucionais (proposta #229)
+// ---------------------------------------------------------------------------
+
+export async function acaoSalvarVeiculo(f: FormData) {
+  const id = texto(f, 'id');
+  await executar('/requisicoes/veiculos', id ? 'Veículo alterado.' : 'Veículo cadastrado.', async ({ usuario, app }) => {
+    const veiculoId = await salvarVeiculo(
+      app.planilhas,
+      usuario.autorizador,
+      { nome: texto(f, 'nome'), placa: texto(f, 'placa'), capacidade: numero(f, 'capacidade') },
+      id ? { id, versao: Number(texto(f, 'versao')) } : undefined,
+    );
+    // A data de manutenção só muda quando o campo veio no formulário.
+    if (f.has('manutencao')) await definirManutencaoPrevista(app.planilhas, usuario.autorizador, veiculoId, texto(f, 'manutencao') || null);
+  });
+}
+
+export async function acaoExcluirVeiculo(f: FormData) {
+  await executar('/requisicoes/veiculos', 'Veículo excluído. Ele fica em “Veículos excluídos” e pode ser reativado.', ({ usuario, app }) =>
+    mudarSituacaoVeiculo(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), false),
+  );
+}
+
+export async function acaoReativarVeiculo(f: FormData) {
+  await executar('/requisicoes/veiculos', 'Veículo reativado.', ({ usuario, app }) =>
+    mudarSituacaoVeiculo(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true),
+  );
+}
+
+export async function acaoMarcarManutencaoFeita(f: FormData) {
+  await executar('/requisicoes/veiculos', 'Manutenção marcada como feita.', ({ usuario, app }) =>
+    marcarManutencaoFeita(app.planilhas, usuario.autorizador, texto(f, 'id'), texto(f, 'proxima') || null),
   );
 }
 

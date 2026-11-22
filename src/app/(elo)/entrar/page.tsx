@@ -53,6 +53,7 @@ const O_QUE_VE: Record<string, string> = {
   patrimonio: 'Atende os pedidos de mobiliário.',
   manutencao: 'Atende os pedidos de manutenção.',
   cozinha: 'Atende as requisições da cozinha.',
+  espacos: 'Decide as reservas de espaço.',
 };
 
 export default async function Entrar() {

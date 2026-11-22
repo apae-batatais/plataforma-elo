@@ -15,54 +15,18 @@ import { IconeLixeira, IconeMais } from '@/ui/icones';
 import type { DadosRequisicao } from '../aplicacao/requisicoes';
 import type { TipoAnexo } from '../dominio/anexos';
 import { AnexosDaRequisicao, type AnexoNaFicha } from './anexos';
-import {
-  CATEGORIAS_TI,
-  SERVICOS_MANUTENCAO,
-  SERVICOS_MOBILIARIO,
-  URGENCIAS,
-  type CategoriaTi,
-  type DetalhesManutencao,
-  type DetalhesMateriais,
-  type DetalhesMobiliario,
-  type DetalhesTi,
-  type ServicoManutencao,
-  type ServicoMobiliario,
-  type ProjetoEscolhivel,
-  type Urgencia,
-} from '../dominio/requisicao';
+import type { ProjetoEscolhivel } from '../dominio/requisicao';
+import type { OpcoesFicha, SaidaFicha } from './ficha';
+import { FichaEspaco } from './ficha-espaco';
+import { FichaManutencao } from './ficha-manutencao';
+import { FichaMateriais } from './ficha-materiais';
+import { FichaMobiliario } from './ficha-mobiliario';
+import { FichaTi } from './ficha-ti';
 
 type Estado = { erro?: string };
 
-export interface OpcoesFicha {
-  tipos: {
-    id: string;
-    nome: string;
-    formulario: string;
-    descricao: string | null;
-    /** Áreas permitidas (vazio = todas) e itens aceitos (vazio = texto livre). */
-    areas: string[];
-    /** Aceita foto e vídeo. */
-    anexos: boolean;
-    itens: { id: string; descricao: string; unidade: string }[];
-  }[];
-  areas: { codigo: string; nome: string }[];
-  servicos: { codigo: string; nome: string; area: string | null; areaNome: string }[];
-  /** A instituição ativou a pasta de anexos (fotos e vídeo). */
-  anexosAtivos: boolean;
-  /** Projetos que a pessoa vê e que aceitam compra, entregues pela plataforma. Sem lista, o campo não aparece. */
-  projetos?: ProjetoEscolhivel[];
-}
+export type { OpcoesFicha };
 
-const UNIDADES = ['un', 'kg', 'g', 'L', 'ml', 'pacote', 'caixa', 'resma', 'dúzia', 'fardo', 'rolo', 'par', 'frasco', 'galão'];
-
-const vazioItem = () => ({ quantidade: '', unidade: 'un', descricao: '' });
-const comparavel = (t: string) =>
-  t
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
 const vazioCentro = () => ({ servico: '', percentual: '' });
 const paraNumero = (t: string) => (t.trim() === '' ? NaN : Number(t.replace(',', '.')));
 
@@ -88,7 +52,6 @@ export function FormularioRequisicao({
   anexosIniciais?: AnexoNaFicha[];
 }) {
   const [estado, enviar, enviando] = useActionState(acao, {});
-  const det = (inicial?.detalhes ?? {}) as DetalhesMateriais;
   const [tipoId, setTipoId] = useState(inicial?.tipoId ?? (opcoes.tipos.length === 1 ? opcoes.tipos[0].id : ''));
   const [area, setArea] = useState(inicial?.area ?? '');
   const [anexos, setAnexos] = useState<AnexoNaFicha[]>(anexosIniciais);
@@ -106,63 +69,12 @@ export function FormularioRequisicao({
     // O serviço vem do projeto (R3): um único centro de custo, 100%.
     if (novo?.servico) setCentros([{ servico: novo.servico, percentual: '100' }]);
   };
-  const [itens, setItens] = useState(
-    inicial?.itens.map((x) => ({ quantidade: String(x.quantidade), unidade: x.unidade, descricao: x.descricao })) ?? [vazioItem(), vazioItem()],
-  );
-  const [modo, setModo] = useState<'retirada' | 'entrega' | ''>(det.entrega?.modo ?? 'retirada');
-  const [entrega, setEntrega] = useState({ horario: det.entrega?.horario ?? '', local: det.entrega?.local ?? '', responsavel: det.entrega?.responsavel ?? '' });
-  const [temEvento, setTemEvento] = useState(Boolean(det.evento));
-  const [evento, setEvento] = useState({
-    nome: det.evento?.nome ?? '',
-    data: det.evento?.data ?? '',
-    horario: det.evento?.horario ?? '',
-    local: det.evento?.local ?? '',
-    publico: det.evento?.publico ?? '',
-    participantes: det.evento?.participantes != null ? String(det.evento.participantes) : '',
-  });
-  const [utensilios, setUtensilios] = useState(det.utensilios ?? '');
+  // Dados do tipo escolhido: cada ficha devolve só os seus (itens e detalhes).
+  const [saida, setSaida] = useState<SaidaFicha>({ itens: [], detalhes: {} });
   const [observacao, setObservacao] = useState(inicial?.observacao ?? '');
-  const detMob = (inicial?.detalhes ?? {}) as Partial<DetalhesMobiliario>;
-  const [mob, setMob] = useState({
-    servico: detMob.servico ?? '',
-    origem: detMob.origem ?? '',
-    destino: detMob.destino ?? '',
-    data: detMob.data ?? '',
-    horario: detMob.horario ?? '',
-    devolucao: detMob.devolucao ?? '',
-    contato: detMob.contato ?? '',
-  });
-  const [moveis, setMoveis] = useState(
-    detMob.moveis?.map((m) => ({ quantidade: String(m.quantidade), descricao: m.descricao, patrimonio: m.patrimonio ?? '' })) ?? [
-      { quantidade: '1', descricao: '', patrimonio: '' },
-    ],
-  );
-  const detTi = (inicial?.detalhes ?? {}) as Partial<DetalhesTi>;
-  const [ti, setTi] = useState({
-    categoria: detTi.categoria ?? '',
-    equipamento: detTi.equipamento ?? '',
-    patrimonio: detTi.patrimonio ?? '',
-    local: detTi.local ?? '',
-    problema: detTi.problema ?? '',
-    urgencia: detTi.urgencia ?? '',
-    contato: detTi.contato ?? '',
-  });
-  const detMan = (inicial?.detalhes ?? {}) as Partial<DetalhesManutencao>;
-  const [man, setMan] = useState({
-    servico: detMan.servico ?? '',
-    local: detMan.local ?? '',
-    equipamento: detMan.equipamento ?? '',
-    patrimonio: detMan.patrimonio ?? '',
-    problema: detMan.problema ?? '',
-    urgencia: detMan.urgencia ?? '',
-    horario: detMan.horario ?? '',
-    contato: detMan.contato ?? '',
-  });
 
   const tipo = opcoes.tipos.find((t) => t.id === tipoId);
   const areasDoTipo = tipo?.areas.length ? opcoes.areas.filter((a) => tipo.areas.includes(a.codigo)) : opcoes.areas;
-  const lista = tipo?.itens ?? [];
-  const daLista = (descricao: string) => lista.find((c) => comparavel(c.descricao) === comparavel(descricao));
   const mudarTipo = (id: string) => {
     setTipoId(id);
     const t = opcoes.tipos.find((x) => x.id === id);
@@ -170,10 +82,6 @@ export function FormularioRequisicao({
     // Área que o tipo não aceita sai; se só há uma opção, ela já vem marcada.
     const areasOk = t.areas.length ? opcoes.areas.filter((a) => t.areas.includes(a.codigo)) : opcoes.areas;
     if (!areasOk.some((a) => a.codigo === area)) setArea(areasOk.length === 1 ? areasOk[0].codigo : '');
-    if (t.itens.length) {
-      const porNome = new Map(t.itens.map((c) => [comparavel(c.descricao), c]));
-      setItens(itens.map((x) => ({ ...x, unidade: porNome.get(comparavel(x.descricao))?.unidade ?? (x.descricao ? x.unidade : '') })));
-    }
   };
   const soma = centros.reduce((s, c) => s + Math.round((paraNumero(c.percentual) || 0) * 100), 0) / 100;
   const areasDosServicos = [...new Set(opcoes.servicos.map((s) => s.areaNome))];
@@ -196,32 +104,11 @@ export function FormularioRequisicao({
   const dados: DadosRequisicao = {
     tipoId,
     area,
-    centros: centros.map((c) => ({ servico: c.servico, percentual: paraNumero(c.percentual) })),
+    centros: saida.semCentros ? [] : centros.map((c) => ({ servico: c.servico, percentual: paraNumero(c.percentual) })),
     projetoId: projetoId || null,
     atividadeId: projetoId ? atividadeId || null : null,
-    itens: (tipo && tipo.formulario !== 'materiais' ? [] : itens)
-      .filter((x) => x.descricao.trim() || x.quantidade.trim())
-      .map((x) => ({ quantidade: paraNumero(x.quantidade), unidade: x.unidade, descricao: x.descricao, catalogoId: daLista(x.descricao)?.id ?? null })),
-    detalhes:
-      tipo?.formulario === 'ti'
-        ? { ...ti, categoria: ti.categoria || undefined, urgencia: ti.urgencia || undefined }
-        : tipo?.formulario === 'mobiliario'
-          ? {
-              ...mob,
-              servico: mob.servico || undefined,
-              data: mob.data || undefined,
-              devolucao: mob.servico === 'emprestimo' ? mob.devolucao || null : null,
-              moveis: moveis
-                .filter((m) => m.descricao.trim() || m.patrimonio.trim())
-                .map((m) => ({ quantidade: paraNumero(m.quantidade), descricao: m.descricao, patrimonio: m.patrimonio })),
-            }
-          : tipo?.formulario === 'manutencao'
-            ? { ...man, servico: man.servico || undefined, urgencia: man.urgencia || undefined }
-            : {
-                entrega: modo ? { modo, ...entrega } : null,
-                evento: temEvento ? { ...evento, participantes: evento.participantes ? Number(evento.participantes) : null } : null,
-                utensilios,
-              },
+    itens: saida.itens,
+    detalhes: saida.detalhes,
     observacao,
     // Sem anexos neste tipo (ou desligados na instituição), não mexe nos que já existem.
     anexos:
@@ -239,68 +126,8 @@ export function FormularioRequisicao({
     startTransition(() => enviar(f));
   };
 
-  return (
-    <form onSubmit={enviarSemLimpar} className="space-y-6">
-      {oculto && Object.entries(oculto).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
-      <input type="hidden" name="dados" value={JSON.stringify(dados)} />
-
-      <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-        <h2 className="text-lg font-bold">Pedido</h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Campo rotulo="Tipo de requisição" obrigatorio dica={tipo?.descricao ?? undefined}>
-            <select value={tipoId} onChange={(e) => mudarTipo(e.target.value)} disabled={Boolean(inicial)} required className={estiloEntrada}>
-              <option value="">Escolha…</option>
-              {opcoes.tipos.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <Campo rotulo="Área" obrigatorio>
-            <select value={area} onChange={(e) => setArea(e.target.value)} required className={estiloEntrada}>
-              <option value="">Escolha…</option>
-              {areasDoTipo.map((a) => (
-                <option key={a.codigo} value={a.codigo}>
-                  {a.nome}
-                </option>
-              ))}
-            </select>
-          </Campo>
-        </div>
-      </section>
-
-      {opcoes.projetos && opcoes.projetos.length > 0 && (
-        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-          <h2 className="text-lg font-bold">Projeto</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="Esta compra é de um projeto?" dica="Opcional. Só aparecem projetos em implementação que você pode ver.">
-              <select value={projetoId} onChange={(e) => escolherProjeto(e.target.value)} className={estiloEntrada}>
-                <option value="">Não é de um projeto</option>
-                {opcoes.projetos.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.codigo} · {x.titulo}
-                  </option>
-                ))}
-              </select>
-            </Campo>
-            {projeto && (
-              <Campo rotulo="Atividade" dica="A atividade é opcional; informe se quiser ver o gasto por atividade no projeto.">
-                <select value={atividadeId} onChange={(e) => setAtividadeId(e.target.value)} className={estiloEntrada}>
-                  <option value="">Sem atividade</option>
-                  {projeto.atividades.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.descricao}
-                    </option>
-                  ))}
-                </select>
-              </Campo>
-            )}
-          </div>
-        </section>
-      )}
-
-      <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
+  const blocoCentros = (
+    <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-bold">Centros de custo</h2>
           <span className={`text-sm font-semibold tabular-nums ${soma === 100 ? 'text-sucesso' : 'text-aviso'}`}>Soma: {soma.toLocaleString('pt-BR')}%</span>
@@ -366,382 +193,86 @@ export function FormularioRequisicao({
           )}
         </div>
       </section>
+  );
 
-      {(!tipo || tipo.formulario === 'materiais') && (
-        <>
-          <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
-            <h2 className="text-lg font-bold">Itens solicitados</h2>
-            {lista.length > 0 && (
-              <p className="text-sm text-texto-suave">
-                Este tipo tem uma lista de itens: comece a digitar e escolha o item na lista. A unidade vem preenchida.
-              </p>
-            )}
-            <datalist id="itens-do-tipo">
-              {lista.map((c) => (
-                <option key={c.id} value={c.descricao}>
-                  {c.unidade}
+  return (
+    <form onSubmit={enviarSemLimpar} className="space-y-6">
+      {oculto && Object.entries(oculto).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
+      <input type="hidden" name="dados" value={JSON.stringify(dados)} />
+
+      <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
+        <h2 className="text-lg font-bold">Pedido</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo rotulo="Tipo de requisição" obrigatorio dica={tipo?.descricao ?? undefined}>
+            <select value={tipoId} onChange={(e) => mudarTipo(e.target.value)} disabled={Boolean(inicial)} required className={estiloEntrada}>
+              <option value="">Escolha…</option>
+              {opcoes.tipos.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.nome}
                 </option>
               ))}
-            </datalist>
-            <datalist id="unidades">
-              {UNIDADES.map((u) => (
-                <option key={u} value={u} />
-              ))}
-            </datalist>
-            <div className="hidden grid-cols-[6rem_8rem_1fr_auto] gap-2 text-sm font-semibold text-texto-suave sm:grid">
-              <span>Quantidade</span>
-              <span>Unidade</span>
-              <span>Item</span>
-              <span className="w-10" />
-            </div>
-            <ul className="space-y-2">
-              {itens.map((x, i) => {
-                const mudar = (campo: keyof typeof x, v: string) =>
-                  setItens(
-                    itens.map((y, k) => {
-                      if (k !== i) return y;
-                      const novo = { ...y, [campo]: v };
-                      // Item da lista: a unidade vem dela.
-                      if (campo === 'descricao' && lista.length) novo.unidade = daLista(v)?.unidade ?? '';
-                      return novo;
-                    }),
-                  );
-                const foraDaLista = lista.length > 0 && x.descricao.trim() !== '' && !daLista(x.descricao);
-                return (
-                  <li key={i} className="grid grid-cols-[5rem_6rem_1fr_auto] gap-2 sm:grid-cols-[6rem_8rem_1fr_auto]">
-                    <input
-                      aria-label={`Quantidade do item ${i + 1}`}
-                      inputMode="decimal"
-                      value={x.quantidade}
-                      onChange={(e) => mudar('quantidade', e.target.value)}
-                      className={`${estiloEntrada} !mt-0 text-right`}
-                    />
-                    <input
-                      aria-label={`Unidade do item ${i + 1}`}
-                      list="unidades"
-                      value={x.unidade}
-                      readOnly={lista.length > 0}
-                      tabIndex={lista.length > 0 ? -1 : undefined}
-                      onChange={(e) => mudar('unidade', e.target.value)}
-                      className={`${estiloEntrada} !mt-0 ${lista.length > 0 ? 'bg-superficie-2' : ''}`}
-                    />
-                    <input
-                      aria-label={`Descrição do item ${i + 1}`}
-                      value={x.descricao}
-                      list={lista.length ? 'itens-do-tipo' : undefined}
-                      onChange={(e) => mudar('descricao', e.target.value)}
-                      placeholder={lista.length ? 'Digite e escolha da lista' : 'Ex.: Detergente neutro 500 ml'}
-                      aria-invalid={foraDaLista || undefined}
-                      title={foraDaLista ? 'Este item não está na lista deste tipo' : undefined}
-                      className={`${estiloEntrada} !mt-0 ${foraDaLista ? 'border-erro' : ''}`}
-                    />
-                    <Botao
-                      type="button"
-                      variante="icone"
-                      aria-label={`Tirar o item ${i + 1}`}
-                      disabled={itens.length === 1}
-                      onClick={() => setItens(itens.filter((_, k) => k !== i))}
-                    >
-                      <IconeLixeira tamanho={16} />
-                    </Botao>
-                  </li>
-                );
-              })}
-            </ul>
-            <Botao type="button" variante="fantasma" onClick={() => setItens([...itens, vazioItem()])}>
-              <IconeMais tamanho={16} /> Adicionar item
-            </Botao>
-            <Campo rotulo="Utensílios" dica="Panelas, travessas, copos… se o pedido for para cozinha ou evento.">
-              <textarea value={utensilios} onChange={(e) => setUtensilios(e.target.value)} rows={2} className={estiloEntrada} />
-            </Campo>
-          </section>
-
-          <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
-            <h2 className="text-lg font-bold">Retirada ou entrega</h2>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
-              {(
-                [
-                  ['retirada', 'Retirada no almoxarifado'],
-                  ['entrega', 'Entrega no local'],
-                ] as const
-              ).map(([v, r]) => (
-                <label key={v} className="flex items-center gap-2">
-                  <input type="radio" name="modo-entrega" checked={modo === v} onChange={() => setModo(v)} /> {r}
-                </label>
-              ))}
-            </div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Campo rotulo="Horário" dica={modo === 'retirada' ? 'Ex.: 08:10 ou 13:40' : undefined}>
-                <input value={entrega.horario} onChange={(e) => setEntrega({ ...entrega, horario: e.target.value })} className={estiloEntrada} />
-              </Campo>
-              <Campo rotulo="Local">
-                <input value={entrega.local} onChange={(e) => setEntrega({ ...entrega, local: e.target.value })} className={estiloEntrada} />
-              </Campo>
-              <Campo rotulo={modo === 'retirada' ? 'Quem vai retirar' : 'Quem vai receber'}>
-                <input value={entrega.responsavel} onChange={(e) => setEntrega({ ...entrega, responsavel: e.target.value })} className={estiloEntrada} />
-              </Campo>
-            </div>
-          </section>
-
-          <section className="space-y-3 rounded-cartao border border-borda bg-superficie p-5">
-            <label className="flex items-center gap-2 text-sm font-semibold">
-              <input type="checkbox" checked={temEvento} onChange={(e) => setTemEvento(e.target.checked)} />É para um evento
-            </label>
-            {temEvento && (
-              <div className="grid gap-4 sm:grid-cols-3">
-                <Campo rotulo="Evento" obrigatorio className="sm:col-span-2">
-                  <input value={evento.nome} onChange={(e) => setEvento({ ...evento, nome: e.target.value })} className={estiloEntrada} />
-                </Campo>
-                <Campo rotulo="Data do evento" obrigatorio>
-                  <input type="date" value={evento.data} onChange={(e) => setEvento({ ...evento, data: e.target.value })} className={estiloEntrada} />
-                </Campo>
-                <Campo rotulo="Horário">
-                  <input value={evento.horario} onChange={(e) => setEvento({ ...evento, horario: e.target.value })} className={estiloEntrada} />
-                </Campo>
-                <Campo rotulo="Local">
-                  <input value={evento.local} onChange={(e) => setEvento({ ...evento, local: e.target.value })} className={estiloEntrada} />
-                </Campo>
-                <Campo rotulo="Participantes">
-                  <input
-                    inputMode="numeric"
-                    value={evento.participantes}
-                    onChange={(e) => setEvento({ ...evento, participantes: e.target.value.replace(/\D/g, '') })}
-                    className={estiloEntrada}
-                  />
-                </Campo>
-                <Campo rotulo="Público-alvo" className="sm:col-span-3">
-                  <input value={evento.publico} onChange={(e) => setEvento({ ...evento, publico: e.target.value })} className={estiloEntrada} />
-                </Campo>
-              </div>
-            )}
-          </section>
-        </>
-      )}
-
-      {tipo?.formulario === 'ti' && (
-        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-          <h2 className="text-lg font-bold">Chamado de TI</h2>
-          <fieldset className="min-w-0 text-sm">
-            <legend className="font-semibold">
-              Do que é o chamado <span className="text-erro">*</span>
-            </legend>
-            <div className="mt-2 grid gap-2 sm:grid-cols-3">
-              {Object.entries(CATEGORIAS_TI).map(([v, r]) => (
-                <label
-                  key={v}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 ${ti.categoria === v ? 'border-destaque bg-destaque-suave' : 'border-borda'}`}
-                >
-                  <input type="radio" name="categoria-ti" checked={ti.categoria === v} onChange={() => setTi({ ...ti, categoria: v as CategoriaTi })} />
-                  {r}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Campo rotulo="Equipamento ou sistema" dica="Ex.: notebook da recepção, sistema da secretaria." className="sm:col-span-2">
-              <input value={ti.equipamento} onChange={(e) => setTi({ ...ti, equipamento: e.target.value })} className={estiloEntrada} />
-            </Campo>
-            <Campo rotulo="Nº de patrimônio" dica="A etiqueta do equipamento, se houver.">
-              <input value={ti.patrimonio} onChange={(e) => setTi({ ...ti, patrimonio: e.target.value })} className={estiloEntrada} />
-            </Campo>
-            <Campo rotulo="Onde está" obrigatorio dica="Sala, setor ou unidade." className="sm:col-span-2">
-              <input value={ti.local} onChange={(e) => setTi({ ...ti, local: e.target.value })} className={estiloEntrada} />
-            </Campo>
-            <Campo rotulo="Contato" dica="Ramal ou telefone para o técnico falar com você.">
-              <input value={ti.contato} onChange={(e) => setTi({ ...ti, contato: e.target.value })} className={estiloEntrada} />
-            </Campo>
-          </div>
-          <Campo rotulo="O que está acontecendo" obrigatorio dica="Desde quando, o que aparece na tela, o que já foi tentado.">
-            <textarea value={ti.problema} onChange={(e) => setTi({ ...ti, problema: e.target.value })} rows={4} className={estiloEntrada} />
+            </select>
           </Campo>
-          <fieldset className="min-w-0 text-sm">
-            <legend className="font-semibold">
-              Urgência <span className="text-erro">*</span>
-            </legend>
-            <div className="mt-2 space-y-1.5">
-              {Object.entries(URGENCIAS).map(([v, r]) => (
-                <label key={v} className="flex items-center gap-2">
-                  <input type="radio" name="urgencia-ti" checked={ti.urgencia === v} onChange={() => setTi({ ...ti, urgencia: v as Urgencia })} />
-                  {r}
-                </label>
+          <Campo rotulo="Área" obrigatorio>
+            <select value={area} onChange={(e) => setArea(e.target.value)} required className={estiloEntrada}>
+              <option value="">Escolha…</option>
+              {areasDoTipo.map((a) => (
+                <option key={a.codigo} value={a.codigo}>
+                  {a.nome}
+                </option>
               ))}
-            </div>
-          </fieldset>
-        </section>
-      )}
+            </select>
+          </Campo>
+        </div>
+      </section>
 
-      {tipo?.formulario === 'mobiliario' && (
+      {opcoes.projetos && opcoes.projetos.length > 0 && (
         <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-          <h2 className="text-lg font-bold">Mobiliário</h2>
-          <fieldset className="min-w-0 text-sm">
-            <legend className="font-semibold">
-              O que precisa ser feito <span className="text-erro">*</span>
-            </legend>
-            <div className="mt-2 grid gap-2 sm:grid-cols-3">
-              {Object.entries(SERVICOS_MOBILIARIO).map(([v, r]) => (
-                <label
-                  key={v}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 ${mob.servico === v ? 'border-destaque bg-destaque-suave' : 'border-borda'}`}
-                >
-                  <input
-                    type="radio"
-                    name="servico-mobiliario"
-                    checked={mob.servico === v}
-                    onChange={() => setMob({ ...mob, servico: v as ServicoMobiliario })}
-                  />
-                  {r}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-
-          <div className="space-y-2">
-            <p className="text-sm font-semibold">
-              Móveis <span className="text-erro">*</span>
-            </p>
-            <div className="hidden grid-cols-[6rem_1fr_10rem_auto] gap-2 text-sm text-texto-suave sm:grid">
-              <span>Quantidade</span>
-              <span>Móvel</span>
-              <span>Nº de patrimônio</span>
-              <span className="w-10" />
-            </div>
-            <ul className="space-y-2">
-              {moveis.map((m, i) => {
-                const mudar = (campo: keyof typeof m, v: string) => setMoveis(moveis.map((y, k) => (k === i ? { ...y, [campo]: v } : y)));
-                return (
-                  <li key={i} className="grid grid-cols-[4.5rem_1fr_auto] gap-2 sm:grid-cols-[6rem_1fr_10rem_auto]">
-                    <input
-                      aria-label={`Quantidade do móvel ${i + 1}`}
-                      inputMode="numeric"
-                      value={m.quantidade}
-                      onChange={(e) => mudar('quantidade', e.target.value.replace(/\D/g, ''))}
-                      className={`${estiloEntrada} !mt-0 text-right`}
-                    />
-                    <input
-                      aria-label={`Móvel ${i + 1}`}
-                      value={m.descricao}
-                      onChange={(e) => mudar('descricao', e.target.value)}
-                      placeholder="Ex.: mesa de escritório"
-                      className={`${estiloEntrada} !mt-0`}
-                    />
-                    <input
-                      aria-label={`Patrimônio do móvel ${i + 1}`}
-                      value={m.patrimonio}
-                      onChange={(e) => mudar('patrimonio', e.target.value)}
-                      placeholder="Se houver"
-                      className={`${estiloEntrada} !mt-0 col-span-2 sm:col-span-1`}
-                    />
-                    <Botao
-                      type="button"
-                      variante="icone"
-                      aria-label={`Tirar o móvel ${i + 1}`}
-                      disabled={moveis.length === 1}
-                      onClick={() => setMoveis(moveis.filter((_, k) => k !== i))}
-                    >
-                      <IconeLixeira tamanho={16} />
-                    </Botao>
-                  </li>
-                );
-              })}
-            </ul>
-            <Botao type="button" variante="fantasma" onClick={() => setMoveis([...moveis, { quantidade: '1', descricao: '', patrimonio: '' }])}>
-              <IconeMais tamanho={16} /> Outro móvel
-            </Botao>
-          </div>
-
+          <h2 className="text-lg font-bold">Projeto</h2>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Campo rotulo="De onde" obrigatorio dica="Sala, setor ou unidade onde os móveis estão.">
-              <input value={mob.origem} onChange={(e) => setMob({ ...mob, origem: e.target.value })} className={estiloEntrada} />
+            <Campo rotulo="Esta compra é de um projeto?" dica="Opcional. Só aparecem projetos em implementação que você pode ver.">
+              <select value={projetoId} onChange={(e) => escolherProjeto(e.target.value)} className={estiloEntrada}>
+                <option value="">Não é de um projeto</option>
+                {opcoes.projetos.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.codigo} · {x.titulo}
+                  </option>
+                ))}
+              </select>
             </Campo>
-            <Campo
-              rotulo="Para onde"
-              obrigatorio={mob.servico === 'movimentacao' || mob.servico === 'emprestimo'}
-              dica={mob.servico === 'recolhimento' ? 'Se já souber para onde levar.' : 'Sala, setor, unidade ou local do evento.'}
-            >
-              <input value={mob.destino} onChange={(e) => setMob({ ...mob, destino: e.target.value })} className={estiloEntrada} />
-            </Campo>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-4">
-            <Campo rotulo="Para quando" obrigatorio>
-              <input type="date" value={mob.data} onChange={(e) => setMob({ ...mob, data: e.target.value })} className={estiloEntrada} />
-            </Campo>
-            <Campo rotulo="Horário">
-              <input value={mob.horario} onChange={(e) => setMob({ ...mob, horario: e.target.value })} placeholder="Ex.: 14:00" className={estiloEntrada} />
-            </Campo>
-            {mob.servico === 'emprestimo' && (
-              <Campo rotulo="Devolução" obrigatorio dica="Quando os móveis voltam.">
-                <input type="date" value={mob.devolucao} onChange={(e) => setMob({ ...mob, devolucao: e.target.value })} className={estiloEntrada} />
+            {projeto && (
+              <Campo rotulo="Atividade" dica="A atividade é opcional; informe se quiser ver o gasto por atividade no projeto.">
+                <select value={atividadeId} onChange={(e) => setAtividadeId(e.target.value)} className={estiloEntrada}>
+                  <option value="">Sem atividade</option>
+                  {projeto.atividades.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.descricao}
+                    </option>
+                  ))}
+                </select>
               </Campo>
             )}
-            <Campo rotulo="Contato" dica="Ramal ou telefone.">
-              <input value={mob.contato} onChange={(e) => setMob({ ...mob, contato: e.target.value })} className={estiloEntrada} />
-            </Campo>
           </div>
         </section>
       )}
 
-      {tipo?.formulario === 'manutencao' && (
-        <section className="space-y-4 rounded-cartao border border-borda bg-superficie p-5">
-          <h2 className="text-lg font-bold">Manutenção</h2>
-          <fieldset className="min-w-0 text-sm">
-            <legend className="font-semibold">
-              Tipo de serviço <span className="text-erro">*</span>
-            </legend>
-            <div className="mt-2 grid gap-2 sm:grid-cols-4">
-              {Object.entries(SERVICOS_MANUTENCAO).map(([v, r]) => (
-                <label
-                  key={v}
-                  className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 ${man.servico === v ? 'border-destaque bg-destaque-suave' : 'border-borda'}`}
-                >
-                  <input
-                    type="radio"
-                    name="servico-manutencao"
-                    checked={man.servico === v}
-                    onChange={() => setMan({ ...man, servico: v as ServicoManutencao })}
-                  />
-                  {r}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Campo rotulo="Onde é o serviço" obrigatorio dica="Unidade, sala ou setor. Ex.: Sede, banheiro do pátio." className="sm:col-span-2">
-              <input value={man.local} onChange={(e) => setMan({ ...man, local: e.target.value })} className={estiloEntrada} />
-            </Campo>
-            <Campo rotulo="Contato" dica="Ramal ou telefone.">
-              <input value={man.contato} onChange={(e) => setMan({ ...man, contato: e.target.value })} className={estiloEntrada} />
-            </Campo>
-            <Campo rotulo="Equipamento" dica="Se for um aparelho. Ex.: geladeira da cozinha." className="sm:col-span-2">
-              <input value={man.equipamento} onChange={(e) => setMan({ ...man, equipamento: e.target.value })} className={estiloEntrada} />
-            </Campo>
-            <Campo rotulo="Nº de patrimônio" dica="A etiqueta, se houver.">
-              <input value={man.patrimonio} onChange={(e) => setMan({ ...man, patrimonio: e.target.value })} className={estiloEntrada} />
-            </Campo>
-          </div>
-          <Campo
-            rotulo="Qual é o problema"
-            obrigatorio
-            dica="Descreva com detalhes: o que aconteceu, desde quando, se há risco. Fotos ainda não podem ser anexadas."
-          >
-            <textarea value={man.problema} onChange={(e) => setMan({ ...man, problema: e.target.value })} rows={4} className={estiloEntrada} />
-          </Campo>
-          <Campo rotulo="Melhor horário para o serviço" dica="Ex.: depois das 16h, quando a sala está vazia.">
-            <input value={man.horario} onChange={(e) => setMan({ ...man, horario: e.target.value })} className={estiloEntrada} />
-          </Campo>
-          <fieldset className="min-w-0 text-sm">
-            <legend className="font-semibold">
-              Urgência <span className="text-erro">*</span>
-            </legend>
-            <div className="mt-2 space-y-1.5">
-              {Object.entries(URGENCIAS).map(([v, r]) => (
-                <label key={v} className="flex items-center gap-2">
-                  <input type="radio" name="urgencia-manutencao" checked={man.urgencia === v} onChange={() => setMan({ ...man, urgencia: v as Urgencia })} />
-                  {r}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        </section>
+      {tipo?.formulario !== 'espaco' && blocoCentros}
+
+      {/* Ficha própria do tipo: cada uma só conhece os campos do seu tipo. */}
+      {tipo?.formulario === 'espaco' ? (
+        <>
+          <FichaEspaco key="espaco" inicial={inicial} tipo={tipo} espacos={opcoes.espacos} aoMudar={setSaida} />
+          {/* Reserva: os centros vêm depois de "cessão para fora"; cedida para fora, não há centros. */}
+          {!saida.semCentros && blocoCentros}
+        </>
+      ) : tipo?.formulario === 'ti' ? (
+        <FichaTi key="ti" inicial={inicial} tipo={tipo} aoMudar={setSaida} />
+      ) : tipo?.formulario === 'mobiliario' ? (
+        <FichaMobiliario key="mobiliario" inicial={inicial} tipo={tipo} aoMudar={setSaida} />
+      ) : tipo?.formulario === 'manutencao' ? (
+        <FichaManutencao key="manutencao" inicial={inicial} tipo={tipo} aoMudar={setSaida} />
+      ) : (
+        <FichaMateriais key="materiais" inicial={inicial} tipo={tipo} aoMudar={setSaida} />
       )}
 
       {mostraAnexos && <AnexosDaRequisicao tipoId={tipoId} anexos={anexos} mudar={setAnexos} iniciar={iniciarEnvio!} />}
