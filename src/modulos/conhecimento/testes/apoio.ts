@@ -56,6 +56,7 @@ export function dados(x: Partial<DadosPublicacao> = {}): DadosPublicacao {
     publicoTipo: 'todos',
     publicoValor: null,
     exigeCiencia: true,
+    temTeste: false,
     publicar: true,
     ...x,
   };
