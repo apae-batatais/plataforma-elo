@@ -12,7 +12,7 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
   ação e o caso de uso confere a designação.
 - Permissões: `projetos.<ação>`, no manifesto.
 - Situação: entregas **P1 (base)**, **P2 (fases 1 e 2)** **P3 (fase 3: atividades e orçamento do projeto, porta 3 e início da implementação)** e
-  **P4 (problemas, pedidos de mudança e relatórios)** e **P5 (encerramento e lições)** prontas. Faltam P6 e P7 (carteira, ligações). `projetos.carteira` entra com a P6.
+  **P4 (problemas, pedidos de mudança e relatórios)** e **P5 (encerramento e lições)** prontas. **P6 (carteira)** e **P7 (ligações)** prontas.
 - Fase 3 (`aplicacao/planejamento.ts`, `dominio/planejamento.ts`): `Atividades` (atrasada é calculada, nunca gravada) e `ProjetoOrcamento`
   (só o plano do projeto; nada vai ao Orçamento da instituição). Atividades mudam na fase 3 e na implementação; o orçamento só na fase 3.
   A equipe vê as atividades, não o orçamento. Porta 3 (`plano`) só no porte completo; o enxuto usa `iniciarImplementacao`. A etapa
@@ -44,3 +44,4 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
   não pede parecer; seguir encerra, ajustar mantém a fase 5, parar volta à implementação. Ao abrir a porta, chama `fotografarIndicadores` com origem `encerramento`.
   Lição também em projeto parado ou cancelado, com relatório resumido (item `relatorio_final`). `consultarLicoes` mostra a lição a quem tem `projetos.acessar`, sem
   identificar o projeto a quem não o vê. `encerramentoAtrasado` (padrão 30 dias, `DIAS_ENCERRAMENTO_PADRAO`) é o ponto de chamada da carteira (P6). Textos nunca na auditoria.
+- Carteira (**P6 pronta**, `aplicacao/carteira.ts`, rota `/projetos/carteira`): não cria aba. Cinco números (portas pendentes, fora da tolerância, problemas altos, encerramentos atrasados, em andamento), cada um com a lista filtrada (`?ver=`). `projetos.carteira` (Diretoria e Leitura) vê todos os projetos fora do rascunho; sem ela a leitura é recusada. Nunca devolve texto de parecer. Usa `motivosForaDaTolerancia` (P4) e `encerramentoAtrasado` (P5).
