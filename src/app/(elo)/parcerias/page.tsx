@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { listarTermos, termosComAlertaDeOciosas } from '@/modulos/parcerias/aplicacao/parcerias';
 import { dinheiro, NOME_TIPO } from '@/modulos/parcerias/dominio/termos';
+import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { rascunhosDeTermo } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -20,7 +21,11 @@ export default async function Termos({ searchParams }: { searchParams: Promise<{
   if (!usuario) redirect('/entrar');
   const { planilhas } = await obterAplicacao();
   const q = await searchParams;
-  const termos = await listarTermos(planilhas, usuario.autorizador);
+  // Quem não vê os termos (ex.: Administração da Plataforma) volta ao início em vez de ver "Algo deu errado".
+  const termos = await listarTermos(planilhas, usuario.autorizador).catch((erro) => {
+    if (erro instanceof ErroPermissao) redirect('/');
+    throw erro;
+  });
   const ociosas = await termosComAlertaDeOciosas(planilhas, usuario.autorizador);
   const rascunhos = await rascunhosDeTermo(planilhas, usuario.autorizador);
   const acaba = termos.filter((t) => t.terminaEmAte90Dias);
