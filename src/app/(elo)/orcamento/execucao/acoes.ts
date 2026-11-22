@@ -43,6 +43,8 @@ export async function acaoSalvarRealizado(f: FormData) {
         motivo: c('motivo') || null,
         observacao: c('obs') || null,
         termoId: c('termo') || null,
+        itemId: c('item'),
+        areaPlanoId: c('areaplano'),
         versao: versao ? Number(versao) : undefined,
       });
     }
