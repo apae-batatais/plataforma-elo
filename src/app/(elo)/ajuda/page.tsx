@@ -82,6 +82,8 @@ export default async function Ajuda() {
     publicar: a.temPermissao('conhecimento.publicar'),
     acompanharConhecimento: a.temPermissao('conhecimento.acompanhar'),
     categoriasConhecimento: a.temPermissao('conhecimento.categorias.gerenciar'),
+    projetos: a.temPermissaoAlgumEscopo('projetos.acessar'),
+    gerenciarProjetos: a.temPermissaoAlgumEscopo('projetos.gerenciar'),
     comunicacao: a.temPermissaoAlgumEscopo('comunicacao.solicitar') || a.temPermissao('comunicacao.revisar'),
     equipeComunicacao: a.temPermissao('comunicacao.revisar'),
     configurarComunicacao: a.temPermissao('comunicacao.configurar'),
@@ -594,6 +596,34 @@ export default async function Ajuda() {
               <p>Em Categorias, adicione e desative categorias. Não dá para desativar uma categoria que ainda tem publicação (que não esteja arquivada); desativadas podem ser reativadas.</p>
             </>
           )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.projetos) {
+    assuntos.push({
+      id: 'projetos',
+      titulo: 'Projetos',
+      resumo: 'Ideias e projetos da instituição, do marco lógico aos indicadores que vêm do cadastro.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Sub>Indicadores do marco lógico</Sub>
+          <Passos
+            itens={[
+              'Abra o projeto e a aba Marco lógico. No alto aparece o bloco Indicadores: cada indicador mostra a meta, o número de hoje e se está dentro ou abaixo da meta.',
+              ...(pode.gerenciarProjetos
+                ? [
+                    'Em um item que já tem indicador, escolha De onde vem o número: pessoas com vínculo ativo no serviço, índice médio de necessidade de cuidado ou % de pessoas com reavaliação em dia. Depois escolha o serviço; cada escolha salva sozinha. Se preferir informar você mesmo, escolha Digitado à mão.',
+                    'Para marcar a meta, digite o número (ex.: 80) e clique em Salvar meta.',
+                    'Clique em Registrar medição para guardar os números de hoje no histórico do projeto. Cada medição é uma linha nova; as anteriores não mudam.',
+                  ]
+                : []),
+              'Números sobre pessoas só aparecem quando há 5 pessoas ou mais. Com menos, o Elo mostra "Poucos casos para divulgar" e nunca o valor, para ninguém ser identificado. Nenhum nome ou dado individual vai para o projeto.',
+              'Se o app Avaliação estiver desligado, o indicador mostra "Ligação indisponível" e vale o número digitado à mão, se houver.',
+            ]}
+          />
         </>
       ),
     });

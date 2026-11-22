@@ -10,6 +10,7 @@
  */
 import { z } from 'zod';
 import { booleano, dataOpcional, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
+import { FONTES_NUMERO, MOTIVOS_SEM_NUMERO, ORIGENS_MEDICAO } from '../dominio/indicadores';
 import { GRAUS, NIVEIS_MARCO, SITUACOES_RISCO } from '../dominio/fases';
 import { DECISOES, ETAPAS, NIVEIS_DECISAO, PORTES, RESULTADOS_PARECER, SITUACOES_PORTA, TIPOS_PARECER, TIPOS_PORTA, TIPOS_PROJETO } from '../dominio/projeto';
 
@@ -135,6 +136,29 @@ export const MarcoLogico = definirTabela({
     pressuposto: textoOpcional(),
     /** Id do item do nível imediatamente acima. */
     acima: textoOpcional(),
+    /** De onde vem o número do indicador (L1 da onda 2); vazio vale `manual`. */
+    fonte_numero: z.preprocess((v) => (v === '' || v == null ? 'manual' : v), z.enum(FONTES_NUMERO)),
+    /** Código do serviço do Núcleo e cópia do nome; obrigatório com fonte automática. */
+    servico_id: textoOpcional(),
+    servico_nome: textoOpcional(),
+    meta: numeroOpcional(),
+  }),
+});
+
+/** Fotografia de um indicador automático (regra L12). Linha nunca editada: nova medição é outra linha. */
+export const IndicadoresMedidos = definirTabela({
+  planilha: PLANILHA_PROJETOS,
+  aba: 'IndicadoresMedidos',
+  esquema: z.object({
+    projeto_id: texto(),
+    item_id: texto(),
+    data: texto(),
+    valor: numeroOpcional(),
+    /** Quantas pessoas entraram na conta. */
+    base: z.preprocess((v) => (v === '' || v == null ? 0 : Number(v)), z.number().int().min(0)),
+    motivo: z.preprocess((v) => (v === '' || v == null ? null : v), z.enum(MOTIVOS_SEM_NUMERO).nullable()),
+    origem: z.enum(ORIGENS_MEDICAO),
+    registrado_por: texto(),
   }),
 });
 
@@ -165,11 +189,12 @@ export const ProjetoEquipe = definirTabela({
   }),
 });
 
-export const TABELAS_PROJETOS = [Projetos, ProjetoDocumentos, MarcoLogico, Riscos, ProjetoEquipe, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
+export const TABELAS_PROJETOS = [Projetos, ProjetoDocumentos, MarcoLogico, IndicadoresMedidos, Riscos, ProjetoEquipe, Portas, Pareceres, Decisoes, ConfigProjetos, HistoricoProjetos] as const;
 
 export type RegProjeto = Registro<typeof Projetos.esquema>;
 export type RegDocumento = Registro<typeof ProjetoDocumentos.esquema>;
 export type RegMarco = Registro<typeof MarcoLogico.esquema>;
+export type RegMedicao = Registro<typeof IndicadoresMedidos.esquema>;
 export type RegRisco = Registro<typeof Riscos.esquema>;
 export type RegEquipe = Registro<typeof ProjetoEquipe.esquema>;
 export type RegPorta = Registro<typeof Portas.esquema>;
