@@ -5,7 +5,7 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { lerTabela, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { ligacaoOk, ligacaoSemPermissao, type Ligacao } from '@/nucleo/ligacoes/ligacao';
-import { Projetos } from '../dados/tabelas';
+import { Atividades, Projetos } from '../dados/tabelas';
 import { aceitaCompra, NOME_ETAPA, type Etapa } from '../dominio/projeto';
 import { equipesAtivas, lerConfig, podeVerProjeto } from './comum';
 
@@ -53,13 +53,21 @@ export interface ProjetoParaCompra {
 /** Projetos que a pessoa vê e que aceitam compra (em implementação). */
 export async function projetosParaCompra(p: Planilhas, quem: Autorizador): Promise<Ligacao<ProjetoParaCompra[]>> {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) return ligacaoSemPermissao();
-  const [projetos, config, equipes] = await Promise.all([lerTabela(p, Projetos), lerConfig(p), equipesAtivas(p)]);
+  const [projetos, atividades, config, equipes] = await Promise.all([lerTabela(p, Projetos), lerTabela(p, Atividades), lerConfig(p), equipesAtivas(p)]);
   return ligacaoOk(
     projetos
       .ativos()
       .filter((r) => aceitaCompra(r.etapa) && podeVerProjeto(quem, r, config, equipes.get(r.id)))
       .sort((a, b) => a.codigo.localeCompare(b.codigo))
-      // As atividades do projeto chegam com a entrega P3; até lá a lista é vazia.
-      .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo, servico: r.servico, atividades: [] })),
+      .map((r) => ({
+        id: r.id,
+        codigo: r.codigo,
+        titulo: r.titulo,
+        servico: r.servico,
+        atividades: atividades
+          .ativos()
+          .filter((a) => a.projeto_id === r.id && (a.situacao === 'a_fazer' || a.situacao === 'em_andamento'))
+          .map((a) => ({ id: a.id, descricao: a.descricao })),
+      })),
   );
 }
