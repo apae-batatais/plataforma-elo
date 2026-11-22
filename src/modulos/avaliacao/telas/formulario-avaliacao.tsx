@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Questionário da Avaliação de Serviços Sociais: uma tela só, em três colunas no computador.
+ * Questionário da Assistência Social: uma tela só, em três colunas no computador.
  * As respostas ficam no navegador até salvar: um erro não apaga nada.
  * O índice de necessidade de cuidado é recalculado a cada resposta.
  */

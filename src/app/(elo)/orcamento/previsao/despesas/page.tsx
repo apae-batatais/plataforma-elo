@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { BotaoBaixar } from '@/modulos/orcamento/telas/botao-baixar';
 import { redirect } from 'next/navigation';
 import { lerPrevisao } from '@/modulos/orcamento/aplicacao/previsao';
@@ -49,6 +50,9 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
             <SeletorCedidos temCedidos={prev.cedidos.temCedidos} incluir={incluir} total={prev.cedidos.anual} href={(i) => `/orcamento/previsao/despesas?ano=${prev.ano}${i ? '' : '&cedidos=0'}`} />
             <SeletorAno anos={prev.anos} atual={prev.ano} href={(a) => `/orcamento/previsao/despesas?ano=${a}${incluir ? '' : '&cedidos=0'}`} />
             <BotaoBaixar href={`/orcamento/previsao/baixar/despesas?ano=${prev.ano}`} rotulo={`Baixar planilha (ano ${prev.ano})`} vazio={prev.despesas.length === 0 && !(prev.folha?.linhas.length)} />
+            <LinkBotao href={`/orcamento/previsao/rateio?ano=${prev.ano}`} variante="secundario" className={pequeno}>
+              Despesas por rateio
+            </LinkBotao>
             {podeLancar && (
               <JanelaFormulario
                 rotulo={
@@ -108,7 +112,7 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
               { chave: 'cotacao', rotulo: 'Cotação', secundaria: true },
               { chave: 'meses', rotulo: 'Meses', secundaria: true },
               { chave: 'valor', rotulo: 'Valor', tipo: 'moeda', somar: true },
-              ...(prev.podeEditar ? [{ chave: 'acoes', rotulo: '', fixa: true, largura: 'w-20' }] : []),
+              ...(prev.podeEditar ? [{ chave: 'acoes', rotulo: '', fixa: true, largura: 'w-36' }] : []),
             ]}
             linhas={prev.despesas.map((d) => ({
               id: d.id,
@@ -129,6 +133,11 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                 descricao: (
                   <>
                     <span className="font-semibold">{d.descricao}</span>
+                    {d.lancamento_rateio_id && (
+                      <span className="ml-2 align-middle">
+                        <Etiqueta tipo="info">Gerada por rateio</Etiqueta>
+                      </span>
+                    )}
                     <span className="block text-xs tabular-nums text-texto-suave">
                       {numero(d.quantidade)} × {numero(d.ocorrencias)} × {reais(d.valor_unitario)}
                     </span>
@@ -164,7 +173,13 @@ export default async function Despesas({ searchParams }: { searchParams: Promise
                       <span className="block text-xs text-texto-suave">antes: {reais(d.valorOriginal)}</span>
                     </span>
                   ) : undefined,
-                acoes: (
+                acoes: d.lancamento_rateio_id ? (
+                  <div className="flex flex-col items-end gap-1">
+                    <Link href={`/orcamento/previsao/rateio?ano=${prev.ano}${prev.exercicio?.situacao === 'elaboracao' ? `&editar=${d.lancamento_rateio_id}` : ''}`} className="whitespace-nowrap text-xs underline">
+                      Ver lançamento de origem
+                    </Link>
+                  </div>
+                ) : (
                   <div className="flex justify-end gap-1">
                     <LinkBotao href={`${base}&editar=${d.id}`} scroll={false} variante="icone" aria-label={`Alterar ${d.descricao}`} title="Alterar">
                       <IconeEditar tamanho={16} />

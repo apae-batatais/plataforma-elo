@@ -1,0 +1,108 @@
+import type { Metadata } from 'next';
+import { notFound, redirect } from 'next/navigation';
+import { lerPublicacao } from '@/modulos/conhecimento/aplicacao/publicacoes';
+import { ErroConhecimento } from '@/modulos/conhecimento/dominio/publicacao';
+import { EtiquetaDaPessoa, formatarData, formatarDataHora } from '@/modulos/conhecimento/telas/rotulos';
+import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import { obterAplicacao } from '@/plataforma/aplicacao';
+import { usuarioLogado } from '@/plataforma/sessao';
+import { Aviso } from '@/ui/aviso';
+import { LinkBotao } from '@/ui/botao';
+import { FormularioConfirmado } from '@/ui/confirmar';
+import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
+import { acaoDarCiencia } from '../acoes';
+
+export const metadata: Metadata = { title: 'Publicação' };
+
+export default async function Publicacao({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const usuario = await usuarioLogado();
+  if (!usuario) redirect('/entrar');
+  const { planilhas } = await obterAplicacao();
+  let x;
+  try {
+    x = await lerPublicacao(planilhas, usuario.autorizador, id);
+  } catch (erro) {
+    if (erro instanceof ErroPermissao)
+      return (
+        <section className="mx-auto max-w-2xl py-8">
+          <EstadoVazio titulo="Esta publicação não é para o seu perfil" acao={<LinkBotao href="/conhecimento" variante="secundario">Voltar à biblioteca</LinkBotao>}>
+            Se você acha que deveria ler, fale com quem publicou.
+          </EstadoVazio>
+        </section>
+      );
+    if (erro instanceof ErroConhecimento) notFound();
+    throw erro;
+  }
+  const publica = usuario.autorizador.temPermissao('conhecimento.publicar');
+
+  return (
+    <div className="space-y-6">
+      <CabecalhoPagina
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Base de Conhecimento', href: '/conhecimento' }, { rotulo: x.titulo }]}
+        titulo={x.titulo}
+        descricao={
+          <>
+            {x.categoriaNome} · por {x.autorNome} · {x.publicadaEm ? `publicada em ${formatarData(x.publicadaEm)}` : 'rascunho'}
+          </>
+        }
+        acoes={publica ? <LinkBotao href={`/conhecimento/publicacoes/${x.id}/editar`} variante="secundario">Editar</LinkBotao> : undefined}
+      />
+
+      {x.situacao === 'rascunho' && <Aviso tipo="info">Rascunho: só quem publica vê esta página. Ninguém recebe pendência até publicar.</Aviso>}
+      {x.situacao === 'arquivada' && <Aviso tipo="info">Publicação arquivada. Ela fica aqui só para consulta e não aceita nova ciência.</Aviso>}
+
+      {x.exigeCiencia && x.doPublico && x.situacao !== 'rascunho' && (
+        <section aria-labelledby="t-falta" className="rounded-cartao border border-borda-forte bg-superficie p-5 md:sticky md:top-2 md:z-10">
+          <h2 id="t-falta" className="flex flex-wrap items-center gap-2 text-lg font-bold">
+            O que falta <EtiquetaDaPessoa situacao={x.minhaSituacao} vencida={x.vencida} />
+          </h2>
+          {x.minhaSituacao === 'em_dia' ? (
+            <p className="mt-1">Em dia desde {formatarDataHora(x.minhaCienciaEm)}. Você não precisa fazer mais nada.</p>
+          ) : x.podeDarCiencia ? (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <p className="text-texto-suave">
+                {x.minhaSituacao === 'precisa_renovar' ? 'O conteúdo mudou: leia de novo e confirme.' : 'Leia o documento e confirme que está de acordo.'}
+              </p>
+              <FormularioConfirmado
+                acao={acaoDarCiencia}
+                campos={{ id: x.id }}
+                rotulo="Li e estou de acordo"
+                variante="primario"
+                perigoso={false}
+                titulo="Confirmar ciência?"
+                mensagem="Isto registra que você leu e está de acordo, com seu nome, data e hora. Não dá para desfazer."
+                confirmar="Confirmar ciência"
+              />
+            </div>
+          ) : null}
+        </section>
+      )}
+
+      {x.exigeCiencia && !x.doPublico && publica && x.situacao !== 'rascunho' && (
+        <Aviso tipo="info">Você vê esta publicação por poder publicar, mas não faz parte do público dela. Por isso não há ciência a dar.</Aviso>
+      )}
+
+      <Secao titulo="Conteúdo" id="t-conteudo">
+        {x.resumo && <p className="mb-4 text-lg text-texto-suave">{x.resumo}</p>}
+        {x.corpo ? <div className="max-w-prose space-y-3 whitespace-pre-wrap leading-relaxed">{x.corpo}</div> : !x.anexoNome && <p className="text-texto-suave">Sem texto.</p>}
+        {x.anexoNome && (
+          <div className="mt-5 space-y-3 border-t border-borda pt-4">
+            <p className="flex flex-wrap items-center gap-2">
+              <Etiqueta tipo="info">{x.anexoTipo === 'pdf' ? 'PDF' : 'Imagem'}</Etiqueta>
+              <span className="font-semibold">{x.anexoNome}</span>
+            </p>
+            {x.anexoTipo === 'imagem' ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`/conhecimento/anexos/${x.id}`} alt={`Imagem anexada: ${x.anexoNome}`} className="max-h-[32rem] max-w-full rounded-lg border border-borda" />
+            ) : (
+              <LinkBotao href={`/conhecimento/anexos/${x.id}`} target="_blank" rel="noopener" variante="secundario">
+                Abrir PDF
+              </LinkBotao>
+            )}
+          </div>
+        )}
+      </Secao>
+    </div>
+  );
+}

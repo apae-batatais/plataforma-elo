@@ -10,7 +10,7 @@ import { atualizar, atualizarVarios, inserir, inserirRegistros, lerTabelas, type
 import { registrarAuditoria } from '@/nucleo/auditoria/auditoria';
 import { Areas, Servicos } from '@/nucleo/estrutura/tabelas';
 import {
-  BasesRateio, BasesRateioValores, CentrosCusto, Despesas, GruposGasto, RegrasRateio, RegrasRateioParticipantes,
+  BasesRateio, BasesRateioValores, CentrosCusto, Despesas, GruposGasto, LancamentosRateio, RegrasRateio, RegrasRateioParticipantes,
   type RegBaseRateio, type RegRegraRateio,
 } from '../dados/tabelas';
 import { nomeComparavel } from '../dominio/previsao';
@@ -19,6 +19,10 @@ import {
   type BaseRegra, type CentroRateio, type RegraRateio, type TipoParticipante,
 } from '../dominio/rateio-custos';
 import { ErroValidacaoFolha, profissionaisPorServico } from './folha';
+import { regrasParaCalculo } from './regras-calculo';
+import { recalcularLancamentosAfetados } from './recalculo-rateio';
+
+export { regrasParaCalculo };
 
 const PERM_EDITAR = 'orcamento.parametros.editar';
 
@@ -72,30 +76,6 @@ const ordemNome = <T extends { nome: string }>(l: T[]) => l.sort((a, b) => a.nom
 
 export const nomeDaBase = (base: string, bases: { id: string; nome: string }[]) =>
   base.startsWith('propria:') ? (bases.find((b) => b.id === base.slice(8))?.nome ?? 'Base própria') : BASES_FIXAS[base as keyof typeof BASES_FIXAS];
-
-/** Regras ativas no formato do cálculo (sem checar permissão: uso interno do painel). */
-export async function regrasParaCalculo(p: Planilhas): Promise<{ regras: RegraRateio[]; basesDoAno: (ano: number) => Map<string, Map<string, number>> }> {
-  const [regrasT, partT, valoresT, basesT] = await lerTabelas(p, [RegrasRateio, RegrasRateioParticipantes, BasesRateioValores, BasesRateio] as const);
-  const regras: RegraRateio[] = regrasT.ativos().map((r) => ({
-    id: r.id,
-    nome: r.nome,
-    tipo: r.tipo,
-    base1: r.base1 as BaseRegra,
-    base2: (r.base2 as BaseRegra | null) ?? null,
-    participantes: partT.ativos().filter((x) => x.regra_id === r.id).map((x) => x.participante),
-  }));
-  const ativas = new Set(basesT.ativos().map((b) => b.id));
-  const basesDoAno = (ano: number) => {
-    const m = new Map<string, Map<string, number>>();
-    for (const v of valoresT.ativos().filter((x) => x.ano === ano && ativas.has(x.base_id))) {
-      const mm = m.get(v.base_id) ?? new Map<string, number>();
-      mm.set(v.servico, v.valor);
-      m.set(v.base_id, mm);
-    }
-    return m;
-  };
-  return { regras, basesDoAno };
-}
 
 export async function listarRegras(p: Planilhas, quem: Autorizador): Promise<CadastroRateio> {
   exigirVer(quem);
@@ -214,20 +194,25 @@ export async function salvarRegra(p: Planilhas, quem: Autorizador, dados: DadosR
   if (dados.id && colunas.length) {
     await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'RegrasRateio', registroId: id, detalhes: { colunas } });
   }
+  if (dados.id && colunas.length) {
+  // Recalcula as despesas geradas por rateio (ADR-038).
+    await recalcularLancamentosAfetados(p, quem, { regraId: id }, () => profissionaisPorServico(p));
+  }
   return id;
 }
 
 export async function encerrarRegra(p: Planilhas, quem: Autorizador, id: string, versao: number, ativo: boolean): Promise<void> {
   exigirEditar(quem);
-  const [regrasT, grupos, despesas, centros] = await lerTabelas(p, [RegrasRateio, GruposGasto, Despesas, CentrosCusto] as const);
+  const [regrasT, grupos, despesas, centros, lancamentos] = await lerTabelas(p, [RegrasRateio, GruposGasto, Despesas, CentrosCusto, LancamentosRateio] as const);
   const alvo = regrasT.porId(id);
   if (!alvo || alvo.ativo === ativo) throw new ErroRateio('Regra não encontrada.');
   if (!ativo) {
     const g = grupos.ativos().filter((x) => x.regra_rateio_id === id).length;
     const i = despesas.ativos().filter((x) => x.regra_rateio_id === id).length;
     const s = centros.ativos().filter((x) => x.regra_rateio_id === id).length;
-    if (g + i + s > 0) {
-      const partes = [g && `${g} ${g === 1 ? 'grupo' : 'grupos'}`, i && `${i} ${i === 1 ? 'item' : 'itens'}`, s && `${s} ${s === 1 ? 'serviço' : 'serviços'}`].filter(Boolean).join(', ');
+    const l = lancamentos.ativos().filter((x) => x.regra_rateio_id === id).length;
+    if (g + i + s + l > 0) {
+      const partes = [l && `${l} ${l === 1 ? 'lançamento por rateio' : 'lançamentos por rateio'}`, g && `${g} ${g === 1 ? 'grupo' : 'grupos'}`, i && `${i} ${i === 1 ? 'item' : 'itens'}`, s && `${s} ${s === 1 ? 'serviço' : 'serviços'}`].filter(Boolean).join(', ');
       throw new ErroRateio(`Não dá para excluir "${alvo.nome}": ${partes} usam esta regra. Troque a regra antes.`);
     }
   } else if (regrasT.ativos().some((r) => nomeComparavel(r.nome) === nomeComparavel(alvo.nome))) {
@@ -300,6 +285,10 @@ export async function salvarValoresDaBase(p: Planilhas, quem: Autorizador, baseI
   await atualizarVarios(p, BasesRateioValores, [...alterar, ...trocar], { email: quem.email });
   await inserirRegistros(p, valoresT, novos, { email: quem.email });
   if (mudar.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'BasesRateioValores', registroId: baseId, detalhes: { colunas: ['valor'] } });
+  if (mudar.length) {
+  // Recalcula as despesas geradas por rateio (ADR-038).
+    await recalcularLancamentosAfetados(p, quem, { baseId }, () => profissionaisPorServico(p));
+  }
 }
 
 // ---------------------------------------------------------------------------

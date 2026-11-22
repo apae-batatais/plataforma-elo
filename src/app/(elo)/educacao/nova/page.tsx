@@ -25,7 +25,7 @@ export default async function NovaAvaliacao({ searchParams }: { searchParams: Pr
   return (
     <div>
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: 'Nova avaliação' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: 'Nova avaliação' }]}
         titulo="Nova avaliação"
         descricao="Escolha a pessoa, o período e dê uma nota de 0 a 3 a cada item. O total e os subtotais mudam enquanto você responde."
       />
