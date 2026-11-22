@@ -1,5 +1,5 @@
 /**
- * Manifesto do módulo Avaliação de Serviços Sociais: avaliação inicial e anual das
+ * Manifesto do módulo Assistência Social: avaliação inicial e anual das
  * pessoas atendidas, comparativo da mesma pessoa e painel por serviço atual.
  */
 import { defineModulo } from '@/nucleo/modulos/manifesto';
@@ -8,9 +8,10 @@ const TUDO = ['avaliacao.acessar', 'avaliacao.avaliar', 'avaliacao.painel'];
 
 export const manifesto = defineModulo({
   id: 'avaliacao',
-  nome: 'Avaliação de Serviços Sociais',
+  nome: 'Assistência Social',
   descricao: 'Avaliação inicial e anual das pessoas atendidas, evolução de cada uma e painel por serviço.',
   icone: 'stethoscope',
+  familia: 'avaliacoes',
   schema: 'avaliacao',
   rota: '/avaliacao',
   permissaoAcesso: 'avaliacao.acessar',
@@ -23,7 +24,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Sobre o instrumento', caminho: '/sobre', permissao: 'avaliacao.acessar', secao: 'Acompanhar' },
   ],
   permissoes: {
-    'avaliacao.acessar': 'Entrar no módulo Avaliação de Serviços Sociais',
+    'avaliacao.acessar': 'Entrar no módulo Assistência Social',
     'avaliacao.avaliar': 'Aplicar, abrir e corrigir avaliações dos serviços do seu escopo (Diretoria: todos)',
     'avaliacao.painel': 'Ver o painel com os números agregados das avaliações dos serviços do seu escopo (sem identificar pessoas)',
   },

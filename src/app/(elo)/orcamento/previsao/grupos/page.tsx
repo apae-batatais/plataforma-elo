@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { listarCadastros } from '@/modulos/orcamento/aplicacao/previsao';
+import { listarCadastrosDoPlano } from '@/modulos/orcamento/aplicacao/plano-contas';
 import { listarRegras } from '@/modulos/orcamento/aplicacao/regras-rateio';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -17,7 +18,7 @@ import { BotaoBaixar } from '@/modulos/orcamento/telas/botao-baixar';
 import { CadastroEmLoteOrcamento } from '@/modulos/orcamento/telas/cadastro-em-lote';
 import { acaoExcluirGrupo, acaoReativarGrupo, acaoSalvarGrupo, acaoCadastrarGruposEmLote, acaoConferirGruposEmLote } from '../acoes';
 
-export const metadata: Metadata = { title: 'Grupos de gasto' };
+export const metadata: Metadata = { title: 'Grupos de contas' };
 
 function CamposGrupo({ valor, regras }: { valor?: { nome: string; rh: boolean; regra_rateio_id?: string | null; codigo_conta?: string | null }; regras: { id: string; nome: string }[] }) {
   return (
@@ -58,15 +59,17 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
   if (!usuario.autorizador.temPermissao('orcamento.previsao.editar')) redirect('/orcamento/previsao');
   const app = await obterAplicacao();
   const { grupos } = await listarCadastros(app.planilhas, usuario.autorizador);
+  const { itens } = await listarCadastrosDoPlano(app.planilhas, usuario.autorizador);
+  const nItens = (id: string) => itens.ativos.filter((i) => i.grupo_id === id).length;
   const regras = (await listarRegras(app.planilhas, usuario.autorizador)).regras.ativas;
   const emEdicao = editar ? grupos.ativos.find((g) => g.id === editar) : undefined;
 
   return (
     <div>
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento/previsao' }, { rotulo: 'Grupos de gasto' }]}
-        titulo="Grupos de gasto"
-        descricao="Classificam as despesas (ex.: Material de consumo, Serviços). Marque como Recursos Humanos os grupos que somam no indicador da folha, como RPA e rescisões."
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Orçamento', href: '/orcamento/previsao' }, { rotulo: 'Grupos de contas' }]}
+        titulo="Grupos de contas"
+        descricao="Classificam as despesas (ex.: Material de consumo, Serviços) e têm itens contábeis. O plano de contas diz quais grupos e itens cada área usa. Marque como Recursos Humanos os grupos que somam no indicador da folha, como RPA e rescisões."
         acoes={
           <>
             <BotaoBaixar href="/orcamento/previsao/baixar/grupos" rotulo="Baixar planilha" vazio={grupos.ativos.length === 0} />
@@ -87,7 +90,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
               </>
             }
             className={pequeno}
-            titulo="Adicionar grupo de gasto"
+            titulo="Adicionar grupo de contas"
           >
             <form action={acaoSalvarGrupo} className="space-y-4">
               <CamposGrupo regras={regras} />
@@ -114,7 +117,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
       )}
 
       <TabelaDados
-        legenda="Grupos de gasto"
+        legenda="Grupos de contas"
         vazio="Nenhum grupo cadastrado. Use “Adicionar grupo”."
         colunas={[
           { chave: 'nome', rotulo: 'Grupo' },
@@ -122,16 +125,22 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
           { chave: 'tipo', rotulo: 'Tipo' },
           { chave: 'regra', rotulo: 'Regra de rateio' },
           { chave: 'itens', rotulo: 'Itens no orçamento', tipo: 'numero' },
+          { chave: 'contabeis', rotulo: 'Itens contábeis', tipo: 'numero' },
           { chave: 'acoes', rotulo: '', fixa: true, largura: 'w-20' },
         ]}
         linhas={grupos.ativos.map((g) => {
           const n = grupos.uso[g.id] ?? 0;
           return {
             id: g.id,
-            valores: { nome: g.nome, codigo: g.codigo_conta ?? '—', tipo: g.rh ? 'Recursos Humanos' : 'Despesa geral', regra: regras.find((r) => r.id === g.regra_rateio_id)?.nome ?? 'Base do painel', itens: n },
+            valores: { nome: g.nome, codigo: g.codigo_conta ?? '—', tipo: g.rh ? 'Recursos Humanos' : 'Despesa geral', regra: regras.find((r) => r.id === g.regra_rateio_id)?.nome ?? 'Base do painel', itens: n, contabeis: nItens(g.id) },
             celulas: {
               nome: <span className="font-semibold">{g.nome}</span>,
               codigo: g.codigo_conta ?? <span className="text-texto-suave">—</span>,
+              contabeis: (
+                <LinkBotao href={`/orcamento/previsao/grupos/${g.id}`} variante="fantasma" className={pequeno} aria-label={`Itens contábeis de ${g.nome}`}>
+                  {nItens(g.id) === 0 ? 'Cadastrar itens' : nItens(g.id) === 1 ? '1 item' : `${nItens(g.id)} itens`}
+                </LinkBotao>
+              ),
               tipo: g.rh ? <Etiqueta tipo="info">Recursos Humanos</Etiqueta> : <span className="text-texto-suave">Despesa geral</span>,
               acoes: (
                 <div className="flex justify-end gap-1">
@@ -144,7 +153,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
                     rotulo={<IconeLixeira tamanho={16} />}
                     rotuloAcessivel={`Excluir ${g.nome}`}
                     variante="icone-perigo"
-                    titulo={`Excluir o grupo “${g.nome}”?`}
+                    titulo={`Excluir o grupo de contas “${g.nome}”?`}
                     mensagem={
                       n > 0
                         ? `${n} ${n === 1 ? 'item do orçamento usa' : 'itens do orçamento usam'} este grupo. Troque o grupo desses itens antes de excluir.`
@@ -160,7 +169,7 @@ export default async function Grupos({ searchParams }: { searchParams: Promise<{
       />
 
       <Excluidos
-        titulo="Grupos excluídos"
+        titulo="Grupos de contas excluídos"
         itens={grupos.excluidos.map((g) => ({ id: g.id, versao: g.versao, nome: g.nome }))}
         acao={acaoReativarGrupo}
         mensagem="O grupo volta a aparecer na lista das despesas."

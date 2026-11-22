@@ -5,7 +5,7 @@ import { EVENTOS_DO_NUCLEO } from '@/nucleo/eventos/catalogo';
 import type { Manifesto } from './manifesto';
 
 /** Confere regras que só fazem sentido olhando todos os módulos juntos. */
-export function validarRegistro(manifestos: readonly Manifesto[]): void {
+export function validarRegistro(manifestos: readonly Manifesto[], familiasConhecidas?: readonly string[]): void {
   const erros: string[] = [];
   const unicos = (campo: 'id' | 'schema' | 'rota') => {
     const vistos = new Set<string>();
@@ -17,6 +17,11 @@ export function validarRegistro(manifestos: readonly Manifesto[]): void {
   unicos('id');
   unicos('schema');
   unicos('rota');
+  if (familiasConhecidas) {
+    for (const m of manifestos) {
+      if (m.familia && !familiasConhecidas.includes(m.familia)) erros.push(`"${m.id}" pertence à família "${m.familia}", que não existe`);
+    }
+  }
 
   const donoDoEvento = new Map<string, string>(EVENTOS_DO_NUCLEO.map((e) => [e, 'nucleo']));
   for (const m of manifestos) {
@@ -43,6 +48,7 @@ export interface AppNoMenu {
   descricao: string;
   icone: string;
   rota: string;
+  familia?: string;
   itens: { rotulo: string; href: string; secao?: string }[];
 }
 
@@ -56,6 +62,7 @@ export function menuDoUsuario(manifestos: readonly Manifesto[], permissoes: Read
       descricao: m.descricao,
       icone: m.icone,
       rota: m.rota,
+      familia: m.familia,
       itens: m.menu
         .filter((i) => permissoes.has(i.permissao))
         .map((i) => ({ rotulo: i.rotulo, href: i.caminho === '/' ? m.rota : `${m.rota}${i.caminho}`, secao: i.secao })),

@@ -16,7 +16,7 @@ export default async function SobreOInstrumentoDeSaude() {
   return (
     <div className="max-w-5xl space-y-6">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: 'Sobre o instrumento' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Saúde', href: '/saude' }, { rotulo: 'Sobre o instrumento' }]}
         titulo="Sobre o instrumento"
         descricao="O que o instrumento do CER mede, como as notas viram pontos e quando a avaliação se repete."
       />

@@ -62,7 +62,7 @@ export async function sincronizarEnvioDoAgendamento(
     await auditar(p, quem.email, 'alteracao', aberto.id, colunasAlteradas, agora);
     return;
   }
-  const novo = await inserir(p, EnviosComunicacao, { pedido_id: pedido.id, tipo, enviado_em: null, ...campos }, autoria);
+  const novo = await inserir(p, EnviosComunicacao, { pedido_id: pedido.id, tipo, enviado_em: null, modelo: null, origem: null, ...campos }, autoria);
   await auditar(p, quem.email, 'inclusao', novo.id, Object.keys(campos), agora);
 }
 

@@ -632,4 +632,42 @@ export type RegCedido = Registro<typeof Cedidos.esquema>;
 export type RegValorCedido = Registro<typeof ValoresCedidos.esquema>;
 export type RegLotacaoCedido = Registro<typeof LotacaoCedidos.esquema>;
 
-export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, LancamentosRateio, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, FontesTermo, CategoriasPlanoOrigens, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, UsosReserva] as const;
+// ---------------------------------------------------------------------------
+// Plano de contas (proposta #221, ADR-036). Grupo de Contas = GruposGasto. Sem dado pessoal.
+// ---------------------------------------------------------------------------
+
+/** Área do plano de contas (independente da Área do Serviço). */
+export const AreasPlano = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'AreasPlano',
+  esquema: z.object({ nome: texto(), codigo: textoOpcional() }),
+});
+
+/** Item contábil: pertence a um só Grupo de Contas (`GruposGasto`). */
+export const ItensContabeis = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'ItensContabeis',
+  esquema: z.object({ grupo_id: texto(), nome: texto(), codigo: textoOpcional() }),
+});
+
+/**
+ * Plano de contas por exercício. Só recebe inclusões, em lotes completos (como `Lotacoes`): para uma data vale o lote
+ * mais recente cuja `vigencia` já começou. `item_id` vazio = grupo presente na área sem itens habilitados.
+ */
+export const PlanoContas = definirTabela({
+  planilha: PLANILHA_ORCAMENTO,
+  aba: 'PlanoContas',
+  esquema: z.object({
+    exercicio: numero(),
+    lote: texto(),
+    vigencia: data(),
+    area_id: texto(),
+    grupo_id: texto(),
+    item_id: textoOpcional(),
+  }),
+});
+export type RegAreaPlano = Registro<typeof AreasPlano.esquema>;
+export type RegItemContabil = Registro<typeof ItensContabeis.esquema>;
+export type RegPlanoContas = Registro<typeof PlanoContas.esquema>;
+
+export const TABELAS_ORCAMENTO = [Postos, Componentes, Rateios, CalendarioPagamento, FeriasTiradas, SaldoFGTS, Parametros, GruposGasto, Fontes, Exercicios, Despesas, LancamentosRateio, Receitas, FontesFolha, CentrosCusto, Ajustes, ItensImportados, Contas, Saldos, AjustesConciliacao, MudancasClasse, Historico, HistoricoAnos, RegrasRateio, RegrasRateioParticipantes, BasesRateio, BasesRateioValores, FontesTermo, CategoriasPlanoOrigens, Realizado, Cedentes, Cedidos, ValoresCedidos, LotacaoCedidos, LimitesSustentabilidade, PoliticaReserva, UsosReserva, AreasPlano, ItensContabeis, PlanoContas] as const;

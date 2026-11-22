@@ -11,6 +11,7 @@ export const manifesto = defineModulo({
   nome: 'Saúde',
   descricao: 'Avaliação de evolução das pessoas atendidas no CER, período a período.',
   icone: 'stethoscope',
+  familia: 'avaliacoes',
   schema: 'saude',
   rota: '/saude',
   permissaoAcesso: 'saude.acessar',

@@ -1,5 +1,5 @@
 /**
- * Gráficos do painel da Avaliação de Serviços Sociais, em HTML e CSS (sem biblioteca),
+ * Gráficos do painel da Assistência Social, em HTML e CSS (sem biblioteca),
  * nas cores do app. Cada gráfico tem um texto alternativo e a tabela de números
  * fica logo abaixo, em "Ver os números". Nenhum identifica pessoas.
  */
