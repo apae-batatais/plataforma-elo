@@ -17,6 +17,8 @@ import {
   retirarItemMarco,
   salvarDocumento,
 } from '@/modulos/projetos/aplicacao/fases';
+import { definirFonteDoItem, registrarMedicao } from '@/modulos/projetos/aplicacao/indicadores';
+import { FONTES_NUMERO, type FonteNumero } from '@/modulos/projetos/dominio/indicadores';
 import { abrirPorta, darParecer, decidirPorta } from '@/modulos/projetos/aplicacao/portas';
 import { GRAUS, NIVEIS_MARCO, TIPOS_DOCUMENTO, type Grau, type NivelMarco, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
 import {
@@ -36,6 +38,7 @@ import {
 } from '@/modulos/projetos/dominio/projeto';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { esquecerAlertas } from '@/plataforma/alertas';
+import { numerosDePessoas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 
 async function contexto() {
@@ -234,6 +237,26 @@ export async function acaoRetirarItemMarco(f: FormData) {
   const id = texto(f, 'id');
   const volta = fichaDe(id, '/marco-logico');
   await executar(() => volta, volta, 'Item retirado. Ele continua guardado.', ({ usuario, app }) => retirarItemMarco(app.planilhas, usuario.autorizador, id, texto(f, 'item'), Number(texto(f, 'versao_item'))));
+}
+
+export async function acaoFonteDoItem(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/marco-logico');
+  const fonte = texto(f, 'fonte') as FonteNumero;
+  const meta = texto(f, 'meta').replace(',', '.');
+  await executar(() => volta, volta, 'Fonte do número salva.', ({ usuario, app }) =>
+    definirFonteDoItem(app.planilhas, usuario.autorizador, id, texto(f, 'item'), Number(texto(f, 'versao_item')), {
+      fonte: FONTES_NUMERO.includes(fonte) ? fonte : 'manual',
+      servico: texto(f, 'servico') || null,
+      meta: meta === '' ? null : Number(meta),
+    }),
+  );
+}
+
+export async function acaoRegistrarMedicao(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = fichaDe(id, '/marco-logico');
+  await executar(() => volta, volta, 'Medição registrada.', ({ usuario, app }) => registrarMedicao(app.planilhas, usuario.autorizador, id, numerosDePessoas(app.planilhas)));
 }
 
 export async function acaoRegistrarRisco(f: FormData) {
