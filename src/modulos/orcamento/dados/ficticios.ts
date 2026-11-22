@@ -3,7 +3,8 @@
  * Nomes, cargos e valores são inventados; só têm o mesmo formato da folha real.
  */
 import { Faker, base, pt_BR } from '@faker-js/faker';
-import { inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { atualizarVarios, inserir, inserirRegistros, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { Servicos } from '@/nucleo/estrutura/tabelas';
 import { componentesZerados, dividirIgualmente } from '../dominio/folha';
 import { anoAtualBrasilia } from '../dominio/historico';
 import { distribuir, valorDoItem } from '../dominio/previsao';
@@ -544,10 +545,10 @@ export async function popularPlanoContasFicticio(p: Planilhas): Promise<void> {
   if (!material || !alimentacao || !servicos || !manutencao || !transporte) return;
 
   const a = await inserirRegistros(p, areas, [
-    { nome: 'Assistência social (exemplo)', codigo: 'A1' },
-    { nome: 'Educação (exemplo)', codigo: 'A2' },
-    { nome: 'Saúde (exemplo)', codigo: 'A3' },
-    { nome: 'Administração (exemplo)', codigo: 'A4' },
+    { nome: 'Assistência Social', codigo: 'A1' },
+    { nome: 'Educação', codigo: 'A2' },
+    { nome: 'Saúde', codigo: 'A3' },
+    { nome: 'Administrativo', codigo: 'A4' },
   ], autor);
   const i = await inserirRegistros(p, itens, [
     { grupo_id: material, nome: 'Material de escritório (exemplo)', codigo: 'MC-01' },
@@ -578,4 +579,19 @@ export async function popularPlanoContasFicticio(p: Planilhas): Promise<void> {
   ]);
   const lote = (exercicio: number, vigencia: string, l: typeof plano2026) => l.map((x) => ({ exercicio, lote: `demo-${exercicio}`, vigencia, ...x }));
   await inserirRegistros(p, plano, [...lote(2026, '2026-01-01', plano2026), ...lote(2027, '2027-01-01', plano2027)], autor);
+
+  // Área do plano em algumas despesas aceitas: quase todas iguais à área do serviço; uma a cada quatro diverge,
+  // para a tela "Divergências" ter o que mostrar. Os nomes das áreas do plano repetem os das áreas do serviço.
+  const [despesas, servicosT] = await lerTabelas(p, [Despesas, Servicos] as const);
+  const areaDoServico = new Map(servicosT.todos().map((x) => [x.codigo, x.area]));
+  const idDaArea: Record<string, string> = { assistencia_social: social, educacao: educacao, saude: saude, administrativo: administracao };
+  const outraArea: Record<string, string> = { assistencia_social: educacao, educacao: administracao, saude: social, administrativo: saude };
+  const mudancas = despesas
+    .ativos()
+    .filter((d) => d.situacao === 'aceito' && !d.area_plano_id && areaDoServico.has(d.servico) && idDaArea[areaDoServico.get(d.servico) ?? ''])
+    .map((d, n) => {
+      const area = areaDoServico.get(d.servico) ?? '';
+      return { id: d.id, versao: d.versao, mudancas: { area_plano_id: n % 4 === 3 ? outraArea[area] : idDaArea[area] } };
+    });
+  await atualizarVarios(p, Despesas, mudancas as never, autor);
 }

@@ -63,6 +63,12 @@ export default async function PlanoDeContas({ searchParams }: { searchParams: Pr
         acoes={
           <>
             <SeletorAno anos={plano.anos} atual={plano.ano} href={href} />
+            <LinkBotao href={`/orcamento/previsao/plano/comparar?para=${plano.ano}&de=${plano.ano - 1}`} variante="fantasma" className={pequeno}>
+              Comparar exercícios
+            </LinkBotao>
+            <LinkBotao href={`/orcamento/previsao/plano/divergencias?ano=${plano.ano}`} variante="fantasma" className={pequeno}>
+              Divergências de área
+            </LinkBotao>
             <BotaoBaixar href={`/orcamento/previsao/baixar/plano?ano=${plano.ano}`} rotulo="Baixar planilha" vazio={!plano.atual} />
             {podeEditar && plano.anterior && plano.atual && (
               <LinkBotao href={`${aberto}&base=anterior`} scroll={false} variante="fantasma" className={pequeno}>
