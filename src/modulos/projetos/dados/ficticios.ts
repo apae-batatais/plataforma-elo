@@ -7,10 +7,11 @@ import { atualizar, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/ta
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { salvarConfig } from '../aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
-import { adicionarMembro, avancarFase, salvarDocumento } from '../aplicacao/fases';
 import { adicionarAtividade, adicionarLinhaOrcamento } from '../aplicacao/planejamento';
+import { adicionarItemMarco, adicionarMembro, avancarFase, salvarDocumento } from '../aplicacao/fases';
+import { definirFonteDoItem } from '../aplicacao/indicadores';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
-import { Projetos } from '../dados/tabelas';
+import { MarcoLogico, Projetos } from '../dados/tabelas';
 import { CONFIG_PADRAO } from '../dominio/projeto';
 
 const FUNCIONARIO = 'funcionario@exemplo.local';
@@ -91,6 +92,11 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   await adicionarAtividade(p, coord, sete.id, { descricao: 'Montar o espaço', responsavel: COORDENACAO, inicioPrevisto: '2026-12-10', fimPrevisto: '2026-12-12', peso: null }, { agora: dia(31) });
   await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Alimentação', descricao: 'Lanche coletivo', valor: 1800, fonte: 'Recurso próprio' }, { agora: dia(31) });
   await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Material', descricao: 'Som e decoração', valor: 1200, fonte: null }, { agora: dia(31) });
+  // Marco lógico do projeto 6, com um indicador cujo número vem do cadastro (ligações, onda 2, L4).
+  await adicionarItemMarco(p, coord, seis.id, { nivel: 'impacto', descricao: 'Mais famílias com o hábito da leitura (exemplo)', indicador: 'Pessoas atendidas no serviço', fonteVerificacao: 'Cadastro do Elo', pressuposto: null, acima: null }, { agora: dia(25) });
+  const [marco] = await lerTabelas(p, [MarcoLogico] as const);
+  const impacto = marco.ativos().find((m) => m.projeto_id === seis.id)!;
+  await definirFonteDoItem(p, coord, seis.id, impacto.id, impacto.versao, { fonte: 'vinculos_ativos', servico: 'escola', meta: 5 }, { agora: dia(26) });
   // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
   const datas: [string, string, string][] = [
     [quatro.id, '2026-12-01', '2027-02-26'],

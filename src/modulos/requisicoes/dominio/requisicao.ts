@@ -4,22 +4,24 @@
  * Nada aqui lê nem grava planilhas.
  */
 import { z } from 'zod';
+import { esquemaDetalhesEspaco } from './espaco';
 
 export const CATEGORIAS = ['material', 'servico'] as const;
 export type Categoria = (typeof CATEGORIAS)[number];
 
 /** Fichas disponíveis. Cada tipo de requisição usa uma. Novas entram uma por entrega. */
-export const FORMULARIOS = ['materiais', 'ti', 'mobiliario', 'manutencao'] as const;
+export const FORMULARIOS = ['materiais', 'ti', 'mobiliario', 'manutencao', 'espaco'] as const;
 export type Formulario = (typeof FORMULARIOS)[number];
 export const NOME_FORMULARIO: Record<Formulario, string> = {
   materiais: 'Materiais (itens, retirada ou entrega, evento)',
   ti: 'Chamado de TI (equipamento ou sistema, problema, urgência)',
   mobiliario: 'Mobiliário (móveis, de onde, para onde, quando)',
   manutencao: 'Manutenção (tipo de serviço, local, problema, urgência)',
+  espaco: 'Reserva de espaço (espaço, data, horário, finalidade, pessoas)',
 };
-export const NOME_FICHA_CURTO: Record<Formulario, string> = { materiais: 'Materiais', ti: 'Chamado de TI', mobiliario: 'Mobiliário', manutencao: 'Manutenção' };
+export const NOME_FICHA_CURTO: Record<Formulario, string> = { materiais: 'Materiais', ti: 'Chamado de TI', mobiliario: 'Mobiliário', manutencao: 'Manutenção', espaco: 'Reserva de espaço' };
 /** Ficha de serviço: não tem itens; o atendimento é concluído com o que foi feito. */
-export const FICHA_DE_SERVICO: Record<Formulario, boolean> = { materiais: false, ti: true, mobiliario: true, manutencao: true };
+export const FICHA_DE_SERVICO: Record<Formulario, boolean> = { materiais: false, ti: true, mobiliario: true, manutencao: true, espaco: true };
 
 export const SITUACOES = ['enviada', 'devolvida', 'aprovada', 'recusada', 'em_atendimento', 'atendida', 'atendida_parcial', 'cancelada'] as const;
 export type Situacao = (typeof SITUACOES)[number];
@@ -35,7 +37,7 @@ export const NOME_SITUACAO: Record<Situacao, string> = {
 };
 export const SITUACOES_ENCERRADAS: readonly Situacao[] = ['recusada', 'atendida', 'atendida_parcial', 'cancelada'];
 
-export type Acao = 'enviar' | 'reenviar' | 'aprovar' | 'devolver' | 'recusar' | 'cancelar' | 'receber' | 'concluir';
+export type Acao = 'enviar' | 'reenviar' | 'aprovar' | 'devolver' | 'recusar' | 'cancelar' | 'receber' | 'concluir' | 'fechar';
 export const NOME_ACAO: Record<Acao, string> = {
   enviar: 'Enviou',
   reenviar: 'Ajustou e reenviou',
@@ -45,6 +47,7 @@ export const NOME_ACAO: Record<Acao, string> = {
   cancelar: 'Cancelou',
   receber: 'Recebeu para atender',
   concluir: 'Concluiu o atendimento',
+  fechar: 'Registrou o uso do espaço',
 };
 
 /** De quais situações cada ação pode partir. */
@@ -57,6 +60,7 @@ const ORIGEM: Record<Acao, readonly (Situacao | null)[]> = {
   cancelar: ['enviada', 'devolvida'],
   receber: ['aprovada'],
   concluir: ['em_atendimento'],
+  fechar: ['aprovada'],
 };
 
 export class ErroRequisicao extends Error {}
@@ -337,6 +341,7 @@ export const ESQUEMA_DETALHES: Record<Formulario, z.ZodType> = {
   ti: esquemaDetalhesTi,
   mobiliario: esquemaDetalhesMobiliario,
   manutencao: esquemaDetalhesManutencao,
+  espaco: esquemaDetalhesEspaco,
 };
 
 /** Urgência guardada nos detalhes (só fichas que a têm). */

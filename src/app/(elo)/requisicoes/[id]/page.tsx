@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { detalharRequisicao, ErroRequisicao } from '@/modulos/requisicoes/aplicacao/requisicoes';
 import {
@@ -17,6 +18,7 @@ import {
   type DetalhesTi,
   type Situacao,
 } from '@/modulos/requisicoes/dominio/requisicao';
+import { RESULTADOS_USO } from '@/modulos/requisicoes/dominio/espaco';
 import { textoHoras } from '@/modulos/requisicoes/dominio/sla';
 import { dataHora, EtiquetaSituacao } from '@/modulos/requisicoes/telas/lista-requisicoes';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
@@ -30,8 +32,8 @@ import { LinkBotao, pequeno } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { Campo, estiloEntrada } from '@/ui/campo';
 import { FormularioConfirmado } from '@/ui/confirmar';
-import { CabecalhoPagina, Secao } from '@/ui/pagina';
-import { acaoCancelar, acaoConcluir, acaoDecidir, acaoReceber } from '../acoes';
+import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
+import { acaoCancelar, acaoConcluir, acaoDecidir, acaoFecharReserva, acaoReceber } from '../acoes';
 import { BotaoImprimir } from './imprimir';
 import { PiscaOndeMudou } from '@/ui/pisca-onde-mudou';
 
@@ -74,6 +76,8 @@ export default async function FichaRequisicao({
   const chamado = d.tipo?.formulario === 'ti' ? ((d.detalhes ?? {}) as DetalhesTi) : null;
   const mobiliario = d.tipo?.formulario === 'mobiliario' ? ((d.detalhes ?? {}) as DetalhesMobiliario) : null;
   const manutencao = d.tipo?.formulario === 'manutencao' ? ((d.detalhes ?? {}) as DetalhesManutencao) : null;
+  const reserva = d.reserva;
+  const conflitoAprovado = Boolean(reserva?.conflitos?.some((c) => c.situacao === 'aprovada'));
   const servico = Boolean(d.tipo && FICHA_DE_SERVICO[d.tipo.formulario]);
   const dataBR = (iso: string | null | undefined) => (iso ? iso.split('-').reverse().join('/') : '');
   const pode = (a: Acao) => d.acoes.includes(a);
@@ -81,7 +85,7 @@ export default async function FichaRequisicao({
   const valorConsulta = consulta.valor ? Number(consulta.valor.replace(/\s/g, '').replace(',', '.')) : NaN;
   const grupoConsulta = consulta.grupo ?? '';
   // Quem aprova vê o saldo antes de decidir; a plataforma lê o Orçamento com a permissão da pessoa.
-  const conferencia = pode('aprovar')
+  const conferencia = pode('aprovar') && !reserva
     ? (await conferenciaDosCentros(app.planilhas, usuario.autorizador, d.centros.map((c) => c.servico), grupoConsulta || null)).map((c) => ({
         ...c,
         nome: d.centros.find((x) => x.servico === c.servico)?.nome ?? c.servico,
@@ -104,8 +108,15 @@ export default async function FichaRequisicao({
       />
 
       {r.situacao === 'enviada' && (
-        <Aviso tipo="info" titulo={r.aprovacao === 'diretoria' ? 'Aguardando a Diretoria' : 'Aguardando a coordenação'}>
-          {r.aprovacao === 'diretoria'
+        <Aviso
+          tipo="info"
+          titulo={r.aprovacao === 'diretoria' ? 'Aguardando a Diretoria' : reserva ? 'Aguardando o setor Espaços' : 'Aguardando a coordenação'}
+        >
+          {reserva
+            ? r.aprovacao === 'diretoria'
+              ? 'Esta reserva foi pedida por alguém do setor Espaços: quem decide é a Diretoria.'
+              : 'O setor Espaços aprova, devolve para ajuste ou recusa.'
+            : r.aprovacao === 'diretoria'
             ? 'Esta requisição é aprovada pela Diretoria: foi feita pela própria coordenação ou o serviço não tem coordenação cadastrada.'
             : 'A coordenação dos centros de custo aprova, devolve para ajuste ou recusa.'}
         </Aviso>
@@ -120,19 +131,61 @@ export default async function FichaRequisicao({
         />
       )}
 
+      {reserva?.aviso && (
+        <Aviso tipo="atencao" titulo="Período de indisponibilidade">
+          {reserva.aviso}
+        </Aviso>
+      )}
+
+      {reserva?.conflitos && (
+        <Secao titulo="Conflitos neste horário" id="t-conflitos" className="print:hidden">
+          {reserva.conflitos.length === 0 ? (
+            <p className="text-sm text-texto-suave">Nenhum pedido cruza com este horário.</p>
+          ) : (
+            <ul className="space-y-1.5 text-sm">
+              {reserva.conflitos.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-borda px-3 py-2">
+                  <Link href={`/requisicoes/${c.id}`} className="font-semibold text-destaque hover:underline">
+                    {c.numero}
+                  </Link>
+                  <span className="tabular-nums">
+                    {c.inicio} às {c.fim}
+                  </span>
+                  <span>{c.quem}</span>
+                  <Etiqueta tipo={c.situacao === 'aprovada' ? 'atencao' : 'info'}>{c.situacaoNome}</Etiqueta>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Secao>
+      )}
+
       {d.acoes.length > 0 && (
         <Secao titulo="O que você pode fazer" id="t-acoes" className="print:hidden">
           <div className="space-y-5">
             {pode('aprovar') && (
               <div className="space-y-3">
-                <form action={acaoDecidir}>
-                  <input type="hidden" name="id" value={r.id} />
-                  <input type="hidden" name="versao" value={r.versao} />
-                  <input type="hidden" name="acao" value="aprovar" />
-                  {grupoConsulta && <input type="hidden" name="grupo_id" value={grupoConsulta} />}
-                  {Number.isFinite(valorConsulta) && <input type="hidden" name="valor_estimado" value={valorConsulta} />}
-                  <BotaoEnviar enviando="Aprovando…">Aprovar</BotaoEnviar>
-                </form>
+                {conflitoAprovado ? (
+                  <FormularioConfirmado
+                    acao={acaoDecidir}
+                    campos={{ id: r.id, versao: r.versao, acao: 'aprovar', confirmar_conflito: 'sim' }}
+                    rotulo="Aprovar reserva"
+                    variante="primario"
+                    perigoso={false}
+                    titulo="Aprovar mesmo assim?"
+                    mensagem="Este horário já está aprovado para outro pedido. Se aprovar, os dois ficam aprovados e a decisão não tem volta: só dá para devolver ou fechar com texto, na mão."
+                    confirmar="Aprovar mesmo assim"
+                  />
+                ) : (
+                  <form action={acaoDecidir}>
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="versao" value={r.versao} />
+                    <input type="hidden" name="acao" value="aprovar" />
+                    {grupoConsulta && <input type="hidden" name="grupo_id" value={grupoConsulta} />}
+                    {Number.isFinite(valorConsulta) && <input type="hidden" name="valor_estimado" value={valorConsulta} />}
+                    <BotaoEnviar enviando="Aprovando…">{reserva ? 'Aprovar reserva' : 'Aprovar'}</BotaoEnviar>
+                  </form>
+                )}
                 <form action={acaoDecidir} className="space-y-2">
                   <input type="hidden" name="id" value={r.id} />
                   <input type="hidden" name="versao" value={r.versao} />
@@ -148,6 +201,33 @@ export default async function FichaRequisicao({
                     </BotaoEnviar>
                   </div>
                 </form>
+              </div>
+            )}
+            {pode('fechar') && reserva && (
+              <div className="space-y-3">
+                {!reserva.jaPodeFechar ? (
+                  <p className="text-sm text-texto-suave">
+                    Registrar uso: disponível depois de {reserva.fim} de {dataBR(reserva.data)}.
+                  </p>
+                ) : (
+                  <form action={acaoFecharReserva} className="space-y-3">
+                    <input type="hidden" name="id" value={r.id} />
+                    <input type="hidden" name="versao" value={r.versao} />
+                    <fieldset className="text-sm">
+                      <legend className="font-semibold">Registrar uso</legend>
+                      <label className="mt-2 flex items-center gap-2">
+                        <input type="radio" name="resultado" value="sem_problema" required /> {RESULTADOS_USO.sem_problema}
+                      </label>
+                      <label className="mt-1 flex items-center gap-2">
+                        <input type="radio" name="resultado" value="com_problema" /> {RESULTADOS_USO.com_problema}
+                      </label>
+                    </fieldset>
+                    <Campo rotulo="O que aconteceu" dica="Obrigatório se foi usado com problema (mínimo de 10 letras). Fica no histórico.">
+                      <textarea name="texto" rows={3} className={estiloEntrada} />
+                    </Campo>
+                    <BotaoEnviar enviando="Registrando…">Registrar uso</BotaoEnviar>
+                  </form>
+                )}
               </div>
             )}
             {pode('reenviar') && (
@@ -258,7 +338,7 @@ export default async function FichaRequisicao({
           {(
             [
               ['Aprovação', d.sla.aprovacao],
-              ['Atendimento', d.sla.atendimento],
+              ...(reserva ? [] : [['Atendimento', d.sla.atendimento] as const]),
             ] as const
           ).map(([nome, s]) => (
             <div key={nome} className="rounded-cartao border border-borda bg-superficie px-4 py-3">
@@ -283,7 +363,7 @@ export default async function FichaRequisicao({
           <Dado rotulo="Enviada em">{dataHora(r.enviada_em)}</Dado>
           <Dado rotulo="Área">{d.area}</Dado>
           {r.grupo_nome && <Dado rotulo="Grupo de despesa">{r.grupo_nome}</Dado>}
-          <Dado rotulo="Centros de custo">{d.centros.map((c) => `${c.nome} (${numeroBR(c.percentual)}%)`).join(' · ')}</Dado>
+          {d.centros.length > 0 && <Dado rotulo="Centros de custo">{d.centros.map((c) => `${c.nome} (${numeroBR(c.percentual)}%)`).join(' · ')}</Dado>}
           {r.recebida_por && <Dado rotulo="Recebida por">{r.recebida_por}</Dado>}
           {r.executada_por && <Dado rotulo="Executada por">{r.executada_por}</Dado>}
           {r.projeto_id && (
@@ -334,6 +414,32 @@ export default async function FichaRequisicao({
               </tbody>
             </table>
           </div>
+        )}
+
+        {reserva && (
+          <dl className="mt-5 grid gap-4 sm:grid-cols-3">
+            <Dado rotulo="Espaço">
+              {reserva.espaco}
+              {reserva.local ? ` · ${reserva.local}` : ''}
+            </Dado>
+            <Dado rotulo="Quando">
+              {dataBR(reserva.data)}, {reserva.inicio} às {reserva.fim}
+            </Dado>
+            <Dado rotulo="Pessoas esperadas">
+              <span className={reserva.acimaDaCapacidade ? 'text-aviso' : ''}>
+                {reserva.pessoas}
+                {reserva.acimaDaCapacidade && reserva.capacidade ? ` (acima da capacidade: ${reserva.capacidade})` : ''}
+              </span>
+            </Dado>
+            <Dado rotulo="Finalidade">{reserva.finalidade}</Dado>
+            {reserva.usoExterno && <Dado rotulo="Cedido para fora (organização ou pessoa)">{reserva.organizacaoExterna}</Dado>}
+            {reserva.fechamento && (
+              <Dado rotulo="Uso registrado">
+                {RESULTADOS_USO[reserva.fechamento.resultado]}
+                {reserva.fechamento.texto ? `: ${reserva.fechamento.texto}` : ''}
+              </Dado>
+            )}
+          </dl>
         )}
 
         {chamado && (

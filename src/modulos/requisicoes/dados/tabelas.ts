@@ -153,6 +153,25 @@ export const RequisicaoAnexos = definirTabela({
   sigilo: { arquivo_id: 'sensivel', nome: 'pessoal' },
 });
 
+/** Espaços que a instituição deixa reservar (cadastrados pela Administração da plataforma). */
+export const Espacos = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'Espacos',
+  esquema: z.object({ nome: texto(), local: textoOpcional(), capacidade: numero() }),
+});
+
+/** Períodos em que um espaço não pode ser reservado (reforma, obra…). Um espaço pode ter vários. */
+export const EspacoIndisponibilidades = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'EspacoIndisponibilidades',
+  esquema: z.object({
+    espaco_id: texto(),
+    inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    fim: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    motivo: texto(),
+  }),
+});
+
 export const FeriadosRequisicoes = definirTabela({
   planilha: PLANILHA_REQUISICOES,
   aba: 'Feriados',
@@ -199,6 +218,8 @@ export const TABELAS_REQUISICOES = [
   ParametrosRequisicoes,
   FeriadosRequisicoes,
   RequisicaoAnexos,
+  Espacos,
+  EspacoIndisponibilidades,
   Veiculos,
   VeiculoManutencoes,
   ResumosEnviados,
@@ -206,6 +227,7 @@ export const TABELAS_REQUISICOES = [
 
 export type RegTipo = Registro<typeof TiposRequisicao.esquema>;
 export type RegRequisicao = Registro<typeof Requisicoes.esquema>;
+export type RegEspaco = Registro<typeof Espacos.esquema>;
 export type RegCentro = Registro<typeof RequisicaoCentros.esquema>;
 export type RegItemCatalogo = Registro<typeof CatalogoItens.esquema>;
 export type RegVeiculo = Registro<typeof Veiculos.esquema>;

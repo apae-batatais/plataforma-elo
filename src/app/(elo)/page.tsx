@@ -147,6 +147,24 @@ export default async function Portal() {
           acao: 'Ver requisições',
         });
       }
+      if (c.espacosDecidir > 0) {
+        pendencias.push({
+          app: 'requisicoes',
+          texto: n(c.espacosDecidir, 'reserva de espaço espera a sua decisão', 'reservas de espaço esperam a sua decisão'),
+          detalhe: 'Veja o conflito de horário e aprove, devolva ou recuse.',
+          href: '/requisicoes/espacos',
+          acao: 'Decidir',
+        });
+      }
+      if (c.espacosFechar > 0) {
+        pendencias.push({
+          app: 'requisicoes',
+          texto: n(c.espacosFechar, 'reserva para registrar o uso', 'reservas para registrar o uso'),
+          detalhe: 'A hora de fim já passou: diga se o espaço foi usado sem ou com problema.',
+          href: '/requisicoes/espacos',
+          acao: 'Registrar uso',
+        });
+      }
       if (c.atender > 0) {
         pendencias.push({
           app: 'requisicoes',

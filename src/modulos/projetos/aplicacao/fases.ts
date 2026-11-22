@@ -140,6 +140,10 @@ export async function adicionarItemMarco(p: Planilhas, quem: Autorizador, projet
     fonte_verificacao: d.fonteVerificacao?.trim() || null,
     pressuposto: d.pressuposto?.trim() || null,
     acima,
+    fonte_numero: 'manual' as const,
+    servico_id: null,
+    servico_nome: null,
+    meta: null,
   };
   const novo = await inserir(p, MarcoLogico, campos, autoriaDe(quem, agora));
   await auditar(p, quem, 'inclusao', 'MarcoLogico', novo.id, Object.keys(campos), agora);
