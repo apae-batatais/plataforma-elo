@@ -25,3 +25,6 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
   (`vinculosAtivosProtegido`) ou da Avaliação, esta entregue pela plataforma (`NumerosDePessoas`, como em Parcerias): Projetos não importa a
   Avaliação. Só `valor`, `base` e `motivo` atravessam; o mínimo de 5 pessoas é da origem. `fotografarIndicadores` (L12) é o ponto de chamada para
   o relatório de monitoramento (origem `relatorio`, P4) e o encerramento (origem `encerramento`, P5): ao construí-los, chame-a.
+- Ligação com o termo (L2): `aplicacao/termo.ts`. Parcerias chega pela interface `CatalogoTermos` (`catalogo-parcerias.ts`),
+  entregue por `src/plataforma/ligacoes.ts`; nunca importe Parcerias. A decisão da porta 2 nunca falha por causa do rascunho.
+  `financiador` e `objeto` só existem no Termo de Abertura de projeto `financiado` (`camposDe`).

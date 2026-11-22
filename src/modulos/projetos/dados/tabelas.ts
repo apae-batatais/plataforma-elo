@@ -37,6 +37,9 @@ export const Projetos = definirTabela({
     fim_previsto: dataOpcional(),
     /** Total do Termo de Abertura aprovado na porta 2 (regra de borda 4). */
     valor_aprovado: numeroOpcional(),
+    /** Termo de Parcerias criado como rascunho na porta 2 (regra L8): id e nome copiado. */
+    termo_id: textoOpcional(),
+    termo_nome: textoOpcional(),
   }),
 });
 

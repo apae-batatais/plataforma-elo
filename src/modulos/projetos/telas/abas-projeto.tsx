@@ -7,6 +7,7 @@ const ABAS = [
   { chave: 'atividades', rotulo: 'Atividades', parte: '/atividades' },
   { chave: 'orcamento', rotulo: 'Orçamento', parte: '/orcamento' },
   { chave: 'equipe', rotulo: 'Equipe', parte: '/equipe' },
+  { chave: 'ligacoes', rotulo: 'Ligações', parte: '/ligacoes' },
 ] as const;
 
 /** Seções do projeto. No celular a lista rola de lado, sem esconder nenhuma. */

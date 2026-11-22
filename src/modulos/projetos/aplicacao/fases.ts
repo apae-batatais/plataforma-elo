@@ -8,8 +8,9 @@ import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/
 import { Usuarios } from '@/nucleo/estrutura/tabelas';
 import { Atividades, MarcoLogico, ProjetoDocumentos, ProjetoEquipe, ProjetoOrcamento, Projetos, Riscos, type RegAtividade, type RegDocumento, type RegEquipe, type RegLinhaOrcamento, type RegMarco, type RegProjeto, type RegRisco } from '../dados/tabelas';
 import {
-  CAMPOS,
+  camposDe,
   ehDocumento,
+  faltaDoFinanciamento,
   faseDoDocumento,
   GRAUS,
   itensDaFase,
@@ -82,7 +83,7 @@ export async function salvarDocumento(
   const agora = opcoes.agora ?? new Date();
   const r = await projetoParaAlterar(p, quem, projetoId, [faseDoDocumento(tipo)]);
   if (!itensDaFase(r.porte, faseDoDocumento(tipo)).includes(tipo)) throw new ErroProjetos(`O porte ${r.porte} não usa o documento ${NOME_ITEM[tipo].toLowerCase()}.`);
-  const conteudo = validarConteudo(tipo, bruto, pronto);
+  const conteudo = validarConteudo(tipo, bruto, pronto, r.tipo);
   const [docs] = await lerTabelas(p, [ProjetoDocumentos] as const);
   const atual = ultimo(docs.ativos().filter((d) => d.projeto_id === projetoId && d.tipo === tipo));
   if (atual?.situacao === 'aprovado') throw new ErroProjetos('Este documento já foi aprovado e está travado. Mudanças passam por pedido de mudança.');
@@ -287,6 +288,7 @@ export function situacaoDosItens(
   docs: readonly RegDocumento[],
   marco: readonly RegMarco[],
   riscos: readonly RegRisco[],
+  tipoProjeto: RegProjeto['tipo'] = 'interno',
   atividades: readonly RegAtividade[] = [],
   orcamento: readonly RegLinhaOrcamento[] = [],
 ): ItemSituacao[] {
@@ -309,6 +311,11 @@ export function situacaoDosItens(
     }
     const d = ultimo(docs.filter((x) => x.tipo === item));
     const pronto = !!d && (d.pronto || d.situacao === 'aprovado');
+    // Regra L7: projeto financiado só abre a porta 2 com financiador e objeto no Termo de Abertura.
+    if (item === 'termo_abertura' && pronto && d.situacao !== 'aprovado' && tipoProjeto === 'financiado') {
+      const falta = faltaDoFinanciamento(conteudoDe(d));
+      if (falta.length > 0) return { item, nome: NOME_ITEM[item], pronto: false, falta: [`Informe ${falta.join(' e ')}.`] };
+    }
     return { item, nome: NOME_ITEM[item], pronto, falta: pronto ? [] : [d ? 'Falta marcar como pronto.' : 'Ainda não preenchido.'] };
   });
 }
@@ -329,7 +336,7 @@ export async function lerFase(p: Planilhas, quem: Autorizador, projetoId: string
   const fase: NumeroFase | null = r.etapa === 'fase_1' ? 1 : r.etapa === 'fase_2' ? 2 : r.etapa === 'fase_3' ? 3 : null;
   const minhasAtividades = atividades.ativos().filter((a) => a.projeto_id === projetoId);
   const meuOrcamento = orcamento.ativos().filter((l) => l.projeto_id === projetoId);
-  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos, minhasAtividades, meuOrcamento) : [];
+  const itens = fase ? situacaoDosItens(r.porte, fase, meusDocs, meuMarco, meusRiscos, r.tipo, minhasAtividades, meuOrcamento) : [];
   const documentos: Fase['documentos'] = {};
   for (const t of new Set(meusDocs.map((d) => d.tipo))) if (ehDocumento(t as ItemDaFase)) documentos[t as TipoDocumento] = ultimo(meusDocs.filter((d) => d.tipo === t));
   const termo = documentos.termo_abertura;
@@ -361,7 +368,7 @@ export async function termoPreenchido(p: Planilhas, quem: Autorizador, projetoId
   const proposta = f.documentos.proposta ? conteudoDe(f.documentos.proposta) : {};
   const estimativas = f.documentos.estimativas ? conteudoDe(f.documentos.estimativas) : {};
   const t = config.tolerancias;
-  const base: ConteudoDocumento = Object.fromEntries(CAMPOS.termo_abertura.map((c) => [c.nome, null]));
+  const base: ConteudoDocumento = Object.fromEntries(camposDe('termo_abertura', f.projeto.tipo).map((c) => [c.nome, null]));
   return {
     ...base,
     objetivo: f.projeto.titulo,

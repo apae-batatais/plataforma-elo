@@ -7,9 +7,9 @@ import { atualizar, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/ta
 import { Atribuicoes, PerfilPermissoes, Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { salvarConfig } from '../aplicacao/configuracoes';
 import { assumirIdeia, cadastrarIdeia } from '../aplicacao/ideias';
-import { adicionarAtividade, adicionarLinhaOrcamento } from '../aplicacao/planejamento';
 import { adicionarItemMarco, adicionarMembro, avancarFase, salvarDocumento } from '../aplicacao/fases';
 import { definirFonteDoItem } from '../aplicacao/indicadores';
+import { adicionarAtividade, adicionarLinhaOrcamento } from '../aplicacao/planejamento';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
 import { MarcoLogico, Projetos } from '../dados/tabelas';
 import { CONFIG_PADRAO } from '../dominio/projeto';
@@ -75,6 +75,12 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   const [apos] = await lerTabelas(p, [Projetos] as const);
   await avancarFase(p, coord, seis.id, apos.porId(seis.id)!.versao, { agora: dia(23) });
   await adicionarMembro(p, coord, seis.id, FUNCIONARIO, 'Apoio às oficinas', { agora: dia(24) });
+  // Marco lógico do projeto 6, com um indicador cujo número vem do cadastro (ligações, onda 2, L4).
+  await adicionarItemMarco(p, coord, seis.id, { nivel: 'impacto', descricao: 'Mais famílias com o hábito da leitura (exemplo)', indicador: 'Pessoas atendidas no serviço', fonteVerificacao: 'Cadastro do Elo', pressuposto: null, acima: null }, { agora: dia(25) });
+  const [marco] = await lerTabelas(p, [MarcoLogico] as const);
+  const impacto = marco.ativos().find((m) => m.projeto_id === seis.id)!;
+  await definirFonteDoItem(p, coord, seis.id, impacto.id, impacto.versao, { fonte: 'vinculos_ativos', servico: 'escola', meta: 5 }, { agora: dia(26) });
+
   // 7. Porte enxuto na fase 3: Termo aprovado, com duas atividades (uma já atrasada) e um orçamento.
   const sete = await cadastrarIdeia(p, func, { ...base, porte: 'enxuto', titulo: 'Sarau com as famílias (exemplo)', resumo: 'Ideia fictícia: tarde de apresentações com as famílias.', valorEstimado: 4000 }, { agora: dia(25), enviar: true });
   await assumirIdeia(p, coord, sete.id, 1, { agora: dia(26) });
@@ -92,11 +98,6 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   await adicionarAtividade(p, coord, sete.id, { descricao: 'Montar o espaço', responsavel: COORDENACAO, inicioPrevisto: '2026-12-10', fimPrevisto: '2026-12-12', peso: null }, { agora: dia(31) });
   await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Alimentação', descricao: 'Lanche coletivo', valor: 1800, fonte: 'Recurso próprio' }, { agora: dia(31) });
   await adicionarLinhaOrcamento(p, coord, sete.id, { categoria: 'Material', descricao: 'Som e decoração', valor: 1200, fonte: null }, { agora: dia(31) });
-  // Marco lógico do projeto 6, com um indicador cujo número vem do cadastro (ligações, onda 2, L4).
-  await adicionarItemMarco(p, coord, seis.id, { nivel: 'impacto', descricao: 'Mais famílias com o hábito da leitura (exemplo)', indicador: 'Pessoas atendidas no serviço', fonteVerificacao: 'Cadastro do Elo', pressuposto: null, acima: null }, { agora: dia(25) });
-  const [marco] = await lerTabelas(p, [MarcoLogico] as const);
-  const impacto = marco.ativos().find((m) => m.projeto_id === seis.id)!;
-  await definirFonteDoItem(p, coord, seis.id, impacto.id, impacto.versao, { fonte: 'vinculos_ativos', servico: 'escola', meta: 5 }, { agora: dia(26) });
   // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
   const datas: [string, string, string][] = [
     [quatro.id, '2026-12-01', '2027-02-26'],

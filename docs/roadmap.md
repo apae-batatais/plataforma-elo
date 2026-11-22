@@ -186,6 +186,9 @@ Especificação: `src/modulos/projetos/especificacao.md`, seção "Ligações, o
 - [ ] Atualizar o rascunho do termo quando o projeto muda (hoje só avisa a diferença de valor).
 - [ ] "Repetir evento da edição anterior" (sugestão): copia série, orçamento de custos e fonte.
 - [ ] Número no menu de Parcerias com os rascunhos de termo para completar (sugestão).
+- [ ] **Completar, concluir e encerrar o rascunho do termo em Parcerias** (Parcerias, regras 23 e 26): a entrega L2
+      (#241) cria e lista o rascunho, mas o Financeiro ainda não tem a ficha de rascunho com "Concluir termo" e
+      "Encerrar rascunho"; até lá, o termo definitivo é cadastrado por "Novo termo".
 - [ ] Sugerir o projeto no Realizado do Orçamento quando o grupo de gasto é de evento (sugestão).
 
 ## Ligações entre apps

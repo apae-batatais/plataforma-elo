@@ -4,11 +4,12 @@ import { redirect } from 'next/navigation';
 import { listarTermos, termosComAlertaDeOciosas } from '@/modulos/parcerias/aplicacao/parcerias';
 import { dinheiro, NOME_TIPO } from '@/modulos/parcerias/dominio/termos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { rascunhosDeTermo } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { LinkBotao, pequeno } from '@/ui/botao';
 import { IconeMais } from '@/ui/icones';
-import { CabecalhoPagina, Etiqueta } from '@/ui/pagina';
+import { CabecalhoPagina, Etiqueta, Secao } from '@/ui/pagina';
 import { TabelaDados } from '@/ui/tabela-dados';
 
 export const metadata: Metadata = { title: 'Termos de parceria' };
@@ -21,6 +22,7 @@ export default async function Termos({ searchParams }: { searchParams: Promise<{
   const q = await searchParams;
   const termos = await listarTermos(planilhas, usuario.autorizador);
   const ociosas = await termosComAlertaDeOciosas(planilhas, usuario.autorizador);
+  const rascunhos = await rascunhosDeTermo(planilhas, usuario.autorizador);
   const acaba = termos.filter((t) => t.terminaEmAte90Dias);
   return (
     <div className="space-y-6">
@@ -42,6 +44,33 @@ export default async function Termos({ searchParams }: { searchParams: Promise<{
         <Aviso tipo="atencao" titulo="Termos que terminam em até 90 dias">
           {acaba.map((t) => `${t.parceiro} (${t.numero}), até ${dataBR(t.fim)}`).join('; ')}.
         </Aviso>
+      )}
+      {rascunhos.length > 0 && (
+        <Secao id="t-rascunhos" titulo="Rascunhos para completar" descricao="Vieram de projetos aprovados na porta 2. Não entram no orçamento, na ocupação nem nos alertas até serem concluídos.">
+          <TabelaDados
+            legenda="Rascunhos de termo"
+            vazio="Nenhum rascunho para completar."
+            colunas={[
+              { chave: 'projeto', rotulo: 'Projeto' },
+              { chave: 'parceiro', rotulo: 'Parceiro' },
+              { chave: 'valor', rotulo: 'Valor do projeto', tipo: 'moeda' },
+              { chave: 'falta', rotulo: 'O que falta' },
+            ]}
+            linhas={rascunhos.map((r) => ({
+              id: r.id,
+              valores: { projeto: r.projetoCodigo ?? '', parceiro: r.parceiro, valor: r.valor, falta: r.falta.join(', ') },
+              celulas: {
+                projeto: (
+                  <span className="flex flex-wrap gap-1">
+                    {r.projetoCodigo ?? '—'} <Etiqueta tipo="atencao">Rascunho</Etiqueta>
+                    {r.origemParadaOuCancelada && <Etiqueta tipo="erro">Projeto de origem cancelado</Etiqueta>}
+                  </span>
+                ),
+                valor: <span className="tabular-nums">{dinheiro(r.valor)}</span>,
+              },
+            }))}
+          />
+        </Secao>
       )}
       <TabelaDados
         legenda="Termos de parceria"
