@@ -10,7 +10,8 @@ import { Aviso } from '@/ui/aviso';
 import { LinkBotao } from '@/ui/botao';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
-import { acaoDarCiencia } from '../acoes';
+import { TesteDeCompreensao } from '@/modulos/conhecimento/telas/teste-de-compreensao';
+import { acaoDarCiencia, acaoEnviarTeste } from '../acoes';
 
 export const metadata: Metadata = { title: 'Publicação' };
 
@@ -52,14 +53,31 @@ export default async function Publicacao({ params }: { params: Promise<{ id: str
       {x.situacao === 'rascunho' && <Aviso tipo="info">Rascunho: só quem publica vê esta página. Ninguém recebe pendência até publicar.</Aviso>}
       {x.situacao === 'arquivada' && <Aviso tipo="info">Publicação arquivada. Ela fica aqui só para consulta e não aceita nova ciência.</Aviso>}
 
-      {x.exigeCiencia && x.doPublico && x.situacao !== 'rascunho' && (
+      {(x.exigeCiencia || x.temTeste) && x.doPublico && x.situacao !== 'rascunho' && (
         <section aria-labelledby="t-falta" className="rounded-cartao border border-borda-forte bg-superficie p-5 md:sticky md:top-2 md:z-10">
           <h2 id="t-falta" className="flex flex-wrap items-center gap-2 text-lg font-bold">
             O que falta <EtiquetaDaPessoa situacao={x.minhaSituacao} vencida={x.vencida} />
           </h2>
           {x.minhaSituacao === 'em_dia' ? (
-            <p className="mt-1">Em dia desde {formatarDataHora(x.minhaCienciaEm)}. Você não precisa fazer mais nada.</p>
-          ) : x.podeDarCiencia ? (
+            <p className="mt-1">
+              Em dia desde {formatarDataHora(x.minhaCienciaEm ?? x.minhaAprovacaoEm)}. Você não precisa fazer mais nada.
+            </p>
+          ) : null}
+          {x.minhaSituacao !== 'em_dia' && x.podeFazerTeste && (
+            <p className="mt-1 text-texto-suave">
+              {x.minhaSituacao === 'precisa_renovar' ? 'O conteúdo mudou: leia de novo e refaça o teste abaixo.' : 'Leia o documento e responda ao teste abaixo.'}
+              {x.cienciaEsperaTeste ? ' A ciência só é liberada depois de acertar todas as perguntas.' : ''}
+            </p>
+          )}
+          {x.cienciaEsperaTeste && !x.podeDarCiencia && x.exigeCiencia && x.minhaSituacao !== 'em_dia' && (
+            <p className="mt-2">
+              <button type="button" disabled className="min-h-11 cursor-not-allowed rounded-md border border-borda bg-superficie-2 px-4 text-sm font-semibold text-texto-suave">
+                Li e estou de acordo
+              </button>
+              <span className="ml-3 text-sm text-texto-suave">Disponível depois de acertar o teste.</span>
+            </p>
+          )}
+          {x.podeDarCiencia ? (
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <p className="text-texto-suave">
                 {x.minhaSituacao === 'precisa_renovar' ? 'O conteúdo mudou: leia de novo e confirme.' : 'Leia o documento e confirme que está de acordo.'}
@@ -81,6 +99,18 @@ export default async function Publicacao({ params }: { params: Promise<{ id: str
 
       {x.exigeCiencia && !x.doPublico && publica && x.situacao !== 'rascunho' && (
         <Aviso tipo="info">Você vê esta publicação por poder publicar, mas não faz parte do público dela. Por isso não há ciência a dar.</Aviso>
+      )}
+
+      {x.temTeste && x.doPublico && x.situacao === 'publicada' && (
+        <Secao titulo="Teste de compreensão" id="t-teste" descricao="Acerte todas as perguntas. Pode tentar quantas vezes precisar; errar não avisa ninguém.">
+          {x.podeFazerTeste ? (
+            <TesteDeCompreensao id={x.id} perguntas={x.perguntas} enviar={acaoEnviarTeste} cienciaDepois={x.exigeCiencia} />
+          ) : x.perguntas.length === 0 ? (
+            <Aviso tipo="info">O teste ainda não tem perguntas. Fale com quem publicou.</Aviso>
+          ) : (
+            <p>Você já acertou o teste desta versão{x.minhaAprovacaoEm ? ` em ${formatarDataHora(x.minhaAprovacaoEm)}` : ''}.</p>
+          )}
+        </Secao>
       )}
 
       <Secao titulo="Conteúdo" id="t-conteudo">

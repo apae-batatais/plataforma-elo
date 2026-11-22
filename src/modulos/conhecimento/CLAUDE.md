@@ -13,5 +13,7 @@ Leia antes `especificacao.md` desta pasta (e a ADR-039) e o `CLAUDE.md` da raiz.
 - Público-alvo: calculado na hora pelas atribuições do Núcleo (`dominio/publico.ts`); não há tabela de grupos.
 - Ciência: gravada só no servidor, com o usuário da sessão e a hora do servidor; uma por edição; nunca alterada.
 - Permissões: `conhecimento.acessar`, `.ler`, `.publicar`, `.acompanhar`, `.categorias.gerenciar`.
-- Entregas: 1 (publicação e ciência) pronta; faltam 2 (teste de compreensão), 3 (curtir e comentar) e 4 (aviso por
+- Teste: abas `Perguntas` (por edição; `correta` é sensível e nunca vai ao navegador) e `TentativasTeste` (só
+  inclusão). `enviarTeste` confere no servidor; ciência com teste só depois da aprovação (regra 11).
+- Entregas: 1 (publicação e ciência) e 2 (teste de compreensão) prontas; faltam 3 (curtir e comentar) e 4 (aviso por
   e-mail). Ao incluir colunas novas, lembre que a Administração precisa rodar "Preparar estrutura".

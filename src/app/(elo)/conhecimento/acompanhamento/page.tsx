@@ -74,10 +74,11 @@ export default async function Acompanhamento({ searchParams }: { searchParams: P
               { chave: 'nome', rotulo: 'Pessoa' },
               { chave: 'situacao', rotulo: 'Situação' },
               { chave: 'ciencia', rotulo: 'Ciência em' },
+              { chave: 'teste', rotulo: 'Melhor tentativa no teste' },
             ]}
             linhas={pessoas.map((x) => ({
               id: x.email,
-              valores: { nome: x.nome, situacao: x.situacao, ciencia: x.cienciaEm ? formatarDataHora(x.cienciaEm) : null },
+              valores: { nome: x.nome, situacao: x.situacao, ciencia: x.cienciaEm ? formatarDataHora(x.cienciaEm) : null, teste: x.melhorTentativa ? `${x.melhorTentativa.acertos} de ${x.melhorTentativa.total} certas` : null },
               celulas: { situacao: <EtiquetaDaPessoa situacao={x.situacao} /> },
             }))}
           />
@@ -89,11 +90,11 @@ export default async function Acompanhamento({ searchParams }: { searchParams: P
   const linhas = await listarAcompanhamento(planilhas, usuario.autorizador);
   return (
     <div className="space-y-6">
-      <CabecalhoPagina trilha={trilha} titulo="Acompanhamento" descricao="Quem já deu ciência e quem falta, publicação por publicação." />
+      <CabecalhoPagina trilha={trilha} titulo="Acompanhamento" descricao="Quem já cumpriu e quem falta, publicação por publicação." />
       {linhas.length === 0 ? (
-        <EstadoVazio titulo="Nenhuma publicação exige ciência ainda">Quando você publicar algo que exige ciência, o acompanhamento aparece aqui.</EstadoVazio>
+        <EstadoVazio titulo="Nenhuma publicação exige ciência ou teste ainda">Quando você publicar algo que exige ciência ou teste, o acompanhamento aparece aqui.</EstadoVazio>
       ) : (
-        <Secao titulo="Publicações que exigem ciência" id="t-acompanhamento">
+        <Secao titulo="Publicações que exigem ciência ou teste" id="t-acompanhamento">
           <Indicadores
             itens={linhas.map((l) => ({
               nome: l.titulo,
