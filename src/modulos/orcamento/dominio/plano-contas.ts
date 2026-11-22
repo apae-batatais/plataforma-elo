@@ -219,3 +219,131 @@ export function conferirItemEArea(
   }
   return erros;
 }
+
+// ---------------------------------------------------------------------------
+// Comparar exercícios e divergência de área (entrega 3): só leitura.
+// ---------------------------------------------------------------------------
+
+export interface ItemComparado {
+  area_id: string;
+  grupo_id: string;
+  /** Vazio quando a diferença é de grupo presente na área (sem item). */
+  item_id: string | null;
+}
+
+export interface MudouDeGrupo {
+  area_id: string;
+  item_id: string;
+  de_grupo_id: string;
+  para_grupo_id: string;
+}
+
+export interface ComparacaoPlanos {
+  areasEntraram: string[];
+  areasSairam: string[];
+  /** Grupos (por área) que entraram ou saíram; só os de áreas presentes nos dois planos ou já contados na área. */
+  gruposEntraram: { area_id: string; grupo_id: string }[];
+  gruposSairam: { area_id: string; grupo_id: string }[];
+  itensEntraram: ItemComparado[];
+  itensSairam: ItemComparado[];
+  mudaramDeGrupo: MudouDeGrupo[];
+  /** Os dois planos têm o mesmo conteúdo. */
+  iguais: boolean;
+}
+
+/** Compara dois planos (o `antes` e o `depois`, normalmente o vigente no fim de cada exercício). */
+export function compararPlanos(antes: LinhaPlano[], depois: LinhaPlano[]): ComparacaoPlanos {
+  const conj = <T,>(l: LinhaPlano[], f: (x: LinhaPlano) => T | null, chave: (t: T) => string) => {
+    const m = new Map<string, T>();
+    for (const x of l) {
+      const v = f(x);
+      if (v !== null) m.set(chave(v), v);
+    }
+    return m;
+  };
+  const diff = <T,>(a: Map<string, T>, b: Map<string, T>) => [...b].filter(([k]) => !a.has(k)).map(([, v]) => v);
+
+  const areasA = conj(antes, (l) => l.area_id, (x) => x);
+  const areasD = conj(depois, (l) => l.area_id, (x) => x);
+  const gruposA = conj(antes, (l) => ({ area_id: l.area_id, grupo_id: l.grupo_id }), (g) => `${g.area_id}|${g.grupo_id}`);
+  const gruposD = conj(depois, (l) => ({ area_id: l.area_id, grupo_id: l.grupo_id }), (g) => `${g.area_id}|${g.grupo_id}`);
+
+  // Item por (área, item): o grupo em que está em cada plano.
+  const itensA = conj(antes, (l) => (l.item_id ? { area_id: l.area_id, grupo_id: l.grupo_id, item_id: l.item_id } : null), (i) => `${i.area_id}|${i.item_id}`);
+  const itensD = conj(depois, (l) => (l.item_id ? { area_id: l.area_id, grupo_id: l.grupo_id, item_id: l.item_id } : null), (i) => `${i.area_id}|${i.item_id}`);
+  const mudaramDeGrupo: MudouDeGrupo[] = [];
+  const mudou = new Set<string>();
+  for (const [k, a] of itensA) {
+    const d = itensD.get(k);
+    if (d && d.grupo_id !== a.grupo_id) {
+      mudaramDeGrupo.push({ area_id: a.area_id, item_id: a.item_id, de_grupo_id: a.grupo_id, para_grupo_id: d.grupo_id });
+      mudou.add(k);
+    }
+  }
+  const semMudanca = (l: { area_id: string; item_id: string }[]) => l.filter((i) => !mudou.has(`${i.area_id}|${i.item_id}`));
+
+  const r = {
+    areasEntraram: diff(areasA, areasD),
+    areasSairam: diff(areasD, areasA),
+    gruposEntraram: diff(gruposA, gruposD),
+    gruposSairam: diff(gruposD, gruposA),
+    itensEntraram: semMudanca(diff(itensA, itensD)) as ItemComparado[],
+    itensSairam: semMudanca(diff(itensD, itensA)) as ItemComparado[],
+    mudaramDeGrupo,
+  };
+  return { ...r, iguais: planosIguais(antes, depois) };
+}
+
+export interface LancamentoParaDivergencia {
+  origem: 'despesa' | 'realizado';
+  id: string;
+  servico: string | null;
+  area_plano_id: string | null;
+  /** Valor em centavos (inteiro). */
+  centavos: number;
+}
+
+export interface ParDivergente {
+  area_plano_id: string;
+  /** Código da área do serviço. */
+  area_servico: string;
+  centavos: number;
+  lancamentos: LancamentoParaDivergencia[];
+}
+
+export interface Divergencias {
+  pares: ParDivergente[];
+  totalCentavos: number;
+  /** Lançamentos sem área do plano: nunca contam como divergência nem como zero. */
+  semAreaDoPlano: number;
+}
+
+/**
+ * Agrupa os lançamentos cuja área do plano difere da área do serviço. `coincide` diz se a área do plano
+ * e a área do serviço (código) são a mesma. O filtro de escopo deve ser feito ANTES.
+ */
+export function divergenciasDeArea(
+  lancamentos: LancamentoParaDivergencia[],
+  areaDoServico: (servico: string | null) => string | null,
+  coincide: (areaPlanoId: string, areaServico: string) => boolean,
+): Divergencias {
+  const pares = new Map<string, ParDivergente>();
+  let semAreaDoPlano = 0;
+  for (const l of lancamentos) {
+    if (!l.area_plano_id) {
+      semAreaDoPlano++;
+      continue;
+    }
+    const areaServico = areaDoServico(l.servico);
+    // Sem serviço ou serviço sem área: não há com o que comparar.
+    if (!areaServico) continue;
+    if (coincide(l.area_plano_id, areaServico)) continue;
+    const k = `${l.area_plano_id}|${areaServico}`;
+    const par = pares.get(k) ?? { area_plano_id: l.area_plano_id, area_servico: areaServico, centavos: 0, lancamentos: [] };
+    par.centavos += l.centavos;
+    par.lancamentos.push(l);
+    pares.set(k, par);
+  }
+  const lista = [...pares.values()].sort((a, b) => b.centavos - a.centavos);
+  return { pares: lista, totalCentavos: lista.reduce((s, x) => s + x.centavos, 0), semAreaDoPlano };
+}
