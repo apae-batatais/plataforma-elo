@@ -11,12 +11,12 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
 - Pareceristas e decisores de alçada são **designados por e-mail** em `ConfigProjetos` (ADR-021); a permissão abre a
   ação e o caso de uso confere a designação.
 - Permissões: `projetos.<ação>`, no manifesto.
-- Situação: entregas **P1 (base)**, **P2 (fases 1 e 2)** e **P3 (fase 3: atividades e orçamento do projeto, porta 3 e início da implementação)**
-  prontas. Faltam P4 a P7 (mudanças e relatórios, encerramento, carteira, ligações). `projetos.carteira` entra com a P6.
+- Situação: entregas **P1 (base)**, **P2 (fases 1 e 2)** **P3 (fase 3: atividades e orçamento do projeto, porta 3 e início da implementação)** e
+  **P4 (problemas, pedidos de mudança e relatórios)** prontas. Faltam P5 a P7 (encerramento, carteira, ligações). `projetos.carteira` entra com a P6.
 - Fase 3 (`aplicacao/planejamento.ts`, `dominio/planejamento.ts`): `Atividades` (atrasada é calculada, nunca gravada) e `ProjetoOrcamento`
   (só o plano do projeto; nada vai ao Orçamento da instituição). Atividades mudam na fase 3 e na implementação; o orçamento só na fase 3.
   A equipe vê as atividades, não o orçamento. Porta 3 (`plano`) só no porte completo; o enxuto usa `iniciarImplementacao`. A etapa
-  `implementacao` existe; P4 constrói sobre ela e deve chamar `exigirTermoAprovado`.
+  `implementacao` existe.
 - Documentos das fases: conteúdo em JSON na aba `ProjetoDocumentos`, campos definidos em `dominio/fases.ts`. Conteúdo nunca vai
   para auditoria nem histórico. Documento aprovado fica travado. `exigirTermoAprovado` (aplicacao/fases.ts) é a trava da regra 13:
   as entregas de implementação (P4) devem chamá-la.
@@ -28,3 +28,10 @@ Leia antes `especificacao.md` desta pasta, a ADR-021 e o `CLAUDE.md` da raiz.
 - Ligação com o termo (L2): `aplicacao/termo.ts`. Parcerias chega pela interface `CatalogoTermos` (`catalogo-parcerias.ts`),
   entregue por `src/plataforma/ligacoes.ts`; nunca importe Parcerias. A decisão da porta 2 nunca falha por causa do rascunho.
   `financiador` e `objeto` só existem no Termo de Abertura de projeto `financiado` (`camposDe`).
+- Fase 4 (`aplicacao/acompanhamento.ts`, `dominio/acompanhamento.ts`): `Problemas`, `PedidosMudanca`, `Relatorios`. Tudo só com o projeto em `implementacao`
+  e Termo aprovado (`exigirTermoAprovado`). Pedido dentro da tolerância é aplicado na hora (`aplicada`); fora dela fica `pendente`, passa por
+  `aguardando_alcada` se o novo total passa do limite e, aprovado, gera nova versão do Termo (`novaVersaoDoTermo`). A base da variação é a última
+  versão aprovada: o primeiro pedido já aplicado sobre o mesmo alvo desde essa versão guarda o valor de partida em `atual` (regra 19). Quem pediu não decide.
+  Atividade e fim do projeto mudam por pedido de prazo (tolerância de fim ou de marco = atividade); o orçamento, por pedido de custo. O relatório calcula
+  a situação (`situacaoCalculada`) e só pode piorar; chama `fotografarIndicadores` com origem `relatorio` sem perder o relatório se falhar. Equipe vê
+  problemas e riscos, não pedidos nem relatórios. `foraDaTolerancia` é o ponto de chamada da carteira (P6). Riscos também mudam na implementação.
