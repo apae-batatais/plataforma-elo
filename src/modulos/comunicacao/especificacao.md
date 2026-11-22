@@ -451,6 +451,18 @@ histórico do pedido, tela inicial). Sem infraestrutura nova (o `rotina.yml` e o
   dentro do Elo continua.
 - **Um aviso de falha por envio**, para não lotar a caixa da Comunicação.
 
+### Como foi construído (entrega 3) e decisões tomadas sozinho
+- `Envios` ganhou duas colunas internas: `modelo` (qual texto fixo) e `origem` (qual envio de release falhou, para avisar uma vez só).
+  O liga/desliga fica na aba `Parametros` (chave `avisos_por_email`, 1 ou 0), a mesma da antecedência, não numa aba nova. Se errado: trocar de lugar um parâmetro.
+- Sem e-mail de envio, o aviso nem é criado (a ação recebe `emailDisponivel`). Se a instituição ligar os avisos mas perder o e-mail de envio depois,
+  os avisos pendentes são cancelados com o motivo. Se errado: avisos perdidos nesse intervalo, o aviso dentro do Elo continua.
+- Resumo de revisão: sai só quando chegou pedido novo desde o último resumo (para não repetir o mesmo e-mail a cada 15 minutos). Se a Diretoria
+  preferir um lembrete fixo por dia, é pequena mudança.
+- Aviso que perdeu o sentido (por exemplo, pedido devolvido que já foi cancelado) é cancelado e não sai.
+- Um aviso para várias pessoas (aprovação, revisão, lembrete) é um e-mail só, com todas em cópia oculta; para uma pessoa só, vai no campo "Para".
+- O "N envios falharam" da tela inicial soma avisos que falharam nos últimos 7 dias; depois disso saem da conta.
+- Para a Diretoria decidir (não feito): cada pessoa desligar os próprios avisos; "Enviar e-mail de teste" na administração.
+
 ### Critérios de pronto (conferência na prévia, em demonstração com e-mail fictício)
 - Devolver, mandar para aprovação e publicar um pedido cria o aviso certo, para a pessoa certa, só com número e link.
 - Com avisos desligados ou sem remetente, nada é criado.

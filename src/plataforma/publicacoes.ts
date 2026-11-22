@@ -7,6 +7,8 @@
  */
 import 'server-only';
 import { rodarPublicacoes } from '@/modulos/comunicacao/aplicacao/publicacoes';
+import { rodarResultados } from '@/modulos/comunicacao/aplicacao/resultados';
+import { HORA_DA_BUSCA, horaEmBrasilia } from '@/modulos/comunicacao/dominio/resultado';
 import { PublicadorInstagramMemoria, PublicadorMeta, type PublicadorInstagram } from '@/nucleo/credenciais/instagram-publicacao';
 import type { ConfigGeral } from '@/nucleo/config';
 import { configGeral } from './instituicao';
@@ -28,5 +30,17 @@ export const tarefaDePublicacoes: TarefaDaRotina = {
     const urlBase = geral.modo === 'demonstracao' ? 'https://demonstracao.exemplo.local' : urlPublicaDoElo();
     if (!urlBase) return { sem_endereco_publico: 1 };
     return rodarPublicacoes(app.planilhas, { instituicao: app.instituicao.codigo, publicador: publicadorDeInstagram(geral), urlBase }, agora);
+  },
+};
+
+/**
+ * Busca diária do resultado das postagens (Fase 4, #65). A rotina roda a cada 15 minutos; esta tarefa só age na
+ * hora marcada (de madrugada, Brasília) e, dentro dela, não busca de novo o que já foi buscado no dia.
+ */
+export const tarefaDeResultadosDoInstagram: TarefaDaRotina = {
+  id: 'comunicacao.metricas_instagram',
+  async executar(app, agora) {
+    if (horaEmBrasilia(agora) !== HORA_DA_BUSCA) return {};
+    return rodarResultados(app.planilhas, { instituicao: app.instituicao.codigo, publicador: publicadorDeInstagram(configGeral()) }, agora);
   },
 };
