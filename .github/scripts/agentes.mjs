@@ -8,9 +8,15 @@
 // 2. Atualização de PRs em conflito: depois que algo entra na main, os PRs de proposta abertos
 //    que ficaram em conflito são entregues ao workflow "Atualizar PR", que une o ramo com a main.
 //
+// 3. Fim da construção: quando o Desenvolvedor termina, a issue não pode ficar parada em
+//    "Em construção" (segura vaga da fila sem trabalho). Com PR de entrega aberto, vai para
+//    "Entrega em aprovação" (mesmo se o GitHub não avisou a abertura do PR ao Fluxo); sem PR e sem
+//    pergunta aberta (por exemplo, esperando outra entrega entrar na main), volta para "Pronta para
+//    construir" e a fila chama de novo no próximo merge (achado no raio-x de 22/11/2026).
+//
 // As funções puras têm teste em tests/fluxo/agentes.test.ts.
 
-import { ETIQUETA_ENTREGA, ETIQUETA_ESPECIFICACAO } from './fluxo-quadro.mjs';
+import { aplicar, ETIQUETA_ENTREGA, ETIQUETA_ESPECIFICACAO, etapaDaEtiqueta, temPerguntaAberta, tipoDoPR } from './fluxo-quadro.mjs';
 
 export const ETIQUETA_FALHA = 'falha de agente';
 
@@ -90,4 +96,38 @@ export async function atualizarConflitos({ github, context, core, tentativas = 6
     }
   }
   return enviados;
+}
+
+/**
+ * Para onde vai a issue quando o Desenvolvedor termina (null = não mexe).
+ * @param {{ issue: any, prs: any[] }} p  prs: PRs abertos do repositório
+ * @returns {'Entrega em aprovação' | 'Pronta para construir' | null}
+ */
+export function etapaAoTerminar({ issue, prs }) {
+  const etiquetas = (issue.labels ?? []).map((l) => (typeof l === 'string' ? l : l.name));
+  if (issue.state !== 'open' || temPerguntaAberta(etiquetas)) return null;
+  if (!etiquetas.map(etapaDaEtiqueta).includes('Em construção')) return null;
+  const temEntrega = prs.some((pr) => {
+    const t = tipoDoPR({ etiquetas: pr.labels ?? [], texto: `${pr.title}\n${pr.body ?? ''}` });
+    return t.tipo === 'entrega' && t.issues.includes(issue.number);
+  });
+  return temEntrega ? 'Entrega em aprovação' : 'Pronta para construir';
+}
+
+/**
+ * Último passo do Desenvolvedor: aplica `etapaAoTerminar`. Com entrega aberta, chama a Fila (a vaga
+ * abriu). Sem entrega, não chama: a fila chamaria a mesma issue de novo na hora; ela volta no próximo merge.
+ */
+export async function concluirConstrucao({ github, context, core, tokenQuadro, numeroQuadro, numero }) {
+  const { owner, repo } = context.repo;
+  const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: Number(numero) });
+  const prs = await github.paginate(github.rest.pulls.list, { owner, repo, state: 'open', per_page: 100 });
+  const etapa = etapaAoTerminar({ issue, prs });
+  if (!etapa) return null;
+  await aplicar({ github, context, core, tokenQuadro, numeroQuadro, lista: [{ issue: Number(numero), etapa }] });
+  core.notice(`Issue #${numero} vai para "${etapa}" ao fim da construção`);
+  if (etapa === 'Entrega em aprovação') {
+    await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'fila.yml', ref: 'main' });
+  }
+  return etapa;
 }
