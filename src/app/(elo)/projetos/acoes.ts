@@ -32,6 +32,8 @@ import {
 import { SITUACOES_ATIVIDADE, type SituacaoAtividade } from '@/modulos/projetos/dominio/planejamento';
 import { definirFonteDoItem, registrarMedicao } from '@/modulos/projetos/aplicacao/indicadores';
 import { FONTES_NUMERO, type FonteNumero } from '@/modulos/projetos/dominio/indicadores';
+import { abrirPortaDeEncerramento, iniciarEncerramento, marcarChecklist, registrarLicao, salvarTextoDeEncerramento } from '@/modulos/projetos/aplicacao/encerramento';
+import { CATEGORIAS_LICAO, ITENS_CHECKLIST, ITENS_TEXTO, type CategoriaLicao, type ItemChecklist, type ItemTexto } from '@/modulos/projetos/dominio/encerramento';
 import { abrirPorta, darParecer, decidirPorta } from '@/modulos/projetos/aplicacao/portas';
 import { criarRascunhoDoProjeto, type ResultadoRascunho } from '@/modulos/projetos/aplicacao/termo';
 import { GRAUS, NIVEIS_MARCO, TIPOS_DOCUMENTO, type Grau, type NivelMarco, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
@@ -454,5 +456,54 @@ export async function acaoEnviarRelatorio(f: FormData) {
       },
       numerosDePessoas(app.planilhas),
     ),
+  );
+}
+
+// ---------- Encerramento e lições (P5) ----------
+
+const ENC = '/encerramento';
+
+export async function acaoIniciarEncerramento(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(() => fichaDe(id, ENC), fichaDe(id, ENC), 'Encerramento iniciado. Complete o check-list, o relatório final e uma lição.', ({ usuario, app }) =>
+    iniciarEncerramento(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao'))),
+  );
+}
+
+export async function acaoMarcarChecklist(f: FormData) {
+  const id = texto(f, 'id');
+  const item = texto(f, 'item');
+  const feito = texto(f, 'feito') === 'sim';
+  await executar(() => fichaDe(id, ENC), fichaDe(id, ENC), 'Salvo.', ({ usuario, app }) => {
+    if (!(ITENS_CHECKLIST as readonly string[]).includes(item)) throw new ErroProjetos('Item do check-list desconhecido.');
+    return marcarChecklist(app.planilhas, usuario.autorizador, id, item as ItemChecklist, feito, texto(f, 'observacao') || null);
+  });
+}
+
+export async function acaoSalvarTextoEncerramento(f: FormData) {
+  const id = texto(f, 'id');
+  const item = texto(f, 'item');
+  await executar(() => fichaDe(id, ENC), fichaDe(id, ENC), 'Salvo.', ({ usuario, app }) => {
+    if (!(ITENS_TEXTO as readonly string[]).includes(item)) throw new ErroProjetos('Texto de encerramento desconhecido.');
+    return salvarTextoDeEncerramento(app.planilhas, usuario.autorizador, id, item as ItemTexto, texto(f, 'texto'));
+  });
+}
+
+export async function acaoRegistrarLicao(f: FormData) {
+  const id = texto(f, 'id');
+  const categoria = texto(f, 'categoria');
+  await executar(() => fichaDe(id, ENC), fichaDe(id, ENC), 'Lição registrada.', ({ usuario, app }) =>
+    registrarLicao(app.planilhas, usuario.autorizador, id, {
+      categoria: (CATEGORIAS_LICAO as readonly string[]).includes(categoria) ? (categoria as CategoriaLicao) : ('' as CategoriaLicao),
+      oQueAconteceu: texto(f, 'aconteceu'),
+      fazerDiferente: texto(f, 'diferente'),
+    }),
+  );
+}
+
+export async function acaoAbrirPortaEncerramento(f: FormData) {
+  const id = texto(f, 'id');
+  await executar(() => fichaDe(id), fichaDe(id, ENC), 'Porta de encerramento aberta. A Diretoria decide.', ({ usuario, app }) =>
+    abrirPortaDeEncerramento(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), numerosDePessoas(app.planilhas)),
   );
 }

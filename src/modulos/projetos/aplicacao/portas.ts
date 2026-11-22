@@ -286,7 +286,7 @@ export async function lerFicha(p: Planilhas, quem: Autorizador, id: string): Pro
       abrirPorta: ehResponsavel && projeto.etapa === 'ideia' && quem.temPermissaoAlgumEscopo('projetos.gerenciar'),
       trocarResponsavel: veTodos(quem) && ['ideia', 'fase_1', 'fase_2', 'fase_3', 'implementacao', 'parado'].includes(projeto.etapa),
       retomar: projeto.etapa === 'parado' && quem.temPermissao('projetos.decidir'),
-      cancelar: projeto.etapa !== 'cancelado' && projeto.etapa !== 'em_porta' && ((ehProponente && (projeto.etapa === 'rascunho' || projeto.etapa === 'aguardando_responsavel')) || ehResponsavel || veTodos(quem)),
+      cancelar: projeto.etapa !== 'cancelado' && projeto.etapa !== 'encerrado' && projeto.etapa !== 'em_porta' && ((ehProponente && (projeto.etapa === 'rascunho' || projeto.etapa === 'aguardando_responsavel')) || ehResponsavel || veTodos(quem)),
       parecerDos:
         aberta && aberta.porta.situacao === 'aberta' && quem.temPermissaoAlgumEscopo('projetos.parecer')
           ? aberta.faltando.filter((t) => designado(config, quem.email, t))

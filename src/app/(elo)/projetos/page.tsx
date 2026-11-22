@@ -27,7 +27,14 @@ export default async function MeusProjetos() {
         trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Projetos' }]}
         titulo="Meus projetos e ideias"
         descricao="As ideias que você propôs e os projetos de que você é responsável."
-        acoes={linhas.length > 0 ? nova : undefined}
+        acoes={
+          <>
+            <LinkBotao href="/projetos/licoes" variante="secundario">
+              Lições aprendidas
+            </LinkBotao>
+            {linhas.length > 0 ? nova : undefined}
+          </>
+        }
       />
       {pendencias.length > 0 && (
         <Secao id="t-espera" titulo="Espera uma ação sua" descricao="Pareceres, decisões e pedidos de mudança que dependem de você.">
