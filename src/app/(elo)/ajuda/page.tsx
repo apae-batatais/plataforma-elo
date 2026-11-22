@@ -503,6 +503,7 @@ export default async function Ajuda() {
                   'Planejamento › Plano de contas: escolha o exercício e use Montar plano. Em cada área, marque os grupos e os itens que ela usa e diga a partir de quando vale (dentro do ano). Salvar cria uma versão nova; as anteriores ficam em "Versões anteriores".',
                   'Para um ano novo, use "Começar do plano de" o ano anterior: o plano vem preenchido, você ajusta e salva. Nada é gravado até salvar.',
                   'O plano só orienta: nenhum lançamento é bloqueado por ele. "Baixar planilha" entrega o plano do exercício em CSV.',
+                  'Ao lançar uma despesa (e ao informar o realizado de uma despesa), escolha, se quiser, o Item contábil e a Área do plano. A lista mostra primeiro os itens habilitados no plano do ano e, abaixo, "Outros itens do grupo". Se a escolha estiver fora do plano, aparece um aviso amarelo e você pode salvar mesmo assim. O Elo nunca preenche esses campos sozinho. Um item de outro grupo não é aceito.',
                 ]}
               />
               <Sub>Decidir as propostas</Sub>

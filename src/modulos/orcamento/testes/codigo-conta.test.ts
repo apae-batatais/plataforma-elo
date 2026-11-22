@@ -220,9 +220,9 @@ describe('Baixar planilha', () => {
     const d = await baixarItensCsv(p, f, 'despesa', 2027);
     expect(d.nome).toBe('despesas-2027.csv');
     const linhas = d.conteudo.split('\r\n');
-    expect(linhas[0]).toContain('Código da conta do grupo;Fonte;Código da conta da fonte');
+    expect(linhas[0]).toContain('Código da conta do grupo;Item contábil;Área do plano;Fonte;Código da conta da fonte');
     const linha = linhas.find((l) => l.includes('Item com código'))!;
-    expect(linha).toContain('3.1.02.001;Fonte baixar;4.1.01.001;Item com código;100,5;');
+    expect(linha).toContain('3.1.02.001;;;Fonte baixar;4.1.01.001;Item com código;100,5;');
     expect(linha).not.toContain('R$');
   });
 
