@@ -22,6 +22,7 @@ import {
 } from '../dominio/realizado';
 import { mesAnterior, mesAtualBrasilia } from '../dominio/tesouraria';
 import { ErroValidacaoFolha } from './folha';
+import { errosDoItemEDaArea, opcoesDoPlano, type OpcoesPlano } from './plano-lancamento';
 
 /** Mesmo tipo de erro da folha: as telas já sabem mostrá-lo. */
 export const ErroRealizado = ErroValidacaoFolha;
@@ -32,6 +33,7 @@ const arred = (v: number) => Math.round(v * 100) / 100;
 const limpar = (t: string | null | undefined) => (t ?? '').trim().replace(/\s+/g, ' ');
 const vazioParaNulo = (t: string | null | undefined) => limpar(t) || null;
 const anoDoMes = (mes: string) => Number(mes.slice(0, 4));
+const ultimoDiaDoMes = (mes: string) => new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5)), 0)).toISOString().slice(0, 10);
 
 /** Quem enxerga tudo (todos os serviços e as receitas). */
 const veTudo = (quem: Autorizador) => quem.temPermissao(PERM.ver) || quem.temPermissao(PERM.editar);
@@ -69,6 +71,9 @@ export interface LinhaGrade {
   observacao: string | null;
   /** Termo (fonte restrita) adiantado; só em "adiantamento a termo". */
   termoId: string | null;
+  /** Plano de contas (#221): item contábil e área do plano da despesa, opcionais. */
+  itemId: string | null;
+  areaPlanoId: string | null;
   /** Veio da Previsão (false = linha adicionada à mão). */
   prevista: boolean;
 }
@@ -87,6 +92,8 @@ export interface GradeDoMes {
     servicos: { codigo: string; nome: string }[];
     grupos: { id: string; nome: string; rh: boolean }[];
     fontes: { id: string; nome: string; restrita: boolean }[];
+    /** Áreas, itens e plano vigente no mês (#221); `linhas = null` = exercício sem plano. */
+    plano: OpcoesPlano;
   };
 }
 
@@ -124,6 +131,8 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
     motivo: null,
     observacao: null,
     termoId: null,
+    itemId: null,
+    areaPlanoId: null,
     prevista: false,
   });
 
@@ -156,7 +165,7 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
     if (r.tipo === 'despesa' ? !veServico(quem, r.servico ?? '') : !tudo) continue;
     const l = base(r.tipo, r.servico, r.grupo_id, r.fonte_id, r.natureza);
     const linha = mapa.get(l.chave) ?? l;
-    Object.assign(linha, { realizado: r.valor, versao: r.versao, naoRecorrente: r.nao_recorrente, motivo: r.motivo_nao_recorrente, observacao: r.observacao, termoId: r.fonte_termo_id ?? null });
+    Object.assign(linha, { realizado: r.valor, versao: r.versao, naoRecorrente: r.nao_recorrente, motivo: r.motivo_nao_recorrente, observacao: r.observacao, termoId: r.fonte_termo_id ?? null, itemId: r.tipo === 'despesa' ? (r.item_id ?? null) : null, areaPlanoId: r.tipo === 'despesa' ? (r.area_plano_id ?? null) : null });
     mapa.set(l.chave, linha);
   }
 
@@ -180,6 +189,7 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
       servicos: servicosT.ativos().filter((s) => veServico(quem, s.codigo)).map((s) => ({ codigo: s.codigo, nome: s.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       grupos: gruposT.ativos().map((g) => ({ id: g.id, nome: g.nome, rh: g.rh })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       fontes: fontesT.ativos().map((f) => ({ id: f.id, nome: f.nome, restrita: f.uso === 'restrita' })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+      plano: await opcoesDoPlano(p, ano, ultimoDiaDoMes(mes)),
     },
   };
 }
@@ -201,6 +211,9 @@ export interface EntradaLinha {
   observacao?: string | null;
   /** Termo (fonte restrita) adiantado; vale só para natureza "adiantamento a termo". */
   termoId?: string | null;
+  /** Item contábil e área do plano (#221); só despesa. undefined mantém o atual; vazio limpa. */
+  itemId?: string | null;
+  areaPlanoId?: string | null;
   /** Versão lida ao abrir a tela; ausente em linha nova. */
   versao?: number;
 }
@@ -237,6 +250,11 @@ export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes:
     if (l.natureza === 'adiantamento_termo' && l.tipo === 'despesa' && !termoId && (!existente || existente.fonte_termo_id)) {
       erros.push('Informe o termo adiantado (a fonte restrita do termo).');
     }
+    const itemId = l.tipo === 'despesa' ? (l.itemId === undefined ? (existente?.item_id ?? null) : vazioParaNulo(l.itemId)) : null;
+    const areaPlanoId = l.tipo === 'despesa' ? (l.areaPlanoId === undefined ? (existente?.area_plano_id ?? null) : vazioParaNulo(l.areaPlanoId)) : null;
+    if (erros.length === 0) {
+      erros.push(...(await errosDoItemEDaArea(p, { grupo_id: grupoId, item_id: itemId, area_plano_id: areaPlanoId }, existente ? { item_id: existente.item_id ?? null, area_plano_id: existente.area_plano_id ?? null } : undefined)));
+    }
     if (erros.length === 0) {
       if (termoId && !fontesT.porId(termoId)) erros.push('O termo escolhido não existe.');
       if (servico && !servicosT.porId(servico) && !servicosT.todos().some((s) => s.codigo === servico)) erros.push('O serviço escolhido não existe.');
@@ -250,11 +268,14 @@ export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes:
       motivo_nao_recorrente: naoRecorrente ? motivo : null,
       observacao: vazioParaNulo(l.observacao),
       fonte_termo_id: termoId,
+      item_id: itemId,
+      area_plano_id: areaPlanoId,
     };
     if (existente) {
       const mudou =
         existente.valor !== campos.valor || existente.nao_recorrente !== campos.nao_recorrente ||
-        (existente.motivo_nao_recorrente ?? null) !== campos.motivo_nao_recorrente || (existente.observacao ?? null) !== campos.observacao || (existente.fonte_termo_id ?? null) !== campos.fonte_termo_id;
+        (existente.motivo_nao_recorrente ?? null) !== campos.motivo_nao_recorrente || (existente.observacao ?? null) !== campos.observacao || (existente.fonte_termo_id ?? null) !== campos.fonte_termo_id ||
+        (existente.item_id ?? null) !== campos.item_id || (existente.area_plano_id ?? null) !== campos.area_plano_id;
       if (mudou) passos.push({ acao: 'alterar', chave, existente, campos });
     } else {
       passos.push({

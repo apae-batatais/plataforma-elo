@@ -66,8 +66,11 @@ export function calcularPode(v: Verificador, todos = false) {
     atenderRequisicao: v.temPermissaoAlgumEscopo('requisicoes.atender'),
     painelRequisicoes: v.temPermissaoAlgumEscopo('requisicoes.painel'),
     decidirEspacos: v.temPermissaoAlgumEscopo('requisicoes.espacos.decidir'),
+    operarVeiculos: v.temPermissaoAlgumEscopo('requisicoes.veiculos.operar'),
     avaliar: v.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: v.temPermissaoAlgumEscopo('avaliacao.painel'),
+    avaliarEducacao: v.temPermissaoAlgumEscopo('educacao.avaliar'),
+    avaliarSaude: v.temPermissaoAlgumEscopo('saude.avaliar'),
     tiposRequisicao: v.temPermissao('requisicoes.tipos.gerenciar'),
     veiculos: v.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: v.temPermissao('core.dpo.gerenciar'),
@@ -163,6 +166,12 @@ export function montarAssuntos(ctx: {
         ...(pode.aprovarRequisicao ? [{ rotulo: 'Para aprovar', href: '/requisicoes/aprovar' }] : []),
         ...(pode.atenderRequisicao ? [{ rotulo: 'Para atender', href: '/requisicoes/atender' }] : []),
         ...(pode.decidirEspacos ? [{ rotulo: 'Reservas de espaço', href: '/requisicoes/espacos' }] : []),
+        ...(pode.operarVeiculos
+          ? [
+              { rotulo: 'Pedidos de veículo', href: '/requisicoes/veiculos/pedidos' },
+              { rotulo: 'Agenda dos veículos', href: '/requisicoes/veiculos/agenda' },
+            ]
+          : []),
         ...(pode.painelRequisicoes ? [{ rotulo: 'Painel de prazos', href: '/requisicoes/painel' }] : []),
       ],
       conteudo: (
@@ -227,12 +236,23 @@ export function montarAssuntos(ctx: {
               'Clique em Enviar pedido. O setor Espaços aprova, devolve para ajuste ou recusa; você acompanha em Minhas requisições. Enquanto não for aprovada, dá para cancelar. O pedido não é barrado por outro no mesmo horário: quem decide vê o conflito.',
             ]}
           />
+          <Sub>Pedir um veículo</Sub>
+          <Passos
+            itens={[
+              'Abra Requisições › Nova requisição e escolha o tipo "Uso de veículo".',
+              'Escolha a área e os centros de custo (um ou mais serviços, somando 100%). Eles servem só para saber depois quais serviços mais usam os veículos: não geram despesa.',
+              'Informe a saída e a volta prevista (dia/mês/ano e hora; a volta pode ser em outro dia) e depois escolha o veículo. Veículos em manutenção nessas datas não aparecem na lista.',
+              'Preencha destino, finalidade (para que será usado) e condutor, que já vem com o seu nome: troque se outra pessoa for dirigir.',
+              'Clique em Enviar pedido. Se já houver pedido no mesmo horário, aparece um aviso, mas dá para enviar: o Transporte decide. Enquanto não for aprovado, você pode ajustar (se devolvido) ou cancelar em Minhas requisições.',
+            ]}
+          />
           <Sub>Quem aprova</Sub>
           <Itens
             itens={[
               'A coordenação dos centros de custo. Uma requisição não pode misturar serviços de coordenações diferentes: abra uma para cada.',
               'Pedido feito pela própria coordenação, ou de serviço sem coordenação cadastrada, é aprovado pela Diretoria.',
               'Reserva de espaço é sempre decidida pelo setor Espaços, de qualquer coordenação. Se quem pede é do próprio setor Espaços, a Diretoria decide.',
+              'Pedido de veículo é sempre decidido pelo Transporte, de qualquer coordenação. Se quem pede é do Transporte, a Diretoria decide.',
             ]}
           />
           {pode.aprovarRequisicao && (
@@ -255,6 +275,20 @@ export function montarAssuntos(ctx: {
                   'Na ficha, o bloco "Conflitos neste horário" mostra quem pediu o mesmo espaço em horário que se cruza (encostar, como 10h–11h e 11h–12h, não conta). Clique em Aprovar reserva, Devolver para ajuste ou Recusar (os dois últimos pedem o motivo).',
                   'Se o horário já está aprovado para outro pedido, o sistema pede confirmação antes de aprovar. A decisão não tem volta.',
                   'Depois do uso, abra a ficha e clique em Registrar uso: "Usado sem problema" ou "Usado com problema" (este pede o texto). O botão só libera depois da hora de fim.',
+                ]}
+              />
+            </>
+          )}
+          {pode.operarVeiculos && (
+            <>
+              <Sub>Decidir pedidos de veículo</Sub>
+              <Passos
+                itens={[
+                  'Abra Requisições › Pedidos de veículo: a lista traz os pedidos novos pela ordem de saída, com os selos "Conflito" (outro pedido no mesmo veículo e horário) e "Manutenção" (a manutenção prevista atinge o período).',
+                  'Na ficha, o quadro "Pedidos neste horário" mostra quem pediu, o destino e a situação de cada pedido que cruza (encostar, como a volta às 12h e a saída às 12h, não conta). Clique em Aprovar pedido, Devolver para ajuste ou Recusar (os dois últimos pedem o motivo).',
+                  'Se já existe um pedido aprovado no mesmo horário, o sistema pede confirmação antes de aprovar; a confirmação fica no histórico. Se o outro ainda está aguardando, aprova direto.',
+                  'Para resolver um conflito ou o aviso de manutenção de um pedido já aprovado, abra a ficha e clique em Cancelar reserva (o motivo é obrigatório e quem pediu vê no histórico). Nada é cancelado sozinho.',
+                  'Em Agenda dos veículos, veja por veículo os pedidos dos próximos 30 dias e a manutenção prevista; ali também dá para marcar a manutenção como feita.',
                 ]}
               />
             </>
@@ -324,6 +358,8 @@ export function montarAssuntos(ctx: {
                 Ao alterar um veículo, informe a data da próxima manutenção: a partir desse dia ele deixa de aparecer para pedido novo, até você clicar em
                 &ldquo;Marcar feita&rdquo; (e, se já souber, informar a data da seguinte). Veículo excluído some da lista de pedido, mas pode ser reativado
                 em &ldquo;Veículos excluídos&rdquo;. Nada é apagado.
+                Para liberar os pedidos, cadastre o tipo &ldquo;Uso de veículo&rdquo; em Tipos de requisição, com a ficha de veículo e o setor Transporte, e atribua o
+                perfil Transporte às pessoas do setor em Acessos. O tipo de veículo não aceita foto nem vídeo.
               </p>
             </>
           )}
@@ -375,6 +411,53 @@ export function montarAssuntos(ctx: {
               />
             </>
           )}
+        </>
+      ),
+    });
+  }
+
+  if (pode.avaliarEducacao) {
+    assuntos.push({
+      id: 'educacao',
+      titulo: 'Educação',
+      resumo: 'Ver os instrumentos de avaliação de Educação e aplicar um a uma pessoa.',
+      atalhos: [
+        { rotulo: 'Instrumentos', href: '/educacao/instrumentos' },
+        { rotulo: 'Nova avaliação', href: '/educacao/nova' },
+      ],
+      conteudo: (
+        <>
+          <Sub>Instrumentos</Sub>
+          <Passos
+            itens={[
+              'Abra Avaliações › Educação › Instrumentos. A tela lista os três instrumentos, com a versão e o número de domínios e itens.',
+              'Clique em Aplicar a uma pessoa: a nova avaliação abre com o instrumento já escolhido. Depois escolha a pessoa, o serviço e o período.',
+              'Clique em Sobre o instrumento para ler como o total, os subtotais e as faixas são calculados.',
+            ]}
+          />
+        </>
+      ),
+    });
+  }
+
+  if (pode.avaliarSaude) {
+    assuntos.push({
+      id: 'saude',
+      titulo: 'Saúde',
+      resumo: 'Ver o instrumento de avaliação de Saúde, na versão em uso, e aplicar a uma pessoa.',
+      atalhos: [
+        { rotulo: 'Instrumentos', href: '/saude/instrumentos' },
+        { rotulo: 'Nova avaliação', href: '/saude/nova' },
+      ],
+      conteudo: (
+        <>
+          <Sub>Instrumentos</Sub>
+          <Passos
+            itens={[
+              'Abra Avaliações › Saúde › Instrumentos. A tela mostra o instrumento do CER na versão em uso.',
+              'Clique em Aplicar a uma pessoa para abrir a nova avaliação, ou em Sobre o instrumento para ler como o total e as faixas são calculados.',
+            ]}
+          />
         </>
       ),
     });
@@ -485,6 +568,7 @@ export function montarAssuntos(ctx: {
                   'Planejamento › Plano de contas: escolha o exercício e use Montar plano. Em cada área, marque os grupos e os itens que ela usa e diga a partir de quando vale (dentro do ano). Salvar cria uma versão nova; as anteriores ficam em "Versões anteriores".',
                   'Para um ano novo, use "Começar do plano de" o ano anterior: o plano vem preenchido, você ajusta e salva. Nada é gravado até salvar.',
                   'O plano só orienta: nenhum lançamento é bloqueado por ele. "Baixar planilha" entrega o plano do exercício em CSV.',
+                  'Ao lançar uma despesa (e ao informar o realizado de uma despesa), escolha, se quiser, o Item contábil e a Área do plano. A lista mostra primeiro os itens habilitados no plano do ano e, abaixo, "Outros itens do grupo". Se a escolha estiver fora do plano, aparece um aviso amarelo e você pode salvar mesmo assim. O Elo nunca preenche esses campos sozinho. Um item de outro grupo não é aceito.',
                 ]}
               />
               <Sub>Decidir as propostas</Sub>
@@ -625,6 +709,62 @@ export function montarAssuntos(ctx: {
             </>
           )}
           {pode.decidirPlano && <p className="mt-3">Na porta 3, a Diretoria decide seguir, ajustar ou parar, com justificativa, depois dos pareceres, como nas portas anteriores.</p>}
+        </>
+      ),
+    });
+  }
+
+  if (pode.verPlanejamento) {
+    assuntos.push({
+      id: 'projetos-implementacao',
+      titulo: 'Projetos: problemas, mudanças e relatórios (implementação)',
+      resumo: 'Acompanhar o projeto depois do início: registrar o que deu errado, pedir mudança de prazo, custo ou escopo e enviar relatórios.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }],
+      conteudo: (
+        <>
+          <Itens
+            itens={[
+              'Estas abas só funcionam com o projeto em implementação, isto é, com o Termo de Abertura aprovado. Antes disso, aparecem em leitura.',
+              'Riscos e problemas: risco é o que pode dar errado; problema é o que já deu. Problema aberto continua na carteira até ter solução e data. Gravidade alta aparece em destaque.',
+              'Quem está só na equipe do projeto vê riscos e problemas, mas não vê pedidos de mudança, relatórios nem o orçamento.',
+              'A situação do relatório vem sempre com a palavra (Verde, Amarelo ou Vermelho), nunca só com a cor.',
+            ]}
+          />
+          {pode.planejarProjeto && (
+            <>
+              <Sub>Registrar um problema</Sub>
+              <Passos
+                itens={[
+                  'Abra o projeto e a aba Riscos e problemas.',
+                  'Em Registrar problema, descreva o que aconteceu, escolha a gravidade e, se quiser, quem cuida da solução.',
+                  'Quando resolver, use Registrar solução: escreva como foi resolvido e a data. Nada é apagado.',
+                ]}
+              />
+              <Sub>Pedir uma mudança</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Mudanças e clique em Pedir mudança. Escolha prazo, custo ou escopo.',
+                  'Preencha o que muda e o motivo e clique em Conferir a tolerância. O Elo mostra em palavras a variação (por exemplo, “a linha sobe 5% de 10% permitidos”) e diz quem decide.',
+                  'Dentro da tolerância do Termo de Abertura, você aplica na hora e fica no histórico. Fora dela, o pedido vai para a Diretoria e nada muda até a decisão.',
+                  'A comparação é feita com a última versão aprovada do Termo: várias mudanças pequenas somam e podem passar do limite.',
+                  'Mudança de escopo sempre vai para a Diretoria, a não ser que o Termo tenha declarado um “escopo livre” e você marque que a mudança cabe nele.',
+                ]}
+              />
+              <Sub>Enviar um relatório</Sub>
+              <Passos
+                itens={[
+                  'Abra a aba Relatórios e preencha o período, o que aconteceu e, se quiser, quanto já foi gasto.',
+                  'O Elo compara planejado e realizado, conta atividades atrasadas e problemas abertos e calcula a situação geral. Você só pode escolher uma situação pior que a calculada, explicando o motivo.',
+                  'Se o projeto usa números do cadastro nos indicadores, o relatório também registra a medição do dia.',
+                ]}
+              />
+            </>
+          )}
+          {pode.decidirProjeto && (
+            <p className="mt-3">
+              Pedido fora da tolerância aparece em “Espera uma ação sua”, na tela inicial de Projetos. A Diretoria aprova ou recusa, sempre com justificativa. Aprovado, o Elo aplica a mudança e gera uma nova versão do Termo de Abertura (a anterior fica guardada como substituída). Se o novo valor total passar do limite de alçada, a aprovação da Diretoria segue para a Presidência ou o Conselho. Quem fez o pedido não decide o próprio pedido.
+            </p>
+          )}
         </>
       ),
     });

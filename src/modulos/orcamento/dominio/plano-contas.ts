@@ -145,3 +145,77 @@ export function planosIguais(a: LinhaPlano[], b: LinhaPlano[]): boolean {
   const sb = new Set(b.map(k));
   return sa.size === sb.size && [...sa].every((x) => sb.has(x));
 }
+
+// ---------------------------------------------------------------------------
+// Lançamentos orientados pelo plano (entrega 2): o plano só orienta, nunca bloqueia.
+// ---------------------------------------------------------------------------
+
+/** Plano a usar ao lançar: o vigente na data (limitada ao ano); sem vigente ainda, a versão mais recente do ano. */
+export function versaoParaLancar(gravadas: LinhaGravada[], ano: number, hoje: string): VersaoPlano | undefined {
+  const data = hoje < `${ano}-01-01` ? `${ano}-01-01` : hoje > `${ano}-12-31` ? `${ano}-12-31` : hoje;
+  return versaoVigente(gravadas, ano, data) ?? versoesDoExercicio(gravadas, ano).at(-1);
+}
+
+export interface ItemDoGrupo {
+  id: string;
+  nome: string;
+  codigo: string | null;
+  grupo_id: string;
+}
+
+/** Itens do grupo separados em "habilitados" (na área escolhida, ou em qualquer área se não há área) e "outros". Sem plano, todos são habilitados. */
+export function itensParaEscolher(
+  itens: ItemDoGrupo[],
+  grupoId: string,
+  areaId: string | null,
+  linhas: LinhaPlano[] | null,
+): { habilitados: ItemDoGrupo[]; outros: ItemDoGrupo[] } {
+  const doGrupo = itens.filter((i) => i.grupo_id === grupoId);
+  if (!linhas) return { habilitados: doGrupo, outros: [] };
+  const ok = new Set(linhas.filter((l) => l.grupo_id === grupoId && l.item_id && (!areaId || l.area_id === areaId)).map((l) => l.item_id as string));
+  return { habilitados: doGrupo.filter((i) => ok.has(i.id)), outros: doGrupo.filter((i) => !ok.has(i.id)) };
+}
+
+/**
+ * Aviso (texto) quando Grupo, Item ou Área estão fora do plano. `null` = sem aviso (inclui "sem plano no exercício"
+ * e "sem item nem área escolhidos").
+ */
+export function avisoDoPlano(
+  escolha: { grupo_id: string | null; item_id: string | null; area_id: string | null },
+  linhas: LinhaPlano[] | null,
+  ano: number,
+): string | null {
+  if (!linhas || (!escolha.item_id && !escolha.area_id)) return null;
+  const foraDe = `não está habilitado para esta área em ${ano}`;
+  if (escolha.area_id && !linhas.some((l) => l.area_id === escolha.area_id)) return `Esta área não está no plano de ${ano}.`;
+  if (escolha.area_id && escolha.grupo_id && !linhas.some((l) => l.area_id === escolha.area_id && l.grupo_id === escolha.grupo_id)) {
+    return `Este grupo ${foraDe}.`;
+  }
+  if (escolha.item_id) {
+    const noPlano = linhas.some((l) => l.item_id === escolha.item_id && (!escolha.area_id || l.area_id === escolha.area_id));
+    if (!noPlano) return escolha.area_id ? `Este item ${foraDe}.` : `Este item não está no plano de ${ano}.`;
+  }
+  return null;
+}
+
+/** Erros de dado (não de plano): o item precisa existir e ser do grupo escolhido; a área precisa existir. */
+export function conferirItemEArea(
+  dados: { grupo_id: string | null; item_id: string | null; area_plano_id: string | null },
+  itens: { id: string; grupo_id: string; ativo: boolean }[],
+  areas: { id: string; ativo: boolean }[],
+  atual: { item_id: string | null; area_plano_id: string | null } = { item_id: null, area_plano_id: null },
+): string[] {
+  const erros: string[] = [];
+  if (dados.item_id) {
+    const i = itens.find((x) => x.id === dados.item_id);
+    if (!i) erros.push('O item contábil escolhido não existe.');
+    else if (!dados.grupo_id || i.grupo_id !== dados.grupo_id) erros.push('O item contábil escolhido é de outro grupo de contas. Escolha um item do grupo.');
+    else if (!i.ativo && dados.item_id !== atual.item_id) erros.push('O item contábil escolhido está excluído.');
+  }
+  if (dados.area_plano_id) {
+    const a = areas.find((x) => x.id === dados.area_plano_id);
+    if (!a) erros.push('A área do plano escolhida não existe.');
+    else if (!a.ativo && dados.area_plano_id !== atual.area_plano_id) erros.push('A área do plano escolhida está excluída.');
+  }
+  return erros;
+}

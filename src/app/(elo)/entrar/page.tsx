@@ -54,6 +54,7 @@ const O_QUE_VE: Record<string, string> = {
   manutencao: 'Atende os pedidos de manutenção.',
   cozinha: 'Atende as requisições da cozinha.',
   espacos: 'Decide as reservas de espaço.',
+  transporte: 'Decide os pedidos de veículo.',
 };
 
 export default async function Entrar() {
