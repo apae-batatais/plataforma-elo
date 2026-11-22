@@ -12,6 +12,13 @@ describe('fila de construção', () => {
     expect(ocupaVaga(issue(3, PRONTA))).toBe(false);
   });
 
+  it('proposta mãe (com sub-issues) não ocupa vaga nem é chamada: quem constrói é cada sub-issue', () => {
+    const mae = (number: number, ...labels: string[]) => ({ ...issue(number, ...labels), sub_issues_summary: { total: 5, completed: 1 } });
+    expect(ocupaVaga(mae(1, EM))).toBe(false);
+    const abertas = [mae(1, EM), mae(2, EM), issue(3, EM), mae(4, PRONTA), issue(5, PRONTA), issue(6, PRONTA)];
+    expect(escolherProximas({ abertas, ordem: [4, 5, 6] }).chamar).toEqual([5, 6]);
+  });
+
   it('o limite é de 3 em construção (revisão de 20/11/2026)', () => {
     expect(LIMITE_EM_CONSTRUCAO).toBe(3);
   });
