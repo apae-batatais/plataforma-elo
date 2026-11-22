@@ -27,7 +27,7 @@ export default async function ComparativoDeEducacao({ params }: { params: Promis
   return (
     <div className="space-y-6">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: c.pessoaNome, href: `/educacao/${id}` }, { rotulo: 'Comparativo' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: c.pessoaNome, href: `/educacao/${id}` }, { rotulo: 'Comparativo' }]}
         titulo={`Comparativo de ${c.pessoaNome}`}
         descricao="Só entram avaliações concluídas e não corrigidas, da mesma versão do instrumento."
         acoes={

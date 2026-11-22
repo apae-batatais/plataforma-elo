@@ -49,7 +49,7 @@ export default async function Avaliacoes({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-5">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliação de Serviços Sociais' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Assistência Social' }]}
         titulo="Avaliações"
         descricao="Avaliações iniciais e anuais dos serviços em que você avalia. As pessoas aparecem só pelas iniciais, data de nascimento e sexo."
         acoes={

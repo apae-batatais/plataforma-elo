@@ -29,8 +29,8 @@ export default async function ComparativoDaAplicacao({ params }: { params: Promi
     <div className="space-y-6">
       <CabecalhoPagina
         trilha={[
-          { rotulo: 'Início', href: '/' },
-          { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' },
+          { rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' },
+          { rotulo: 'Assistência Social', href: '/avaliacao' },
           { rotulo: 'Instrumentos', href: '/avaliacao/instrumentos' },
           { rotulo: 'Comparativo' },
         ]}

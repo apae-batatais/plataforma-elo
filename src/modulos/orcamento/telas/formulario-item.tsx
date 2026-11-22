@@ -135,7 +135,7 @@ export function FormularioItem({
             </select>
           </Campo>
           )}
-          <Campo rotulo="Grupo de gasto" obrigatorio>
+          <Campo rotulo="Grupo de contas" obrigatorio>
             <select name="grupo_id" required defaultValue={d?.grupo_id ?? ''} className={estiloEntrada}>
               <option value="" disabled>
                 Escolha o grupo
