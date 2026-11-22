@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { indicadoresComunicacao } from '@/modulos/comunicacao/aplicacao/indicadores';
+import { resultadoDasPostagens } from '@/modulos/comunicacao/aplicacao/resultados';
+import { NOME_TIPO_PUBLICACAO, tituloDoAlcance } from '@/modulos/comunicacao/dominio/resultado';
 import { periodoDe } from '@/modulos/comunicacao/dominio/indicadores';
 import { NOME_TIPO_PECA, TIPOS_PECA } from '@/modulos/comunicacao/dominio/pedido';
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
@@ -12,7 +14,8 @@ import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { estiloBotao } from '@/ui/botao';
 import { BarrasHorizontais } from '@/ui/graficos';
-import { CabecalhoPagina, Secao } from '@/ui/pagina';
+import { CabecalhoPagina, EstadoVazio, Secao } from '@/ui/pagina';
+import { TabelaDados } from '@/ui/tabela-dados';
 
 export const metadata: Metadata = { title: 'Indicadores da Comunicação' };
 
@@ -48,6 +51,7 @@ export default async function Indicadores({ searchParams }: { searchParams: Prom
   const mes = mesValido(sp.mes) ?? hoje.slice(0, 7);
   const periodo = periodoDe(tipo, mes);
   const r = await indicadoresComunicacao(planilhas, usuario.autorizador, periodo);
+  const instagram = await resultadoDasPostagens(planilhas, usuario.autorizador, periodo);
   const passo = TIPOS.find((t) => t.valor === tipo)!.meses;
   const rotuloPeriodo = tipo === 'mes' ? new Intl.DateTimeFormat('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${mes}-01T00:00:00Z`)) : periodo.rotulo;
   const endereco = (t: Tipo, m: string) => `/comunicacao/indicadores?tipo=${t}&mes=${m}`;
@@ -133,6 +137,46 @@ export default async function Indicadores({ searchParams }: { searchParams: Prom
               </li>
             ))}
           </ul>
+        )}
+      </Secao>
+
+      <Secao
+        titulo="Resultado das postagens do Instagram"
+        descricao="Números buscados sozinhos, uma vez por dia, nas postagens publicadas pelo Elo (até 90 dias depois de publicadas)."
+        id="t-instagram"
+      >
+        {instagram.linhas.length === 0 ? (
+          <EstadoVazio titulo="Nenhuma postagem com resultado neste período." />
+        ) : (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <h3 className="text-base font-bold">{tituloDoAlcance(instagram.medias)}</h3>
+              <BarrasHorizontais
+                categorias={instagram.medias.map((m) => m.nome)}
+                series={[{ nome: 'Alcance médio', valores: instagram.medias.map((m) => m.alcanceMedio), cor: 1 }]}
+                formato="numero"
+                rotuloCategoria="Tipo de peça"
+                descricao="Alcance médio das postagens do Instagram no período, por tipo de peça"
+                notas={instagram.medias.map((m) => plural(m.postagens, 'postagem', 'postagens'))}
+              />
+            </div>
+            <TabelaDados
+              legenda="Resultado de cada postagem do Instagram no período"
+              colunas={[
+                { chave: 'data', rotulo: 'Publicada em' },
+                { chave: 'tipo', rotulo: 'Tipo de peça' },
+                { chave: 'pedido', rotulo: 'Pedido' },
+                { chave: 'alcance', rotulo: 'Alcance', tipo: 'numero' },
+                { chave: 'curtidas', rotulo: 'Curtidas', tipo: 'numero' },
+                { chave: 'comentarios', rotulo: 'Comentários', tipo: 'numero' },
+                { chave: 'salvamentos', rotulo: 'Salvamentos', tipo: 'numero' },
+              ]}
+              linhas={instagram.linhas.map((l) => ({
+                id: l.id,
+                valores: { data: dataCurta(l.data), tipo: NOME_TIPO_PUBLICACAO[l.tipo], pedido: l.pedido, alcance: l.alcance, curtidas: l.curtidas, comentarios: l.comentarios, salvamentos: l.salvamentos },
+              }))}
+            />
+          </div>
         )}
       </Secao>
 

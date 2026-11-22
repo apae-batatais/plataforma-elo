@@ -11,6 +11,7 @@
  * - ParametrosRequisicoes: expediente usado no cálculo do SLA.
  * - FeriadosRequisicoes: aba antiga de feriados; só leitura, para copiar ao Núcleo (a lista vive no Núcleo).
  * - RequisicaoAnexos: fotos e vídeo da requisição (referência ao arquivo na pasta de anexos).
+ * - ResumosEnviados: um dia por linha, para o resumo diário por e-mail nunca sair duas vezes (entrega 7).
  */
 import { z } from 'zod';
 import { definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
@@ -176,6 +177,13 @@ export const FeriadosRequisicoes = definirTabela({
   esquema: z.object({ data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), nome: texto() }),
 });
 
+/** Um dia (AAAA-MM-DD, Brasília) em que o resumo diário por e-mail já foi feito, e para quantas pessoas. */
+export const ResumosEnviados = definirTabela({
+  planilha: PLANILHA_REQUISICOES,
+  aba: 'ResumosEnviados',
+  esquema: z.object({ dia: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), pessoas: numero() }),
+});
+
 export const TABELAS_REQUISICOES = [
   TiposRequisicao,
   CatalogoItens,
@@ -188,6 +196,7 @@ export const TABELAS_REQUISICOES = [
   RequisicaoAnexos,
   Espacos,
   EspacoIndisponibilidades,
+  ResumosEnviados,
 ] as const;
 
 export type RegTipo = Registro<typeof TiposRequisicao.esquema>;
