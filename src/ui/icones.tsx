@@ -51,7 +51,7 @@ export const IconeRequisicao = (p: Props) => (
     <path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3" />
   </Icone>
 );
-/** Avaliação de Serviços Sociais: ficha com a linha de um indicador. */
+/** Assistência Social: ficha com a linha de um indicador. */
 export const IconeAvaliacao = (p: Props) => (
   <Icone {...p}>
     <rect x="4" y="4" width="16" height="17" rx="2" />
@@ -260,6 +260,14 @@ export const IconeSaude = (p: Props) => (
   </Icone>
 );
 
+/** Família Avaliações: três camadas empilhadas, um eixo sobre o outro. */
+export const IconeAvaliacoes = (p: Props) => (
+  <Icone {...p}>
+    <path d="M12 3 3 7.5 12 12l9-4.5L12 3Z" />
+    <path d="m3 12 9 4.5 9-4.5M3 16.5 12 21l9-4.5" />
+  </Icone>
+);
+
 /** Ícones que o menu e a tela inicial usam pelo nome (um lugar só para a escolha). */
 export const ICONES = {
   inicio: IconeInicio,
@@ -271,6 +279,7 @@ export const ICONES = {
   comunicacao: IconeComunicacao,
   conhecimento: IconeConhecimento,
   avaliacao: IconeAvaliacao,
+  avaliacoes: IconeAvaliacoes,
   saude: IconeSaude,
   educacao: IconeEducacao,
   parcerias: IconeParcerias,

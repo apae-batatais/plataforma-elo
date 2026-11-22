@@ -23,6 +23,7 @@ export const manifesto = defineModulo({
     { rotulo: 'Todas as requisições', caminho: '/todas', permissao: 'requisicoes.ver_todas', secao: 'Acompanhar' },
     { rotulo: 'Painel de prazos', caminho: '/painel', permissao: 'requisicoes.painel', secao: 'Acompanhar' },
     { rotulo: 'Tipos de requisição', caminho: '/tipos', permissao: 'requisicoes.tipos.gerenciar', secao: 'Cadastros' },
+    { rotulo: 'Veículos', caminho: '/veiculos', permissao: 'requisicoes.veiculos.cadastrar', secao: 'Cadastros' },
   ],
   permissoes: {
     'requisicoes.acessar': 'Entrar no módulo Requisições',
@@ -33,6 +34,8 @@ export const manifesto = defineModulo({
     'requisicoes.painel': 'Ver o painel de prazos (SLA) das requisições que a pessoa já pode ver',
     'requisicoes.tipos.gerenciar':
       'Cadastrar e alterar os tipos de requisição, os itens aceitos, o setor responsável, os prazos e o expediente (Administração da plataforma); os feriados são do Núcleo',
+    'requisicoes.veiculos.cadastrar':
+      'Cadastrar e alterar os veículos institucionais e a manutenção prevista de cada um (Administração da plataforma)',
   },
   perfis: [
     { codigo: 'almoxarifado', nome: 'Almoxarifado', descricao: 'Recebe e atende as requisições de materiais.' },
@@ -54,7 +57,7 @@ export const manifesto = defineModulo({
     },
   ],
   permissoesPorPerfil: {
-    administrador_plataforma: [...BASE, 'requisicoes.tipos.gerenciar'],
+    administrador_plataforma: [...BASE, 'requisicoes.tipos.gerenciar', 'requisicoes.veiculos.cadastrar'],
     diretoria: [...BASE, 'requisicoes.aprovar', 'requisicoes.ver_todas', 'requisicoes.painel'],
     financeiro: [...BASE],
     coordenacao_servico: [...BASE, 'requisicoes.aprovar', 'requisicoes.painel'],

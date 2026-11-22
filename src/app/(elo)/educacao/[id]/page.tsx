@@ -33,7 +33,7 @@ export default async function AbrirAvaliacao({ params }: { params: Promise<{ id:
     if (erro instanceof ErroEducacao || erro instanceof ErroPermissao) redirect(`/educacao?erro=${encodeURIComponent(erro.message)}`);
     throw erro;
   }
-  const trilha = [{ rotulo: 'Início', href: '/' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: a.pessoaNome }];
+  const trilha = [{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Educação', href: '/educacao' }, { rotulo: a.pessoaNome }];
   const periodo = a.periodoInicio || a.periodoFim ? `${br(a.periodoInicio)} a ${br(a.periodoFim)}` : 'período ainda não informado';
 
   if (a.situacao === 'aberta') {

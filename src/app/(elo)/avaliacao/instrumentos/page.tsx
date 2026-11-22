@@ -26,7 +26,7 @@ export default async function Instrumentos() {
   return (
     <div className="space-y-8">
       <CabecalhoPagina
-        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliação de Serviços Sociais', href: '/avaliacao' }, { rotulo: 'Instrumentos' }]}
+        trilha={[{ rotulo: 'Início', href: '/' }, { rotulo: 'Avaliações' }, { rotulo: 'Assistência Social', href: '/avaliacao' }, { rotulo: 'Instrumentos' }]}
         titulo="Instrumentos"
         descricao="Instrumentos com escala de 0 a 3, aplicados a pessoas do Cadastro Único. As pessoas aparecem só pelas iniciais."
       />

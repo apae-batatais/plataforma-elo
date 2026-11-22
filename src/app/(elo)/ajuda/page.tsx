@@ -75,6 +75,7 @@ export default async function Ajuda() {
     avaliar: a.temPermissaoAlgumEscopo('avaliacao.avaliar'),
     painelAvaliacao: a.temPermissaoAlgumEscopo('avaliacao.painel'),
     tiposRequisicao: a.temPermissao('requisicoes.tipos.gerenciar'),
+    veiculos: a.temPermissao('requisicoes.veiculos.cadastrar'),
     dpo: a.temPermissao('core.dpo.gerenciar'),
     ler: a.temPermissaoAlgumEscopo('conhecimento.ler'),
     publicar: a.temPermissao('conhecimento.publicar'),
@@ -244,6 +245,17 @@ export default async function Ajuda() {
               </p>
             </>
           )}
+          {pode.veiculos && (
+            <>
+              <Sub>Veículos</Sub>
+              <p>
+                Em Requisições › Veículos (só a Administração da plataforma), cadastre cada veículo da instituição com nome, placa e capacidade de passageiros.
+                Ao alterar um veículo, informe a data da próxima manutenção: a partir desse dia ele deixa de aparecer para pedido novo, até você clicar em
+                &ldquo;Marcar feita&rdquo; (e, se já souber, informar a data da seguinte). Veículo excluído some da lista de pedido, mas pode ser reativado
+                em &ldquo;Veículos excluídos&rdquo;. Nada é apagado.
+              </p>
+            </>
+          )}
         </>
       ),
     });
@@ -252,7 +264,7 @@ export default async function Ajuda() {
   if (pode.avaliar || pode.painelAvaliacao) {
     assuntos.push({
       id: 'avaliacao',
-      titulo: 'Avaliação de Serviços Sociais',
+      titulo: 'Assistência Social',
       resumo: 'Avaliar as pessoas atendidas na entrada e uma vez por ano, comparar a evolução de cada uma e acompanhar os indicadores por serviço.',
       atalhos: [
         ...(pode.avaliar ? [{ rotulo: 'Nova avaliação', href: '/avaliacao/nova' }] : []),
@@ -266,7 +278,7 @@ export default async function Ajuda() {
               <Sub>Avaliar</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação de Serviços Sociais › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
+                  'Abra Avaliações › Assistência Social › Nova avaliação e escolha o tipo: Inicial (quando a pessoa é encaminhada ao serviço) ou Acompanhamento anual.',
                   'Identifique a pessoa só pelas iniciais, data de nascimento e sexo. O prontuário é opcional e o nome completo não é pedido.',
                   'Escolha o serviço atual (aparecem os serviços do seu escopo) e responda todas as perguntas. O que faltar fica em vermelho ao salvar.',
                   'O índice de necessidade de cuidado (0 a 12) é calculado enquanto você responde. Em suspeita de violação de direitos, siga o fluxo de notificação e o encaminhamento ao CREAS.',
@@ -283,7 +295,7 @@ export default async function Ajuda() {
               <Sub>Painel</Sub>
               <Passos
                 itens={[
-                  'Abra Avaliação de Serviços Sociais › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
+                  'Abra Avaliações › Assistência Social › Painel. Os números são das avaliações dos serviços que você acompanha e não identificam ninguém.',
                   'Filtre por serviço e por período (meses da data da avaliação). Cada pessoa conta uma vez, pela avaliação mais recente. Em cada gráfico, "Ver os números" mostra a tabela.',
                   'O painel tem quatro partes: necessidade de cuidado, evolução (entre avaliações da mesma pessoa e a percebida pela equipe), dependência e transporte, e análise por sexo.',
                   'Para imprimir ou salvar em PDF, clique em Imprimir painel: os gráficos saem com as cores e com a tabela de números, sem quadro cortado entre as páginas.',
@@ -382,6 +394,8 @@ export default async function Ajuda() {
                   'Antes de tudo, confira em Cadastros os Grupos de contas (marque os de Recursos Humanos) e as Fontes de recurso (natureza e uso). "Cadastrar em lote" cadastra vários de uma vez, colando uma lista da planilha.',
                   'Em Previsão do ano, use Abrir exercício para começar um ano novo.',
                   'Despesas › Lançar despesa: serviço, grupo, fonte (pode ficar "a definir" na elaboração), quantidade × vezes × valor unitário e os meses.',
+                  'Despesa dividida entre vários serviços: Despesas › Despesas por rateio › Novo lançamento. Preencha como uma despesa comum, escolha a Regra de rateio e use "Ver como ficaria" para conferir quanto cada serviço recebe. Ao salvar, o Elo gera uma despesa por serviço.',
+                  'As despesas geradas aparecem na lista de Despesas com a etiqueta "Gerada por rateio" e não podem ser alteradas ali: use "Ver lançamento de origem". Enquanto o exercício está em elaboração, elas se recalculam sozinhas quando muda o lançamento, a regra, uma base própria, os números de um serviço (atendidos, m², vagas) ou a lotação. Depois de aprovado, ficam como estão. Excluir o lançamento encerra todas as despesas geradas.',
                   'A folha de pagamento entra sozinha, por serviço. No fim da tela Despesas, escolha a fonte que paga a folha de cada serviço: ao escolher, já fica salvo.',
                   'Receitas › Lançar receita: fonte, área, valor, meses e a situação da captação (garantida, em negociação ou a captar).',
                   'Para trazer de uma planilha: Importar despesas e receitas. Escolha o arquivo, diga se são despesas ou receitas e qual coluna corresponde a cada campo (o Elo sugere), confira e diga a qual cadastro corresponde cada nome que ele não reconheceu.',

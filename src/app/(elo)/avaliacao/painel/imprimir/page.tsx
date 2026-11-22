@@ -7,7 +7,7 @@ import { PainelCompleto } from '@/modulos/avaliacao/telas/painel-completo';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 
-export const metadata: Metadata = { title: 'Painel da Avaliação de Serviços Sociais para imprimir' };
+export const metadata: Metadata = { title: 'Painel da Assistência Social para imprimir' };
 
 const MES = /^\d{4}-\d{2}$/;
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
