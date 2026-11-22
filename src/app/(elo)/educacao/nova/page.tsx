@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Nova avaliação de Educação' };
 
 const hojeBrasilia = () => new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
 
-export default async function NovaAvaliacao({ searchParams }: { searchParams: Promise<{ pessoa?: string }> }) {
+export default async function NovaAvaliacao({ searchParams }: { searchParams: Promise<{ pessoa?: string; instrumento?: string }> }) {
   const sp = await searchParams;
   const usuario = await usuarioLogado();
   if (!usuario) redirect('/entrar');
@@ -22,6 +22,8 @@ export default async function NovaAvaliacao({ searchParams }: { searchParams: Pr
   // "Reavaliar" chega com a pessoa escolhida; o serviço e o instrumento vêm sugeridos quando só há um.
   const pessoa = opcoes.pessoas.find((x) => x.id === sp.pessoa);
   const unico = pessoa?.servicos.length === 1 ? opcoes.servicos.find((s) => s.codigo === pessoa.servicos[0]) : undefined;
+  // "Aplicar a uma pessoa" (tela Instrumentos) chega com o instrumento; código que não existe é ignorado.
+  const doLink = opcoes.instrumentos.find((i) => i.codigo === sp.instrumento)?.codigo;
   return (
     <div>
       <CabecalhoPagina
@@ -40,7 +42,7 @@ export default async function NovaAvaliacao({ searchParams }: { searchParams: Pr
           instrumentos={opcoes.instrumentos}
           hoje={hojeBrasilia()}
           acao={acaoSalvarAplicacao}
-          inicial={{ pessoaId: pessoa?.id ?? '', servico: unico?.codigo ?? '', instrumento: unico?.instrumentoSugerido ?? '', periodoInicio: '', periodoFim: '', dataIngresso: '', profissional: '', funcao: '', justificativa: '', respostas: {} }}
+          inicial={{ pessoaId: pessoa?.id ?? '', servico: unico?.codigo ?? '', instrumento: doLink ?? unico?.instrumentoSugerido ?? '', periodoInicio: '', periodoFim: '', dataIngresso: '', profissional: '', funcao: '', justificativa: '', respostas: {} }}
         />
       )}
     </div>

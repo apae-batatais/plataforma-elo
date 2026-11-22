@@ -16,3 +16,8 @@ Leia antes `especificacao.md` desta pasta, a ADR-029 e o `CLAUDE.md` da raiz.
 - Comparativo e ficha (em `aplicacao/avaliacoes.ts`): só concluídas não corrigidas, do mesmo instrumento; o comparativo
   registra `leitura` e a ficha, `exportacao`. Reavaliação: 12 meses após a última assinatura, aviso 30 dias antes.
 - Painel (`aplicacao/painel.ts`): só agregados, todo número por `numeroAgregado` (mínimo de 5); cada pessoa uma vez, pela fechada não corrigida mais recente do período; acesso por `educacao.painel` no serviço.
+
+## Tela Instrumentos (proposta #223)
+
+`/educacao/instrumentos` lista os instrumentos de `INSTRUMENTOS_EDUCACAO`; "Aplicar a uma pessoa" abre `/educacao/nova?instrumento=<código>`
+(código inexistente é ignorado). Exige `educacao.avaliar`; sem ela vai para "Sobre o instrumento".

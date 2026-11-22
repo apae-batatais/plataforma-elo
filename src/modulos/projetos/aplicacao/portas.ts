@@ -3,7 +3,7 @@ import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, ErroConflito, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { NOME_ITEM } from '../dominio/fases';
-import { Decisoes, HistoricoProjetos, Pareceres, Portas, Projetos, type RegDecisao, type RegHistorico, type RegParecer, type RegPorta, type RegProjeto } from '../dados/tabelas';
+import { Decisoes, HistoricoProjetos, Pareceres, PedidosMudanca, Portas, Projetos, type RegDecisao, type RegHistorico, type RegParecer, type RegPorta, type RegProjeto } from '../dados/tabelas';
 import {
   destinoDaDecisao,
   ErroProjetos,
@@ -165,12 +165,13 @@ export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: str
 }
 
 export interface PendenciaProjetos {
+  /** Porta ou pedido de mudança que espera a pessoa (serve de chave na lista). */
   portaId: string;
   projetoId: string;
   codigo: string;
   titulo: string;
   /** O que espera esta pessoa. */
-  acao: 'parecer' | 'decisao' | 'alcada';
+  acao: 'parecer' | 'decisao' | 'alcada' | 'mudanca' | 'mudanca_alcada';
   detalhe: string;
 }
 
@@ -197,6 +198,15 @@ export async function pendenciasDe(p: Planilhas, quem: Autorizador): Promise<Pen
     } else if (quem.temPermissaoAlgumEscopo('projetos.decidir_alcada') && designado(config, quem.email, 'alcada') && podeDecidirPorta(quem.email, projeto.proponente, config)) {
       saida.push({ ...base, acao: 'alcada', detalhe: 'Decisão da Presidência ou do Conselho' });
     }
+  }
+  // Pedidos de mudança fora da tolerância (P4): a Diretoria e, acima do limite, a Presidência ou o Conselho.
+  const [pedidos] = await lerTabelas(p, [PedidosMudanca] as const);
+  for (const x of pedidos.ativos().filter((y) => y.situacao === 'pendente' || y.situacao === 'aguardando_alcada')) {
+    const projeto = projetos.porId(x.projeto_id);
+    if (!projeto || !projeto.ativo || projeto.etapa !== 'implementacao' || x.pedido_por.toLowerCase() === quem.email.toLowerCase()) continue;
+    const base = { portaId: x.id, projetoId: projeto.id, codigo: projeto.codigo, titulo: projeto.titulo };
+    if (x.situacao === 'pendente' && quem.temPermissao('projetos.decidir')) saida.push({ ...base, acao: 'mudanca', detalhe: 'Pedido de mudança fora da tolerância' });
+    if (x.situacao === 'aguardando_alcada' && quem.temPermissaoAlgumEscopo('projetos.decidir_alcada') && designado(config, quem.email, 'alcada')) saida.push({ ...base, acao: 'mudanca_alcada', detalhe: 'Pedido de mudança: decisão da Presidência ou do Conselho' });
   }
   return saida;
 }

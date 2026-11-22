@@ -53,6 +53,7 @@ export default async function InformarRealizadoPagina({ searchParams }: { search
       )}
       <InformarRealizado
         key={`${mes}-${Date.now()}`}
+        ano={g.ano}
         mes={mes}
         rotuloMes={rotuloMes(mes)}
         linhas={[...g.despesas, ...g.receitas]}

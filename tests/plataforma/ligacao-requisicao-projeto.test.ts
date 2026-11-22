@@ -29,8 +29,9 @@ beforeAll(async () => {
 });
 
 describe('projetos para a requisição', () => {
-  it('só projeto em implementação entra; hoje nenhum está (etapa chega com Projetos P2 a P4)', async () => {
-    expect(await projetosParaRequisicao(p, await como('diretoria@exemplo.local'))).toEqual([]);
+  it('só projeto em implementação entra: na demonstração, só o da horta fictícia (Projetos P4)', async () => {
+    const lista = (await projetosParaRequisicao(p, await como('diretoria@exemplo.local')))!;
+    expect(lista.map((x) => x.codigo)).toEqual(['PRJ-0008']);
   });
 
   it('com Projetos desligado, a lista é nula e a requisição funciona sem o campo', async () => {

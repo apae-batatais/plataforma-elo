@@ -23,6 +23,8 @@ export const manifesto = defineModulo({
     { rotulo: 'Todas as requisições', caminho: '/todas', permissao: 'requisicoes.ver_todas', secao: 'Acompanhar' },
     { rotulo: 'Painel de prazos', caminho: '/painel', permissao: 'requisicoes.painel', secao: 'Acompanhar' },
     { rotulo: 'Reservas de espaço', caminho: '/espacos', permissao: 'requisicoes.espacos.decidir', secao: 'Acompanhar' },
+    { rotulo: 'Pedidos de veículo', caminho: '/veiculos/pedidos', permissao: 'requisicoes.veiculos.operar', secao: 'Acompanhar' },
+    { rotulo: 'Agenda dos veículos', caminho: '/veiculos/agenda', permissao: 'requisicoes.veiculos.operar', secao: 'Acompanhar' },
     { rotulo: 'Espaços', caminho: '/espacos/cadastro', permissao: 'requisicoes.tipos.gerenciar', secao: 'Cadastros' },
     { rotulo: 'Tipos de requisição', caminho: '/tipos', permissao: 'requisicoes.tipos.gerenciar', secao: 'Cadastros' },
     { rotulo: 'Veículos', caminho: '/veiculos', permissao: 'requisicoes.veiculos.cadastrar', secao: 'Cadastros' },
@@ -38,6 +40,8 @@ export const manifesto = defineModulo({
       'Decidir as reservas de espaço (aprovar, devolver, recusar), ver o conflito de horário e registrar o uso (setor Espaços; a Diretoria decide as reservas de quem é do setor)',
     'requisicoes.tipos.gerenciar':
       'Cadastrar e alterar os tipos de requisição, os espaços e seus períodos de indisponibilidade, os itens aceitos, o setor responsável, os prazos e o expediente (Administração da plataforma); os feriados são do Núcleo',
+    'requisicoes.veiculos.operar':
+      'Decidir os pedidos de veículo (aprovar, devolver, recusar, cancelar reserva aprovada), ver o conflito de horário e a agenda e marcar a manutenção como feita (setor Transporte; a Diretoria decide os pedidos de quem é do setor)',
     'requisicoes.veiculos.cadastrar':
       'Cadastrar e alterar os veículos institucionais e a manutenção prevista de cada um (Administração da plataforma)',
   },
@@ -64,6 +68,11 @@ export const manifesto = defineModulo({
       nome: 'Setor de Espaços',
       descricao: 'Decide as reservas de espaço (salões e salas), vê os conflitos de horário e registra o uso depois do evento.',
     },
+    {
+      codigo: 'transporte',
+      nome: 'Transporte',
+      descricao: 'Decide os pedidos de veículo institucional de qualquer coordenação, vê conflitos de agenda e marca a manutenção como feita.',
+    },
   ],
   permissoesPorPerfil: {
     administrador_plataforma: [...BASE, 'requisicoes.tipos.gerenciar', 'requisicoes.veiculos.cadastrar'],
@@ -82,6 +91,7 @@ export const manifesto = defineModulo({
     manutencao: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
     cozinha: [...BASE, 'requisicoes.atender', 'requisicoes.painel'],
     espacos: [...BASE, 'requisicoes.espacos.decidir'],
+    transporte: [...BASE, 'requisicoes.veiculos.operar', 'requisicoes.painel'],
   },
   // Tipos de requisição: só a Administração da plataforma da instituição (decisão de 31/10/2026).
   permissoesRetiradas: { diretoria: ['requisicoes.tipos.gerenciar'] },

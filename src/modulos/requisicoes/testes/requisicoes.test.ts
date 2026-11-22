@@ -299,7 +299,7 @@ describe('tipos de requisição e expediente', () => {
   it('só quem gerencia cadastra; o setor precisa ser um perfil que atende; nome único; expediente válido', async () => {
     const adm = await como('admin@exemplo.local');
     const t = await listarTipos(p, adm);
-    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'cozinha', 'espacos', 'informatica', 'manutencao', 'patrimonio']);
+    expect(t.perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'cozinha', 'espacos', 'informatica', 'manutencao', 'patrimonio', 'transporte']);
     await salvarTipo(p, adm, {
       nome: 'Higiene e limpeza',
       categoria: 'material',
@@ -478,7 +478,7 @@ describe('chamado de TI (Setor de Informática)', () => {
     });
     const t = (await lerTabela(p, TiposRequisicao)).ativos().find((x) => x.nome === 'Chamado de TI')!;
     expect([t.formulario, t.categoria]).toEqual(['ti', 'servico']);
-    expect((await listarTipos(p, adm)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'cozinha', 'espacos', 'informatica', 'manutencao', 'patrimonio']);
+    expect((await listarTipos(p, adm)).perfis.map((x) => x.codigo).sort()).toEqual(['almoxarifado', 'cozinha', 'espacos', 'informatica', 'manutencao', 'patrimonio', 'transporte']);
   });
 });
 
