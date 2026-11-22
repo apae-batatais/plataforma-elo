@@ -5,6 +5,9 @@
 //   minutos). As que esperam em "Pronta para construir" são chamadas quando abre vaga.
 // - Pausa: uma issue aberta com a etiqueta "cota: pausa" (aberta pelo DevOps ao passar de 85%).
 //   Enquanto ela existir, nenhuma entrega nova começa; as que estão em construção terminam.
+// - Proposta mãe (com sub-issues) não entra na fila nem ocupa vaga: quem é construída é cada sub-issue.
+//   Sem isso, a mãe em "Em construção" segurava vaga sem trabalho e, chamada, construía de novo a
+//   entrega de uma filha (PRs duplicados #259 e #260, achado no raio-x de 22/11/2026).
 // - Ordem: a do quadro (posição dos cartões). Sem chave do quadro, ou se a leitura falhar, vale a
 //   issue mais antiga (menor número).
 //
@@ -18,11 +21,13 @@ export const ETIQUETA_PAUSA = 'cota: pausa';
 const nomes = (issue) => (issue.labels ?? []).map((l) => (typeof l === 'string' ? l : l.name));
 /** App da issue pela etiqueta "app: …" ("app: novo" não conta: cada app novo é diferente). */
 const appDe = (issue) => nomes(issue).find((n) => n.startsWith('app: ') && n !== 'app: novo') ?? null;
+/** Proposta mãe: tem sub-issues (o GitHub informa o resumo em `sub_issues_summary`). */
+export const ehMae = (issue) => (issue.sub_issues_summary?.total ?? 0) > 0;
 const etapa = (issue) => nomes(issue).map(etapaDaEtiqueta).find(Boolean) ?? null;
 
 /** A issue ocupa uma vaga de construção (está em construção e não espera resposta da Diretoria). */
 export function ocupaVaga(issue) {
-  return issue.state !== 'closed' && etapa(issue) === 'Em construção' && !temPerguntaAberta(nomes(issue));
+  return issue.state !== 'closed' && !ehMae(issue) && etapa(issue) === 'Em construção' && !temPerguntaAberta(nomes(issue));
 }
 
 /**
@@ -32,7 +37,7 @@ export function ocupaVaga(issue) {
  * @returns {{ chamar: number[], motivo: string }}
  */
 export function escolherProximas({ abertas, ordem = [], pausa = false, limite = LIMITE_EM_CONSTRUCAO }) {
-  const prontas = abertas.filter((i) => i.state !== 'closed' && etapa(i) === 'Pronta para construir');
+  const prontas = abertas.filter((i) => i.state !== 'closed' && !ehMae(i) && etapa(i) === 'Pronta para construir');
   if (!prontas.length) return { chamar: [], motivo: 'nenhuma proposta pronta para construir' };
   if (pausa) return { chamar: [], motivo: `pausa por cota (etiqueta "${ETIQUETA_PAUSA}")` };
   const vagas = limite - abertas.filter(ocupaVaga).length;
