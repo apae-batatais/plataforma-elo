@@ -184,6 +184,18 @@ describe('tipoDoPR', () => {
     expect(etiquetas(issues[0])).toEqual(['etapa: em construção']);
   });
 
+  it('aplicar não falha se outra automação já tirou a etiqueta antiga (#281)', async () => {
+    const issues: Issue[] = [{ number: 8, state: 'open', labels: [{ name: 'etapa: em construção' }], node_id: 'I8' }];
+    const github = githubFalso(issues);
+    const tirar = github.rest.issues.removeLabel.getMockImplementation()!;
+    github.rest.issues.removeLabel.mockImplementation(async (a) => {
+      await tirar(a);
+      throw Object.assign(new Error('Label does not exist'), { status: 404 });
+    });
+    await aplicar({ github, core, context: contexto('workflow_dispatch', {}), lista: [{ issue: 8, etapa: 'Entrega em aprovação' }] });
+    expect(etiquetas(issues[0])).toEqual(['etapa: entrega em aprovação']);
+  });
+
   it('prévia de PR (publicação que não é a oficial) não publica nada', async () => {
     const issues: Issue[] = [{ number: 1, state: 'closed', labels: [{ name: 'etapa: aprovada' }], node_id: 'I1' }];
     const github = githubFalso(issues);
