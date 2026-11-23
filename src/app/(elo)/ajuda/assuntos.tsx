@@ -78,6 +78,10 @@ export function calcularPode(v: Verificador, todos = false) {
     decidirProjeto: v.temPermissao('projetos.decidir') || v.temPermissaoAlgumEscopo('projetos.decidir_alcada'),
     gerenciarProjeto: v.temPermissaoAlgumEscopo('projetos.gerenciar'),
     termos: v.temPermissaoAlgumEscopo('parcerias.termos.ver'),
+    editarTermos: v.temPermissao('parcerias.termos.editar'),
+    verTodosPedidos: v.temPermissao('comunicacao.ver_todos'),
+    calendarioComunicacao: v.temPermissao('comunicacao.calendario.gerenciar'),
+    contatosComunicacao: v.temPermissao('comunicacao.contatos.gerenciar'),
     verPlanejamento: v.temPermissaoAlgumEscopo('projetos.acessar'),
     planejarProjeto: v.temPermissaoAlgumEscopo('projetos.gerenciar'),
     decidirPlano: v.temPermissao('projetos.decidir'),
@@ -472,6 +476,86 @@ export function montarAssuntos(ctx: {
     });
   }
 
+  if (pode.comunicacao) {
+    assuntos.push({
+      id: 'comunicacao',
+      permissoes: ['comunicacao.solicitar', 'comunicacao.revisar'],
+      titulo: 'Comunicação: pedir e publicar',
+      resumo: 'Pedir uma publicação, acompanhar o pedido e, para a equipe, revisar, agendar e publicar.',
+      atalhos: [
+        { rotulo: 'Meus pedidos', href: '/comunicacao' },
+        { rotulo: 'Novo pedido', href: '/comunicacao/novo' },
+        ...(pode.verTodosPedidos ? [{ rotulo: 'Pedidos', href: '/comunicacao/pedidos' }] : []),
+        ...(pode.calendarioComunicacao ? [{ rotulo: 'Calendário', href: '/comunicacao/calendario' }] : []),
+        ...(pode.contatosComunicacao ? [{ rotulo: 'Contatos da imprensa', href: '/comunicacao/contatos' }] : []),
+        ...(pode.configurarComunicacao ? [{ rotulo: 'Configurações da Comunicação', href: '/comunicacao/configuracoes' }] : []),
+      ],
+      conteudo: (
+        <>
+          <Sub>Pedir uma publicação</Sub>
+          <Passos
+            itens={[
+              'Abra Comunicação › Novo pedido. Escolha o tema do calendário (ou "Fora do calendário"), o tipo de peça (post, reel, release, artigo ou entrevista), o título e a descrição.',
+              'Escolha a data desejada. Se ela for antes da antecedência mínima, o Elo avisa na hora que o pedido sai como urgente.',
+              'Anexe fotos (até 5 arquivos) ou cole o link da pasta do vídeo. Com foto ou vídeo, marque a confirmação de que as pessoas que aparecem autorizaram o uso de imagem; sem ela o pedido não é enviado.',
+              'Clique em Enviar. Em Comunicação › Meus pedidos você acompanha a situação e vê o histórico.',
+              'Se o pedido voltar como Devolvido, abra-o, leia o motivo, ajuste e envie de novo. Enquanto aguarda revisão ou está devolvido, você pode cancelar.',
+            ]}
+          />
+          {pode.equipeComunicacao && (
+            <>
+              <Sub>Revisar, agendar e publicar (equipe da Comunicação)</Sub>
+              <Passos
+                itens={[
+                  'Abra Comunicação › Pedidos. As filas são Para revisar, Para aprovar, Para agendar e Agendados; use os filtros de situação, tipo, área e tema.',
+                  'Abra o pedido e clique em Começar revisão. Você pode ajustar título, descrição, tipo de peça, tema e data. Para devolver, recusar ou juntar com outro pedido, escreva o motivo.',
+                  'Terminada a revisão, clique em Enviar para aprovação.',
+                  'Com o pedido Aprovado, clique em Agendar e informe dia e hora. Para release e artigo, escolha também os grupos ou contatos de destino.',
+                  'Em "Como enviar" (release e artigo) escolha "Enviar pelo Elo na hora marcada" ou "Abrir e-mail pronto no meu Gmail". Em "Como publicar" (post e reel) escolha "Publicar pelo Elo na hora marcada" ou "Eu publico à mão". As opções automáticas só aparecem quando a instituição já ligou o envio e conectou o Instagram.',
+                  'Depois da publicação à mão, clique em Marcar como publicado e cole o link (post e reel). Entrevista termina em Marcar como realizada.',
+                ]}
+              />
+            </>
+          )}
+          {pode.aprovarComunicacao && (
+            <>
+              <Sub>Aprovar (coordenação da Comunicação)</Sub>
+              <Passos
+                itens={[
+                  'Em Comunicação › Pedidos, abra um pedido da fila Para aprovar.',
+                  'Clique em Aprovar, ou em Pedir ajustes ou Recusar (com o motivo). Pedir ajustes devolve o pedido à revisão.',
+                ]}
+              />
+            </>
+          )}
+          {(pode.calendarioComunicacao || pode.contatosComunicacao) && (
+            <>
+              <Sub>Calendário e contatos</Sub>
+              <Itens
+                itens={[
+                  pode.calendarioComunicacao && 'Calendário: cadastre os temas, com data exata ou período e os tipos de peça sugeridos. Cada tema mostra quantos pedidos tem e quantos já foram publicados.',
+                  pode.contatosComunicacao && 'Contatos da imprensa: cadastre contatos (nome, veículo e e-mail, sem repetir) e organize em grupos. O que é desativado deixa de aparecer, mas fica guardado.',
+                ]}
+              />
+            </>
+          )}
+          {pode.configurarComunicacao && (
+            <>
+              <Sub>Configurações e Instagram</Sub>
+              <Passos
+                itens={[
+                  'Abra Comunicação › Configurações. Em Antecedência mínima, informe de 0 a 30 dias úteis e salve.',
+                  'Em Instagram, clique em Conectar Instagram e autorize com a conta profissional da instituição; o Elo não pede nem guarda a senha. Para trocar de conta, use Reconectar ou Desconectar.',
+                  'Os avisos por e-mail estão no assunto "Comunicação: avisos por e-mail".',
+                ]}
+              />
+            </>
+          )}
+        </>
+      ),
+    });
+  }
+
   if (pode.resultadoInstagram || pode.indicadoresComunicacao) {
     assuntos.push({
       id: 'resultado-instagram',
@@ -842,6 +926,42 @@ export function montarAssuntos(ctx: {
               'A carteira nunca mostra o texto dos pareceres. Quem tem o perfil de leitura vê a carteira, mas não os pareceres.',
             ]}
           />
+        </>
+      ),
+    });
+  }
+
+  if (pode.termos) {
+    assuntos.push({
+      id: 'parcerias',
+      permissoes: ['parcerias.termos.ver'],
+      titulo: 'Parcerias: termos',
+      resumo: 'Consultar e cadastrar os termos de parceria, com fontes de recurso, aportes e ocupação das vagas.',
+      atalhos: [{ rotulo: 'Termos', href: '/parcerias' }, ...(pode.editarTermos ? [{ rotulo: 'Novo termo', href: '/parcerias/novo' }] : [])],
+      conteudo: (
+        <>
+          <Sub>Consultar</Sub>
+          <Passos
+            itens={[
+              'Abra Parcerias › Termos. A lista mostra parceiro, número, tipo, vigência, valor e serviços; filtre por situação e tipo. Termos que terminam em até 90 dias aparecem com aviso.',
+              'Clique em um termo para ver as fontes, os aportes, a equipe (por função, sem nomes), as metas, o quadro Per capita e ocupação e os Pontos de atenção.',
+              'Quem coordena um serviço vê só os termos que atendem o seu serviço.',
+            ]}
+          />
+          {pode.editarTermos && (
+            <>
+              <Sub>Cadastrar e acompanhar</Sub>
+              <Passos
+                itens={[
+                  'Clique em Novo termo e siga os passos: dados e tipo, serviços e vagas, fontes (com cronograma e plano de aplicação), equipe e metas. "Dividir em partes iguais" preenche as parcelas dos meses marcados.',
+                  'Na ficha, use Adicionar fonte e Registrar aporte. O valor atual da fonte é o valor inicial mais os aportes.',
+                  'Se a soma do cronograma não bate com o valor da fonte, a tela avisa, mas deixa salvar.',
+                  'Projeto financiado que passou pela porta 2 chega aqui como rascunho, em "Rascunhos para completar": clique em Completar termo, preencha o que falta e clique em Concluir termo.',
+                  'Encerrar termo (ou rascunho) não apaga: o registro fica guardado.',
+                ]}
+              />
+            </>
+          )}
         </>
       ),
     });
