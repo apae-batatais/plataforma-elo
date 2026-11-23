@@ -7,6 +7,7 @@ import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { ErroRealizado, salvarRealizadoDoMes, type EntradaLinha } from '@/modulos/orcamento/aplicacao/realizado';
 import { NATUREZAS_DESPESA, NATUREZAS_RECEITA, type Natureza } from '@/modulos/orcamento/dominio/realizado';
 import { lerValorEmReais, mesValido } from '@/modulos/orcamento/dominio/tesouraria';
+import { projetosParaRealizadoDoOrcamento } from '@/plataforma/ligacoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 
@@ -45,11 +46,12 @@ export async function acaoSalvarRealizado(f: FormData) {
         termoId: c('termo') || null,
         itemId: c('item'),
         areaPlanoId: c('areaplano'),
+        projetoId: c('projeto') || null,
         versao: versao ? Number(versao) : undefined,
       });
     }
     const app = await obterAplicacao();
-    const { gravados } = await salvarRealizadoDoMes(app.planilhas, usuario.autorizador, mes, linhas);
+    const { gravados } = await salvarRealizadoDoMes(app.planilhas, usuario.autorizador, mes, linhas, { projetos: await projetosParaRealizadoDoOrcamento(app.planilhas, usuario.autorizador) });
     const msg = gravados === 0 ? 'Nada mudou: não havia nada novo para salvar.' : 'Realizado do mês salvo.';
     destino = `${pagina}&ok=${encodeURIComponent(msg)}&salvo=1`;
   } catch (erro) {

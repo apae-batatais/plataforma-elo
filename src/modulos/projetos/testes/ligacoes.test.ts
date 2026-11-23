@@ -1,10 +1,11 @@
 /** Entrega P7 (regras 26 e 27): ligações do projeto e catálogo de leitura. */
 import { describe, expect, it } from 'vitest';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
-import { lerTabela } from '@/nucleo/armazenamento/tabela';
+import { atualizar, lerTabela } from '@/nucleo/armazenamento/tabela';
 import { RegistrosAuditoria } from '@/nucleo/estrutura/tabelas';
 import { encerrarLigacao, lerLigacoesDoProjeto, registrarLigacao, type CatalogoLeitura } from '../aplicacao/ligacoes';
-import { LigacoesProjeto } from '../dados/tabelas';
+import { projetosParaRealizado } from '../aplicacao/ligacao';
+import { LigacoesProjeto, Projetos } from '../dados/tabelas';
 import { AGORA, COORDENACAO, FUNCIONARIO, LEITURA, OUTRO_FUNCIONARIO, comResponsavel, como, planilhasDeProjetos } from './apoio';
 
 const o = { agora: AGORA };
@@ -105,5 +106,35 @@ describe('LigacoesProjeto', () => {
     const leitura = await lerLigacoesDoProjeto(p, await como(p, LEITURA), r.id, catalogo(), o);
     if (leitura) expect(leitura.podeAlterar).toBe(false);
     await expect(registrarLigacao(p, await como(p, FUNCIONARIO), r.id, dados, o)).rejects.toThrow(ErroPermissao);
+  });
+});
+
+describe('projetosParaRealizado (L18)', () => {
+  const mudarEtapa = async (p: Awaited<ReturnType<typeof planilhasDeProjetos>>, id: string, etapa: 'implementacao' | 'parado' | 'cancelado' | 'encerrado') => {
+    const r = (await lerTabela(p, Projetos)).porId(id)!;
+    await atualizar(p, Projetos, id, r.versao, { etapa }, { email: 'teste' });
+  };
+
+  it('oferece só projetos que já gastam ou recebem e que a pessoa vê', async () => {
+    const p = await planilhasDeProjetos();
+    const r = await comResponsavel(p);
+    const coord = await como(p, COORDENACAO);
+    const vazia = await projetosParaRealizado(p, coord);
+    expect(vazia).toEqual({ estado: 'ok', dados: [] });
+    await mudarEtapa(p, r.id, 'implementacao');
+    expect(await projetosParaRealizado(p, coord)).toMatchObject({ estado: 'ok', dados: [{ id: r.id }] });
+    await mudarEtapa(p, r.id, 'encerrado');
+    expect(await projetosParaRealizado(p, coord)).toMatchObject({ dados: [{ id: r.id }] });
+    await mudarEtapa(p, r.id, 'parado');
+    expect(await projetosParaRealizado(p, coord)).toMatchObject({ dados: [] });
+    await mudarEtapa(p, r.id, 'cancelado');
+    expect(await projetosParaRealizado(p, coord)).toMatchObject({ dados: [] });
+  });
+
+  it('quem não vê o projeto não o recebe', async () => {
+    const p = await planilhasDeProjetos();
+    const r = await comResponsavel(p);
+    await mudarEtapa(p, r.id, 'implementacao');
+    expect(await projetosParaRealizado(p, await como(p, OUTRO_FUNCIONARIO))).toMatchObject({ estado: 'ok', dados: [] });
   });
 });

@@ -74,6 +74,9 @@ export interface LinhaGrade {
   /** Plano de contas (#221): item contábil e área do plano da despesa, opcionais. */
   itemId: string | null;
   areaPlanoId: string | null;
+  /** Projeto de onde vem a linha (L18); a linha continua somando nos totais normalmente. */
+  projetoId: string | null;
+  projetoCodigo: string | null;
   /** Veio da Previsão (false = linha adicionada à mão). */
   prevista: boolean;
 }
@@ -94,10 +97,24 @@ export interface GradeDoMes {
     fontes: { id: string; nome: string; restrita: boolean }[];
     /** Áreas, itens e plano vigente no mês (#221); `linhas = null` = exercício sem plano. */
     plano: OpcoesPlano;
+    /** Projetos que o Projetos oferece à plataforma; `null` = sem Projetos (o campo some). */
+    projetos: ProjetoParaRealizado[] | null;
   };
 }
 
-export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string): Promise<GradeDoMes> {
+/** Projeto que a pessoa pode marcar numa linha do realizado (entregue pela plataforma; sem dado pessoal). */
+export interface ProjetoParaRealizado {
+  id: string;
+  codigo: string;
+  titulo: string;
+}
+
+/** A plataforma entrega a lista lida pelo Projetos para a pessoa; `null` = Projetos indisponível. */
+export interface OpcoesProjetosRealizado {
+  projetos?: readonly ProjetoParaRealizado[] | null;
+}
+
+export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string, opcoesProjetos: OpcoesProjetosRealizado = {}): Promise<GradeDoMes> {
   exigirVerLinhas(quem);
   exigirMes(mes);
   const ano = anoDoMes(mes);
@@ -114,8 +131,8 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
   const tudo = veTudo(quem);
 
   const mapa = new Map<string, LinhaGrade>();
-  const base = (tipo: TipoRealizado, servicoCodigo: string | null, grupoId: string | null, fonteId: string, natureza: Natureza): LinhaGrade => ({
-    chave: chaveLinha({ mes, tipo, servico: servicoCodigo, grupoId, fonteId, natureza }),
+  const base = (tipo: TipoRealizado, servicoCodigo: string | null, grupoId: string | null, fonteId: string, natureza: Natureza, projetoId: string | null = null, projetoCodigo: string | null = null): LinhaGrade => ({
+    chave: chaveLinha({ mes, tipo, servico: servicoCodigo, grupoId, fonteId, natureza, projetoId }),
     tipo,
     servico: servicoCodigo,
     servicoNome: nomeServico(servicoCodigo),
@@ -133,6 +150,8 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
     termoId: null,
     itemId: null,
     areaPlanoId: null,
+    projetoId,
+    projetoCodigo,
     prevista: false,
   });
 
@@ -163,7 +182,7 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
   const doMesGravado = realizadoT.ativos().filter((r) => r.mes === mes);
   for (const r of doMesGravado) {
     if (r.tipo === 'despesa' ? !veServico(quem, r.servico ?? '') : !tudo) continue;
-    const l = base(r.tipo, r.servico, r.grupo_id, r.fonte_id, r.natureza);
+    const l = base(r.tipo, r.servico, r.grupo_id, r.fonte_id, r.natureza, r.projeto_id ?? null, r.projeto_codigo ?? null);
     const linha = mapa.get(l.chave) ?? l;
     Object.assign(linha, { realizado: r.valor, versao: r.versao, naoRecorrente: r.nao_recorrente, motivo: r.motivo_nao_recorrente, observacao: r.observacao, termoId: r.fonte_termo_id ?? null, itemId: r.tipo === 'despesa' ? (r.item_id ?? null) : null, areaPlanoId: r.tipo === 'despesa' ? (r.area_plano_id ?? null) : null });
     mapa.set(l.chave, linha);
@@ -190,6 +209,7 @@ export async function lerGradeDoMes(p: Planilhas, quem: Autorizador, mes: string
       grupos: gruposT.ativos().map((g) => ({ id: g.id, nome: g.nome, rh: g.rh })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       fontes: fontesT.ativos().map((f) => ({ id: f.id, nome: f.nome, restrita: f.uso === 'restrita' })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
       plano: await opcoesDoPlano(p, ano, ultimoDiaDoMes(mes)),
+      projetos: opcoesProjetos.projetos ? [...opcoesProjetos.projetos] : null,
     },
   };
 }
@@ -214,16 +234,18 @@ export interface EntradaLinha {
   /** Item contábil e área do plano (#221); só despesa. undefined mantém o atual; vazio limpa. */
   itemId?: string | null;
   areaPlanoId?: string | null;
+  /** Projeto de origem da linha (L18), opcional. Faz parte da chave: a linha de um projeto é outra linha, mesmo com o mesmo serviço, grupo, fonte e natureza. */
+  projetoId?: string | null;
   /** Versão lida ao abrir a tela; ausente em linha nova. */
   versao?: number;
 }
 
-export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes: string, linhas: EntradaLinha[]): Promise<{ gravados: number }> {
+export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes: string, linhas: EntradaLinha[], opcoesProjetos: OpcoesProjetosRealizado = {}): Promise<{ gravados: number }> {
   if (!quem.temPermissao(PERM.editar)) throw new ErroPermissao();
   exigirMes(mes);
   const ano = anoDoMes(mes);
   const [servicosT, gruposT, fontesT, realizadoT] = await lerTabelas(p, [Servicos, GruposGasto, Fontes, Realizado] as const);
-  const existentes = new Map(realizadoT.ativos().filter((r) => r.mes === mes).map((r) => [chaveLinha({ mes, tipo: r.tipo, servico: r.servico, grupoId: r.grupo_id, fonteId: r.fonte_id, natureza: r.natureza }), r]));
+  const existentes = new Map(realizadoT.ativos().filter((r) => r.mes === mes).map((r) => [chaveLinha({ mes, tipo: r.tipo, servico: r.servico, grupoId: r.grupo_id, fonteId: r.fonte_id, natureza: r.natureza, projetoId: r.projeto_id }), r]));
 
   type Passo = { acao: 'novo' | 'alterar' | 'remover'; chave: string; existente: RegRealizado | null; campos: Record<string, unknown> };
   const passos: Passo[] = [];
@@ -231,8 +253,9 @@ export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes:
   for (const l of linhas) {
     const servico = vazioParaNulo(l.servico);
     const grupoId = vazioParaNulo(l.grupoId);
-    const chave = chaveLinha({ mes, tipo: l.tipo, servico, grupoId, fonteId: l.fonteId, natureza: l.natureza });
-    if (vistas.has(chave)) throw new ErroRealizado('A mesma linha (serviço, grupo, fonte e natureza) apareceu duas vezes. Junte os valores numa só.');
+    const projetoId = vazioParaNulo(l.projetoId);
+    const chave = chaveLinha({ mes, tipo: l.tipo, servico, grupoId, fonteId: l.fonteId, natureza: l.natureza, projetoId });
+    if (vistas.has(chave)) throw new ErroRealizado('A mesma linha (serviço, grupo, fonte, natureza e projeto) apareceu duas vezes. Junte os valores numa só.');
     vistas.add(chave);
     const existente = existentes.get(chave) ?? null;
     // R2, tudo ou nada: toda versão lida é conferida antes de gravar qualquer linha.
@@ -261,8 +284,19 @@ export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes:
       if (grupoId && !gruposT.porId(grupoId)) erros.push('O grupo escolhido não existe.');
       if (!fontesT.porId(l.fonteId)) erros.push('A fonte escolhida não existe.');
     }
+    // L18: o projeto vem da lista que o Projetos oferece à plataforma; o que já estava gravado na linha continua valendo.
+    let projetoCodigo: string | null = null;
+    if (projetoId) {
+      const gravado = existente?.projeto_id === projetoId ? existente : null;
+      const achado = opcoesProjetos.projetos?.find((x) => x.id === projetoId);
+      if (gravado) projetoCodigo = gravado.projeto_codigo ?? null;
+      else if (achado) projetoCodigo = achado.codigo;
+      else erros.push('O projeto escolhido não está disponível. Escolha outro ou deixe o campo em branco.');
+    }
     if (erros.length) throw new ErroRealizado(erros.join(' '));
     const campos = {
+      projeto_id: projetoId,
+      projeto_codigo: projetoCodigo,
       valor,
       nao_recorrente: naoRecorrente,
       motivo_nao_recorrente: naoRecorrente ? motivo : null,
@@ -289,7 +323,7 @@ export async function salvarRealizadoDoMes(p: Planilhas, quem: Autorizador, mes:
 
   // Leitura nova na hora de gravar: linha nova para uma chave que já existe vira conflito (não duplica).
   const [agora] = await lerTabelas(p, [Realizado] as const);
-  const jaTem = new Set(agora.ativos().filter((r) => r.mes === mes).map((r) => chaveLinha({ mes, tipo: r.tipo, servico: r.servico, grupoId: r.grupo_id, fonteId: r.fonte_id, natureza: r.natureza })));
+  const jaTem = new Set(agora.ativos().filter((r) => r.mes === mes).map((r) => chaveLinha({ mes, tipo: r.tipo, servico: r.servico, grupoId: r.grupo_id, fonteId: r.fonte_id, natureza: r.natureza, projetoId: r.projeto_id })));
   const novos = passos.filter((x) => x.acao === 'novo');
   for (const n of novos) if (jaTem.has(n.chave)) throw new ErroConflito(n.chave);
 

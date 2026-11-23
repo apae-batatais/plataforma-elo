@@ -7,3 +7,5 @@ export { painelSustentabilidade, type CatalogoParcerias } from './aplicacao/sust
 export type { TermoDoPainel } from './dominio/sustentabilidade';
 export { cedidosPorServicoECedente, type CedidoDoServicoPorCedente } from './aplicacao/participacao';
 export { indicadoresDaPlataforma as indicadoresOrcamento } from './aplicacao/indicadores-plataforma';
+export { resultadoDoProjeto, type ResultadoDoProjeto } from './aplicacao/projeto-resultado';
+export type { ProjetoParaRealizado } from './aplicacao/realizado';
