@@ -1,18 +1,20 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { lerLigacoesDoProjeto } from '@/modulos/projetos/aplicacao/ligacoes';
+import { lerLigacaoEvento } from '@/modulos/projetos/aplicacao/evento';
 import { lerLigacaoTermo } from '@/modulos/projetos/aplicacao/termo';
 import { AbasProjeto } from '@/modulos/projetos/telas/abas-projeto';
 import { moeda } from '@/modulos/projetos/telas/rotulos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
-import { catalogoDeLeitura, catalogoDeTermos } from '@/plataforma/ligacoes';
+import { catalogoDeLeitura, catalogoDeReceitas, catalogoDeTermos } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { TabelaDados } from '@/ui/tabela-dados';
 import { LinkBotao } from '@/ui/botao';
 import { BotaoEnviar } from '@/ui/botao-enviar';
 import { CabecalhoPagina, Etiqueta, EstadoVazio, Secao } from '@/ui/pagina';
-import { acaoCriarRascunhoDoTermo } from '../../acoes';
+import { Campo, estiloEntrada } from '@/ui/campo';
+import { acaoCriarRascunhoDoTermo, acaoLancarReceitaDoEvento } from '../../acoes';
 
 export const metadata: Metadata = { title: 'Ligações do projeto' };
 
@@ -29,7 +31,10 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
   const { planilhas } = await obterAplicacao();
   const l = await lerLigacaoTermo(planilhas, usuario.autorizador, id, catalogoDeTermos(planilhas));
   const outras = await lerLigacoesDoProjeto(planilhas, usuario.autorizador, id, catalogoDeLeitura(planilhas));
-  if (!l || !outras) notFound();
+  const orcamento = catalogoDeReceitas(planilhas);
+  const evento = await lerLigacaoEvento(planilhas, usuario.autorizador, id, orcamento);
+  if (!l || !outras || !evento) notFound();
+  const fontes = evento.aplica && evento.podeLancar && !evento.fonteNome ? ((await orcamento?.fontesProprias(usuario.autorizador).catch(() => null)) ?? []) : [];
   const podeAbrirTermo = l.termo.estado === 'ok' && usuario.autorizador.temPermissaoAlgumEscopo('parcerias.termos.ver');
   return (
     <div className="space-y-6">
@@ -42,6 +47,42 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
       {l.pontosDeAtencao.map((t) => (
         <Aviso key={t} tipo="atencao">{t}</Aviso>
       ))}
+      {evento.aplica && (
+        <Secao id="t-evento" titulo="Evento de captação" descricao="A meta de receita entra no Orçamento como receita A captar quando a porta 2 aprova o Termo de Abertura.">
+          <dl className="grid gap-3 text-sm sm:grid-cols-4">
+            <div><dt className="text-texto-suave">Série</dt><dd className="font-medium">{evento.serie ?? 'Evento único'}</dd></div>
+            <div><dt className="text-texto-suave">Data do evento</dt><dd className="font-medium">{evento.dataEvento ? dia(evento.dataEvento) : '—'}</dd></div>
+            <div><dt className="text-texto-suave">Meta de receita</dt><dd className="font-medium">{moeda(evento.metaReceita)}</dd></div>
+            <div><dt className="text-texto-suave">Fonte de receita</dt><dd className="font-medium">{evento.fonteNome ?? 'Ainda não escolhida'}</dd></div>
+          </dl>
+          <div className="mt-4 space-y-3">
+            {evento.receita === 'aguardando' && <Aviso tipo="info">A receita entra no Orçamento depois que a porta 2 aprovar o Termo de Abertura.</Aviso>}
+            {evento.receita === 'lancada' && <Aviso tipo="sucesso">A receita A captar já está no Orçamento. Ela só muda por este projeto.</Aviso>}
+            {evento.receita === 'pendente' && (
+              <>
+                <Aviso tipo="atencao">A receita do evento ainda não está no Orçamento. {evento.motivoPendente}</Aviso>
+                {evento.podeLancar && (
+                  <form action={acaoLancarReceitaDoEvento} className="space-y-3">
+                    <input type="hidden" name="id" value={id} />
+                    {!evento.fonteNome && (
+                      <Campo rotulo="Fonte de receita" obrigatorio dica="Escolha onde a receita entra no orçamento.">
+                        <select name="fonte_receita" required className={estiloEntrada} defaultValue="">
+                          <option value="" disabled>Escolha a fonte</option>
+                          {fontes.map((f) => (
+                            <option key={f.id} value={f.id}>{f.nome}</option>
+                          ))}
+                        </select>
+                      </Campo>
+                    )}
+                    <BotaoEnviar enviando="Lançando…">Lançar receita no Orçamento</BotaoEnviar>
+                  </form>
+                )}
+              </>
+            )}
+          </div>
+        </Secao>
+      )}
+      {!evento.aplica && (
       <Secao id="t-termo" titulo="Termo de parceria" descricao="Criado em Parcerias como rascunho quando a porta 2 aprova um projeto com financiamento externo.">
         {!l.aplica ? (
           <EstadoVazio titulo="Este projeto ainda não tem termo.">
@@ -135,12 +176,13 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
           </div>
         )}
       </Secao>
+      )}
       <Secao id="t-outras" titulo="Outras ligações" descricao="O nome vem da cópia guardada no projeto. A situação aparece só para quem tem acesso ao app onde o dado fica.">
-        {outras.ligacoes.length === 0 ? (
+        {outras.ligacoes.filter((x) => x.app !== 'fonte_receita').length === 0 ? (
           <EstadoVazio titulo="Nada aqui ainda.">Quando uma ligação com outro app for criada, ela aparece nesta lista.</EstadoVazio>
         ) : (
           <ul className="space-y-2">
-            {outras.ligacoes.map((x) => (
+            {outras.ligacoes.filter((x) => x.app !== 'fonte_receita').map((x) => (
               <li key={x.id} className="rounded border border-borda p-3 text-sm">
                 <p className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{x.nomeAtual ?? x.nome}</span>
