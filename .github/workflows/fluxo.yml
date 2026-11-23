@@ -25,6 +25,7 @@ permissions:
   contents: read
   issues: write
   pull-requests: read
+  actions: write
 
 # Um evento por issue ou PR de cada vez; eventos de issues diferentes rodam em paralelo.
 concurrency:

@@ -20,6 +20,7 @@ function githubFalso(issues: Issue[]) {
       }),
       listForRepo: vi.fn(),
     },
+    actions: { createWorkflowDispatch: vi.fn() },
   };
   const paginate = vi.fn(async (_f: unknown, { labels }: { labels?: string }) =>
     issues.filter((i) => !labels || i.labels.some((l) => l.name === labels)).map((i) => structuredClone(i)),
@@ -194,6 +195,17 @@ describe('tipoDoPR', () => {
     });
     await aplicar({ github, core, context: contexto('workflow_dispatch', {}), lista: [{ issue: 8, etapa: 'Entrega em aprovação' }] });
     expect(etiquetas(issues[0])).toEqual(['etapa: entrega em aprovação']);
+  });
+
+  it('entrega parcial aprovada devolve a proposta à fila e chama a Fila (#281)', async () => {
+    const issues: Issue[] = [{ number: 281, state: 'open', labels: [{ name: 'etapa: entrega em aprovação' }], node_id: 'I281' }];
+    const github = githubFalso(issues);
+    await executar({
+      github, core,
+      context: contexto('pull_request', { action: 'closed', pull_request: { title: 'Entrega: evento (2 de 3)', body: 'Entrega #281', merged: true, state: 'closed', labels: [{ name: 'PR: entrega' }] } }),
+    });
+    expect(etiquetas(issues[0])).toEqual(['etapa: pronta para construir']);
+    expect(github.rest.actions.createWorkflowDispatch).toHaveBeenCalledWith(expect.objectContaining({ workflow_id: 'fila.yml', ref: 'main' }));
   });
 
   it('prévia de PR (publicação que não é a oficial) não publica nada', async () => {
