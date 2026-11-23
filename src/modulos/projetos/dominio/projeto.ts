@@ -5,9 +5,9 @@
 
 export class ErroProjetos extends Error {}
 
-export const TIPOS_PROJETO = ['interno', 'financiado'] as const;
+export const TIPOS_PROJETO = ['interno', 'financiado', 'captacao'] as const;
 export type TipoProjeto = (typeof TIPOS_PROJETO)[number];
-export const NOME_TIPO: Record<TipoProjeto, string> = { interno: 'Interno', financiado: 'Com financiamento externo' };
+export const NOME_TIPO: Record<TipoProjeto, string> = { interno: 'Interno', financiado: 'Com financiamento externo', captacao: 'Evento de captação' };
 
 export const PORTES = ['enxuto', 'completo'] as const;
 export type Porte = (typeof PORTES)[number];

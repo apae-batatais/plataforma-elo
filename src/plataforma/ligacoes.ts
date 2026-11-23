@@ -14,8 +14,8 @@ import type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
 import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
 import { criarRascunhoDeTermo, listarRascunhos, termoParaProjeto, termosParaOrcamento, type NumerosDePessoas, type RascunhoDeTermo } from '@/modulos/parcerias';
 import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
-import { custoDoServico, resultadoDoProjeto, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type ProjetoParaRealizado as ProjetoDoRealizado, type ResultadoDoProjeto, type SaldoParaConferencia } from '@/modulos/orcamento';
-import { projetosComTermoParadosOuCancelados, projetosDoServico, projetosParaCompra, projetosParaRealizado, type CatalogoLeitura, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
+import { custoDoServico, encerrarReceitaDoProjeto, fontesParaEvento, registrarReceitaDoProjeto, resultadoDoProjeto, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type ProjetoParaRealizado as ProjetoDoRealizado, type ResultadoDoProjeto, type SaldoParaConferencia } from '@/modulos/orcamento';
+import { projetosComTermoParadosOuCancelados, type CatalogoReceitas, projetosDoServico, projetosParaCompra, projetosParaRealizado, type CatalogoLeitura, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
 import { comprasDoProjeto, requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
 import { MODULOS } from './registro-modulos';
 
@@ -236,5 +236,21 @@ export function catalogoDeLeitura(p: Planilhas, opcoes: Desligados = {}): Catalo
       if (lida.estado !== 'ok') return lida;
       return { estado: 'ok', dados: lida.dados.map((c) => ({ id: c.id, numero: c.numero, tipo: c.tipo, situacaoNome: c.situacaoNome, enviadaEm: c.enviadaEm })) };
     },
+  };
+}
+
+/**
+ * Orçamento visto pelo Projetos (L17): fontes próprias, receita "A captar" do evento e seu encerramento.
+ * Orçamento desligado devolve `null`: o evento funciona e a ligação com a receita fica pendente e visível.
+ */
+export function catalogoDeReceitas(p: Planilhas, opcoes: Desligados = {}): CatalogoReceitas | null {
+  if (opcoes.desligados?.has('orcamento') || !MODULOS.some((m) => m.id === 'orcamento')) return null;
+  return {
+    async fontesProprias(quem) {
+      const lida = await fontesParaEvento(p, quem);
+      return lida.estado === 'ok' ? lida.dados : null;
+    },
+    registrarReceita: (quem, pedido) => registrarReceitaDoProjeto(p, quem, pedido),
+    encerrarReceita: (quem, projetoId) => encerrarReceitaDoProjeto(p, quem, projetoId),
   };
 }

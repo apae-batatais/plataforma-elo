@@ -77,6 +77,7 @@ export function calcularPode(v: Verificador, todos = false) {
     projetos: v.temPermissaoAlgumEscopo('projetos.acessar'),
     decidirProjeto: v.temPermissao('projetos.decidir') || v.temPermissaoAlgumEscopo('projetos.decidir_alcada'),
     gerenciarProjeto: v.temPermissaoAlgumEscopo('projetos.gerenciar'),
+    proporProjeto: v.temPermissaoAlgumEscopo('projetos.propor'),
     termos: v.temPermissaoAlgumEscopo('parcerias.termos.ver'),
     editarTermos: v.temPermissao('parcerias.termos.editar'),
     verTodosPedidos: v.temPermissao('comunicacao.ver_todos'),
@@ -1017,6 +1018,56 @@ export function montarAssuntos(ctx: {
           />
           <Sub>Valores diferentes</Sub>
           <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
+        </>
+      ),
+    });
+  }
+
+  if (pode.projetos) {
+    assuntos.push({
+      id: 'projetos-evento',
+      permissoes: ['projetos.acessar'],
+      titulo: 'Evento de captação: modelo curto e receita no Orçamento',
+      resumo: 'Como propor um leilão, bazar, festa ou campanha e o que acontece com a meta de receita quando a porta 2 aprova.',
+      atalhos: [{ rotulo: 'Projetos', href: '/projetos' }, ...(pode.proporProjeto ? [{ rotulo: 'Nova ideia (evento)', href: '/projetos/nova?tipo=captacao' }] : [])],
+      conteudo: (
+        <>
+          {pode.proporProjeto && (
+            <>
+              <Sub>Propor um evento</Sub>
+              <Passos
+                itens={[
+                  'Em Projetos, clique em Nova ideia e, no alto da tela, em "É um evento de captação? Use o modelo curto".',
+                  'Preencha o objetivo, a data do evento, a meta de receita e o custo estimado. O porte já vem Enxuto; você pode trocar para Completo.',
+                  'Em Série, escreva o nome da série (por exemplo, "Leilão anual") ou escolha uma já usada na lista. Deixe em branco se o evento é único. As edições da série serão comparadas quando o evento encerrar.',
+                  'Em Fonte de receita, escolha onde a receita entra no orçamento. Se a lista estiver vazia, peça ao Financeiro para cadastrar a fonte do evento; você pode escolher depois.',
+                  'Salve como rascunho ou envie para uma coordenação assumir.',
+                ]}
+              />
+            </>
+          )}
+          <Itens
+            itens={[
+              'O Termo de Abertura do evento é curto: objetivo e valor total. As tolerâncias de custo e prazo vêm do padrão da configuração de Projetos.',
+              'O orçamento de custos do evento, em linhas, é feito na fase 3 (Orçamento do projeto), como em qualquer projeto enxuto.',
+              pode.decidirProjeto && 'Ao seguir na porta 2, o Elo lança no Orçamento uma receita "A captar" com o valor da meta, na fonte escolhida e no mês do evento. Se o Orçamento recusar (por exemplo, o ano do evento ainda não foi aberto), a decisão continua valendo e a aba Ligações mostra a receita como pendente.',
+              'Parar a ideia ou cancelar o projeto retira a receita do Orçamento (ela fica guardada, só deixa de contar).',
+              'A receita lançada pelo projeto só muda por ele: no Orçamento, ela não pode ser editada nem cancelada à mão.',
+            ]}
+          />
+          {pode.gerenciarProjeto && (
+            <>
+              <Sub>Lançar a receita depois</Sub>
+              <Passos
+                itens={[
+                  'Abra o evento e entre na aba Ligações; a parte "Evento de captação" mostra a série, a data, a meta e a fonte.',
+                  'Se aparecer "A receita do evento ainda não está no Orçamento", escolha a fonte (se ainda não houver) e clique em Lançar receita no Orçamento.',
+                  'Clicar de novo não duplica: o Elo reaproveita o item que já existe.',
+                ]}
+              />
+            </>
+          )}
+          <p className="mt-3">O custo, a receita e o resultado realizados do evento vêm das linhas do Realizado do Orçamento marcadas com o projeto; o relatório de encerramento com a comparação entre edições chega na próxima entrega.</p>
         </>
       ),
     });

@@ -129,6 +129,23 @@ export async function popularProjetosFicticios(p: Planilhas): Promise<void> {
   await enviarRelatorio(p, coord, oito.id, { periodoInicio: '2026-10-26', periodoFim: '2026-10-30', texto: 'Texto fictício: início dos canteiros, sem intercorrências além do terreno.', gasto: null }, undefined, { agora: dia(30) });
   await registrarLicao(p, coord, oito.id, { categoria: 'planejamento', oQueAconteceu: 'Texto fictício: o terreno escolhido alaga com a chuva.', fazerDiferente: 'Texto fictício: visitar o local na época das chuvas antes de planejar.' }, { agora: dia(30) });
 
+  // 9. Evento de captação (modelo curto, ligações onda 2, L5): ideia com responsável, sem fonte de receita escolhida ainda.
+  const nove = await cadastrarIdeia(
+    p,
+    func,
+    {
+      ...base,
+      tipo: 'captacao',
+      porte: 'enxuto',
+      titulo: 'Bazar beneficente (exemplo)',
+      resumo: 'Ideia fictícia: bazar com doações para arrecadar recursos próprios.',
+      valorEstimado: 1500,
+      evento: { serie: 'Bazar anual (exemplo)', dataEvento: '2027-05-15', metaReceita: 6000, fonteReceitaId: null },
+    },
+    { agora: dia(27), enviar: true },
+  );
+  await assumirIdeia(p, coord, nove.id, 1, { agora: dia(28) });
+
   // Datas previstas (a agenda única mostra início e fim previstos). Nenhuma tela as preenche ainda: só a demonstração.
   const datas: [string, string, string][] = [
     [quatro.id, '2026-12-01', '2027-02-26'],

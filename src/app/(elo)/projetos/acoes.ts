@@ -35,6 +35,7 @@ import { FONTES_NUMERO, type FonteNumero } from '@/modulos/projetos/dominio/indi
 import { abrirPortaDeEncerramento, iniciarEncerramento, marcarChecklist, registrarLicao, salvarTextoDeEncerramento } from '@/modulos/projetos/aplicacao/encerramento';
 import { CATEGORIAS_LICAO, ITENS_CHECKLIST, ITENS_TEXTO, type CategoriaLicao, type ItemChecklist, type ItemTexto } from '@/modulos/projetos/dominio/encerramento';
 import { abrirPorta, darParecer, decidirPorta } from '@/modulos/projetos/aplicacao/portas';
+import { lancarReceitaDoEvento, type ResultadoReceita } from '@/modulos/projetos/aplicacao/evento';
 import { criarRascunhoDoProjeto, type ResultadoRascunho } from '@/modulos/projetos/aplicacao/termo';
 import { GRAUS, NIVEIS_MARCO, TIPOS_DOCUMENTO, type Grau, type NivelMarco, type TipoDocumento } from '@/modulos/projetos/dominio/fases';
 import {
@@ -53,7 +54,7 @@ import {
   type TipoProjeto,
 } from '@/modulos/projetos/dominio/projeto';
 import { obterAplicacao } from '@/plataforma/aplicacao';
-import { catalogoDeTermos } from '@/plataforma/ligacoes';
+import { catalogoDeReceitas, catalogoDeTermos } from '@/plataforma/ligacoes';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { numerosDePessoas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -96,6 +97,15 @@ function lerIdeia(f: FormData): DadosIdeia {
     porte: (PORTES as readonly string[]).includes(porte) ? (porte as Porte) : ('' as Porte),
     valorEstimado: v === '' ? null : Number(v),
     servico: texto(f, 'servico') || null,
+    evento:
+      tipo === 'captacao'
+        ? {
+            serie: texto(f, 'serie') || null,
+            dataEvento: texto(f, 'data_evento') || null,
+            metaReceita: texto(f, 'meta_receita') === '' ? null : Number(texto(f, 'meta_receita').replace(/\./g, '').replace(',', '.')),
+            fonteReceitaId: texto(f, 'fonte_receita') || null,
+          }
+        : undefined,
   };
 }
 
@@ -111,7 +121,7 @@ export async function acaoSalvarIdeia(f: FormData) {
   const dados = lerIdeia(f);
   if (id) {
     await executar(() => ficha(id), ficha(id), 'Ideia salva.', async ({ usuario, app }) => {
-      await editarIdeia(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), dados);
+      await editarIdeia(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), dados, { receitas: catalogoDeReceitas(app.planilhas) });
       if (texto(f, 'enviar') === 'sim') await enviarParaAssumir(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')) + 1);
     });
     return;
@@ -119,9 +129,9 @@ export async function acaoSalvarIdeia(f: FormData) {
   const enviar = texto(f, 'enviar') === 'sim';
   await executar(
     (r) => ficha((r as { id: string }).id),
-    '/projetos/nova',
+    dados.tipo === 'captacao' ? '/projetos/nova?tipo=captacao' : '/projetos/nova',
     enviar ? 'Ideia enviada. Uma coordenação vai assumir como responsável.' : 'Rascunho salvo.',
-    ({ usuario, app }) => cadastrarIdeia(app.planilhas, usuario.autorizador, dados, { enviar }),
+    ({ usuario, app }) => cadastrarIdeia(app.planilhas, usuario.autorizador, dados, { enviar, receitas: catalogoDeReceitas(app.planilhas) }),
   );
 }
 
@@ -147,7 +157,7 @@ export async function acaoRetomarProjeto(f: FormData) {
 
 export async function acaoCancelarProjeto(f: FormData) {
   const id = texto(f, 'id');
-  await executar(() => ficha(id), ficha(id), 'Projeto cancelado. Ele continua guardado.', ({ usuario, app }) => cancelarProjeto(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), texto(f, 'motivo')));
+  await executar(() => ficha(id), ficha(id), 'Projeto cancelado. Ele continua guardado.', ({ usuario, app }) => cancelarProjeto(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), texto(f, 'motivo'), { orcamento: catalogoDeReceitas(app.planilhas) }));
 }
 
 export async function acaoAbrirPorta(f: FormData) {
@@ -176,6 +186,9 @@ export async function acaoDecidirPorta(f: FormData) {
     ficha(id),
     (r) => {
       const rascunho = (r as { rascunho: ResultadoRascunho }).rascunho;
+      const receita = (r as { receita: ResultadoReceita }).receita;
+      if (receita.estado === 'pendente') return { chave: 'erro', mensagem: `A decisão foi registrada, mas a receita do evento não entrou no Orçamento (${receita.motivo}). Veja a aba Ligações.` };
+      if (receita.estado === 'criada') return { chave: 'ok', mensagem: 'Decisão registrada e receita "A captar" lançada no Orçamento.' };
       if (rascunho.estado === 'criado') return { chave: 'ok', mensagem: 'Decisão registrada e rascunho do termo criado.' };
       if (rascunho.estado === 'falhou') return { chave: 'erro', mensagem: `A decisão foi registrada, mas o rascunho do termo não foi criado (${rascunho.motivo}). Use "Criar rascunho do termo" na aba Ligações.` };
       return { chave: 'ok', mensagem: 'Decisão registrada.' };
@@ -183,6 +196,7 @@ export async function acaoDecidirPorta(f: FormData) {
     ({ usuario, app }) =>
       decidirPorta(app.planilhas, usuario.autorizador, texto(f, 'porta'), Number(texto(f, 'versao_porta')), (DECISOES as readonly string[]).includes(decisao) ? (decisao as Decisao) : ('' as Decisao), texto(f, 'justificativa'), {
         parcerias: catalogoDeTermos(app.planilhas),
+        orcamento: catalogoDeReceitas(app.planilhas),
       }),
   );
 }
@@ -195,6 +209,17 @@ export async function acaoCriarRascunhoDoTermo(f: FormData) {
     volta,
     (r) => ({ chave: 'ok', mensagem: (r as { criado: boolean }).criado ? 'Rascunho do termo criado em Parcerias.' : 'O rascunho do termo já existia; nada foi duplicado.' }),
     ({ usuario, app }) => criarRascunhoDoProjeto(app.planilhas, usuario.autorizador, id, catalogoDeTermos(app.planilhas)),
+  );
+}
+
+export async function acaoLancarReceitaDoEvento(f: FormData) {
+  const id = texto(f, 'id');
+  const volta = `${ficha(id)}/ligacoes`;
+  await executar(
+    () => volta,
+    volta,
+    (r) => ({ chave: 'ok', mensagem: (r as { criada: boolean }).criada ? 'Receita "A captar" lançada no Orçamento.' : 'A receita já estava no Orçamento; nada foi duplicado.' }),
+    ({ usuario, app }) => lancarReceitaDoEvento(app.planilhas, usuario.autorizador, id, catalogoDeReceitas(app.planilhas), { fonteId: texto(f, 'fonte_receita') || null }),
   );
 }
 

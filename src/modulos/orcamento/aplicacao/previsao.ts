@@ -34,6 +34,9 @@ import { contaComoPublico } from '../dominio/cedidos-custo';
 /** Mesmo tipo de erro da folha: as telas já sabem mostrá-lo. */
 export const ErroPrevisao = ErroValidacaoFolha;
 
+/** Receita criada por um projeto (L17): só o Projetos a altera ou encerra. */
+export const TRAVADA_POR_PROJETO = 'Esta receita vem de um projeto (evento de captação). Só o projeto a altera.';
+
 const PERM = { ver: 'orcamento.painel.ver', editar: 'orcamento.previsao.editar' } as const;
 
 function exigir(quem: Autorizador, permissao: string) {
@@ -45,7 +48,7 @@ function exigirVer(quem: Autorizador) {
 
 const MESES = Array.from({ length: 12 }, (_, i) => i + 1);
 const mesesDe = (r: object) => MESES.map((m) => Number((r as Record<string, unknown>)[`m${m}`] ?? 0) || 0);
-const colunasMeses = (lista: number[]) => Object.fromEntries(lista.map((v, i) => [`m${i + 1}`, v]));
+export const colunasDosMeses = (lista: number[]) => Object.fromEntries(lista.map((v, i) => [`m${i + 1}`, v]));
 
 // ---------------------------------------------------------------------------
 // Ano e exercício
@@ -296,7 +299,7 @@ export async function salvarDespesa(p: Planilhas, quem: Autorizador, dados: Dado
     ocorrencias: dados.ocorrencias,
     valor_unitario: dados.valor_unitario,
     distribuicao: dados.distribuicao,
-    ...colunasMeses(meses),
+    ...colunasDosMeses(meses),
     categoria: dados.categoria === 'projetos' ? 'projetos' : 'operacional',
     prioridade: dados.prioridade && dados.prioridade in PRIORIDADE ? dados.prioridade : null,
     cotacao: dados.cotacao && dados.cotacao in COTACAO ? dados.cotacao : null,
@@ -347,7 +350,7 @@ export async function salvarReceita(p: Planilhas, quem: Autorizador, dados: Dado
     captacao: dados.captacao,
     area: dados.area || null,
     distribuicao: dados.distribuicao,
-    ...colunasMeses(meses),
+    ...colunasDosMeses(meses),
     observacao: dados.observacao?.trim() || null,
   };
   if (!existente) {
@@ -357,6 +360,7 @@ export async function salvarReceita(p: Planilhas, quem: Autorizador, dados: Dado
   }
   const alvo = receitas.porId(existente.id);
   if (!alvo || !alvo.ativo) throw new ErroPrevisao('Receita não encontrada.');
+  if (alvo.projeto_id) throw new ErroPrevisao(TRAVADA_POR_PROJETO);
   if (alvo.ano !== dados.ano) throw new ErroPrevisao('A receita é de outro exercício.');
   const { colunasAlteradas } = await atualizar(p, Receitas, existente.id, existente.versao, campos as never, { email: quem.email });
   if (colunasAlteradas.length) await registrarAuditoria(p, { usuario: quem.email, acao: 'alteracao', entidade: 'Receitas', registroId: existente.id, detalhes: { colunas: colunasAlteradas } });
@@ -372,6 +376,7 @@ export async function cancelarItem(p: Planilhas, quem: Autorizador, tipo: 'despe
   if (!alvo || !alvo.ativo) throw new ErroPrevisao('Item não encontrado.');
   exigirEmElaboracao(exercicios, alvo.ano);
   if (tipo === 'despesa' && (alvo as { lancamento_rateio_id?: string | null }).lancamento_rateio_id) throw new ErroPrevisao(TRAVADA_POR_RATEIO);
+  if (tipo === 'receita' && (alvo as { projeto_id?: string | null }).projeto_id) throw new ErroPrevisao(TRAVADA_POR_PROJETO);
   await atualizar(p, tabela, id, versao, { ativo: false } as never, { email: quem.email });
   await registrarAuditoria(p, { usuario: quem.email, acao: 'encerramento', entidade: tipo === 'despesa' ? 'Despesas' : 'Receitas', registroId: id, detalhes: { colunas: ['ativo'] } });
 }

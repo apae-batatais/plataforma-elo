@@ -6,7 +6,7 @@ import { NOME_ITEM } from '@/modulos/projetos/dominio/fases';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import Link from 'next/link';
 import { lerFicha, type PortaDetalhe } from '@/modulos/projetos/aplicacao/portas';
-import { servicosParaEscolher } from '@/modulos/projetos/aplicacao/ideias';
+import { seriesDeEventos, servicosParaEscolher } from '@/modulos/projetos/aplicacao/ideias';
 import {
   NOME_DECISAO,
   NOME_PARECER,
@@ -21,6 +21,7 @@ import {
 import { FormularioIdeia } from '@/modulos/projetos/telas/formulario-ideia';
 import { EtiquetaEtapa, moeda } from '@/modulos/projetos/telas/rotulos';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { catalogoDeReceitas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { BotaoEnviar } from '@/ui/botao-enviar';
@@ -194,6 +195,13 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
           <div><dt className="text-texto-suave">Tipo</dt><dd className="font-medium">{NOME_TIPO[r.tipo]}</dd></div>
           <div><dt className="text-texto-suave">Porte</dt><dd className="font-medium">{NOME_PORTE[r.porte]}</dd></div>
+          {r.tipo === 'captacao' && (
+            <>
+              <div><dt className="text-texto-suave">Data do evento</dt><dd className="font-medium">{r.data_evento ? r.data_evento.split('-').reverse().join('/') : '—'}</dd></div>
+              <div><dt className="text-texto-suave">Meta de receita</dt><dd className="font-medium">{moeda(r.meta_receita)}</dd></div>
+              <div><dt className="text-texto-suave">Série</dt><dd className="font-medium">{r.serie_evento ?? 'Evento único'}</dd></div>
+            </>
+          )}
           <div><dt className="text-texto-suave">Valor estimado</dt><dd className="font-medium">{moeda(r.valor_estimado)}</dd></div>
           <div><dt className="text-texto-suave">Quem propôs</dt><dd className="font-medium">{r.proponente}</dd></div>
           <div><dt className="text-texto-suave">Responsável</dt><dd className="font-medium">{r.responsavel ?? 'Ainda sem responsável'}</dd></div>
@@ -284,7 +292,8 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
             acao={acaoSalvarIdeia}
             servicos={await servicosParaEscolher(planilhas)}
             comEnviar={pode.enviar}
-            valores={{ ...campos, titulo: r.titulo, resumo: r.resumo, tipo: r.tipo, porte: r.porte, valorEstimado: r.valor_estimado, servico: r.servico }}
+            evento={r.tipo === 'captacao' ? { series: await seriesDeEventos(planilhas, usuario.autorizador), fontes: (await catalogoDeReceitas(planilhas)?.fontesProprias(usuario.autorizador).catch(() => null)) ?? null } : undefined}
+            valores={{ ...campos, titulo: r.titulo, resumo: r.resumo, tipo: r.tipo, porte: r.porte, valorEstimado: r.valor_estimado, servico: r.servico, serie: r.serie_evento, dataEvento: r.data_evento, metaReceita: r.meta_receita, fonteReceitaId: r.fonte_receita_id }}
           />
         </Secao>
       )}

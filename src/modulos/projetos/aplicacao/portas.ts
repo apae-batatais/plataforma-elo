@@ -26,6 +26,8 @@ import {
   type TipoPorta,
 } from '../dominio/projeto';
 import { aprovarTermo, conteudoDe, exigirTermoAprovado, lerFase } from './fases';
+import { encerrarReceitaDoEvento, pedirReceitaNaDecisao, type ResultadoReceita } from './evento';
+import type { CatalogoReceitas } from './catalogo-orcamento';
 import { pedirRascunhoNaDecisao, type CatalogoTermos, type ResultadoRascunho } from './termo';
 import { auditar, autoriaDe, designado, equipesAtivas, lerConfig, podeVerPareceres, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
 
@@ -116,7 +118,7 @@ export async function darParecer(p: Planilhas, quem: Autorizador, portaId: strin
  * Regras 10 a 12. Porta aberta: decide a Diretoria (todos os pareceres dados). Porta aguardando alçada:
  * decide quem a configuração designou para a alçada.
  */
-export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: string, versaoPorta: number, decisao: Decisao, justificativa: string, opcoes: Opcoes & { parcerias?: CatalogoTermos | null } = {}): Promise<{ rascunho: ResultadoRascunho }> {
+export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: string, versaoPorta: number, decisao: Decisao, justificativa: string, opcoes: Opcoes & { parcerias?: CatalogoTermos | null; orcamento?: CatalogoReceitas | null } = {}): Promise<{ rascunho: ResultadoRascunho; receita: ResultadoReceita }> {
   const agora = opcoes.agora ?? new Date();
   const config = await lerConfig(p);
   const { porta, projeto, pareceres } = await lerPortaAberta(p, portaId);
@@ -161,7 +163,11 @@ export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: str
   // Regras L8 e L9: projeto financiado ganha o rascunho do termo; se falhar, a decisão continua valendo.
   const rascunho: ResultadoRascunho =
     porta.tipo === 'termo' && destino.etapa === 'fase_3' ? await pedirRascunhoNaDecisao(p, quem, projeto.id, opcoes.parcerias, agora) : { estado: 'nao_se_aplica' };
-  return { rascunho };
+  // Regra L17: o evento ganha a receita "A captar" no Orçamento; parar a ideia encerra o item. Nenhum dos dois derruba a decisão.
+  const receita: ResultadoReceita =
+    porta.tipo === 'termo' && destino.etapa === 'fase_3' ? await pedirReceitaNaDecisao(p, quem, projeto.id, opcoes.orcamento, agora) : { estado: 'nao_se_aplica' };
+  if (destino.etapa === 'parado') await encerrarReceitaDoEvento(p, quem, projeto.id, opcoes.orcamento, agora);
+  return { rascunho, receita };
 }
 
 export interface PendenciaProjetos {
