@@ -6,7 +6,9 @@
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { Projetos, type RegProjeto } from '../dados/tabelas';
+import { Atividades, Projetos, type RegProjeto } from '../dados/tabelas';
+import { linhaDoTempo, parcelasDoTermo, prazosDoTermo, type EventoDaLinhaDoTempo, type PrazosDoTermo } from '../dominio/ligacoes';
+import { hojeEmBrasilia } from '../dominio/planejamento';
 import { ErroProjetos, type ConfigProjetos } from '../dominio/projeto';
 import { conteudoDe, podeGerenciar, termoAprovado } from './fases';
 import { auditar, autoriaDe, designado, equipesAtivas, lerConfig, podeVerProjeto, registrarHistorico, type Opcoes } from './comum';
@@ -104,6 +106,11 @@ export interface LigacaoTermo {
     | { estado: 'indisponivel'; nome: string }
     | { estado: 'sem_permissao'; nome: string }
     | { estado: 'ok'; termo: TermoLigado };
+  /** Regra L13: só com o termo lido (quem tem `parcerias.termos.ver` no escopo do termo). */
+  prazos: PrazosDoTermo | null;
+  linhaDoTempo: EventoDaLinhaDoTempo[];
+  /** Regra L13: prestação de contas ainda não existe em Parcerias. */
+  prazosDePrestacaoDeContas: 'nao_cadastrados';
   /** Regra L10 e L11: só informam, nada é reescrito. */
   pontosDeAtencao: string[];
   /** Mostra o botão "Criar rascunho do termo": aplica, ainda sem termo e a pessoa pode. */
@@ -155,9 +162,20 @@ export async function lerLigacaoTermo(p: Planilhas, quem: Autorizador, projetoId
     if (parado) pontos.push(`Projeto ${r.etapa === 'cancelado' ? 'cancelado' : 'parado'}: o termo não é apagado. O Financeiro decide se encerra o rascunho.`);
   }
   const semTermo = !r.termo_id;
+  let prazos: PrazosDoTermo | null = null;
+  let tempo: EventoDaLinhaDoTempo[] = [];
+  if (termo.estado === 'ok') {
+    const parcelas = parcelasDoTermo(termo.termo.fontes);
+    prazos = prazosDoTermo(parcelas, termo.termo.fim, hojeEmBrasilia(agora));
+    const [atividades] = await lerTabelas(p, [Atividades] as const);
+    tempo = linhaDoTempo(atividades.ativos().filter((a) => a.projeto_id === r.id), parcelas);
+  }
   return {
     ...base,
     termo,
+    prazos,
+    linhaDoTempo: tempo,
+    prazosDePrestacaoDeContas: 'nao_cadastrados',
     pontosDeAtencao: pontos,
     podeCriarRascunho: base.aplica && semTermo && !parado && podeCriarRascunho(quem, r, config),
     rascunhoPendente: base.aplica && semTermo && !parado,

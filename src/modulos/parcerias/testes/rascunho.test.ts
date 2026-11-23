@@ -107,7 +107,7 @@ describe('listar rascunhos e ler o termo para o projeto', () => {
 
   it('termoParaProjeto devolve situação e valor a quem vê o termo e null a quem não vê (nunca os valores)', async () => {
     const { termoId } = await criarRascunhoDeTermo(p, { email: 'diretoria@exemplo.local' }, pedido(), AGORA);
-    expect(await termoParaProjeto(p, await como('financeiro@exemplo.local'), termoId, AGORA)).toEqual({ termoId, parceiro: 'Financiador (exemplo)', situacao: 'rascunho', valor: 30000 });
+    expect(await termoParaProjeto(p, await como('financeiro@exemplo.local'), termoId, AGORA)).toMatchObject({ termoId, parceiro: 'Financiador (exemplo)', situacao: 'rascunho', valor: 30000, inicio: '2027-01-01', fim: '2027-12-31' });
     expect(await termoParaProjeto(p, await como('funcionario@exemplo.local'), termoId, AGORA)).toBeNull();
     expect(await termoParaProjeto(p, await como('financeiro@exemplo.local'), 'nao-existe', AGORA)).toBeNull();
   });

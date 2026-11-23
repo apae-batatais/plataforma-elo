@@ -16,6 +16,7 @@ import {
   encerrarTermo,
   listarTermos,
   registrarAporte,
+  termoParaProjeto,
   termosParaOrcamento,
   ErroTermo,
   type DadosTermo,
@@ -94,6 +95,23 @@ describe('cálculos puros', () => {
 
 describe('termos fictícios nos formatos reais', () => {
   beforeEach(async () => popularParceriasFicticias(p));
+
+  it('regra 28: termoParaProjeto devolve fontes, cronograma (com aportes), plano, vigência e recursos próprios a quem vê o termo; a quem não vê, null', async () => {
+    const q = await como('financeiro@exemplo.local');
+    const id = (await listarTermos(p, q, AGORA)).find((t) => t.numero === '001/2026')!.id;
+    const d = await detalharTermo(p, q, id, AGORA);
+    const lido = (await termoParaProjeto(p, q, id, AGORA))!;
+    expect(lido).toMatchObject({ termoId: id, situacao: 'em_vigor', valor: d.valorGlobal, inicio: d.inicio, fim: d.fim, recursosProprios: d.recursosProprios });
+    expect(lido.fontes.map((f) => f.nome).sort()).toEqual(d.fontes.map((f) => f.nome).sort());
+    const estadual = lido.fontes.find((f) => f.nome === 'Cofinanciamento estadual')!;
+    expect(estadual.valorAtual).toBe(36000);
+    // o aporte de 6 parcelas entra no cronograma da fonte: a soma bate com o valor atual
+    expect(estadual.cronograma.reduce((s, x) => s + x.valor, 0)).toBeCloseTo(estadual.valorAtual, 2);
+    expect([...estadual.cronograma].sort((a, b) => a.mes.localeCompare(b.mes))).toEqual(estadual.cronograma);
+    expect(lido.fontes.find((f) => f.nome === 'Fundo municipal')!.plano).toEqual(d.fontes.find((f) => f.nome === 'Fundo municipal')!.categorias);
+    expect(await termoParaProjeto(p, await como('funcionario@exemplo.local'), id, AGORA)).toBeNull();
+    expect(JSON.stringify(lido)).not.toMatch(/@/);
+  });
 
   it('termo com 3 fontes: per capita anual em 4 parcelas, cronograma digitado e aporte de 6 parcelas', async () => {
     const q = await como('financeiro@exemplo.local');
