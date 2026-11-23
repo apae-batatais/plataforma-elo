@@ -9,3 +9,4 @@ export { cedidosPorServicoECedente, type CedidoDoServicoPorCedente } from './apl
 export { indicadoresDaPlataforma as indicadoresOrcamento } from './aplicacao/indicadores-plataforma';
 export { resultadoDoProjeto, type ResultadoDoProjeto } from './aplicacao/projeto-resultado';
 export type { ProjetoParaRealizado } from './aplicacao/realizado';
+export { encerrarReceitaDoProjeto, fontesParaEvento, registrarReceitaDoProjeto, type FonteParaEvento, type PedidoReceitaDoProjeto } from './aplicacao/receita-projeto';

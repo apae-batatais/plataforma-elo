@@ -249,6 +249,9 @@ export const Receitas = definirTabela({
     distribuicao: distribuicao(),
     ...MESES_COLUNAS,
     observacao: textoOpcional(),
+    /** Receita criada por um projeto (evento de captação, L17): identificador e código copiado. Só o Projetos a altera. */
+    projeto_id: textoOpcional(),
+    projeto_codigo: textoOpcional(),
   }),
 });
 
