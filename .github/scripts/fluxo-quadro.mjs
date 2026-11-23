@@ -248,6 +248,12 @@ export async function executar({ github, context, core, tokenQuadro, numeroQuadr
   }
 
   await aplicar({ github, context, core, tokenQuadro, numeroQuadro, lista, sincronizar });
+  // Proposta que volta para "Pronta para construir" (entrega parcial aprovada) só é chamada se a Fila rodar
+  // depois desta troca. A Fila do push na main pode ter rodado antes (L5, #281, 23/11): chama de novo.
+  if (lista.some((m) => m.etapa === 'Pronta para construir')) {
+    await github.rest.actions.createWorkflowDispatch({ owner, repo, workflow_id: 'fila.yml', ref: 'main' });
+    core.info('Fila chamada: proposta voltou para "Pronta para construir"');
+  }
 }
 
 /**
