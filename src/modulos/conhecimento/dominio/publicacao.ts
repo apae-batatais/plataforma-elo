@@ -17,7 +17,16 @@ export const LIMITES = {
   titulo: 150,
   resumo: 300,
   corpo: 20_000,
+  comentario: 1_000,
 } as const;
+
+/** Regra 16: o comentário tem de 1 a 1.000 caracteres. Devolve o texto limpo ou a frase de erro. */
+export function conferirComentario(texto: string): { texto: string } | { erro: string } {
+  const t = texto.trim();
+  if (!t) return { erro: 'Escreva o comentário.' };
+  if (t.length > LIMITES.comentario) return { erro: `O comentário passa de 1.000 caracteres.` };
+  return { texto: t };
+}
 
 export const mb = (bytes: number) => `${(bytes / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} MB`;
 

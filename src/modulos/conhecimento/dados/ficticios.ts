@@ -3,8 +3,8 @@
  * (rascunho, para todos, para um perfil, para uma área, arquivada) e algumas ciências.
  * Tudo inventado; nenhum nome de instituição.
  */
-import { inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
-import { CategoriasConhecimento, CienciasConhecimento, PerguntasConhecimento, PublicacoesConhecimento, TentativasTeste } from './tabelas';
+import { atualizar, inserir, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
+import { CategoriasConhecimento, CienciasConhecimento, ComentariosConhecimento, CurtidasConhecimento, PerguntasConhecimento, PublicacoesConhecimento, TentativasTeste } from './tabelas';
 
 const EDITOR = { email: 'editor.conhecimento@exemplo.local', nome: 'Editor da Base de Conhecimento (fictício)' };
 const dias = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
@@ -164,6 +164,12 @@ export async function popularConhecimentoFicticio(p: Planilhas): Promise<void> {
       for (const email of ['diretoria@exemplo.local', 'funcionario@exemplo.local'])
         await inserir(p, TentativasTeste, { publicacao_id: pub.id, edicao: 1, usuario: email, feita_em: dias(4), acertos: 2, total: 2, aprovada: true }, autor);
       await inserir(p, TentativasTeste, { publicacao_id: pub.id, edicao: 1, usuario: 'cozinha@exemplo.local', feita_em: dias(3), acertos: 1, total: 2, aprovada: false }, autor);
+    }
+    if (x.chave === 'conduta') {
+      for (const email of ['diretoria@exemplo.local', 'funcionario@exemplo.local']) await inserir(p, CurtidasConhecimento, { publicacao_id: pub.id, usuario: email }, autor);
+      await inserir(p, ComentariosConhecimento, { publicacao_id: pub.id, usuario: 'funcionario@exemplo.local', usuario_nome: 'Funcionário (fictício)', texto: 'Ficou claro. Podemos ter uma conversa com a equipe nova sobre o item 2?' }, autor);
+      const escondido = await inserir(p, ComentariosConhecimento, { publicacao_id: pub.id, usuario: 'financeiro@exemplo.local', usuario_nome: 'Financeiro (fictício)', texto: 'Comentário de exemplo escondido pelo editor.', escondido_por: EDITOR.email, escondido_em: dias(10) }, autor);
+      await atualizar(p, ComentariosConhecimento, escondido.id, escondido.versao, { ativo: false }, autor);
     }
     for (const c of CIENCIAS[x.chave] ?? []) {
       await inserir(p, CienciasConhecimento, { publicacao_id: pub.id, edicao: 1, usuario: c.email, registrada_em: dias(c.ha) }, autor);

@@ -1004,6 +1004,17 @@ export function montarAssuntos(ctx: {
             Na aba Ligações, &quot;Outras ligações&quot; lista o que o projeto tem em comum com outros apps (o nome é uma cópia guardada no projeto) e &quot;Compras do projeto&quot; mostra as requisições ligadas a ele. Se o app não
             estiver ativo, aparece &quot;Ligação indisponível&quot; e o resto da tela continua funcionando. Os detalhes só aparecem para quem tem acesso ao app onde o dado fica.
           </p>
+          <Sub>Ver o termo dentro do projeto</Sub>
+          <Passos
+            itens={[
+              'Abra o projeto e entre na aba Ligações.',
+              pode.termos
+                ? 'Em "Termo de parceria", veja o valor, os prazos (próxima parcela, última parcela e fim da vigência), as fontes com cronograma de desembolso e plano de aplicação, os recursos próprios previstos e a linha do tempo.'
+                : 'Sem acesso aos termos de Parcerias, você vê só "Ligado ao termo …". Os valores e prazos aparecem para quem tem esse acesso.',
+              'A linha do tempo junta as atividades com prazo do projeto e as parcelas do termo, em ordem de data.',
+              'Prazos de prestação de contas ainda não existem em Parcerias: a tela avisa "ainda não cadastrados em Parcerias".',
+            ]}
+          />
           <Sub>Valores diferentes</Sub>
           <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
         </>
@@ -1040,6 +1051,14 @@ export function montarAssuntos(ctx: {
             ]}
           />
           <p className="mt-2">Você só vê as publicações do seu público (todos, um perfil ou uma área). Ninguém vê a ciência de outra pessoa, só quem acompanha.</p>
+          <Sub>Curtir e comentar</Sub>
+          <Passos
+            itens={[
+              'No fim da publicação, em "Curtir e comentar", clique em "Curtir". O botão passa a dizer "Curtida"; clique de novo para desfazer. O total de curtidas aparece ao lado; ninguém vê quem curtiu.',
+              'Para comentar, escreva no campo (até 1.000 caracteres) e clique em "Comentar". O comentário aparece com o seu nome, a data e a hora. Se der erro, o texto continua no campo.',
+              'Você não edita nem apaga o próprio comentário. Publicação arquivada mostra curtidas e comentários, mas não recebe novos.',
+            ]}
+          />
           {pode.publicar && (
             <>
               <Sub>Publicar</Sub>
@@ -1052,6 +1071,7 @@ export function montarAssuntos(ctx: {
                   'Salve como rascunho para revisar (ninguém recebe pendência) ou clique em Publicar.',
                   'Ao editar o texto ou o teste de uma publicação que já tem ciências ou tentativas, escolha "Correção pequena" (as ciências e aprovações continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
                   'Arquivar tira a publicação das listas e das pendências, mas guarda o registro de quem deu ciência; dá para reativar.',
+                  'Nos comentários de uma publicação, "Esconder" faz o comentário sumir para todos (fica guardado, com quem escondeu e quando). Você ainda o vê, marcado como "Escondido", e pode clicar em "Reativar".',
                 ]}
               />
             </>
