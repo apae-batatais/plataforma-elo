@@ -84,6 +84,11 @@ export async function salvarDocumento(
   const r = await projetoParaAlterar(p, quem, projetoId, [faseDoDocumento(tipo)]);
   if (!itensDaFase(r.porte, faseDoDocumento(tipo)).includes(tipo)) throw new ErroProjetos(`O porte ${r.porte} não usa o documento ${NOME_ITEM[tipo].toLowerCase()}.`);
   const conteudo = validarConteudo(tipo, bruto, pronto, r.tipo);
+  if (tipo === 'termo_abertura' && r.tipo === 'captacao') {
+    // Regra L15: o evento não pede tolerâncias; valem as do padrão da configuração.
+    const t = (await lerConfig(p)).tolerancias;
+    Object.assign(conteudo, { tolerancia_custo_linha: t.custoLinhaPct, tolerancia_custo_total: t.custoTotalPct, tolerancia_prazo_fim: t.prazoFimDias, tolerancia_prazo_marco: t.prazoMarcoDias });
+  }
   const [docs] = await lerTabelas(p, [ProjetoDocumentos] as const);
   const atual = ultimo(docs.ativos().filter((d) => d.projeto_id === projetoId && d.tipo === tipo));
   if (atual?.situacao === 'aprovado') throw new ErroProjetos('Este documento já foi aprovado e está travado. Mudanças passam por pedido de mudança.');
@@ -381,7 +386,7 @@ export async function termoPreenchido(p: Planilhas, quem: Autorizador, projetoId
   const base: ConteudoDocumento = Object.fromEntries(camposDe('termo_abertura', f.projeto.tipo).map((c) => [c.nome, null]));
   return {
     ...base,
-    objetivo: f.projeto.titulo,
+    objetivo: f.projeto.tipo === 'captacao' ? f.projeto.resumo : f.projeto.titulo,
     escopo: (proposta.descricao as string | undefined) ?? f.projeto.resumo,
     valor_total: (estimativas.valor_total as number | undefined) ?? f.projeto.valor_estimado,
     tolerancia_custo_linha: t.custoLinhaPct,

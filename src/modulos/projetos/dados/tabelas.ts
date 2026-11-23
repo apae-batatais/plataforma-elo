@@ -45,6 +45,12 @@ export const Projetos = definirTabela({
     termo_nome: textoOpcional(),
     /** Dia (AAAA-MM-DD) em que o projeto entrou na fase 5; conta o atraso do encerramento (regra 25). */
     encerramento_iniciado_em: dataOpcional(),
+    /** Evento de captação (regras L15 a L17): série (texto livre), data do evento, meta de receita e Fonte do Orçamento (id e nome copiado). */
+    serie_evento: textoOpcional(),
+    data_evento: dataOpcional(),
+    meta_receita: numeroOpcional(),
+    fonte_receita_id: textoOpcional(),
+    fonte_receita_nome: textoOpcional(),
   }),
 });
 

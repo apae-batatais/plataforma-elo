@@ -68,6 +68,8 @@ export interface CampoDocumento {
   obrigatorio: boolean;
   /** Campo só do projeto com financiamento externo (regra L7): some nos demais e é obrigatório nele. */
   soFinanciado?: boolean;
+  /** Campo que o evento de captação não tem: o modelo curto some com ele e as tolerâncias vêm do padrão da configuração (regra L15). */
+  foraDaCaptacao?: boolean;
 }
 
 const TEXTO_FASE_3 = (rotulo: string, dica: string): CampoDocumento[] => [{ nome: 'descricao', rotulo, dica, tipo: 'longo', obrigatorio: true }];
@@ -93,15 +95,15 @@ export const CAMPOS: Record<TipoDocumento, CampoDocumento[]> = {
   proposta: [{ nome: 'descricao', rotulo: 'Proposta resumida', dica: 'O que será feito, para quem e com que resultado.', tipo: 'longo', obrigatorio: true }],
   termo_abertura: [
     { nome: 'objetivo', rotulo: 'Objetivo do projeto', tipo: 'longo', obrigatorio: true },
-    { nome: 'escopo', rotulo: 'O que está dentro do projeto', dica: 'Entregas principais. O que não estiver aqui é novo escopo.', tipo: 'longo', obrigatorio: true },
+    { nome: 'escopo', rotulo: 'O que está dentro do projeto', dica: 'Entregas principais. O que não estiver aqui é novo escopo.', tipo: 'longo', obrigatorio: true, foraDaCaptacao: true },
     { nome: 'valor_total', rotulo: 'Valor total do projeto (R$)', dica: 'ex.: 25000. É o valor que a porta 2 considera.', tipo: 'numero', obrigatorio: true },
-    { nome: 'tolerancia_custo_linha', rotulo: 'Tolerância de custo por linha do orçamento (%)', dica: 'ex.: 10 para até 10% a mais em uma linha', tipo: 'numero', obrigatorio: true },
-    { nome: 'tolerancia_custo_total', rotulo: 'Tolerância de custo no total (%)', dica: 'ex.: 5', tipo: 'numero', obrigatorio: true },
-    { nome: 'tolerancia_prazo_fim', rotulo: 'Tolerância de prazo no fim (dias de atraso)', dica: 'ex.: 15', tipo: 'numero', obrigatorio: true },
-    { nome: 'tolerancia_prazo_marco', rotulo: 'Tolerância de prazo em cada marco (dias de atraso)', dica: 'ex.: 7', tipo: 'numero', obrigatorio: true },
+    { nome: 'tolerancia_custo_linha', rotulo: 'Tolerância de custo por linha do orçamento (%)', dica: 'ex.: 10 para até 10% a mais em uma linha', tipo: 'numero', obrigatorio: true, foraDaCaptacao: true },
+    { nome: 'tolerancia_custo_total', rotulo: 'Tolerância de custo no total (%)', dica: 'ex.: 5', tipo: 'numero', obrigatorio: true, foraDaCaptacao: true },
+    { nome: 'tolerancia_prazo_fim', rotulo: 'Tolerância de prazo no fim (dias de atraso)', dica: 'ex.: 15', tipo: 'numero', obrigatorio: true, foraDaCaptacao: true },
+    { nome: 'tolerancia_prazo_marco', rotulo: 'Tolerância de prazo em cada marco (dias de atraso)', dica: 'ex.: 7', tipo: 'numero', obrigatorio: true, foraDaCaptacao: true },
     { nome: 'financiador', rotulo: 'Quem financia (nome do financiador)', dica: 'O Elo cria o rascunho do termo em Parcerias com este nome.', tipo: 'curto', obrigatorio: true, soFinanciado: true },
     { nome: 'objeto', rotulo: 'O que o financiamento cobre (objeto)', dica: 'Em uma frase: o que o recurso vai custear.', tipo: 'longo', obrigatorio: true, soFinanciado: true },
-    { nome: 'escopo_livre', rotulo: 'Escopo livre', dica: 'O que o responsável pode mudar sem pedir à Diretoria. Deixe em branco se nada.', tipo: 'longo', obrigatorio: false },
+    { nome: 'escopo_livre', rotulo: 'Escopo livre', dica: 'O que o responsável pode mudar sem pedir à Diretoria. Deixe em branco se nada.', tipo: 'longo', obrigatorio: false, foraDaCaptacao: true },
   ],
   lancamento: [{ nome: 'descricao', rotulo: 'Como o projeto será lançado e comunicado', dica: 'Quem será avisado, quando e como.', tipo: 'longo', obrigatorio: true }],
 };
@@ -110,7 +112,7 @@ export type ConteudoDocumento = Record<string, string | number | null>;
 
 /** Campos do documento que valem para o tipo do projeto (financiador e objeto só no financiado). */
 export const camposDe = (tipo: TipoDocumento, tipoProjeto: TipoProjeto = 'interno'): CampoDocumento[] =>
-  CAMPOS[tipo].filter((c) => !c.soFinanciado || tipoProjeto === 'financiado');
+  CAMPOS[tipo].filter((c) => (!c.soFinanciado || tipoProjeto === 'financiado') && (!c.foraDaCaptacao || tipoProjeto !== 'captacao'));
 
 /** Regra L7: o que falta no Termo de Abertura de projeto financiado para a porta 2 abrir (lista em palavras). */
 export function faltaDoFinanciamento(c: ConteudoDocumento | null): string[] {

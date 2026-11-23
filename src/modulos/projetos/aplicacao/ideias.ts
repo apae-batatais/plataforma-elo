@@ -4,7 +4,10 @@ import { ErroPermissao } from '@/nucleo/acesso/autorizador';
 import { atualizar, ErroConflito, inserir, lerTabela, lerTabelas, type Planilhas } from '@/nucleo/armazenamento/tabela';
 import { Servicos, Usuarios } from '@/nucleo/estrutura/tabelas';
 import { Projetos, type RegProjeto } from '../dados/tabelas';
+import { conferirEvento, sugestoesDeSerie, type DadosEvento } from '../dominio/evento';
 import { ErroProjetos, PORTES, proximoCodigo, TIPOS_PROJETO, type Etapa, type Porte, type TipoProjeto } from '../dominio/projeto';
+import type { CatalogoReceitas } from './catalogo-orcamento';
+import { encerrarReceitaDoEvento } from './evento';
 import { auditar, autoriaDe, equipesAtivas, lerConfig, podeAssumir, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
 
 export interface DadosIdeia {
@@ -14,6 +17,29 @@ export interface DadosIdeia {
   porte: Porte;
   valorEstimado: number | null;
   servico: string | null;
+  /** Modelo curto do evento de captação (regra L15); só vale com `tipo = captacao`. */
+  evento?: { serie: string | null; dataEvento: string | null; metaReceita: number | null; fonteReceitaId: string | null };
+}
+
+type OpcoesIdeia = Opcoes & { receitas?: CatalogoReceitas | null };
+
+/** Colunas do evento na ficha (todas vazias fora do tipo `captacao`). */
+type ColunasEvento = Pick<RegProjeto, 'serie_evento' | 'data_evento' | 'meta_receita' | 'fonte_receita_id' | 'fonte_receita_nome'>;
+const SEM_EVENTO: ColunasEvento = { serie_evento: null, data_evento: null, meta_receita: null, fonte_receita_id: null, fonte_receita_nome: null };
+
+/** Confere o modelo curto e a fonte escolhida contra o Orçamento (nome copiado). */
+async function conferirDoEvento(quem: Autorizador, d: DadosIdeia, receitas: CatalogoReceitas | null | undefined): Promise<ColunasEvento> {
+  if (d.tipo !== 'captacao') return SEM_EVENTO;
+  const ev: DadosEvento = conferirEvento(d.evento ?? {});
+  let fonteNome: string | null = null;
+  if (ev.fonteReceitaId) {
+    const fontes = await receitas?.fontesProprias(quem).catch(() => null);
+    if (!fontes) throw new ErroProjetos('Não foi possível conferir a fonte de receita no Orçamento agora. Salve sem a fonte e escolha depois.');
+    const f = fontes.find((x) => x.id === ev.fonteReceitaId);
+    if (!f) throw new ErroProjetos('Escolha a fonte de receita da lista.');
+    fonteNome = f.nome;
+  }
+  return { serie_evento: ev.serie, data_evento: ev.dataEvento, meta_receita: ev.metaReceita, fonte_receita_id: ev.fonteReceitaId, fonte_receita_nome: fonteNome };
 }
 
 async function conferir(p: Planilhas, d: DadosIdeia): Promise<DadosIdeia> {
@@ -49,10 +75,11 @@ async function mudar(p: Planilhas, quem: Autorizador, r: RegProjeto, mudancas: P
 const ehEu = (quem: Autorizador, email: string | null) => !!email && email.toLowerCase() === quem.email.toLowerCase();
 
 /** Regra 1: quem tem `projetos.propor` cadastra a ideia. `enviar` já a manda para uma coordenação assumir. */
-export async function cadastrarIdeia(p: Planilhas, quem: Autorizador, d: DadosIdeia, opcoes: Opcoes & { enviar?: boolean } = {}): Promise<{ id: string; codigo: string }> {
+export async function cadastrarIdeia(p: Planilhas, quem: Autorizador, d: DadosIdeia, opcoes: OpcoesIdeia & { enviar?: boolean } = {}): Promise<{ id: string; codigo: string }> {
   if (!quem.temPermissaoAlgumEscopo('projetos.propor')) throw new ErroPermissao();
   const agora = opcoes.agora ?? new Date();
   const dados = await conferir(p, d);
+  const evento = await conferirDoEvento(quem, dados, opcoes.receitas);
   const [projetos] = await lerTabelas(p, [Projetos] as const);
   // Regra 4: o código vem do maior já usado, contando também os inativos. Dois cadastros no mesmo instante podem repetir (risco aceito, como na Comunicação).
   const codigo = proximoCodigo(projetos.todos().map((x) => x.codigo));
@@ -70,6 +97,7 @@ export async function cadastrarIdeia(p: Planilhas, quem: Autorizador, d: DadosId
     valor_estimado: dados.valorEstimado,
     inicio_previsto: null,
     fim_previsto: null,
+    ...evento,
   };
   const novo = await inserir(p, Projetos, campos, autoriaDe(quem, agora));
   await auditar(p, quem, 'inclusao', 'Projetos', novo.id, Object.keys(campos), agora);
@@ -78,14 +106,15 @@ export async function cadastrarIdeia(p: Planilhas, quem: Autorizador, d: DadosId
 }
 
 /** Quem propôs edita enquanto é rascunho ou espera responsável; o responsável edita a ideia (inclusive o porte) antes da porta. */
-export async function editarIdeia(p: Planilhas, quem: Autorizador, id: string, versao: number, d: DadosIdeia, opcoes: Opcoes = {}): Promise<void> {
+export async function editarIdeia(p: Planilhas, quem: Autorizador, id: string, versao: number, d: DadosIdeia, opcoes: OpcoesIdeia = {}): Promise<void> {
   const agora = opcoes.agora ?? new Date();
   const r = await acharComVersao(p, id, versao);
   const proponente = ehEu(quem, r.proponente) && (r.etapa === 'rascunho' || r.etapa === 'aguardando_responsavel');
   const responsavel = ehEu(quem, r.responsavel) && r.etapa === 'ideia' && quem.temPermissaoAlgumEscopo('projetos.gerenciar');
   if (!proponente && !responsavel) throw new ErroPermissao('Você não pode alterar esta ideia agora.');
   const dados = await conferir(p, d);
-  await mudar(p, quem, r, { titulo: dados.titulo, resumo: dados.resumo, tipo: dados.tipo, porte: dados.porte, valor_estimado: dados.valorEstimado, servico: dados.servico }, 'Ideia alterada', null, agora);
+  const evento = await conferirDoEvento(quem, dados, opcoes.receitas);
+  await mudar(p, quem, r, { titulo: dados.titulo, resumo: dados.resumo, tipo: dados.tipo, porte: dados.porte, valor_estimado: dados.valorEstimado, servico: dados.servico, ...evento }, 'Ideia alterada', null, agora);
 }
 
 /** Do rascunho para "aguardando responsável" (só quem propôs). */
@@ -126,7 +155,7 @@ export async function retomarProjeto(p: Planilhas, quem: Autorizador, id: string
 }
 
 /** Cancela (nada é apagado). Quem propôs cancela antes de ter responsável; o responsável e a Diretoria, fora de uma porta aberta. */
-export async function cancelarProjeto(p: Planilhas, quem: Autorizador, id: string, versao: number, motivo: string, opcoes: Opcoes = {}): Promise<void> {
+export async function cancelarProjeto(p: Planilhas, quem: Autorizador, id: string, versao: number, motivo: string, opcoes: Opcoes & { orcamento?: CatalogoReceitas | null } = {}): Promise<void> {
   const r = await acharComVersao(p, id, versao);
   if (r.etapa === 'cancelado') throw new ErroProjetos('Este projeto já está cancelado.');
   if (r.etapa === 'encerrado') throw new ErroProjetos('Projeto encerrado: fica só para leitura.');
@@ -134,7 +163,9 @@ export async function cancelarProjeto(p: Planilhas, quem: Autorizador, id: strin
   const proponente = ehEu(quem, r.proponente) && (r.etapa === 'rascunho' || r.etapa === 'aguardando_responsavel');
   if (!proponente && !ehEu(quem, r.responsavel) && !veTodos(quem)) throw new ErroPermissao('Você não pode cancelar este projeto.');
   if (!motivo.trim()) throw new ErroProjetos('Diga o motivo do cancelamento.');
-  await mudar(p, quem, r, { etapa: 'cancelado' }, 'Projeto cancelado', motivo, opcoes.agora ?? new Date());
+  const agora = opcoes.agora ?? new Date();
+  await mudar(p, quem, r, { etapa: 'cancelado' }, 'Projeto cancelado', motivo, agora);
+  await encerrarReceitaDoEvento(p, quem, r.id, opcoes.orcamento, agora);
 }
 
 export interface LinhaProjeto {
@@ -147,6 +178,7 @@ export interface LinhaProjeto {
   proponente: string;
   responsavel: string | null;
   valorEstimado: number | null;
+  serie: string | null;
 }
 
 export type FiltroProjetos = 'meus' | 'aguardando' | 'todos';
@@ -168,10 +200,17 @@ export async function listarProjetos(p: Planilhas, quem: Autorizador, filtro: Fi
   });
   return escolhidos
     .sort((a, b) => b.criado_em.localeCompare(a.criado_em))
-    .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo, tipo: r.tipo, porte: r.porte, etapa: r.etapa, proponente: r.proponente, responsavel: r.responsavel, valorEstimado: r.valor_estimado }));
+    .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo, tipo: r.tipo, porte: r.porte, etapa: r.etapa, proponente: r.proponente, responsavel: r.responsavel, valorEstimado: r.valor_estimado, serie: r.serie_evento }));
 }
 
 /** Serviços para a pessoa escolher (opcional) ao cadastrar a ideia. */
 export async function servicosParaEscolher(p: Planilhas): Promise<{ codigo: string; nome: string }[]> {
   return (await lerTabela(p, Servicos)).ativos().map((s) => ({ codigo: s.codigo, nome: s.nome })).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+}
+
+/** Séries já usadas (regra L16), para a lista de sugestões do formulário. Só as dos projetos que a pessoa vê. */
+export async function seriesDeEventos(p: Planilhas, quem: Autorizador): Promise<string[]> {
+  if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) throw new ErroPermissao();
+  const [projetos, config, equipes] = await Promise.all([lerTabela(p, Projetos), lerConfig(p), equipesAtivas(p)]);
+  return sugestoesDeSerie(projetos.ativos().filter((r) => r.tipo === 'captacao' && podeVerProjeto(quem, r, config, equipes.get(r.id))).map((r) => r.serie_evento));
 }
