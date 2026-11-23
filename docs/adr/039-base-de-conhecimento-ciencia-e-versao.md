@@ -33,3 +33,6 @@ público de uma publicação e como guardar anexos em PDF.
 - Como o público é recalculado, o acompanhamento de uma publicação antiga pode mudar de total ao longo
   do tempo; o registro de ciências individuais não muda.
 - Planilha com e-mails de pessoas fica em planilha própria do app, com sigilo `pessoal` nessas colunas.
+
+## Notas da entrega 4 (23/11/2026)
+- Aba `Envios` do módulo: um envio por publicação e edição (idempotente), criado ao publicar ou ao criar nova versão; a tarefa `conhecimento.avisos` da rotina envia em Cco com texto fixo, sem título, e 3 tentativas (15 e 60 minutos). Sem e-mail de envio, nada é agendado e o editor vê o aviso; se a publicação for arquivada ou mudar de versão antes do envio, o aviso é cancelado.
