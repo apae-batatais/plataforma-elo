@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
+import { lerInteracao } from '@/modulos/conhecimento/aplicacao/interacao';
 import { lerPublicacao } from '@/modulos/conhecimento/aplicacao/publicacoes';
 import { ErroConhecimento } from '@/modulos/conhecimento/dominio/publicacao';
 import { EtiquetaDaPessoa, formatarData, formatarDataHora } from '@/modulos/conhecimento/telas/rotulos';
@@ -11,7 +12,8 @@ import { LinkBotao } from '@/ui/botao';
 import { FormularioConfirmado } from '@/ui/confirmar';
 import { CabecalhoPagina, EstadoVazio, Etiqueta, Secao } from '@/ui/pagina';
 import { TesteDeCompreensao } from '@/modulos/conhecimento/telas/teste-de-compreensao';
-import { acaoDarCiencia, acaoEnviarTeste } from '../acoes';
+import { BotaoCurtir, FormularioComentario } from '@/modulos/conhecimento/telas/curtir-e-comentar';
+import { acaoAlternarCurtida, acaoComentar, acaoDarCiencia, acaoEnviarTeste, acaoEsconderComentario, acaoReativarComentario } from '../acoes';
 
 export const metadata: Metadata = { title: 'Publicação' };
 
@@ -36,6 +38,7 @@ export default async function Publicacao({ params }: { params: Promise<{ id: str
     throw erro;
   }
   const publica = usuario.autorizador.temPermissao('conhecimento.publicar');
+  const interacao = x.situacao === 'rascunho' ? null : await lerInteracao(planilhas, usuario.autorizador, id);
 
   return (
     <div className="space-y-6">
@@ -133,6 +136,65 @@ export default async function Publicacao({ params }: { params: Promise<{ id: str
           </div>
         )}
       </Secao>
+
+      {interacao && (
+        <Secao titulo="Curtir e comentar" id="t-comentarios">
+          <div className="space-y-5">
+            {interacao.podeInteragir ? (
+              <BotaoCurtir id={x.id} curtidas={interacao.curtidas} euCurti={interacao.euCurti} alternar={acaoAlternarCurtida} />
+            ) : (
+              <p className="text-sm text-texto-suave">
+                {interacao.curtidas === 1 ? '1 pessoa curtiu' : `${interacao.curtidas} pessoas curtiram`}. Publicação arquivada: não recebe novas curtidas nem comentários.
+              </p>
+            )}
+            {interacao.comentarios.length === 0 ? (
+              <p className="text-texto-suave">Ainda não há comentários.</p>
+            ) : (
+              <ul className="space-y-3">
+                {interacao.comentarios.map((c) => (
+                  <li key={c.id} className={`rounded-cartao border border-borda p-4 ${c.escondido ? 'bg-superficie-2' : 'bg-superficie'}`}>
+                    <p className="flex flex-wrap items-center gap-2 text-sm text-texto-suave">
+                      <span className="font-semibold text-texto">{c.nome}</span>
+                      <span>{formatarDataHora(c.criadoEm)}</span>
+                      {c.escondido && <Etiqueta tipo="atencao">Escondido</Etiqueta>}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap break-words">{c.texto}</p>
+                    {publica && (
+                      <div className="mt-2">
+                        {c.escondido ? (
+                          <FormularioConfirmado
+                            acao={acaoReativarComentario}
+                            campos={{ id: c.id, versao: c.versao, publicacao: x.id }}
+                            rotulo="Reativar"
+                            variante="secundario"
+                            pequeno
+                            perigoso={false}
+                            titulo="Reativar comentário?"
+                            mensagem="O comentário volta a aparecer para todos."
+                            confirmar="Reativar"
+                          />
+                        ) : (
+                          <FormularioConfirmado
+                            acao={acaoEsconderComentario}
+                            campos={{ id: c.id, versao: c.versao, publicacao: x.id }}
+                            rotulo="Esconder"
+                            variante="secundario"
+                            pequeno
+                            titulo="Esconder comentário?"
+                            mensagem="O comentário some para todos; fica guardado e pode ser reativado."
+                            confirmar="Esconder"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {interacao.podeInteragir && <FormularioComentario id={x.id} comentar={acaoComentar} />}
+          </div>
+        </Secao>
+      )}
     </div>
   );
 }

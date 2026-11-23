@@ -9,6 +9,7 @@ import { ErroConflito } from '@/nucleo/armazenamento/tabela';
 import { iniciarEnvioAnexo } from '@/modulos/conhecimento/aplicacao/anexos';
 import { criarCategoria, mudarSituacaoCategoria } from '@/modulos/conhecimento/aplicacao/categorias';
 import { darCiencia, mudarArquivamento, salvarPublicacao } from '@/modulos/conhecimento/aplicacao/publicacoes';
+import { alternarCurtida, comentar, mudarVisibilidadeComentario } from '@/modulos/conhecimento/aplicacao/interacao';
 import { enviarTeste } from '@/modulos/conhecimento/aplicacao/teste';
 import { ErroConhecimento, PUBLICOS, type PerguntaEntrada, type PublicoTipo } from '@/modulos/conhecimento/dominio/publicacao';
 import { obterAplicacao } from '@/plataforma/aplicacao';
@@ -164,4 +165,44 @@ export async function acaoIniciarEnvioAnexo(a: { mime: string; tamanho: number }
     if (conhecido(erro)) return { erro: (erro as Error).message };
     throw erro;
   }
+}
+
+/** Curtir ou descurtir (a tela atualiza sozinha). */
+export async function acaoAlternarCurtida(id: string): Promise<{ erro: string } | { ok: true }> {
+  const { usuario, app } = await contexto();
+  try {
+    await alternarCurtida(app.planilhas, usuario.autorizador, id);
+  } catch (erro) {
+    if (!conhecido(erro)) throw erro;
+    return { erro: (erro as Error).message };
+  }
+  revalidatePath(`/conhecimento/${id}`);
+  return { ok: true };
+}
+
+/** Comenta; em erro devolve a frase e a tela mantém o texto digitado. */
+export async function acaoComentar(id: string, texto: string): Promise<{ erro: string } | { ok: true }> {
+  const { usuario, app } = await contexto();
+  try {
+    await comentar(app.planilhas, usuario.autorizador, id, texto);
+  } catch (erro) {
+    if (!conhecido(erro)) throw erro;
+    return { erro: (erro as Error).message };
+  }
+  revalidatePath(`/conhecimento/${id}`);
+  return { ok: true };
+}
+
+export async function acaoEsconderComentario(f: FormData) {
+  const id = texto(f, 'publicacao');
+  await executar(`/conhecimento/${id}#t-comentarios`, `/conhecimento/${id}`, 'Comentário escondido.', ({ usuario, app }) =>
+    mudarVisibilidadeComentario(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), true),
+  );
+}
+
+export async function acaoReativarComentario(f: FormData) {
+  const id = texto(f, 'publicacao');
+  await executar(`/conhecimento/${id}#t-comentarios`, `/conhecimento/${id}`, 'Comentário reativado.', ({ usuario, app }) =>
+    mudarVisibilidadeComentario(app.planilhas, usuario.autorizador, texto(f, 'id'), Number(texto(f, 'versao')), false),
+  );
 }
