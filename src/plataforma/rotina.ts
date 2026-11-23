@@ -11,6 +11,7 @@ import type { Aplicacao } from './aplicacao';
 import { aplicacaoDa } from './aplicacao';
 import { rodarEnvios } from '@/modulos/comunicacao/aplicacao/envios';
 import { tarefaDeAvisosDaComunicacao } from './avisos-comunicacao';
+import { tarefaDeAvisosDoConhecimento } from './avisos-conhecimento';
 import { tarefaDeCredenciais } from './credenciais';
 import { tarefaDePublicacoes, tarefaDeResultadosDoInstagram } from './publicacoes';
 import { tarefaDeResumoDeRequisicoes } from './resumo-requisicoes';
@@ -33,6 +34,7 @@ export const TAREFAS_DA_ROTINA: readonly TarefaDaRotina[] = [
   tarefaDePublicacoes,
   tarefaDeEnviosDaComunicacao,
   tarefaDeAvisosDaComunicacao,
+  tarefaDeAvisosDoConhecimento,
   tarefaDeResultadosDoInstagram,
   tarefaDeResumoDeRequisicoes,
 ];

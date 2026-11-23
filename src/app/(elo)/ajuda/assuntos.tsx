@@ -1069,6 +1069,7 @@ export function montarAssuntos(ctx: {
                   'Em "Quem deve ler", escolha Todos, Um perfil ou Uma área. Marque "Exige ciência" se a pessoa precisa confirmar que leu.',
                   'Para pedir um teste, marque "Tem teste de compreensão" e cadastre de 1 a 10 perguntas, cada uma com 2 a 5 opções; marque em cada pergunta a opção certa (quem faz o teste não a vê). Publicação com teste precisa de ao menos uma pergunta.',
                   'Salve como rascunho para revisar (ninguém recebe pendência) ou clique em Publicar.',
+                  'Ao publicar algo que exige ciência ou teste, o Elo manda um e-mail genérico ("Há um documento novo para você ler"), sem título nem conteúdo, uma vez por versão. Se a instituição ainda não informou o e-mail de envio, a tela avisa que o e-mail não sai; a pendência na tela inicial funciona do mesmo jeito.',
                   'Ao editar o texto ou o teste de uma publicação que já tem ciências ou tentativas, escolha "Correção pequena" (as ciências e aprovações continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
                   'Arquivar tira a publicação das listas e das pendências, mas guarda o registro de quem deu ciência; dá para reativar.',
                   'Nos comentários de uma publicação, "Esconder" faz o comentário sumir para todos (fica guardado, com quem escondeu e quando). Você ainda o vê, marcado como "Escondido", e pode clicar em "Reativar".',

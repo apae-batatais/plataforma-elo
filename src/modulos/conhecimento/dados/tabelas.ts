@@ -8,6 +8,7 @@
  */
 import { z } from 'zod';
 import { booleano, definirTabela, numeroOpcional, texto, textoOpcional, type Registro } from '@/nucleo/armazenamento/tabela';
+import { SITUACOES_ENVIO } from '../dominio/aviso';
 import { PUBLICOS, SITUACOES } from '../dominio/publicacao';
 
 export const PLANILHA_CONHECIMENTO = 'conhecimento';
@@ -119,11 +120,32 @@ export const ComentariosConhecimento = definirTabela({
   sigilo: { usuario: 'pessoal', usuario_nome: 'pessoal', escondido_por: 'pessoal' },
 });
 
-export const TABELAS_CONHECIMENTO = [CategoriasConhecimento, PublicacoesConhecimento, CienciasConhecimento, PerguntasConhecimento, TentativasTeste, CurtidasConhecimento, ComentariosConhecimento] as const;
+/** Fila do aviso por e-mail (ADR-027): um por publicação e edição. O corpo da mensagem não fica gravado. */
+export const EnviosConhecimento = definirTabela({
+  planilha: PLANILHA_CONHECIMENTO,
+  aba: 'Envios',
+  esquema: z.object({
+    publicacao_id: texto(),
+    edicao: inteiro(),
+    assunto: texto(),
+    /** Endereços da última tentativa, separados por vírgula. */
+    destinatarios: textoOpcional(),
+    proxima_tentativa: texto(),
+    situacao: z.enum(SITUACOES_ENVIO),
+    tentativas: inteiro(),
+    enviado_em: textoOpcional(),
+    /** Motivo resumido da última falha: nunca traz endereço nem texto da mensagem. */
+    erro: textoOpcional(),
+  }),
+  sigilo: { destinatarios: 'pessoal' },
+});
+
+export const TABELAS_CONHECIMENTO = [CategoriasConhecimento, PublicacoesConhecimento, CienciasConhecimento, PerguntasConhecimento, TentativasTeste, CurtidasConhecimento, ComentariosConhecimento, EnviosConhecimento] as const;
 
 export type RegCategoria = Registro<typeof CategoriasConhecimento.esquema>;
 export type RegPublicacao = Registro<typeof PublicacoesConhecimento.esquema>;
 export type RegPergunta = Registro<typeof PerguntasConhecimento.esquema>;
 export type RegTentativa = Registro<typeof TentativasTeste.esquema>;
 export type RegComentario = Registro<typeof ComentariosConhecimento.esquema>;
+export type RegEnvio = Registro<typeof EnviosConhecimento.esquema>;
 export type RegCiencia = Registro<typeof CienciasConhecimento.esquema>;

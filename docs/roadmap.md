@@ -334,7 +334,7 @@ de compreensão → curtir e comentar → aviso por e-mail.
 
 - [ ] Geolocalização na ciência (sem travar quem negar a permissão do navegador).
 - [ ] Carimbo de tempo ICP-Brasil (depende de a Diretoria contratar um prestador credenciado).
-- [ ] Prazo de ciência por publicação e lembrete por e-mail para quem segue pendente.
+- [ ] Prazo de ciência por publicação e lembrete por e-mail para quem segue pendente (o aviso inicial ao publicar já existe).
 - [ ] Vídeo, mais de um anexo e link externo como formato de publicação.
 - [ ] Exportar a lista de ciências; relatório por pessoa entre publicações.
 - [ ] Editar o próprio comentário, respostas a comentários e aviso ao editor de novos comentários.

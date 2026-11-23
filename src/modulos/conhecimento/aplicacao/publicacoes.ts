@@ -31,6 +31,7 @@ import {
   type PublicoTipo,
   type SituacaoDaPessoa,
 } from '../dominio/publicacao';
+import { agendarAviso, type ResultadoDoAviso } from './avisos';
 import { auditar, autoriaDe, carregarPublico, PERM, type Opcoes } from './base';
 
 export interface DadosPublicacao {
@@ -94,7 +95,7 @@ export async function salvarPublicacao(
   arquivos: ArmazenamentoArquivos | null,
   d: DadosPublicacao,
   opcoes: Opcoes = {},
-): Promise<{ id: string; edicao: number }> {
+): Promise<{ id: string; edicao: number; aviso: ResultadoDoAviso }> {
   exigirPublicar(quem);
   const agora = opcoes.agora ?? new Date();
   const [categorias, publicacoes, ciencias, todasPerguntas, tentativas] = await lerTabelas(p, [CategoriasConhecimento, PublicacoesConhecimento, CienciasConhecimento, PerguntasConhecimento, TentativasTeste] as const);
@@ -189,16 +190,26 @@ export async function salvarPublicacao(
     await auditar(p, quem, 'alteracao', 'PerguntasConhecimento', id, ['texto', 'opcoes', 'correta'], agora);
   };
 
+  // Regras 21 e 22: aviso por e-mail ao publicar e a cada nova versão de publicação aberta. A falha em agendar não desfaz a publicação.
+  const avisar = async (id: string): Promise<ResultadoDoAviso> => {
+    if (situacao !== 'publicada' || !(publicando || edicao !== (atual?.edicao ?? edicao))) return 'nao_se_aplica';
+    try {
+      return await agendarAviso(p, quem.email, { id, exige_ciencia: d.exigeCiencia, tem_teste: d.temTeste }, edicao, opcoes.emailDisponivel, agora);
+    } catch {
+      return 'nao_se_aplica';
+    }
+  };
+
   if (!atual) {
     const nova = await inserir(p, PublicacoesConhecimento, { ...campos, autor: quem.email, autor_nome: await nomeDoUsuario(p, quem.email) }, autoria);
     await auditar(p, quem, 'inclusao', 'PublicacoesConhecimento', nova.id, Object.keys(campos), agora);
     await gravarPerguntas(nova.id);
-    return { id: nova.id, edicao };
+    return { id: nova.id, edicao, aviso: await avisar(nova.id) };
   }
   const { colunasAlteradas } = await atualizar(p, PublicacoesConhecimento, atual.id, d.versao!, campos, autoria);
   if (colunasAlteradas.length) await auditar(p, quem, 'alteracao', 'PublicacoesConhecimento', atual.id, colunasAlteradas, agora);
   await gravarPerguntas(atual.id);
-  return { id: atual.id, edicao };
+  return { id: atual.id, edicao, aviso: await avisar(atual.id) };
 }
 
 /** Regra 6: arquivar (some das listas e das pendências) e reativar. Rascunho não se arquiva. */
