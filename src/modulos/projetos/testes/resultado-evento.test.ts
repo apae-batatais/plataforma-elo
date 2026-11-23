@@ -9,7 +9,7 @@ import { Encerramento, Projetos } from '../dados/tabelas';
 import { compararEdicoes, fotografiaDoTexto, fotografiaEmTexto, leituraDoResultado, resultadoDoEvento, rotularEdicoes } from '../dominio/evento';
 import { abrirPortaDeEncerramento, iniciarEncerramento, marcarChecklist, registrarLicao, salvarTextoDeEncerramento } from '../aplicacao/encerramento';
 import { adicionarAtividade, adicionarLinhaOrcamento, mudarSituacaoAtividade } from '../aplicacao/planejamento';
-import { adicionarMembro, avancarFase, iniciarImplementacao, salvarDocumento } from '../aplicacao/fases';
+import { avancarFase, iniciarImplementacao, salvarDocumento } from '../aplicacao/fases';
 import { assumirIdeia } from '../aplicacao/ideias';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
 import { Atividades, Portas } from '../dados/tabelas';

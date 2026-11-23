@@ -1079,7 +1079,7 @@ export function montarAssuntos(ctx: {
             ]}
           />
           <Sub>Compras e divulgação do evento</Sub>
-          <p className="mt-1">A aba Ligações lista as compras (Requisições) e os pedidos de divulgação (Comunicação) ligados ao evento, com número, título e situação e a contagem do que ainda está pendente. Para ligar um pedido de divulgação, escolha o projeto no campo opcional "Projeto" de Comunicação › Novo pedido; só aparecem projetos em implementação que você vê.</p>
+          <p className="mt-1">A aba Ligações lista as compras (Requisições) e os pedidos de divulgação (Comunicação) ligados ao evento, com número, título e situação e a contagem do que ainda está pendente. Para ligar um pedido de divulgação, escolha o projeto no campo opcional “Projeto” de Comunicação › Novo pedido; só aparecem projetos em implementação que você vê.</p>
         </>
       ),
     });
