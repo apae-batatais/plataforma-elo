@@ -14,8 +14,8 @@ import type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
 import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
 import { criarRascunhoDeTermo, listarRascunhos, termoParaProjeto, termosParaOrcamento, type NumerosDePessoas, type RascunhoDeTermo } from '@/modulos/parcerias';
 import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
-import { custoDoServico, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type SaldoParaConferencia } from '@/modulos/orcamento';
-import { projetosComTermoParadosOuCancelados, projetosDoServico, projetosParaCompra, type CatalogoLeitura, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
+import { custoDoServico, resultadoDoProjeto, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type ProjetoParaRealizado as ProjetoDoRealizado, type ResultadoDoProjeto, type SaldoParaConferencia } from '@/modulos/orcamento';
+import { projetosComTermoParadosOuCancelados, projetosDoServico, projetosParaCompra, projetosParaRealizado, type CatalogoLeitura, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
 import { comprasDoProjeto, requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
 import { MODULOS } from './registro-modulos';
 
@@ -147,6 +147,21 @@ type Desligados = { desligados?: ReadonlySet<string> };
 export async function projetosParaRequisicao(p: Planilhas, quem: Autorizador, opcoes: Desligados = {}): Promise<ProjetoEscolhivel[] | null> {
   const lida = await lerLigacao('projetos', () => projetosParaCompra(p, quem), opcoes);
   return lida.estado === 'ok' ? lida.dados : null;
+}
+
+/**
+ * Projetos que a pessoa pode marcar numa linha do realizado (L18): os que ela vê e que já gastam ou recebem.
+ * `null` = Projetos desligado, sem permissão ou falha: o campo some e o realizado funciona sem ele.
+ * O servidor chama esta função de novo ao gravar; a lista da tela não vale como prova.
+ */
+export async function projetosParaRealizadoDoOrcamento(p: Planilhas, quem: Autorizador, opcoes: Desligados = {}): Promise<ProjetoDoRealizado[] | null> {
+  const lida = await lerLigacao('projetos', () => projetosParaRealizado(p, quem), opcoes);
+  return lida.estado === 'ok' ? lida.dados : null;
+}
+
+/** Resultado realizado de um projeto (L18), lido do Orçamento com a permissão dele. O Projetos já conferiu que a pessoa vê o projeto. */
+export function resultadoDoProjetoLido(p: Planilhas, quem: Autorizador, projetoId: string, opcoes: Desligados = {}): Promise<LigacaoLida<ResultadoDoProjeto>> {
+  return lerLigacao('orcamento', () => resultadoDoProjeto(p, quem, projetoId), opcoes);
 }
 
 export interface ConferenciaDoCentro {

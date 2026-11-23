@@ -57,9 +57,12 @@ export function conferirLinha(l: DadosLinha): string[] {
   return erros;
 }
 
-/** Chave única de uma linha (R1): mês, tipo, serviço, grupo, fonte e natureza. */
-export const chaveLinha = (l: { mes: string; tipo: string; servico: string | null; grupoId: string | null; fonteId: string; natureza: string }) =>
-  [l.mes, l.tipo, l.servico ?? '', l.grupoId ?? '', l.fonteId, l.natureza].join('|');
+/**
+ * Chave única de uma linha (R1): mês, tipo, serviço, grupo, fonte e natureza. Com projeto (L18) o projeto entra na
+ * chave, para a mesma combinação poder ter uma linha do projeto e outra sem; sem projeto a chave é a de sempre.
+ */
+export const chaveLinha = (l: { mes: string; tipo: string; servico: string | null; grupoId: string | null; fonteId: string; natureza: string; projetoId?: string | null }) =>
+  [l.mes, l.tipo, l.servico ?? '', l.grupoId ?? '', l.fonteId, l.natureza, ...(l.projetoId ? [l.projetoId] : [])].join('|');
 
 /** O mês pode ser informado: formato AAAA-MM, não futuro e dentro dos últimos 24 meses (contando o atual). */
 export function mesInformavel(mes: string, atual: string): boolean {

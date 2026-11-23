@@ -8,6 +8,7 @@ import { rotuloMes } from '@/modulos/orcamento/telas/formato';
 import { InformarRealizado } from '@/modulos/orcamento/telas/informar-realizado';
 import { SeletorMes } from '@/modulos/orcamento/telas/seletor-mes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { projetosParaRealizadoDoOrcamento } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
 import { CabecalhoPagina } from '@/ui/pagina';
@@ -27,7 +28,8 @@ export default async function InformarRealizadoPagina({ searchParams }: { search
   const mes = disponivel ? pedido : mesAnterior(atual);
   const app = await obterAplicacao();
   // Quem não vê o realizado (ex.: Leitura) volta ao Orçamento em vez de ver "Algo deu errado".
-  const g = await lerGradeDoMes(app.planilhas, usuario.autorizador, mes).catch((erro) => {
+  const projetos = await projetosParaRealizadoDoOrcamento(app.planilhas, usuario.autorizador);
+  const g = await lerGradeDoMes(app.planilhas, usuario.autorizador, mes, { projetos }).catch((erro) => {
     if (erro instanceof ErroPermissao) redirect('/orcamento');
     throw erro;
   });
