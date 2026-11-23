@@ -588,3 +588,13 @@ Entrega única: cabe numa prévia só (colunas, tarefa da rotina e as duas telas
       contas.
 - [ ] `npm run verificar` e `npm run build` verdes.
 - [ ] Conferido pela Diretoria na prévia com dados fictícios.
+
+## Ajustes da onda 2 (issue #116): campo Projeto no pedido
+
+- Situação: **construído** (23/11/2026, #281, entrega 3 de 3). Contexto: `src/modulos/projetos/especificacao.md`, seção "Ligações, onda 2" (regra L20).
+- **Aba `Pedidos`**: + `projeto_id` e `projeto_codigo` (cópia), opcionais. O formulário de novo pedido e o de ajuste ganham o campo opcional **"Projeto"**,
+  com os projetos em implementação que a pessoa vê (lista oferecida pelo Projetos à plataforma; sem Projetos, o campo some). O servidor confere a lista de novo ao gravar.
+  Ao reenviar um pedido devolvido, o projeto já gravado continua valendo mesmo que o projeto tenha saído da lista.
+- **Leitura para o projeto** (`pedidosDoProjeto`): devolve número, título, tipo da peça, situação e se está pendente, dos pedidos com aquele projeto. Exige `comunicacao.acessar`; nunca traz o nome de quem pediu. Abrir o pedido segue a regra da Comunicação.
+- Fora desta entrega: trocar o projeto na tela de revisão da Comunicação (a revisão mantém o projeto do pedido).
+

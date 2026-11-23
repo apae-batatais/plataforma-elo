@@ -498,6 +498,7 @@ export function montarAssuntos(ctx: {
             itens={[
               'Abra Comunicação › Novo pedido. Escolha o tema do calendário (ou "Fora do calendário"), o tipo de peça (post, reel, release, artigo ou entrevista), o título e a descrição.',
               'Escolha a data desejada. Se ela for antes da antecedência mínima, o Elo avisa na hora que o pedido sai como urgente.',
+              'Se o pedido divulga um projeto ou evento, escolha-o no campo opcional "Projeto" (em "Área e vídeo"). Assim o pedido aparece na aba Ligações do projeto. O campo só aparece se o app Projetos estiver ativo e traz só projetos em implementação que você vê.',
               'Anexe fotos (até 5 arquivos) ou cole o link da pasta do vídeo. Com foto ou vídeo, marque a confirmação de que as pessoas que aparecem autorizaram o uso de imagem; sem ela o pedido não é enviado.',
               'Clique em Enviar. Em Comunicação › Meus pedidos você acompanha a situação e vê o histórico.',
               'Se o pedido voltar como Devolvido, abra-o, leia o motivo, ajuste e envie de novo. Enquanto aguarda revisão ou está devolvido, você pode cancelar.',
@@ -1067,7 +1068,18 @@ export function montarAssuntos(ctx: {
               />
             </>
           )}
-          <p className="mt-3">O custo, a receita e o resultado realizados do evento vêm das linhas do Realizado do Orçamento marcadas com o projeto; o relatório de encerramento com a comparação entre edições chega na próxima entrega.</p>
+          <Sub>Ver o resultado do evento</Sub>
+          <Passos
+            itens={[
+              'Abra o evento em Projetos. Da implementação em diante, o cartão "Resultado do evento" mostra, em número grande, "Sobrou" ou "Faltou" quanto, com a receita e o custo ao lado.',
+              'Os valores vêm das linhas do Realizado do Orçamento marcadas com o projeto. Se o cartão disser "Sem lançamentos no Orçamento", peça ao Financeiro para informar o realizado com o campo Projeto.',
+              'Enquanto o evento não encerra, o resultado é parcial e muda conforme o Financeiro lança o realizado. Ao encerrar, o Elo guarda uma fotografia dos números, que não muda mais.',
+              'Quando o evento tem série, o cartão compara com as edições anteriores já encerradas: receita e custo de cada uma, a diferença do resultado contra a edição imediatamente anterior e a edição com melhor resultado. Na primeira edição da série, o cartão avisa que ainda não há com o que comparar.',
+              'Só quem vê os números do Orçamento (Financeiro, Diretoria e Leitura) vê os valores; as demais pessoas veem "O Financeiro e a Diretoria veem os valores".',
+            ]}
+          />
+          <Sub>Compras e divulgação do evento</Sub>
+          <p className="mt-1">A aba Ligações lista as compras (Requisições) e os pedidos de divulgação (Comunicação) ligados ao evento, com número, título e situação e a contagem do que ainda está pendente. Para ligar um pedido de divulgação, escolha o projeto no campo opcional “Projeto” de Comunicação › Novo pedido; só aparecem projetos em implementação que você vê.</p>
         </>
       ),
     });

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/pedidos';
 import { FormularioPedido } from '@/modulos/comunicacao/telas/formulario-pedido';
+import { projetosParaPedido } from '@/plataforma/ligacoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { CabecalhoPagina } from '@/ui/pagina';
@@ -22,7 +23,7 @@ export default async function NovoPedido() {
         titulo="Novo pedido"
         descricao="Depois de enviado, o pedido vai para a revisão da Comunicação. Você acompanha cada etapa em Meus pedidos."
       />
-      <FormularioPedido acao={acaoEnviarPedido} {...opcoes} rotuloEnviar="Enviar pedido" iniciarEnvio={arquivos ? acaoIniciarEnvioAnexo : undefined} />
+      <FormularioPedido acao={acaoEnviarPedido} {...opcoes} projetos={await projetosParaPedido(planilhas, usuario.autorizador)} rotuloEnviar="Enviar pedido" iniciarEnvio={arquivos ? acaoIniciarEnvioAnexo : undefined} />
     </div>
   );
 }

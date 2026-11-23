@@ -9,12 +9,15 @@ import type { Etapa } from './projeto';
 export const ITENS_CHECKLIST = ['contratual', 'financeiro', 'administrativo'] as const;
 /** Textos do encerramento: o relatório final é obrigatório; transição e sustentabilidade são opcionais. */
 export const ITENS_TEXTO = ['relatorio_final', 'transicao', 'sustentabilidade'] as const;
-export const ITENS_ENCERRAMENTO = [...ITENS_CHECKLIST, ...ITENS_TEXTO] as const;
+/** Fotografia do resultado do evento de captação (L19), gravada ao encerrar; não é item do check-list nem texto da pessoa. */
+export const ITEM_RESULTADO_EVENTO = 'resultado_evento' as const;
+export const ITENS_ENCERRAMENTO = [...ITENS_CHECKLIST, ...ITENS_TEXTO, ITEM_RESULTADO_EVENTO] as const;
 export type ItemEncerramento = (typeof ITENS_ENCERRAMENTO)[number];
 export type ItemChecklist = (typeof ITENS_CHECKLIST)[number];
 export type ItemTexto = (typeof ITENS_TEXTO)[number];
 
 export const NOME_ITEM_ENCERRAMENTO: Record<ItemEncerramento, string> = {
+  resultado_evento: 'Resultado do evento: receita, custo e resultado fotografados ao encerrar',
   contratual: 'Contratual: contratos, termos e compromissos com terceiros encerrados',
   financeiro: 'Financeiro: gastos conferidos e saldo ou devolução resolvidos',
   administrativo: 'Administrativo: documentos guardados e acessos retirados',

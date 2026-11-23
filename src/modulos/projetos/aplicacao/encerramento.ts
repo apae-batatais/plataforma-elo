@@ -25,6 +25,8 @@ import { ErroProjetos, exigeAlcada, type TipoPorta } from '../dominio/projeto';
 import { auditar, autoriaDe, equipesAtivas, lerConfig, podeVerProjeto, registrarHistorico, type Opcoes } from './comum';
 import { exigirTermoAprovado, podeGerenciar, projetoVisivel } from './fases';
 import { fotografarIndicadores, type NumerosDePessoas } from './indicadores';
+import type { LeitorResultado } from './catalogo-orcamento';
+import { fotografarResultadoDoEvento } from './resultado-evento';
 
 async function projetoParaEncerrar(p: Planilhas, quem: Autorizador, id: string, etapas: readonly RegProjeto['etapa'][]): Promise<RegProjeto> {
   const r = await projetoVisivel(p, quem, id);
@@ -173,7 +175,7 @@ export async function lerEncerramento(p: Planilhas, quem: Autorizador, projetoId
 }
 
 /** Regra 23: abre a porta de encerramento só com tudo pronto. A porta não pede parecer: decide a Diretoria. */
-export async function abrirPortaDeEncerramento(p: Planilhas, quem: Autorizador, projetoId: string, versao: number, leitor?: NumerosDePessoas, opcoes: Opcoes = {}): Promise<{ portaId: string }> {
+export async function abrirPortaDeEncerramento(p: Planilhas, quem: Autorizador, projetoId: string, versao: number, leitor?: NumerosDePessoas, opcoes: Opcoes & { resultado?: LeitorResultado | null } = {}): Promise<{ portaId: string }> {
   const agora = opcoes.agora ?? new Date();
   const r = await projetoParaEncerrar(p, quem, projetoId, ['encerramento']);
   if (r.versao !== versao) throw new ErroConflito(projetoId);
@@ -203,6 +205,12 @@ export async function abrirPortaDeEncerramento(p: Planilhas, quem: Autorizador, 
     await fotografarIndicadores(p, quem, r.id, 'encerramento', leitor, { agora });
   } catch (e) {
     if (!(e instanceof ErroProjetos)) throw e;
+  }
+  // Regra L19: o evento de captação ganha a fotografia do resultado; sem Orçamento ou sem permissão, ela fica para a decisão.
+  try {
+    await fotografarResultadoDoEvento(p, quem, r.id, opcoes.resultado, { agora });
+  } catch {
+    // A fotografia é um apoio: nunca trava a porta.
   }
   return { portaId: porta.id };
 }

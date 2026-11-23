@@ -34,4 +34,4 @@ Leia antes `especificacao.md` desta pasta e o `CLAUDE.md` da raiz.
   `metricas_em` e `metricas_aviso` em `Publicacoes`. A tarefa `comunicacao.metricas_instagram` (em `src/plataforma/publicacoes.ts`)
   só age às 3h de Brasília e busca publicadas há até 90 dias, pelo mesmo token da publicação. Só a rotina grava; a tela lê
   (`comunicacao.revisar` no pedido, `comunicacao.indicadores` no painel). Número que a Meta não devolve nunca apaga o anterior.
-
+- Campo Projeto no pedido (L20, evento de captação, #281): colunas opcionais `projeto_id` e `projeto_codigo` em `Pedidos`. A lista de projetos (`ProjetoParaPedido`) chega pela plataforma (`projetosParaPedido` em `src/plataforma/ligacoes.ts`) nas `opcoes.projetos` de `enviarPedido` e `reenviarPedido`; o servidor confere de novo (a lista da tela não vale como prova) e o projeto já gravado continua valendo ao reenviar. `pedidosDoProjeto` é a visão de ligação para o Projetos: só número, título, tipo, situação e se está pendente, nunca quem pediu; exige `comunicacao.acessar`. Nunca importe o app Projetos.

@@ -4,6 +4,7 @@
  * Orçamento desligado = `null`: o projeto funciona e a ligação com a receita fica pendente e visível.
  */
 import type { Autorizador } from '@/nucleo/acesso/autorizador';
+import type { LigacaoLida } from '@/nucleo/ligacoes/ligacao';
 
 export interface FonteDeReceita {
   id: string;
@@ -27,3 +28,18 @@ export interface CatalogoReceitas {
   /** Cancelado ou parado: encerra o item (nada é apagado). Devolve se havia item. */
   encerrarReceita(quem: { email: string }, projetoId: string): Promise<boolean>;
 }
+
+/** Receita, custo e lançamentos realizados com o projeto, lidos do Orçamento (L18). */
+export interface ResultadoLido {
+  semLancamentos: boolean;
+  lancamentos: number;
+  receita: number;
+  custo: number;
+  resultado: number;
+}
+
+/**
+ * Leitor do resultado realizado do projeto. A plataforma o entrega; o Orçamento confere `orcamento.painel.ver`.
+ * `null` no lugar do leitor = Orçamento desligado.
+ */
+export type LeitorResultado = (quem: Autorizador, projetoId: string) => Promise<LigacaoLida<ResultadoLido>>;

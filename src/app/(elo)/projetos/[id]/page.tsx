@@ -20,6 +20,9 @@ import {
 } from '@/modulos/projetos/dominio/projeto';
 import { FormularioIdeia } from '@/modulos/projetos/telas/formulario-ideia';
 import { EtiquetaEtapa, moeda } from '@/modulos/projetos/telas/rotulos';
+import { lerResultadoDoEvento } from '@/modulos/projetos/aplicacao/resultado-evento';
+import { ResultadoDoEventoCartao } from '@/modulos/projetos/telas/resultado-evento';
+import { leitorDeResultado } from '@/plataforma/ligacoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { catalogoDeReceitas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -147,6 +150,7 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
   const { projeto: r, pode } = f;
   const fase = await lerFase(planilhas, usuario.autorizador, id);
   const campos = { id: r.id, versao: r.versao };
+  const resultadoEvento = r.tipo === 'captacao' ? await lerResultadoDoEvento(planilhas, usuario.autorizador, id, leitorDeResultado(planilhas)) : null;
 
   return (
     <div className="space-y-6">
@@ -209,6 +213,8 @@ export default async function PaginaProjeto({ params }: { params: Promise<{ id: 
         </dl>
         {(r.etapa === 'fase_3' || r.etapa === 'implementacao') && <div className="mt-4"><Aviso tipo="sucesso">O Termo de Abertura foi aprovado (valor aprovado {moeda(r.valor_aprovado)}).</Aviso></div>}
       </Secao>
+
+      {resultadoEvento && <ResultadoDoEventoCartao r={resultadoEvento} />}
 
       {fase && fase.fase && (
         <Secao id="t-fase" titulo={`Fase ${fase.fase} · O que falta para a próxima porta`} descricao={fase.fase === 1 ? 'Conclua os itens abaixo e passe para a fase 2.' : fase.fase === 2 ? 'Conclua os itens abaixo para abrir a porta 2 (Termo de Abertura).' : fase.projeto.porte === 'completo' ? 'Conclua os itens abaixo para abrir a porta 3 (plano).' : 'Conclua os itens abaixo e inicie a implementação.'}>

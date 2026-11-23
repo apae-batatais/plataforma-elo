@@ -190,6 +190,8 @@ Especificação: `src/modulos/projetos/especificacao.md`, seção "Ligações, o
       (#241) cria e lista o rascunho, mas o Financeiro ainda não tem a ficha de rascunho com "Concluir termo" e
       "Encerrar rascunho"; até lá, o termo definitivo é cadastrado por "Novo termo".
 - [ ] Sugerir o projeto no Realizado do Orçamento quando o grupo de gasto é de evento (sugestão).
+- [ ] Trocar o projeto de um pedido na tela de revisão da Comunicação (hoje só quem pediu escolhe, ao enviar ou reenviar).
+- [ ] Comparação da série com todas as edições, mesmo as que a pessoa não vê, só com os totais (hoje só entram as edições que ela vê).
 
 ## Ligações entre apps
 

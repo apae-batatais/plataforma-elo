@@ -32,6 +32,7 @@ import { ErroComunicacao, TIPOS_PECA, type TipoPeca } from '@/modulos/comunicaca
 import { diaEmBrasilia } from '@/modulos/comunicacao/dominio/prazos';
 import { mesValido } from '@/modulos/comunicacao/telas/mes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
+import { projetosParaPedido } from '@/plataforma/ligacoes';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { configGeral } from '@/plataforma/instituicao';
 import { provedorDeInstagram, retornoDoInstagram } from '@/plataforma/instagram';
@@ -220,6 +221,7 @@ function lerPedido(f: FormData): DadosPedido {
     linkVideo: texto(f, 'link_video') || null,
     imagemConfirmada: f.get('imagem_confirmada') === 'on',
     anexos: lerAnexos(f),
+    projetoId: texto(f, 'projeto_id') || null,
   };
 }
 
@@ -227,7 +229,7 @@ export async function acaoEnviarPedido(_: EstadoPedido, f: FormData): Promise<Es
   const { usuario, app } = await contexto();
   let r: { id: string; numero: string; urgente: boolean };
   try {
-    r = await enviarPedido(app.planilhas, usuario.autorizador, { ...lerPedido(f), nomeSolicitante: usuario.nome }, { arquivos: app.arquivos });
+    r = await enviarPedido(app.planilhas, usuario.autorizador, { ...lerPedido(f), nomeSolicitante: usuario.nome }, { arquivos: app.arquivos, projetos: await projetosParaPedido(app.planilhas, usuario.autorizador) });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     throw erro;
@@ -242,7 +244,7 @@ export async function acaoReenviarPedido(_: EstadoPedido, f: FormData): Promise<
   const { usuario, app } = await contexto();
   const id = texto(f, 'id');
   try {
-    await reenviarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerPedido(f), { arquivos: app.arquivos });
+    await reenviarPedido(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), lerPedido(f), { arquivos: app.arquivos, projetos: await projetosParaPedido(app.planilhas, usuario.autorizador) });
   } catch (erro) {
     if (conhecido(erro)) return { erro: (erro as Error).message };
     throw erro;

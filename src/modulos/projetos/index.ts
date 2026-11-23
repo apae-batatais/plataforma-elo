@@ -6,4 +6,4 @@ export { projetosDoServico, projetosParaCompra, projetosParaRealizado, type Proj
 export { itensDaAgenda, buscar } from './aplicacao/agenda-busca';
 export { projetosComTermoParadosOuCancelados, type CatalogoTermos, type TermoLigado, type PedidoRascunhoDeTermo } from './aplicacao/termo';
 export type { CatalogoLeitura, CompraLigada, ItemLigado, LeitorLigacao } from './aplicacao/catalogo-leitura';
-export type { CatalogoReceitas, FonteDeReceita, PedidoReceitaDoEvento } from './aplicacao/catalogo-orcamento';
+export type { CatalogoReceitas, FonteDeReceita, LeitorResultado, PedidoReceitaDoEvento, ResultadoLido } from './aplicacao/catalogo-orcamento';

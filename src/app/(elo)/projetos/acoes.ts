@@ -54,7 +54,7 @@ import {
   type TipoProjeto,
 } from '@/modulos/projetos/dominio/projeto';
 import { obterAplicacao } from '@/plataforma/aplicacao';
-import { catalogoDeReceitas, catalogoDeTermos } from '@/plataforma/ligacoes';
+import { catalogoDeReceitas, catalogoDeTermos, leitorDeResultado } from '@/plataforma/ligacoes';
 import { esquecerAlertas } from '@/plataforma/alertas';
 import { numerosDePessoas } from '@/plataforma/ligacoes';
 import { usuarioLogado } from '@/plataforma/sessao';
@@ -197,6 +197,7 @@ export async function acaoDecidirPorta(f: FormData) {
       decidirPorta(app.planilhas, usuario.autorizador, texto(f, 'porta'), Number(texto(f, 'versao_porta')), (DECISOES as readonly string[]).includes(decisao) ? (decisao as Decisao) : ('' as Decisao), texto(f, 'justificativa'), {
         parcerias: catalogoDeTermos(app.planilhas),
         orcamento: catalogoDeReceitas(app.planilhas),
+        resultado: leitorDeResultado(app.planilhas),
       }),
   );
 }
@@ -529,6 +530,6 @@ export async function acaoRegistrarLicao(f: FormData) {
 export async function acaoAbrirPortaEncerramento(f: FormData) {
   const id = texto(f, 'id');
   await executar(() => fichaDe(id), fichaDe(id, ENC), 'Porta de encerramento aberta. A Diretoria decide.', ({ usuario, app }) =>
-    abrirPortaDeEncerramento(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), numerosDePessoas(app.planilhas)),
+    abrirPortaDeEncerramento(app.planilhas, usuario.autorizador, id, Number(texto(f, 'versao')), numerosDePessoas(app.planilhas), { resultado: leitorDeResultado(app.planilhas) }),
   );
 }

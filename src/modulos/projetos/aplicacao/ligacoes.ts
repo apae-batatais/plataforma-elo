@@ -12,9 +12,9 @@ import { APPS_LIGACAO, NOME_APP_LIGACAO, type AppLigacao } from '../dominio/liga
 import { ErroProjetos } from '../dominio/projeto';
 import { podeGerenciar } from './fases';
 import { auditar, autoriaDe, equipesAtivas, lerConfig, podeVerProjeto, registrarHistorico, type Opcoes } from './comum';
-import type { CatalogoLeitura, CompraLigada, ItemLigado } from './catalogo-leitura';
+import type { CatalogoLeitura, CompraLigada, DivulgacaoLigada, ItemLigado } from './catalogo-leitura';
 
-export type { CatalogoLeitura, CompraLigada, ItemLigado, LeitorLigacao } from './catalogo-leitura';
+export type { CatalogoLeitura, CompraLigada, DivulgacaoLigada, ItemLigado, LeitorLigacao } from './catalogo-leitura';
 
 async function projetoParaLigar(p: Planilhas, quem: Autorizador, projetoId: string) {
   if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) throw new ErroPermissao();
@@ -81,6 +81,7 @@ export interface LigacoesDoProjeto {
   podeAlterar: boolean;
   ligacoes: LigacaoDoProjeto[];
   compras: LigacaoLida<CompraLigada[]>;
+  divulgacao: LigacaoLida<DivulgacaoLigada[]>;
 }
 
 /** Lê as ligações para a aba. Devolve `null` se a pessoa não vê o projeto. Um bloco que falha não derruba os outros. */
@@ -116,5 +117,13 @@ export async function lerLigacoesDoProjeto(p: Planilhas, quem: Autorizador, proj
       compras = { estado: 'erro' };
     }
   }
-  return { projetoId: r.id, podeAlterar: podeGerenciar(quem, r) && r.etapa !== 'cancelado', ligacoes: lidas, compras };
+  let divulgacao: LigacaoLida<DivulgacaoLigada[]> = { estado: 'indisponivel' };
+  if (catalogo) {
+    try {
+      divulgacao = await catalogo.divulgacao(quem, r.id);
+    } catch {
+      divulgacao = { estado: 'erro' };
+    }
+  }
+  return { projetoId: r.id, podeAlterar: podeGerenciar(quem, r) && r.etapa !== 'cancelado', ligacoes: lidas, compras, divulgacao };
 }

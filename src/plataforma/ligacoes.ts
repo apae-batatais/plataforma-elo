@@ -13,9 +13,9 @@ import { lerTabela } from '@/nucleo/armazenamento/tabela';
 import type { Ligacao, LigacaoLida } from '@/nucleo/ligacoes/ligacao';
 import { avaliacaoDoServico, indicadoresDoServico, type AvaliacaoDoServico } from '@/modulos/avaliacao';
 import { criarRascunhoDeTermo, listarRascunhos, termoParaProjeto, termosParaOrcamento, type NumerosDePessoas, type RascunhoDeTermo } from '@/modulos/parcerias';
-import { publicacoesDoServico, type PublicacoesDoServico } from '@/modulos/comunicacao';
+import { pedidosDoProjeto, publicacoesDoServico, type ProjetoParaPedido, type PublicacoesDoServico } from '@/modulos/comunicacao';
 import { custoDoServico, encerrarReceitaDoProjeto, fontesParaEvento, registrarReceitaDoProjeto, resultadoDoProjeto, saldoParaConferencia, type CatalogoParcerias, type CustoDoServico, type ProjetoParaRealizado as ProjetoDoRealizado, type ResultadoDoProjeto, type SaldoParaConferencia } from '@/modulos/orcamento';
-import { projetosComTermoParadosOuCancelados, type CatalogoReceitas, projetosDoServico, projetosParaCompra, projetosParaRealizado, type CatalogoLeitura, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
+import { projetosComTermoParadosOuCancelados, type CatalogoReceitas, type LeitorResultado, projetosDoServico, projetosParaCompra, projetosParaRealizado, type CatalogoLeitura, type CatalogoTermos, type ProjetosDoServico } from '@/modulos/projetos';
 import { comprasDoProjeto, requisicoesDoServico, type ProjetoEscolhivel, type RequisicoesDoServico } from '@/modulos/requisicoes';
 import { MODULOS } from './registro-modulos';
 
@@ -137,6 +137,9 @@ export function catalogoDeParcerias(p: Planilhas, opcoes: { desligados?: Readonl
   };
 }
 
+/** Situações de requisição em que a compra já não anda (Requisições, `SITUACOES_ENCERRADAS`). */
+const COMPRA_ENCERRADA: ReadonlySet<string> = new Set(['recusada', 'atendida', 'atendida_parcial', 'cancelada']);
+
 type Desligados = { desligados?: ReadonlySet<string> };
 
 /**
@@ -147,6 +150,16 @@ type Desligados = { desligados?: ReadonlySet<string> };
 export async function projetosParaRequisicao(p: Planilhas, quem: Autorizador, opcoes: Desligados = {}): Promise<ProjetoEscolhivel[] | null> {
   const lida = await lerLigacao('projetos', () => projetosParaCompra(p, quem), opcoes);
   return lida.estado === 'ok' ? lida.dados : null;
+}
+
+/**
+ * Projetos que a pessoa pode escolher num pedido de divulgação (L20): os mesmos das compras (que ela vê e estão em
+ * implementação). `null` = Projetos desligado, sem permissão ou falha: o pedido funciona sem o campo.
+ * O servidor chama esta função de novo ao gravar; a lista da tela não vale como prova.
+ */
+export async function projetosParaPedido(p: Planilhas, quem: Autorizador, opcoes: Desligados = {}): Promise<ProjetoParaPedido[] | null> {
+  const lida = await lerLigacao('projetos', () => projetosParaCompra(p, quem), opcoes);
+  return lida.estado === 'ok' ? lida.dados.map((x) => ({ id: x.id, codigo: x.codigo, titulo: x.titulo })) : null;
 }
 
 /**
@@ -162,6 +175,12 @@ export async function projetosParaRealizadoDoOrcamento(p: Planilhas, quem: Autor
 /** Resultado realizado de um projeto (L18), lido do Orçamento com a permissão dele. O Projetos já conferiu que a pessoa vê o projeto. */
 export function resultadoDoProjetoLido(p: Planilhas, quem: Autorizador, projetoId: string, opcoes: Desligados = {}): Promise<LigacaoLida<ResultadoDoProjeto>> {
   return lerLigacao('orcamento', () => resultadoDoProjeto(p, quem, projetoId), opcoes);
+}
+
+/** Leitor do resultado realizado do projeto para o Projetos (L18 e L19); `null` = Orçamento desligado. */
+export function leitorDeResultado(p: Planilhas, opcoes: Desligados = {}): LeitorResultado | null {
+  if (opcoes.desligados?.has('orcamento') || !MODULOS.some((m) => m.id === 'orcamento')) return null;
+  return (quem, projetoId) => resultadoDoProjetoLido(p, quem, projetoId, opcoes);
 }
 
 export interface ConferenciaDoCentro {
@@ -234,7 +253,12 @@ export function catalogoDeLeitura(p: Planilhas, opcoes: Desligados = {}): Catalo
     async compras(quem, projetoId) {
       const lida = await lerLigacao('requisicoes', () => comprasDoProjeto(p, quem, projetoId), opcoes);
       if (lida.estado !== 'ok') return lida;
-      return { estado: 'ok', dados: lida.dados.map((c) => ({ id: c.id, numero: c.numero, tipo: c.tipo, situacaoNome: c.situacaoNome, enviadaEm: c.enviadaEm })) };
+      return { estado: 'ok', dados: lida.dados.map((c) => ({ id: c.id, numero: c.numero, tipo: c.tipo, situacaoNome: c.situacaoNome, enviadaEm: c.enviadaEm, pendente: !COMPRA_ENCERRADA.has(c.situacao) })) };
+    },
+    async divulgacao(quem, projetoId) {
+      const lida = await lerLigacao('comunicacao', () => pedidosDoProjeto(p, quem, projetoId), opcoes);
+      if (lida.estado !== 'ok') return lida;
+      return { estado: 'ok', dados: lida.dados.map((x) => ({ id: x.id, numero: x.numero, titulo: x.titulo, tipoPeca: x.tipoPeca, situacaoNome: x.situacaoNome, pendente: x.pendente })) };
     },
   };
 }

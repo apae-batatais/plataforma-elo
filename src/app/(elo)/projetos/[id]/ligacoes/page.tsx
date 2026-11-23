@@ -22,6 +22,8 @@ const mes = (m: string) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
 const dia = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
 const SITUACAO_ATIVIDADE: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', concluida: 'Concluída' };
 
+const contagemPendentes = (n: number) => (n === 0 ? 'Nenhuma pendente.' : n === 1 ? '1 pendente.' : `${n} pendentes.`);
+
 const SITUACAO = { rascunho: 'Rascunho, falta o Financeiro completar', em_vigor: 'Em vigor', encerrado: 'Encerrado' } as const;
 
 export default async function PaginaLigacoes({ params }: { params: Promise<{ id: string }> }) {
@@ -196,7 +198,11 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
           </ul>
         )}
       </Secao>
-      <Secao id="t-compras" titulo="Compras do projeto" descricao="Requisições feitas com este projeto. Valores e detalhes ficam em Requisições.">
+      <Secao
+        id="t-compras"
+        titulo="Compras do projeto"
+        descricao={`Requisições feitas com este projeto. Valores e detalhes ficam em Requisições.${outras.compras.estado === 'ok' && outras.compras.dados.length > 0 ? ` ${contagemPendentes(outras.compras.dados.filter((c) => c.pendente).length)}` : ''}`}
+      >
         {outras.compras.estado === 'indisponivel' || outras.compras.estado === 'erro' ? (
           <Aviso tipo="info">Ligação indisponível: Requisições não está ativo ou não respondeu.</Aviso>
         ) : outras.compras.estado === 'sem_permissao' ? (
@@ -212,6 +218,29 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
               { chave: 'situacao', rotulo: 'Situação' },
             ]}
             linhas={outras.compras.dados.map((c) => ({ id: c.id, valores: { numero: c.numero, tipo: c.tipo, situacao: c.situacaoNome } }))}
+          />
+        )}
+      </Secao>
+      <Secao
+        id="t-divulgacao"
+        titulo="Divulgação do projeto"
+        descricao={`Pedidos de publicação da Comunicação feitos com este projeto. Os detalhes ficam em Comunicação.${outras.divulgacao.estado === 'ok' && outras.divulgacao.dados.length > 0 ? ` ${contagemPendentes(outras.divulgacao.dados.filter((d) => d.pendente).length)}` : ''}`}
+      >
+        {outras.divulgacao.estado === 'indisponivel' || outras.divulgacao.estado === 'erro' ? (
+          <Aviso tipo="info">Ligação indisponível: Comunicação não está ativa ou não respondeu.</Aviso>
+        ) : outras.divulgacao.estado === 'sem_permissao' ? (
+          <Aviso tipo="info">Os pedidos de divulgação aparecem para quem acessa Comunicação.</Aviso>
+        ) : outras.divulgacao.dados.length === 0 ? (
+          <EstadoVazio titulo="Nada aqui ainda.">Nenhum pedido de divulgação foi ligado a este projeto. Em Comunicação › Novo pedido, escolha o projeto.</EstadoVazio>
+        ) : (
+          <TabelaDados
+            legenda="Pedidos de divulgação ligados ao projeto"
+            colunas={[
+              { chave: 'numero', rotulo: 'Número' },
+              { chave: 'titulo', rotulo: 'Título' },
+              { chave: 'situacao', rotulo: 'Situação' },
+            ]}
+            linhas={outras.divulgacao.dados.map((d) => ({ id: d.id, valores: { numero: d.numero, titulo: d.titulo, situacao: d.situacaoNome } }))}
           />
         )}
       </Secao>

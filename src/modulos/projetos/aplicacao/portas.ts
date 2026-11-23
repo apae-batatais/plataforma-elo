@@ -27,7 +27,8 @@ import {
 } from '../dominio/projeto';
 import { aprovarTermo, conteudoDe, exigirTermoAprovado, lerFase } from './fases';
 import { encerrarReceitaDoEvento, pedirReceitaNaDecisao, type ResultadoReceita } from './evento';
-import type { CatalogoReceitas } from './catalogo-orcamento';
+import type { CatalogoReceitas, LeitorResultado } from './catalogo-orcamento';
+import { fotografarResultadoDoEvento } from './resultado-evento';
 import { pedirRascunhoNaDecisao, type CatalogoTermos, type ResultadoRascunho } from './termo';
 import { auditar, autoriaDe, designado, equipesAtivas, lerConfig, podeVerPareceres, podeVerProjeto, registrarHistorico, veTodos, type Opcoes } from './comum';
 
@@ -118,7 +119,7 @@ export async function darParecer(p: Planilhas, quem: Autorizador, portaId: strin
  * Regras 10 a 12. Porta aberta: decide a Diretoria (todos os pareceres dados). Porta aguardando alçada:
  * decide quem a configuração designou para a alçada.
  */
-export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: string, versaoPorta: number, decisao: Decisao, justificativa: string, opcoes: Opcoes & { parcerias?: CatalogoTermos | null; orcamento?: CatalogoReceitas | null } = {}): Promise<{ rascunho: ResultadoRascunho; receita: ResultadoReceita }> {
+export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: string, versaoPorta: number, decisao: Decisao, justificativa: string, opcoes: Opcoes & { parcerias?: CatalogoTermos | null; orcamento?: CatalogoReceitas | null; resultado?: LeitorResultado | null } = {}): Promise<{ rascunho: ResultadoRascunho; receita: ResultadoReceita }> {
   const agora = opcoes.agora ?? new Date();
   const config = await lerConfig(p);
   const { porta, projeto, pareceres } = await lerPortaAberta(p, portaId);
@@ -167,6 +168,8 @@ export async function decidirPorta(p: Planilhas, quem: Autorizador, portaId: str
   const receita: ResultadoReceita =
     porta.tipo === 'termo' && destino.etapa === 'fase_3' ? await pedirReceitaNaDecisao(p, quem, projeto.id, opcoes.orcamento, agora) : { estado: 'nao_se_aplica' };
   if (destino.etapa === 'parado') await encerrarReceitaDoEvento(p, quem, projeto.id, opcoes.orcamento, agora);
+  // Regra L19: ao encerrar o evento, a fotografia final do resultado fica gravada. Falha não derruba a decisão.
+  if (porta.tipo === 'encerramento' && destino.etapa === 'encerrado') await fotografarResultadoDoEvento(p, quem, projeto.id, opcoes.resultado, { agora }).catch(() => false);
   return { rascunho, receita };
 }
 

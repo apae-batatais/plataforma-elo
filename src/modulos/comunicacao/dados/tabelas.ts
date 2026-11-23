@@ -74,6 +74,9 @@ export const PedidosComunicacao = definirTabela({
     servico: textoOpcional(),
     /** Verdadeiro quando o Elo publica no Instagram na hora marcada (ADR-028). */
     publicacao_automatica: booleano().optional(),
+    /** Projeto de que o pedido trata (identificador e código copiados do Projetos), para o evento de captação (L20). Opcional. */
+    projeto_id: textoOpcional().optional(),
+    projeto_codigo: textoOpcional().optional(),
   }),
   sigilo: { solicitante: 'pessoal', solicitante_nome: 'pessoal', imagem_confirmada_por: 'pessoal' },
 });
