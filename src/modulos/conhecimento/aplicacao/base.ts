@@ -16,6 +16,8 @@ export const PERM = {
 
 export interface Opcoes {
   agora?: Date;
+  /** A instituição tem e-mail de envio? Sem ele, o aviso por e-mail não é agendado. */
+  emailDisponivel?: boolean;
 }
 
 export const diaDe = (d: Date) => d.toISOString().slice(0, 10);

@@ -18,5 +18,6 @@ Leia antes `especificacao.md` desta pasta (e a ADR-039) e o `CLAUDE.md` da raiz.
 - Curtir e comentar: `aplicacao/interacao.ts`; abas `Curtidas` (uma linha por pessoa, descurtir = `ativo = FALSE`) e
   `Comentarios` (esconder = `ativo = FALSE`, com `escondido_por` e `escondido_em`). Só quem vê a publicação interage e só
   enquanto está publicada; quem tem `conhecimento.publicar` esconde e reativa.
-- Entregas: 1 (publicação e ciência), 2 (teste de compreensão) e 3 (curtir e comentar) prontas; falta 4 (aviso por
-  e-mail). Ao incluir colunas novas, lembre que a Administração precisa rodar "Preparar estrutura".
+- Aviso por e-mail: `aplicacao/avisos.ts`; aba `Envios` (um envio por publicação e edição, texto fixo sem título, Cco). `salvarPublicacao`
+  agenda ao publicar e a cada nova versão (`emailDisponivel`); a tarefa `conhecimento.avisos` da rotina envia, com 3 tentativas.
+- Entregas: 1 a 4 prontas. Ao incluir colunas novas, lembre que a Administração precisa rodar "Preparar estrutura".

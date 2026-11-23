@@ -79,7 +79,7 @@ export async function acaoSalvarPublicacao(f: FormData): Promise<{ erro: string 
   const edicao = texto(f, 'tipo_edicao');
   let destino: string;
   try {
-    await salvarPublicacao(app.planilhas, usuario.autorizador, app.arquivos, {
+    const salvo = await salvarPublicacao(app.planilhas, usuario.autorizador, app.arquivos, {
       id: id || undefined,
       versao: id ? Number(texto(f, 'versao')) : undefined,
       titulo: texto(f, 'titulo'),
@@ -94,8 +94,9 @@ export async function acaoSalvarPublicacao(f: FormData): Promise<{ erro: string 
       anexo,
       publicar,
       tipoEdicao: edicao === 'pequena' || edicao === 'nova' ? edicao : undefined,
-    });
-    destino = comMensagem('/conhecimento/publicacoes', 'ok', publicar ? 'Publicação publicada.' : 'Publicação salva.');
+    }, { emailDisponivel: app.email !== null });
+    const semEmail = salvo.aviso === 'sem_remetente' ? ' O aviso por e-mail não sai: a instituição ainda não informou o e-mail de envio. A pendência aparece na tela inicial.' : '';
+    destino = comMensagem('/conhecimento/publicacoes', 'ok', (publicar ? 'Publicação publicada.' : 'Publicação salva.') + semEmail);
   } catch (erro) {
     if (!conhecido(erro)) throw erro;
     return { erro: (erro as Error).message };
