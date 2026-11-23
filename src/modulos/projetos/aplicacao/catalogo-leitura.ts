@@ -22,6 +22,19 @@ export interface CompraLigada {
   tipo: string;
   situacaoNome: string;
   enviadaEm: string;
+  /** Ainda anda (não foi atendida, recusada nem cancelada). */
+  pendente: boolean;
+}
+
+/** Pedido de divulgação ligado ao projeto (L20): número, título, tipo e situação, sem o nome de quem pediu. */
+export interface DivulgacaoLigada {
+  id: string;
+  numero: string;
+  titulo: string;
+  tipoPeca: string;
+  situacaoNome: string;
+  /** Ainda não foi publicado, recusado nem cancelado. */
+  pendente: boolean;
 }
 
 export interface CatalogoLeitura {
@@ -29,4 +42,6 @@ export interface CatalogoLeitura {
   leitores: Partial<Record<AppLigacao, LeitorLigacao>>;
   /** As compras apontam para o projeto (não ficam em `LigacoesProjeto`), então vêm direto do app. */
   compras(quem: Autorizador, projetoId: string): Promise<LigacaoLida<CompraLigada[]>>;
+  /** Pedidos de divulgação do projeto vêm direto da Comunicação, pelo mesmo motivo. */
+  divulgacao(quem: Autorizador, projetoId: string): Promise<LigacaoLida<DivulgacaoLigada[]>>;
 }

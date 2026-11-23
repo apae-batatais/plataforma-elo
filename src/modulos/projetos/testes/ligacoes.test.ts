@@ -11,8 +11,8 @@ import { AGORA, COORDENACAO, FUNCIONARIO, LEITURA, OUTRO_FUNCIONARIO, comRespons
 const o = { agora: AGORA };
 const dados = { app: 'avaliacao' as const, referenciaId: 'srv-1', nome: 'Serviço de exemplo' };
 
-function catalogo(extra: Partial<CatalogoLeitura['leitores']> = {}, compras: CatalogoLeitura['compras'] = async () => ({ estado: 'ok', dados: [] })): CatalogoLeitura {
-  return { leitores: extra, compras };
+function catalogo(extra: Partial<CatalogoLeitura['leitores']> = {}, compras: CatalogoLeitura['compras'] = async () => ({ estado: 'ok', dados: [] }), divulgacao: CatalogoLeitura['divulgacao'] = async () => ({ estado: 'ok', dados: [] })): CatalogoLeitura {
+  return { leitores: extra, compras, divulgacao };
 }
 
 describe('LigacoesProjeto', () => {

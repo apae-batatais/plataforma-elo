@@ -4,6 +4,7 @@ import { detalharPedido, opcoesDoPedido } from '@/modulos/comunicacao/aplicacao/
 import { ErroComunicacao } from '@/modulos/comunicacao/dominio/pedido';
 import { FormularioPedido } from '@/modulos/comunicacao/telas/formulario-pedido';
 import { ErroPermissao } from '@/nucleo/acesso/autorizador';
+import { projetosParaPedido } from '@/plataforma/ligacoes';
 import { obterAplicacao } from '@/plataforma/aplicacao';
 import { usuarioLogado } from '@/plataforma/sessao';
 import { Aviso } from '@/ui/aviso';
@@ -51,6 +52,7 @@ export default async function AjustarPedido({ params }: { params: Promise<{ id: 
       <FormularioPedido
         acao={acaoReenviarPedido}
         {...opcoes}
+        projetos={await projetosParaPedido(planilhas, usuario.autorizador)}
         rotuloEnviar="Reenviar pedido"
         iniciarEnvio={arquivos ? acaoIniciarEnvioAnexo : undefined}
         anexosIniciais={d.anexos.map((a) => ({
@@ -73,6 +75,8 @@ export default async function AjustarPedido({ params }: { params: Promise<{ id: 
           descricao: r.descricao,
           dataDesejada: r.data_desejada,
           linkVideo: r.link_video,
+          projetoId: r.projeto_id ?? null,
+          projetoCodigo: r.projeto_codigo ?? null,
         }}
       />
     </div>

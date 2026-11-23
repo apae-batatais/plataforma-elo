@@ -34,6 +34,9 @@ export interface ValoresPedido {
   descricao: string;
   dataDesejada: string;
   linkVideo: string | null;
+  /** Projeto já gravado no pedido (opcional). */
+  projetoId?: string | null;
+  projetoCodigo?: string | null;
 }
 
 /** Abre o envio de um arquivo (ação do servidor): devolve o endereço para onde o navegador manda o arquivo. */
@@ -90,6 +93,7 @@ export function FormularioPedido({
   rotuloEnviar,
   iniciarEnvio,
   anexosIniciais = [],
+  projetos = null,
 }: {
   acao: (estado: EstadoPedido, f: FormData) => Promise<EstadoPedido>;
   itens: ItemEscolha[];
@@ -106,6 +110,8 @@ export function FormularioPedido({
   iniciarEnvio?: IniciarEnvioAnexo;
   /** Anexos já guardados (ao ajustar um pedido devolvido). */
   anexosIniciais?: AnexoNaFicha[];
+  /** Projetos que a pessoa pode escolher (L20); `null` = Projetos não está ativo e o campo não aparece. */
+  projetos?: { id: string; codigo: string; titulo: string }[] | null;
 }) {
   const [estado, enviar, enviando] = useActionState(acao, {});
 
@@ -290,6 +296,21 @@ export function FormularioPedido({
             ))}
           </select>
         </Campo>
+        {projetos ? (
+          <Campo rotulo="Projeto" dica="Opcional. Escolha o projeto ou o evento que este pedido ajuda a divulgar.">
+            <select name="projeto_id" defaultValue={inicial?.projetoId ?? ''} className={`${estiloEntrada} sm:max-w-md`}>
+              <option value="">Nenhum projeto</option>
+              {inicial?.projetoId && !projetos.some((x) => x.id === inicial.projetoId) && <option value={inicial.projetoId}>{inicial.projetoCodigo ?? 'Projeto do pedido'}</option>}
+              {projetos.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.codigo} · {x.titulo}
+                </option>
+              ))}
+            </select>
+          </Campo>
+        ) : (
+          inicial?.projetoId && <input type="hidden" name="projeto_id" value={inicial.projetoId} />
+        )}
         <Campo rotulo="Link da pasta do vídeo" dica="Opcional. Cole o link completo da pasta do Drive (começando com https://).">
           <input type="url" name="link_video" value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://" className={estiloEntrada} />
         </Campo>

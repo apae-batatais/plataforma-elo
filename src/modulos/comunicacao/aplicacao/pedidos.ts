@@ -30,6 +30,7 @@ import {
 import {
   ACOES,
   NOME_SITUACAO,
+  NOME_TIPO_PECA,
   COMENTARIO_OBRIGATORIO,
   conferirTransicao,
   ErroComunicacao,
@@ -68,6 +69,34 @@ interface Opcoes {
   instituicao?: string;
   /** A instituição tem e-mail de envio? Sem ele, nenhum aviso por e-mail é criado. */
   emailDisponivel?: boolean;
+  /** Projetos que a plataforma oferece (os que a pessoa vê e estão em implementação); `null` = Projetos indisponível. */
+  projetos?: readonly ProjetoParaPedido[] | null;
+}
+
+/** Projeto que a plataforma entrega ao pedido para escolher (a Comunicação não lê Projetos; ADR-022). */
+export interface ProjetoParaPedido {
+  id: string;
+  codigo: string;
+  titulo: string;
+}
+
+export const ERRO_PROJETO_DO_PEDIDO = 'Este projeto não está disponível para pedidos de divulgação. Escolha outro ou envie sem projeto.';
+
+/**
+ * Confere o projeto do pedido (L20). Sem projeto, nada a conferir. O projeto já gravado continua valendo se a pessoa
+ * não o mudou (ele pode ter saído da lista depois); um projeto novo precisa estar na lista que a pessoa vê.
+ */
+function projetoDoPedido(
+  projetoId: string | null | undefined,
+  projetos: readonly ProjetoParaPedido[] | null | undefined,
+  atual: { projeto_id: string | null; projeto_codigo: string | null } | null,
+): { projeto_id: string | null; projeto_codigo: string | null } {
+  const id = projetoId?.trim();
+  if (!id) return { projeto_id: null, projeto_codigo: null };
+  if (atual?.projeto_id === id) return { projeto_id: id, projeto_codigo: atual.projeto_codigo };
+  const achado = projetos?.find((x) => x.id === id);
+  if (!achado) throw new ErroComunicacao(ERRO_PROJETO_DO_PEDIDO);
+  return { projeto_id: achado.id, projeto_codigo: achado.codigo };
 }
 
 export interface DadosPedido {
@@ -81,6 +110,8 @@ export interface DadosPedido {
   imagemConfirmada: boolean;
   /** Fotos e documentos do pedido. Sem a lista, os anexos que já existem ficam como estão. */
   anexos?: AnexoPedido[];
+  /** Projeto de que o pedido trata (opcional, L20). */
+  projetoId?: string | null;
 }
 
 export type Visao = 'meus' | 'revisar' | 'aprovar' | 'agendar' | 'agendados' | 'todos';
@@ -212,6 +243,7 @@ export async function enviarPedido(
     solicitante: quem.email,
     solicitante_nome: d.nomeSolicitante.trim() || quem.email,
     ...campos,
+    ...projetoDoPedido(d.projetoId, opcoes.projetos, null),
     situacao: 'aguardando_revisao' as const,
     juntado_a: null,
     enviado_em: agora.toISOString(),
@@ -244,7 +276,9 @@ export async function reenviarPedido(p: Planilhas, quem: Autorizador, id: string
   const para = conferirTransicao(r.situacao, 'reenviar', r.tipo_peca);
   const plano = await conferirAnexosDoPedido(p, opcoes.arquivos ?? null, d.anexos, id);
   const { campos } = await conferirDados(p, quem, d, agora, { id: r.calendario_id, tema: r.calendario_tema }, false, null, plano.finais.some((a) => a.tipo === 'foto' || a.tipo === 'video'));
-  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { ...campos, situacao: para }, autoriaDe(quem, agora));
+  // Quem reenvia sem mexer no campo Projeto mantém o projeto; o formulário sempre manda o valor atual.
+  const projeto = d.projetoId === undefined ? { projeto_id: r.projeto_id ?? null, projeto_codigo: r.projeto_codigo ?? null } : projetoDoPedido(d.projetoId, opcoes.projetos, { projeto_id: r.projeto_id ?? null, projeto_codigo: r.projeto_codigo ?? null });
+  const { colunasAlteradas } = await atualizar(p, PedidosComunicacao, id, versao, { ...campos, ...projeto, situacao: para }, autoriaDe(quem, agora));
   await gravarAnexos(p, quem, plano, id, agora);
   await registrarMudanca(p, quem, r, 'reenviar', para, null, agora, [...colunasAlteradas, ...(plano.mudou ? ['anexos'] : [])]);
 }
@@ -707,6 +741,34 @@ export async function publicacoesDoServico(p: Planilhas, quem: Autorizador, serv
       .slice(0, 5)
       .map((r) => ({ numero: r.numero, titulo: r.titulo, tipoPeca: r.tipo_peca, publicadoEm: r.publicado_em, link: r.link_publicacao })),
   });
+}
+
+/** Pedido de divulgação ligado a um projeto (L20): número, título e situação; nunca o nome de quem pediu. */
+export interface PedidoDoProjeto {
+  id: string;
+  numero: string;
+  titulo: string;
+  tipoPeca: string;
+  situacao: Situacao;
+  situacaoNome: string;
+  /** Ainda anda (não foi publicado, recusado nem cancelado). */
+  pendente: boolean;
+}
+
+/**
+ * Pedidos de divulgação ligados ao projeto (L20). Quem tem acesso à Comunicação vê número, título e situação;
+ * abrir o pedido segue a regra da Comunicação. A plataforma só chama depois de confirmar que a pessoa vê o projeto.
+ */
+export async function pedidosDoProjeto(p: Planilhas, quem: Autorizador, projetoId: string): Promise<Ligacao<PedidoDoProjeto[]>> {
+  if (!quem.temPermissaoAlgumEscopo('comunicacao.acessar')) return ligacaoSemPermissao();
+  const [pedidos] = await lerTabelas(p, [PedidosComunicacao] as const);
+  return ligacaoOk(
+    pedidos
+      .ativos()
+      .filter((r) => r.projeto_id === projetoId)
+      .sort((a, b) => b.enviado_em.localeCompare(a.enviado_em))
+      .map((r) => ({ id: r.id, numero: r.numero, titulo: r.titulo, tipoPeca: NOME_TIPO_PECA[r.tipo_peca], situacao: r.situacao, situacaoNome: NOME_SITUACAO[r.situacao], pendente: !SITUACOES_FINAIS.has(r.situacao) })),
+  );
 }
 
 // ---------------------------------------------------------------------------
