@@ -78,7 +78,7 @@ describe('Ajuda e manual: fonte única (ADR-040)', () => {
   });
 
   it('regra 4: toda tela do menu (app ou item de primeiro nível) tem um assunto cujos atalhos a alcançam', () => {
-    // Pendentes: ganham assunto na entrega 3 da proposta #232. A lista só pode encolher.
+    // Pendentes: nenhuma (a entrega 3 da proposta #232 cobriu as últimas). Não deve voltar a crescer sem motivo.
     const pendentes: Record<string, string> = {
     };
     // Telas só de apoio, sem passo a passo próprio (motivo ao lado).
@@ -106,6 +106,25 @@ describe('Ajuda e manual: fonte única (ADR-040)', () => {
     const ids = daAjuda(com(...permissoesDoPerfil('funcionario'))).map((s) => s.id);
     expect(ids).toContain('agenda-busca');
     for (const id of ['pessoas', 'indicadores', 'administracao']) expect(ids).not.toContain(id);
+  });
+
+  it('entrega 3: Saúde, Educação, Projetos, Parcerias e Comunicação têm assunto e dizem para quem são', () => {
+    const todos = manual();
+    for (const id of ['saude', 'educacao', 'projetos', 'parcerias', 'comunicacao', 'comunicacao-avisos', 'resultado-instagram']) expect(todos.map((s) => s.id)).toContain(id);
+    expect(textoPara(todos.find((s) => s.id === 'parcerias')!)).toContain('Financeiro');
+    expect(textoPara(todos.find((s) => s.id === 'comunicacao')!)).toContain('Coordenação da Comunicação');
+    const hrefs = todos.find((s) => s.id === 'comunicacao')!.atalhos!.map((a) => a.href);
+    expect(hrefs).toEqual(expect.arrayContaining(['/comunicacao/novo', '/comunicacao/pedidos', '/comunicacao/calendario', '/comunicacao/contatos', '/comunicacao/configuracoes']));
+  });
+
+  it('entrega 3: Parcerias e a parte da equipe de Comunicação só aparecem para quem tem a permissão', () => {
+    const limitado = daAjuda(com('comunicacao.solicitar'));
+    expect(limitado.map((s) => s.id)).toContain('comunicacao');
+    expect(limitado.map((s) => s.id)).not.toContain('parcerias');
+    expect(html(limitado.find((s) => s.id === 'comunicacao')!)).not.toContain('Calendário e contatos');
+    expect(html(manual().find((s) => s.id === 'comunicacao')!)).toContain('Calendário e contatos');
+    const leitura = daAjuda(com('parcerias.termos.ver'));
+    expect(html(leitura.find((s) => s.id === 'parcerias')!)).not.toContain('Novo termo e siga');
   });
 
   it('regra 6: nenhum PDF do manual fica no repositório e nada aponta para ele', () => {
