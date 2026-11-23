@@ -22,6 +22,16 @@ export interface TermoLigado {
   situacao: 'rascunho' | 'em_vigor' | 'encerrado';
   /** Valor atual do termo. */
   valor: number;
+  /** Regra L13: vigência, recursos próprios, fontes, cronograma e plano de aplicação. */
+  inicio: string | null;
+  fim: string | null;
+  recursosProprios: number | null;
+  fontes: {
+    nome: string;
+    valorAtual: number;
+    cronograma: { mes: string; valor: number }[];
+    plano: { categoria: string; valor: number }[];
+  }[];
 }
 
 export interface CatalogoTermos {

@@ -5,6 +5,7 @@ import { lerTabela } from '@/nucleo/armazenamento/tabela';
 import { avancarFase, lerFase, salvarDocumento } from '../aplicacao/fases';
 import { cancelarProjeto } from '../aplicacao/ideias';
 import { abrirPorta, darParecer, decidirPorta } from '../aplicacao/portas';
+import { adicionarAtividade } from '../aplicacao/planejamento';
 import { criarRascunhoDoProjeto, lerLigacaoTermo, projetosComTermoParadosOuCancelados, type CatalogoTermos, type PedidoRascunhoDeTermo, type TermoLigado } from '../aplicacao/termo';
 import { Portas, Projetos } from '../dados/tabelas';
 import { camposDe, faltaDoFinanciamento, validarConteudo } from '../dominio/fases';
@@ -31,7 +32,19 @@ function parceriasFalsas(opcoes: { falha?: string; valorDoTermo?: number; semPer
     },
     async termoParaProjeto(_quem, termoId): Promise<TermoLigado | null> {
       if (opcoes.semPermissao) return null;
-      return { termoId, parceiro: 'Financiador (exemplo)', situacao: 'rascunho', valor: opcoes.valorDoTermo ?? 30000 };
+      return {
+        termoId,
+        parceiro: 'Financiador (exemplo)',
+        situacao: 'rascunho',
+        valor: opcoes.valorDoTermo ?? 30000,
+        inicio: '2026-11-01',
+        fim: '2027-04-30',
+        recursosProprios: 5000,
+        fontes: [
+          { nome: 'Fonte A', valorAtual: 20000, cronograma: [{ mes: '2026-10', valor: 5000 }, { mes: '2026-12', valor: 10000 }, { mes: '2027-03', valor: 5000 }], plano: [{ categoria: 'Pessoal', valor: 20000 }] },
+          { nome: 'Fonte B', valorAtual: 10000, cronograma: [{ mes: '2026-12', valor: 2500 }, { mes: '2027-01', valor: 7500 }], plano: [] },
+        ],
+      };
     },
   };
   return { catalogo, criados, pedidos };
@@ -258,5 +271,58 @@ describe('L11: projeto cancelado não apaga o rascunho; o Financeiro é avisado 
     const l = await lerLigacaoTermo(p, dir, id, catalogo, o);
     expect(l!.pontosDeAtencao.join(' ')).toMatch(/cancelado: o termo não é apagado/);
     expect(l!.podeCriarRascunho).toBe(false);
+  });
+});
+
+describe('L13: termo no projeto (leitura)', () => {
+  async function comTermo() {
+    const p = await planilhasDeProjetos();
+    const { id } = await financiadoNaFase2(p);
+    const { portaId, versao } = await portaDois(p, id);
+    const catalogo = parceriasFalsas().catalogo;
+    await decidirPorta(p, await como(p, DIRETORIA), portaId, versao, 'seguir', 'Ok.', { ...o, parcerias: catalogo });
+    const coord = await como(p, COORDENACAO);
+    const ativ = (descricao: string, fim: string) => ({ descricao, responsavel: COORDENACAO, inicioPrevisto: '2026-11-01', fimPrevisto: fim, peso: null });
+    await adicionarAtividade(p, coord, id, ativ('Oficina inicial', '2026-12-15'), o);
+    await adicionarAtividade(p, coord, id, ativ('Relatório parcial', '2027-01-01'), o);
+    return { p, id, catalogo };
+  }
+
+  it('mostra prazos (próxima e última parcela, fim da vigência) e a linha do tempo em ordem de data', async () => {
+    const { p, id, catalogo } = await comTermo();
+    const l = await lerLigacaoTermo(p, await como(p, DIRETORIA), id, catalogo, o);
+    // hoje (AGORA) é 12/11/2026: a parcela de 10/2026 já passou
+    expect(l!.prazos).toEqual({ proximaParcela: { mes: '2026-12', valor: 12500 }, ultimaParcela: { mes: '2027-03', valor: 5000 }, fimVigencia: '2027-04-30' });
+    expect(l!.linhaDoTempo.map((e) => `${e.data} ${e.tipo}`)).toEqual([
+      '2026-10-01 parcela',
+      '2026-12-01 parcela',
+      '2026-12-15 atividade',
+      '2027-01-01 atividade',
+      '2027-01-01 parcela',
+      '2027-03-01 parcela',
+    ]);
+    expect(l!.linhaDoTempo.find((e) => e.data === '2026-12-01')!.valor).toBe(12500);
+    expect(l!.prazosDePrestacaoDeContas).toBe('nao_cadastrados');
+  });
+
+  it('sem permissão em Parcerias não há prazos nem linha do tempo, só o vínculo', async () => {
+    const { p, id } = await comTermo();
+    const l = await lerLigacaoTermo(p, await como(p, COORDENACAO), id, parceriasFalsas({ semPermissao: true }).catalogo, o);
+    expect(l!.termo).toEqual({ estado: 'sem_permissao', nome: 'Financiador (exemplo)' });
+    expect(l!.prazos).toBeNull();
+    expect(l!.linhaDoTempo).toEqual([]);
+  });
+
+  it('Parcerias desligado: sem prazos e sem erro', async () => {
+    const { p, id } = await comTermo();
+    const l = await lerLigacaoTermo(p, await como(p, DIRETORIA), id, null, o);
+    expect(l!.termo.estado).toBe('indisponivel');
+    expect(l!.prazos).toBeNull();
+  });
+
+  it('depois da última parcela não há próxima parcela', async () => {
+    const { p, id, catalogo } = await comTermo();
+    const l = await lerLigacaoTermo(p, await como(p, DIRETORIA), id, catalogo, { agora: new Date('2027-06-01T12:00:00Z') });
+    expect(l!.prazos).toMatchObject({ proximaParcela: null, ultimaParcela: { mes: '2027-03', valor: 5000 } });
   });
 });

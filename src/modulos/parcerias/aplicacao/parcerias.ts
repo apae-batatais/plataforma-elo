@@ -844,6 +844,25 @@ export interface TermoParaProjeto {
   situacao: 'rascunho' | 'em_vigor' | 'encerrado';
   /** Valor atual do termo (fontes + aportes). */
   valor: number;
+  /** Regra 28: o que o projeto mostra a quem tem `parcerias.termos.ver` (sem dados pessoais). */
+  inicio: string | null;
+  fim: string | null;
+  recursosProprios: number | null;
+  fontes: {
+    nome: string;
+    valorAtual: number;
+    /** Cronograma de desembolso: mês (AAAA-MM) e valor, já somados os aportes da fonte. */
+    cronograma: Parcela[];
+    /** Plano de aplicação: categoria e valor. */
+    plano: { categoria: string; valor: number }[];
+  }[];
+}
+
+/** Soma parcelas do mesmo mês (fonte + aportes), em ordem de mês. */
+function somarPorMes(ps: readonly Parcela[]): Parcela[] {
+  const m = new Map<string, number>();
+  for (const x of ps) m.set(x.mes, (m.get(x.mes) ?? 0) + emCentavos(x.valor));
+  return [...m.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([mes, c]) => ({ mes, valor: emReais(c) }));
 }
 
 /**
@@ -857,12 +876,42 @@ export async function termoParaProjeto(p: Planilhas, quem: Autorizador, termoId:
   const servicosDe = (id: string) => l.servicos.ativos().filter((s) => s.termo_id === id).map((s) => s.servico);
   if (t && t.ativo) {
     const f = fichaDe(l, t, agora);
-    return podeVer(quem, f.servicos.map((s) => s.servico)) ? { termoId, parceiro: f.parceiro, situacao: f.situacao, valor: f.valorGlobal } : null;
+    if (!podeVer(quem, f.servicos.map((s) => s.servico))) return null;
+    return {
+      termoId,
+      parceiro: f.parceiro,
+      situacao: f.situacao,
+      valor: f.valorGlobal,
+      inicio: f.inicio,
+      fim: f.fim,
+      recursosProprios: f.recursosProprios,
+      fontes: f.fontes.map((x) => ({
+        nome: x.nome,
+        valorAtual: x.valorAtual,
+        cronograma: somarPorMes([...x.parcelas, ...f.aportes.filter((a) => a.fonteId === x.id).flatMap((a) => a.parcelas)]),
+        plano: x.categorias,
+      })),
+    };
   }
   const r = l.rascunhos.find((x) => x.id === termoId);
   if (!r || !podeVer(quem, servicosDe(r.id))) return null;
-  const valor = emReais(l.fontes.ativos().filter((f) => f.termo_id === r.id).reduce((s, f) => s + emCentavos(f.valor_inicial ?? 0), 0));
-  return { termoId, parceiro: r.parceiro, situacao: 'rascunho', valor };
+  const fontesR = l.fontes.ativos().filter((f) => f.termo_id === r.id);
+  const valor = emReais(fontesR.reduce((s, f) => s + emCentavos(f.valor_inicial ?? 0), 0));
+  return {
+    termoId,
+    parceiro: r.parceiro,
+    situacao: 'rascunho',
+    valor,
+    inicio: r.inicio || null,
+    fim: r.fim || null,
+    recursosProprios: null,
+    fontes: fontesR.map((f) => ({
+      nome: f.nome,
+      valorAtual: f.valor_inicial ?? 0,
+      cronograma: somarPorMes(l.parcelas.ativos().filter((x) => x.fonte_id === f.id)),
+      plano: l.categorias.ativos().filter((c) => c.fonte_id === f.id).map((c) => ({ categoria: c.categoria, valor: c.valor })),
+    })),
+  };
 }
 
 export async function termosParaOrcamento(p: Planilhas, agora = new Date()): Promise<TermoParaOrcamento[]> {
