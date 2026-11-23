@@ -72,6 +72,10 @@ Cuidados:
 | `CLAUDE_CODE_OAUTH_TOKEN` | Secret | Claude Code no GitHub (token da assinatura; vale um ano) |
 | `NETLIFY_AUTH_TOKEN` | Secret | Publicação na Netlify |
 | `NETLIFY_SITE_ID` | Secret | Publicação na Netlify (identificador do site; não vence) |
+| `ROTINA_URL` | Secret | Endereço do site oficial, para a rotina agendada chamar (ADR-027; não vence) |
+| `ROTINA_TOKEN` | Secret | Chave da rotina agendada (ADR-027; a mesma também vale como variável de ambiente na Netlify) |
+| `META_APP_SECRET` | Secret | Segredo do app da Meta, para o Instagram automático (ADR-028; variável de ambiente na Netlify) |
+| `ELO_CHAVE_CREDENCIAIS` | Secret | Cifra as credenciais do Instagram por instituição (ADR-028; variável de ambiente na Netlify; trocar invalida as credenciais já guardadas) |
 | `QUADRO_NUMERO` | Variable | Número do quadro "Elo" (não vence) |
 
 - Credenciais do Google: só na Netlify.
