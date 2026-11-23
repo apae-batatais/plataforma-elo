@@ -58,7 +58,7 @@ const exigirPublicar = (quem: Autorizador) => {
   if (!quem.temPermissao(PERM.publicar)) throw new ErroPermissao();
 };
 
-async function nomeDoUsuario(p: Planilhas, email: string): Promise<string> {
+export async function nomeDoUsuario(p: Planilhas, email: string): Promise<string> {
   return (await nomesDasPessoas(p, [email])).get(email) ?? email.split('@')[0];
 }
 

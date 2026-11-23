@@ -15,5 +15,8 @@ Leia antes `especificacao.md` desta pasta (e a ADR-039) e o `CLAUDE.md` da raiz.
 - Permissões: `conhecimento.acessar`, `.ler`, `.publicar`, `.acompanhar`, `.categorias.gerenciar`.
 - Teste: abas `Perguntas` (por edição; `correta` é sensível e nunca vai ao navegador) e `TentativasTeste` (só
   inclusão). `enviarTeste` confere no servidor; ciência com teste só depois da aprovação (regra 11).
-- Entregas: 1 (publicação e ciência) e 2 (teste de compreensão) prontas; faltam 3 (curtir e comentar) e 4 (aviso por
+- Curtir e comentar: `aplicacao/interacao.ts`; abas `Curtidas` (uma linha por pessoa, descurtir = `ativo = FALSE`) e
+  `Comentarios` (esconder = `ativo = FALSE`, com `escondido_por` e `escondido_em`). Só quem vê a publicação interage e só
+  enquanto está publicada; quem tem `conhecimento.publicar` esconde e reativa.
+- Entregas: 1 (publicação e ciência), 2 (teste de compreensão) e 3 (curtir e comentar) prontas; falta 4 (aviso por
   e-mail). Ao incluir colunas novas, lembre que a Administração precisa rodar "Preparar estrutura".

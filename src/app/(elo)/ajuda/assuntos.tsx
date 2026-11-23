@@ -1039,6 +1039,14 @@ export function montarAssuntos(ctx: {
             ]}
           />
           <p className="mt-2">Você só vê as publicações do seu público (todos, um perfil ou uma área). Ninguém vê a ciência de outra pessoa, só quem acompanha.</p>
+          <Sub>Curtir e comentar</Sub>
+          <Passos
+            itens={[
+              'No fim da publicação, em "Curtir e comentar", clique em "Curtir". O botão passa a dizer "Curtida"; clique de novo para desfazer. O total de curtidas aparece ao lado; ninguém vê quem curtiu.',
+              'Para comentar, escreva no campo (até 1.000 caracteres) e clique em "Comentar". O comentário aparece com o seu nome, a data e a hora. Se der erro, o texto continua no campo.',
+              'Você não edita nem apaga o próprio comentário. Publicação arquivada mostra curtidas e comentários, mas não recebe novos.',
+            ]}
+          />
           {pode.publicar && (
             <>
               <Sub>Publicar</Sub>
@@ -1051,6 +1059,7 @@ export function montarAssuntos(ctx: {
                   'Salve como rascunho para revisar (ninguém recebe pendência) ou clique em Publicar.',
                   'Ao editar o texto ou o teste de uma publicação que já tem ciências ou tentativas, escolha "Correção pequena" (as ciências e aprovações continuam valendo) ou "Nova versão" (todos dão ciência de novo). Título, resumo, categoria, público e anexo mudam sem nova ciência.',
                   'Arquivar tira a publicação das listas e das pendências, mas guarda o registro de quem deu ciência; dá para reativar.',
+                  'Nos comentários de uma publicação, "Esconder" faz o comentário sumir para todos (fica guardado, com quem escondeu e quando). Você ainda o vê, marcado como "Escondido", e pode clicar em "Reativar".',
                 ]}
               />
             </>
