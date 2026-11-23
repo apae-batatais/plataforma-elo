@@ -451,6 +451,9 @@ export const Realizado = definirTabela({
     /** Plano de contas (#221): item contábil e área do plano da despesa, opcionais. */
     item_id: textoOpcional(),
     area_plano_id: textoOpcional(),
+    /** Projeto de onde vem a linha (ligações onda 2, L18): id e código copiado; opcional, em despesa e receita. */
+    projeto_id: textoOpcional(),
+    projeto_codigo: textoOpcional(),
   }),
 });
 export type RegRealizado = Registro<typeof Realizado.esquema>;

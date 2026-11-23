@@ -71,3 +71,26 @@ export async function projetosParaCompra(p: Planilhas, quem: Autorizador): Promi
       })),
   );
 }
+
+/** O que o Orçamento precisa saber de um projeto para marcar uma linha do realizado (ligações onda 2, L18). */
+export interface ProjetoParaRealizado {
+  id: string;
+  codigo: string;
+  titulo: string;
+}
+
+/** Etapas em que o projeto já gasta ou recebe de verdade: implementação, encerramento e encerrado. Parado e cancelado ficam de fora. */
+const ETAPAS_COM_REALIZADO: ReadonlySet<Etapa> = new Set<Etapa>(['implementacao', 'encerramento', 'encerrado']);
+
+/** Projetos que a pessoa vê e que podem receber lançamento do Orçamento. */
+export async function projetosParaRealizado(p: Planilhas, quem: Autorizador): Promise<Ligacao<ProjetoParaRealizado[]>> {
+  if (!quem.temPermissaoAlgumEscopo('projetos.acessar')) return ligacaoSemPermissao();
+  const [projetos, config, equipes] = await Promise.all([lerTabela(p, Projetos), lerConfig(p), equipesAtivas(p)]);
+  return ligacaoOk(
+    projetos
+      .ativos()
+      .filter((r) => ETAPAS_COM_REALIZADO.has(r.etapa) && podeVerProjeto(quem, r, config, equipes.get(r.id)))
+      .sort((a, b) => a.codigo.localeCompare(b.codigo))
+      .map((r) => ({ id: r.id, codigo: r.codigo, titulo: r.titulo })),
+  );
+}

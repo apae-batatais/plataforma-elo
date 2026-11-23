@@ -36,6 +36,8 @@ export interface LinhaGradeTela {
   termoId: string | null;
   itemId: string | null;
   areaPlanoId: string | null;
+  projetoId: string | null;
+  projetoCodigo: string | null;
 }
 
 export interface OpcoesTela {
@@ -43,11 +45,13 @@ export interface OpcoesTela {
   grupos: { id: string; nome: string; rh: boolean }[];
   fontes: { id: string; nome: string; restrita: boolean }[];
   plano: OpcoesPlano;
+  /** Projetos para marcar numa linha adicionada; `null` = sem Projetos (o campo some). */
+  projetos: { id: string; codigo: string; titulo: string }[] | null;
 }
 
 type Acao = (f: FormData) => void | Promise<void>;
 type Estado = { valor: string; nr: boolean; motivo: string; obs: string; termo: string };
-type Extra = { id: number; tipo: TipoRealizado; servico: string; grupoId: string; fonteId: string; natureza: Natureza } & Estado;
+type Extra = { id: number; tipo: TipoRealizado; servico: string; grupoId: string; fonteId: string; natureza: Natureza; projetoId: string } & Estado;
 
 const MSG_VALOR = 'Use números, como 1.234,56.';
 const ID_FORM = 'form-realizado';
@@ -129,7 +133,7 @@ export function InformarRealizado({
   const mudar = (chave: string, p: Partial<Estado>) => setEstados((a) => ({ ...a, [chave]: { ...a[chave], ...p } }));
   const mudarExtra = (id: number, p: Partial<Extra>) => setExtras((a) => a.map((x) => (x.id === id ? { ...x, ...p } : x)));
   const adicionar = (tipo: TipoRealizado) =>
-    setExtras((a) => [...a, { id: Date.now() + a.length, tipo, servico: '', grupoId: '', fonteId: '', natureza: naturezaSugerida(tipo, false), valor: '', nr: false, motivo: '', obs: '', termo: '' }]);
+    setExtras((a) => [...a, { id: Date.now() + a.length, tipo, servico: '', grupoId: '', fonteId: '', natureza: naturezaSugerida(tipo, false), projetoId: '', valor: '', nr: false, motivo: '', obs: '', termo: '' }]);
   const copiarPrevisto = (tipo: TipoRealizado) =>
     setEstados((a) => {
       const novo = { ...a };
@@ -258,13 +262,14 @@ export function InformarRealizado({
                       <th scope="row" className={`${tabela.td} font-normal`}>
                         {tipo === 'despesa' ? l.servicoNome : 'Receita'}
                         <span className="mt-0.5 block text-xs text-texto-suave">{ROTULO_NATUREZA[l.natureza]}</span>
+                        {l.projetoCodigo && <span className="mt-0.5 block text-xs text-texto-suave">Projeto {l.projetoCodigo}</span>}
                       </th>
                       <td className={tabela.td}>{l.grupoNome}</td>
                       <td className={tabela.td}>{l.fonteNome}</td>
                       <td className={`${tabela.td} ${tabela.numero} text-texto-suave`}>{reais(l.previsto)}</td>
                       {podeEditar ? (
                         <>
-                          {oculto(i, { tipo: l.tipo, servico: l.servico, grupo: l.grupoId, fonte: l.fonteId, natureza: l.natureza, versao: l.versao })}
+                          {oculto(i, { tipo: l.tipo, servico: l.servico, grupo: l.grupoId, fonte: l.fonteId, natureza: l.natureza, projeto: l.projetoId, versao: l.versao })}
                           {celulaValor(i, l.chave, rotulo, estados[l.chave] ?? inicial(l), (p) => mudar(l.chave, p), l.previsto, l.natureza, l.tipo,
                             l.tipo === 'despesa' && l.grupoId ? <CamposPlano compacto formId={ID_FORM} sufixoId={`-${i}`} plano={opcoes.plano} ano={ano} grupoId={l.grupoId} itemInicial={l.itemId} areaInicial={l.areaPlanoId} nomeItem={campo(i, 'item')} nomeArea={campo(i, 'areaplano')} /> : null)}
                         </>
@@ -311,6 +316,22 @@ export function InformarRealizado({
                             </option>
                           ))}
                         </select>
+                        {opcoes.projetos && (
+                          <>
+                            <label htmlFor={`projeto-${x.id}`} className="mt-1 block text-xs text-texto-suave">
+                              Projeto (opcional)
+                            </label>
+                            <select id={`projeto-${x.id}`} form={ID_FORM} name={campo(i, 'projeto')} value={x.projetoId} onChange={(e) => mudarExtra(x.id, { projetoId: e.target.value })} className={`${estiloEntrada} !mt-0`}>
+                              <option value="">Nenhum projeto</option>
+                              {opcoes.projetos.map((pr) => (
+                                <option key={pr.id} value={pr.id}>
+                                  {pr.codigo} · {pr.titulo}
+                                </option>
+                              ))}
+                            </select>
+                            <span className="mt-0.5 block text-xs text-texto-suave">Escolha o projeto de onde vem este valor.</span>
+                          </>
+                        )}
                       </td>
                       <td className={tabela.td}>
                         {tipo === 'despesa' ? (
