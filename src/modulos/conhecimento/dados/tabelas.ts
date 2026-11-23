@@ -96,10 +96,34 @@ export const TentativasTeste = definirTabela({
   sigilo: { usuario: 'pessoal' },
 });
 
-export const TABELAS_CONHECIMENTO = [CategoriasConhecimento, PublicacoesConhecimento, CienciasConhecimento, PerguntasConhecimento, TentativasTeste] as const;
+/** Uma linha por pessoa e publicação; descurtir = `ativo = FALSE`, curtir de novo reativa a mesma linha. */
+export const CurtidasConhecimento = definirTabela({
+  planilha: PLANILHA_CONHECIMENTO,
+  aba: 'Curtidas',
+  esquema: z.object({ publicacao_id: texto(), usuario: texto() }),
+  sigilo: { usuario: 'pessoal' },
+});
+
+/** Esconder = `ativo = FALSE` (nada é apagado); quem e quando ficam registrados. */
+export const ComentariosConhecimento = definirTabela({
+  planilha: PLANILHA_CONHECIMENTO,
+  aba: 'Comentarios',
+  esquema: z.object({
+    publicacao_id: texto(),
+    usuario: texto(),
+    usuario_nome: texto(),
+    texto: texto(),
+    escondido_por: textoOpcional(),
+    escondido_em: textoOpcional(),
+  }),
+  sigilo: { usuario: 'pessoal', usuario_nome: 'pessoal', escondido_por: 'pessoal' },
+});
+
+export const TABELAS_CONHECIMENTO = [CategoriasConhecimento, PublicacoesConhecimento, CienciasConhecimento, PerguntasConhecimento, TentativasTeste, CurtidasConhecimento, ComentariosConhecimento] as const;
 
 export type RegCategoria = Registro<typeof CategoriasConhecimento.esquema>;
 export type RegPublicacao = Registro<typeof PublicacoesConhecimento.esquema>;
 export type RegPergunta = Registro<typeof PerguntasConhecimento.esquema>;
 export type RegTentativa = Registro<typeof TentativasTeste.esquema>;
+export type RegComentario = Registro<typeof ComentariosConhecimento.esquema>;
 export type RegCiencia = Registro<typeof CienciasConhecimento.esquema>;
