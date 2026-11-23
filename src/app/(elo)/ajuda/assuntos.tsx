@@ -1003,6 +1003,17 @@ export function montarAssuntos(ctx: {
             Na aba Ligações, &quot;Outras ligações&quot; lista o que o projeto tem em comum com outros apps (o nome é uma cópia guardada no projeto) e &quot;Compras do projeto&quot; mostra as requisições ligadas a ele. Se o app não
             estiver ativo, aparece &quot;Ligação indisponível&quot; e o resto da tela continua funcionando. Os detalhes só aparecem para quem tem acesso ao app onde o dado fica.
           </p>
+          <Sub>Ver o termo dentro do projeto</Sub>
+          <Passos
+            itens={[
+              'Abra o projeto e entre na aba Ligações.',
+              pode.termos
+                ? 'Em "Termo de parceria", veja o valor, os prazos (próxima parcela, última parcela e fim da vigência), as fontes com cronograma de desembolso e plano de aplicação, os recursos próprios previstos e a linha do tempo.'
+                : 'Sem acesso aos termos de Parcerias, você vê só "Ligado ao termo …". Os valores e prazos aparecem para quem tem esse acesso.',
+              'A linha do tempo junta as atividades com prazo do projeto e as parcelas do termo, em ordem de data.',
+              'Prazos de prestação de contas ainda não existem em Parcerias: a tela avisa "ainda não cadastrados em Parcerias".',
+            ]}
+          />
           <Sub>Valores diferentes</Sub>
           <p>Se o valor aprovado do projeto for diferente do valor do termo, a aba Ligações mostra um aviso. É só informação: o projeto não altera o termo.</p>
         </>

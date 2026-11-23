@@ -16,6 +16,10 @@ import { acaoCriarRascunhoDoTermo } from '../../acoes';
 
 export const metadata: Metadata = { title: 'Ligações do projeto' };
 
+const mes = (m: string) => `${m.slice(5, 7)}/${m.slice(0, 4)}`;
+const dia = (d: string) => `${d.slice(8, 10)}/${d.slice(5, 7)}/${d.slice(0, 4)}`;
+const SITUACAO_ATIVIDADE: Record<string, string> = { a_fazer: 'A fazer', em_andamento: 'Em andamento', concluida: 'Concluída' };
+
 const SITUACAO = { rascunho: 'Rascunho, falta o Financeiro completar', em_vigor: 'Em vigor', encerrado: 'Encerrado' } as const;
 
 export default async function PaginaLigacoes({ params }: { params: Promise<{ id: string }> }) {
@@ -73,6 +77,61 @@ export default async function PaginaLigacoes({ params }: { params: Promise<{ id:
               <div><dt className="text-texto-suave">Financiador</dt><dd className="font-medium">{l.financiador ?? '—'}</dd></div>
             </dl>
             {podeAbrirTermo && <LinkBotao href="/parcerias">Abrir termo em Parcerias</LinkBotao>}
+            {l.prazos && (
+              <div className="space-y-5 pt-2">
+                <div>
+                  <h3 className="mb-2 font-semibold">Prazos</h3>
+                  <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div><dt className="text-texto-suave">Próxima parcela</dt><dd className="font-medium">{l.prazos.proximaParcela ? `${mes(l.prazos.proximaParcela.mes)}, ${moeda(l.prazos.proximaParcela.valor)}` : 'Nenhuma parcela a receber'}</dd></div>
+                    <div><dt className="text-texto-suave">Última parcela</dt><dd className="font-medium">{l.prazos.ultimaParcela ? `${mes(l.prazos.ultimaParcela.mes)}, ${moeda(l.prazos.ultimaParcela.valor)}` : '—'}</dd></div>
+                    <div><dt className="text-texto-suave">Fim da vigência</dt><dd className="font-medium">{l.prazos.fimVigencia ? dia(l.prazos.fimVigencia) : 'Ainda não informado'}</dd></div>
+                  </dl>
+                  <p className="mt-2 text-sm text-texto-suave">Prazos de prestação de contas: ainda não cadastrados em Parcerias.</p>
+                </div>
+                <div>
+                  <h3 className="mb-2 font-semibold">Fontes, cronograma e plano de aplicação</h3>
+                  {l.termo.termo.fontes.length === 0 ? (
+                    <EstadoVazio titulo="Nada aqui ainda.">O Financeiro ainda não cadastrou as fontes do termo.</EstadoVazio>
+                  ) : (
+                    <ul className="space-y-3">
+                      {l.termo.termo.fontes.map((f) => (
+                        <li key={f.nome} className="rounded border border-borda p-3 text-sm">
+                          <p className="font-semibold">{f.nome}: {moeda(f.valorAtual)}</p>
+                          <p className="mt-2 text-texto-suave">Cronograma de desembolso</p>
+                          {f.cronograma.length === 0 ? (
+                            <p>Ainda sem cronograma.</p>
+                          ) : (
+                            <TabelaDados legenda={`Cronograma de desembolso da fonte ${f.nome}`} colunas={[{ chave: 'mes', rotulo: 'Mês' }, { chave: 'valor', rotulo: 'Valor' }]} linhas={f.cronograma.map((x) => ({ id: x.mes, valores: { mes: mes(x.mes), valor: moeda(x.valor) } }))} />
+                          )}
+                          <p className="mt-2 text-texto-suave">Plano de aplicação</p>
+                          {f.plano.length === 0 ? (
+                            <p>Ainda sem plano de aplicação.</p>
+                          ) : (
+                            <TabelaDados legenda={`Plano de aplicação da fonte ${f.nome}`} colunas={[{ chave: 'categoria', rotulo: 'Categoria' }, { chave: 'valor', rotulo: 'Valor' }]} linhas={f.plano.map((x) => ({ id: x.categoria, valores: { categoria: x.categoria, valor: moeda(x.valor) } }))} />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="mt-2 text-sm"><span className="text-texto-suave">Recursos próprios previstos: </span><span className="font-medium">{l.termo.termo.recursosProprios === null ? 'Não informados' : moeda(l.termo.termo.recursosProprios)}</span></p>
+                </div>
+                <div>
+                  <h3 className="mb-2 font-semibold">Linha do tempo</h3>
+                  {l.linhaDoTempo.length === 0 ? (
+                    <EstadoVazio titulo="Nada aqui ainda.">Sem atividades com prazo nem parcelas do termo.</EstadoVazio>
+                  ) : (
+                    <TabelaDados
+                      legenda="Atividades com prazo e parcelas do termo, em ordem de data"
+                      colunas={[{ chave: 'data', rotulo: 'Data' }, { chave: 'o_que', rotulo: 'O que' }, { chave: 'detalhe', rotulo: 'Detalhe' }]}
+                      linhas={l.linhaDoTempo.map((e, i) => ({
+                        id: `${i}`,
+                        valores: e.tipo === 'parcela' ? { data: mes(e.data.slice(0, 7)), o_que: e.texto, detalhe: moeda(e.valor) } : { data: dia(e.data), o_que: `Atividade: ${e.texto}`, detalhe: SITUACAO_ATIVIDADE[e.situacao ?? ''] ?? '' },
+                      }))}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Secao>
