@@ -262,7 +262,15 @@ export async function aplicar({ github, context, core, tokenQuadro, numeroQuadro
     const { data: issue } = await github.rest.issues.get({ owner, repo, issue_number: m.issue });
     if (issue.pull_request) continue;
     const troca = trocaDeEtiquetas(issue.labels.map((l) => l.name), m.etapa);
-    for (const e of troca.remover) await github.rest.issues.removeLabel({ owner, repo, issue_number: m.issue, name: e });
+    for (const e of troca.remover) {
+      // Outra automação pode ter tirado a etiqueta entre a leitura e agora (Fluxo e Desenvolvedor ao mesmo
+      // tempo, #281): etiqueta que já saiu não é erro.
+      try {
+        await github.rest.issues.removeLabel({ owner, repo, issue_number: m.issue, name: e });
+      } catch (erro) {
+        if (erro?.status !== 404) throw erro;
+      }
+    }
     if (troca.adicionar) await github.rest.issues.addLabels({ owner, repo, issue_number: m.issue, labels: [troca.adicionar] });
     if (m.fechar && issue.state === 'open') {
       await github.rest.issues.update({ owner, repo, issue_number: m.issue, state: 'closed', state_reason: 'completed' });
